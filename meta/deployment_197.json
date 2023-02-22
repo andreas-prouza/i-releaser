@@ -1,0 +1,101 @@
+{
+    "general": {
+        "deploy_version": 197,
+        "file_name": "meta/deployment_197.json",
+        "create_time": "2023-02-20 17:19:22.577489",
+        "update_time": "2023-02-20 17:19:22.585258",
+        "status": "new"
+    },
+    "deploy_libs": {
+        "main_lib": "d000000197",
+        "backup_lib": "b000000197",
+        "object_libs": [
+            "prouza2",
+            "prouzalib"
+        ]
+    },
+    "objects": [
+        {
+            "obj_lib": "prouza2",
+            "obj_name": "testlog",
+            "obj_type": "*pgm",
+            "deploy_status": "in preperation",
+            "actions": [
+                {
+                    "sequence": 0,
+                    "cmd": "test cmd 1",
+                    "status": "new",
+                    "processing_area": "post"
+                },
+                {
+                    "sequence": 1,
+                    "cmd": "test cmd 2",
+                    "status": "new",
+                    "processing_area": "post"
+                }
+            ]
+        },
+        {
+            "obj_lib": "prouza2",
+            "obj_name": "cpysrc2ifs",
+            "obj_type": "*srvpgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouza2",
+            "obj_name": "date",
+            "obj_type": "*srvpgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "cpysrc2ifs",
+            "obj_type": "*pgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "testlog2",
+            "obj_type": "*pgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "testsqlerr",
+            "obj_type": "*pgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "date",
+            "obj_type": "*srvpgm",
+            "deploy_status": "in preperation",
+            "actions": [
+                {
+                    "sequence": 0,
+                    "cmd": "hier ein Command aus der JSON Konfig",
+                    "status": "new",
+                    "processing_area": "post"
+                },
+                {
+                    "sequence": 1,
+                    "cmd": "und noch ein Command",
+                    "status": "new",
+                    "processing_area": "post"
+                }
+            ]
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "errhdlsql",
+            "obj_type": "*srvpgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        }
+    ]
+}

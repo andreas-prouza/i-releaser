@@ -1,0 +1,189 @@
+2023-02-10 14:24:00,040 INFO: ['CRTLIB d000000137', 'CRTSAVF d000000137/prouza2', 'CLRSAVF d000000137/prouza2', 'CRTSAVF d000000137/prouzalib', 'CLRSAVF d000000137/prouzalib', 'CRTSAVF d000000137/metafile', 'CLRSAVF d000000137/metafile', "SAV DEV('/qsys.lib/d000000137.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_137.json))"]
+2023-02-10 14:24:00,040 INFO: ['SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000137/prouzalib)             SELECT( (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm)) DTACPR(*HIGH)', 'SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000137/prouza2)             SELECT( (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE testlog *pgm)) DTACPR(*HIGH)']
+2023-02-10 14:26:47,519 INFO: ["CRTLIB d000000138", "CRTSAVF d000000138/prouza2", "CLRSAVF d000000138/prouza2", "CRTSAVF d000000138/prouzalib", "CLRSAVF d000000138/prouzalib", "CRTSAVF d000000138/metafile", "CLRSAVF d000000138/metafile", "SAV DEV('/qsys.lib/d000000138.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_138.json))"]
+2023-02-10 14:26:47,519 INFO: ['SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000138/prouzalib)             SELECT( (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm)) DTACPR(*HIGH)', 'SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000138/prouza2)             SELECT( (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE testlog *pgm)) DTACPR(*HIGH)']
+2023-02-10 14:27:50,142 INFO: [
+    "CRTLIB d000000140",
+    "CRTSAVF d000000140/prouza2",
+    "CLRSAVF d000000140/prouza2",
+    "CRTSAVF d000000140/prouzalib",
+    "CLRSAVF d000000140/prouzalib",
+    "CRTSAVF d000000140/metafile",
+    "CLRSAVF d000000140/metafile",
+    "SAV DEV('/qsys.lib/d000000140.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_140.json))"
+]
+2023-02-10 14:27:50,142 INFO: ['SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000140/prouzalib)             SELECT( (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm)) DTACPR(*HIGH)', 'SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000140/prouza2)             SELECT( (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE testlog *pgm)) DTACPR(*HIGH)']
+2023-02-10 14:29:21,847 INFO: [
+    "CRTLIB d000000141",
+    "CRTSAVF d000000141/prouza2",
+    "CLRSAVF d000000141/prouza2",
+    "CRTSAVF d000000141/prouzalib",
+    "CLRSAVF d000000141/prouzalib",
+    "CRTSAVF d000000141/metafile",
+    "CLRSAVF d000000141/metafile",
+    "SAV DEV('/qsys.lib/d000000141.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_141.json))"
+]
+2023-02-10 14:29:21,848 INFO: [
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000141/prouzalib)             SELECT( (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000141/prouza2)             SELECT( (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE testlog *pgm)) DTACPR(*HIGH)"
+]
+2023-02-19 21:07:30,277 INFO: [
+    "CRTLIB d000000142",
+    "CRTSAVF d000000142/metafile",
+    "CLRSAVF d000000142/metafile",
+    "SAV DEV('/qsys.lib/d000000142.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_142.json))"
+]
+2023-02-19 21:09:31,124 INFO: [
+    "CRTLIB d000000143",
+    "CRTSAVF d000000143/metafile",
+    "CLRSAVF d000000143/metafile",
+    "SAV DEV('/qsys.lib/d000000143.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_143.json))"
+]
+2023-02-19 21:11:49,317 INFO: [
+    "CRTLIB d000000145",
+    "CRTSAVF d000000145/metafile",
+    "CLRSAVF d000000145/metafile",
+    "SAV DEV('/qsys.lib/d000000145.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_145.json))"
+]
+2023-02-19 21:15:25,427 INFO: [
+    "CRTLIB d000000146",
+    "CRTSAVF d000000146/metafile",
+    "CLRSAVF d000000146/metafile",
+    "SAV DEV('/qsys.lib/d000000146.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_146.json))"
+]
+2023-02-19 21:16:25,971 INFO: [
+    "CRTLIB d000000147",
+    "CRTSAVF d000000147/metafile",
+    "CLRSAVF d000000147/metafile",
+    "SAV DEV('/qsys.lib/d000000147.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_147.json))"
+]
+2023-02-19 21:18:11,968 INFO: [
+    "CRTLIB d000000148",
+    "CRTSAVF d000000148/metafile",
+    "CLRSAVF d000000148/metafile",
+    "SAV DEV('/qsys.lib/d000000148.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_148.json))"
+]
+2023-02-19 21:26:26,288 INFO: [
+    "CRTLIB d000000149",
+    "CRTSAVF d000000149/metafile",
+    "CLRSAVF d000000149/metafile",
+    "SAV DEV('/qsys.lib/d000000149.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_149.json))"
+]
+2023-02-20 14:51:44,585 INFO: [
+    "CRTLIB d000000167",
+    "CRTSAVF d000000167/metafile",
+    "CLRSAVF d000000167/metafile",
+    "SAV DEV('/qsys.lib/d000000167.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_167.json))"
+]
+2023-02-20 14:56:52,862 INFO: [
+    "CRTLIB d000000168",
+    "CRTSAVF d000000168/metafile",
+    "CLRSAVF d000000168/metafile",
+    "SAV DEV('/qsys.lib/d000000168.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_168.json))"
+]
+2023-02-20 14:59:31,616 INFO: [
+    "CRTLIB d000000169",
+    "CRTSAVF d000000169/metafile",
+    "CLRSAVF d000000169/metafile",
+    "SAV DEV('/qsys.lib/d000000169.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_169.json))"
+]
+2023-02-20 14:59:31,616 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000169/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000169/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]
+2023-02-20 15:01:53,959 INFO: [
+    "CRTLIB d000000170",
+    "CRTSAVF d000000170/metafile",
+    "CLRSAVF d000000170/metafile",
+    "SAV DEV('/qsys.lib/d000000170.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_170.json))",
+    "CRTSAVF d000000170/prouza2",
+    "CRTSAVF d000000170/prouzalib"
+]
+2023-02-20 15:01:53,959 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000170/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000170/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]
+2023-02-20 16:59:11,444 INFO: [
+    "CRTLIB d000000177",
+    "CRTSAVF d000000177/metafile",
+    "CLRSAVF d000000177/metafile",
+    "SAV DEV('/qsys.lib/d000000177.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_177.json))",
+    "CRTSAVF d000000177/prouza2",
+    "CRTSAVF d000000177/prouzalib"
+]
+2023-02-20 16:59:11,444 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000177/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000177/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]
+2023-02-20 16:59:59,337 INFO: [
+    "CRTLIB d000000178",
+    "CRTSAVF d000000178/metafile",
+    "CLRSAVF d000000178/metafile",
+    "SAV DEV('/qsys.lib/d000000178.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_178.json))",
+    "CRTSAVF d000000178/prouza2",
+    "CRTSAVF d000000178/prouzalib"
+]
+2023-02-20 16:59:59,337 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000178/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000178/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]
+2023-02-20 17:05:50,345 INFO: [
+    "CRTLIB d000000181",
+    "CRTSAVF d000000181/metafile",
+    "CLRSAVF d000000181/metafile",
+    "SAV DEV('/qsys.lib/d000000181.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_181.json))",
+    "CRTSAVF d000000181/prouza2",
+    "CRTSAVF d000000181/prouzalib"
+]
+2023-02-20 17:05:50,345 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000181/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000181/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]
+2023-02-20 17:08:06,344 INFO: [
+    "CRTLIB d000000182",
+    "CRTSAVF d000000182/metafile",
+    "CLRSAVF d000000182/metafile",
+    "SAV DEV('/qsys.lib/d000000182.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_182.json))",
+    "CRTSAVF d000000182/prouza2",
+    "CRTSAVF d000000182/prouzalib"
+]
+2023-02-20 17:08:06,344 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000182/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000182/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]
+2023-02-20 17:28:55,792 INFO: [
+    "CRTLIB d000000186",
+    "CRTSAVF d000000186/metafile",
+    "CLRSAVF d000000186/metafile",
+    "SAV DEV('/qsys.lib/d000000186.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_{version}.json))",
+    "CRTSAVF d000000186/prouza2",
+    "CRTSAVF d000000186/prouzalib"
+]
+2023-02-20 17:28:55,792 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000186/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000186/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]
+2023-02-20 17:29:02,151 INFO: [
+    "CRTLIB d000000187",
+    "CRTSAVF d000000187/metafile",
+    "CLRSAVF d000000187/metafile",
+    "SAV DEV('/qsys.lib/d000000187.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_{version}.json))",
+    "CRTSAVF d000000187/prouza2",
+    "CRTSAVF d000000187/prouzalib"
+]
+2023-02-20 17:29:02,151 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000187/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000187/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]
+2023-02-20 17:29:23,770 INFO: [
+    "CRTLIB d000000188",
+    "CRTSAVF d000000188/metafile",
+    "CLRSAVF d000000188/metafile",
+    "SAV DEV('/qsys.lib/d000000188.lib/metafile.file') OBJ((/home/andreas/projekte/common/ibm-i-deployment/meta/deployment_188.json))",
+    "CRTSAVF d000000188/prouza2",
+    "CRTSAVF d000000188/prouzalib"
+]
+2023-02-20 17:29:23,770 INFO: [
+    "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000188/prouza2)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm)) DTACPR(*HIGH)",
+    "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000188/prouzalib)             SELECT( (*INCLUDE testlog *pgm) (*INCLUDE cpysrc2ifs *srvpgm) (*INCLUDE date *srvpgm) (*INCLUDE cpysrc2ifs *pgm) (*INCLUDE testlog2 *pgm) (*INCLUDE testsqlerr *pgm) (*INCLUDE date *srvpgm) (*INCLUDE errhdlsql *srvpgm)) DTACPR(*HIGH)"
+]

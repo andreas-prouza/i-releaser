@@ -1,0 +1,36 @@
+[
+  {
+    "obj_lib": "prouzalib",
+    "obj_name": "date",
+    "obj_type": "*srvpgm",
+    "actions": [
+        {
+            "sequence": 0,
+            "cmd": "hier ein Command aus der JSON Konfig",
+            "processing_area": "post"
+        },
+        {
+            "sequence": 1,
+            "cmd": "und noch ein Command",
+            "processing_area": "post"
+        }
+    ]
+  },
+  {
+    "obj_lib": "prouza2",
+    "obj_name": "testlog",
+    "obj_type": "*pgm",
+    "actions": [
+      {
+          "sequence": 0,
+          "cmd": "test cmd 1",
+          "processing_area": "post"
+      },
+      {
+          "sequence": 1,
+          "cmd": "test cmd 2",
+          "processing_area": "post"
+      }
+    ]
+  }
+]

@@ -1,0 +1,76 @@
+{
+    "general": {
+        "deploy_version": 210,
+        "file_name": "meta/deployment_210.json",
+        "create_time": "2023-02-21 20:31:31.750410",
+        "update_time": "2023-02-21 20:31:31.750687",
+        "status": "new"
+    },
+    "deploy_libs": {
+        "main_lib": "d000000210",
+        "backup_lib": "b000000210",
+        "object_libs": [
+            "prouza2",
+            "prouzalib"
+        ]
+    },
+    "deploy_cmds": [],
+    "objects": [
+        {
+            "obj_lib": "prouza2",
+            "obj_name": "testlog",
+            "obj_type": "*pgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouza2",
+            "obj_name": "cpysrc2ifs",
+            "obj_type": "*srvpgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouza2",
+            "obj_name": "date",
+            "obj_type": "*srvpgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "cpysrc2ifs",
+            "obj_type": "*pgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "testlog2",
+            "obj_type": "*pgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "testsqlerr",
+            "obj_type": "*pgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "date",
+            "obj_type": "*srvpgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        },
+        {
+            "obj_lib": "prouzalib",
+            "obj_name": "errhdlsql",
+            "obj_type": "*srvpgm",
+            "deploy_status": "in preperation",
+            "actions": []
+        }
+    ]
+}
