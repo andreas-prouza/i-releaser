@@ -1,8 +1,44 @@
 
-from modules import ibm_i_commands as ic, deploy_action
+from modules import ibm_i_commands as ic, deploy_action, deploy_action as da, stages as s, meta_file
 
-print(deploy_action.Processing_Area.is_valid('prex'))
-print(deploy_action.Processing_Area.get_values())
+from pathlib import Path
+import os
+
+path = Path("/here/your/path/file.txt")
+print(os.path.basename(os.path.dirname("/here/your/path/file.txt")))
+exit()
+
+aa={"b": 'xxx', "c": "cccc", "x": ['START', 'END']}
+print(*aa.get('x'))
+a='test {b} {c} test2 x1: {x[0]}, x2: {x[1]}, {x}'.format(**aa)
+print(a)
+exit()
+
+a={'key1': 'value23', 'key2': None}
+if 'key2' in a.keys():
+    print('Ja, alles da')
+print(a.keys())
+exit()
+
+
+m = meta_file.Meta_File()
+m.import_objects_from_config_file2('prod_obj.txt')
+print(m.get_all_data_as_dict())
+exit()
+
+#print(s.Stage.get_stage('PROD'))
+stages=s.Stage_List_list(['END', s.Stage.get_stage('PROD')])
+#stages.append(s.Stage.get_stage('PROD'))
+print(stages)
+exit()
+
+a=['b', 'a', 'd', 'e']
+b=['a', 'b', 'c', 'x'] # Basis
+print(set(a) - set(b))
+exit()
+
+print(deploy_action.Processing_Step.is_valid('prex'))
+print(deploy_action.Processing_Step.get_values())
 exit()
 
 a = ic.Deploy_Action_List()

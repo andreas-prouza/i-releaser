@@ -3,6 +3,7 @@ import json
 import logging
 
 from modules import deploy_action as da
+from etc import constants
 
 
 class Deploy_Object_List:
@@ -39,12 +40,18 @@ class Deploy_Object_List:
 
 
 
-  def get_objectjs_as_dict(self) -> []: 
+  def get_objectjs_as_dict(self, processing_step: str=None, stage: str=None) -> []: 
+
     self.sort_objects()
     objs = []
 
     for obj in self.dol:
-      objs.append(obj.get_dict())
+      if processing_step is None or obj.processing_step == processing_step:
+        # Consider stage if given
+        if stage is not None and a.stage.name is not None and stage != a.stage.name:
+          continue
+        objs.append(obj.get_dict())
+
     return objs
 
 
@@ -55,6 +62,25 @@ class Deploy_Object_List:
       if o.lib not in libs:
         libs.append(o.lib)
     libs.sort()
+    return libs
+
+
+  def get_lib_list_with_prod_lib(self) -> {}:
+    libs = []
+    lib_list = []
+    for o in self.dol:
+      if o.lib not in lib_list:
+        lib_list.append(o.lib)
+        libs.append({'lib' : o.lib, 'prod_lib': o.prod_lib})
+    return libs
+
+
+
+  def get_lib_list_from_prod(self) -> {}:
+    libs = []
+    for o in self.dol:
+      if o.prod_lib not in libs:
+        libs.append(o.prod_lib)
     return libs
 
 
@@ -86,21 +112,60 @@ class Deploy_Object_List:
 
 
 
-  def load_actions_from_json(self, file : str):
-    with open(file, "r") as file:
-      obj_cmds = json.load(file)
-      for oc in obj_cmds:
-        self.add_object_action_from_dict(oc)
+#  def load_actions_from_json(self, file: str, stages: []=[]):
+#    obj_cmds = []
+
+#    with open(file, "r") as file:
+#      obj_cmds = json.load(file)
+
+#    for stage in stages:
+#      for oc in obj_cmds:
+#        self.add_object_action_from_dict(oc)
 
 
 
-  def add_object_action_from_dict(self, dict: {}):
+  def add_object_action_from_dict(self, stage: str=None, dict: {}={}):
     
+    if stage is None:
+      raise Exception(f"No stage was given for {dict}")
+
     obj = self.get_object(dict['obj_lib'], dict['obj_name'], dict['obj_type'])
     
+    if obj is None:
+      return
+
     for a in dict['actions']:
-      action = da.Deploy_Action(dict=a)
-      obj.actions.add_action(action)
+      if 'stages' not in a.keys() or a['stages'] is None or a['stages'] == [] or stage in a['stages']:
+        if 'stages' in a.keys():
+          del a['stages']
+        action = da.Deploy_Action(dict=a, stage=stage)
+        obj.actions.add_action(action)
+
+
+
+  def get_actions(self, processing_step: str=None, stage: str=None):
+
+    list=[]
+
+    for do in self.dol:
+      for a in do.actions.actions:
+        if processing_step is None or a.processing_step == processing_step:
+          # Consider stage if given
+          if stage is not None and a.stage.name is not None and stage != a.stage.name:
+            continue
+          list.append(a)
+
+    return list
+
+
+  def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
+
+    list=[]
+
+    for a in self.get_actions(processing_step, stage):
+      list.append(a.get_dict())
+
+    return list
 
 
 
@@ -129,34 +194,42 @@ class Deploy_Object:
   """
 
 
-  def __init__(self, lib='', name='', type='', dict={}):
+  def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict={}):
 
     self.deploy_status = 'in preperation'
     self.actions = da.Deploy_Action_List()
 
     if len(dict) > 0:
 
+      self.prod_lib = dict['obj_prod_lib'].lower()
       self.lib = dict['obj_lib'].lower()
       self.name = dict['obj_name'].lower()
       self.type = dict['obj_type'].lower()
+      self.attribute = dict['obj_attribute'].lower()
 
       if len(dict['actions']) > 0:
         for a in dict['actions']:
           self.actions.add_action(da.Deploy_Action(dict=a))
       return
 
+    self.prod_lib = prod_lib.lower()
     self.lib = lib.lower()
     self.name = name.lower()
     self.type = type.lower()
-    #self.backup_name = ''  # Nicht nötig, da alle Objekte in ein SAVF je Lib gespeichert werden.
+    self.attribute = attribute.lower()
+
+    if self.attribute is None or self.attribute == '':
+      raise Exception(f'No attribute was set for {self.lib}/{self.name} ({self.type})')
 
 
 
   def get_dict(self) -> {}:
     return {
       'obj_lib' : self.lib,
+      'obj_prod_lib' : self.prod_lib,
       'obj_name' : self.name,
       'obj_type' : self.type,
+      'obj_attribute' : self.attribute,
       'deploy_status' : self.deploy_status,
       'actions' : self.actions.get_list()
     }

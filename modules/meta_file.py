@@ -3,10 +3,13 @@ import datetime
 import json
 import configparser
 import logging
+import re
+import os
 
 from etc import logger_config, constants
 from modules import deploy_action as da
 from modules import deploy_object as do
+from modules import stages as s
 
 
 
@@ -15,23 +18,27 @@ from modules import deploy_object as do
 class Meta_File:
 
 
-    def __init__(self, file_name=None, create_time=None, deploy_version : int=None):
+    def __init__(self, file_name=None, create_time=None, deploy_version : int=None, current_stages: []=["START"]):
 
       self.deploy_version = deploy_version
       if deploy_version == None:
         self.deploy_version = Meta_File.get_next_deploy_version()
-
-      self.file_name = file_name
-      if self.file_name == None:
-        self.file_name = constants.C_DEPLOY_META
-      self.file_name = self.file_name.replace('{version}', str(self.deploy_version))
+      
+      self.status = 'new'
 
       self.create_time = create_time
 
       if self.create_time == None:
         self.create_time = str(datetime.datetime.utcnow())
 
-      self.status = 'new'
+      self.create_date = re.sub(" .*", '', self.create_time)
+
+      self.file_name = file_name
+      if self.file_name == None:
+        self.file_name = constants.C_DEPLOY_META_FILE
+      self.file_name = self.file_name.format(**self.__dict__)
+
+      self.current_stages = s.Stage_List_list(current_stages)
       self.object_libs = []
       self.deploy_objects = do.Deploy_Object_List()
       self.backup_deploy_lib = None
@@ -58,6 +65,26 @@ class Meta_File:
             json.dump(versions_config, file)
 
         return version
+
+
+
+    def set_next_stage(self, from_stage: str):
+
+      with open(constants.C_STAGES, "r") as file:
+          stages_json = json.load(file)
+
+      if from_stage not in self.current_stages.get_all_names():
+        raise Exception(f"Stage {from_stage} ist not in the list of current stages: {self.current_stages.get_all_names()}")
+
+      for sj in stages_json:
+        if from_stage == sj['name']:
+          self.current_stages.remove_stage(from_stage)
+          for next_stage in sj['next_stages']:
+            self.current_stages.append(s.Stage.get_stage(next_stage))
+
+          return
+
+      raise Exception(f"Stage {from_stage} ist not in the list of current stages: {self.current_stages.get_all_names()}")
 
 
 
@@ -109,7 +136,6 @@ class Meta_File:
              obj['obj_type'] == obj_type and 
              obj['obj_name'] == backup_name):
             return True
-      
 
       return False
 
@@ -122,6 +148,32 @@ class Meta_File:
 
 
 
+    def get_actions(self, processing_step: str=None, stage: str=None):
+
+      list=[]
+
+      for a in self.actions.actions:
+        if processing_step is None or a.processing_step == processing_step:
+          # Consider stage if given
+          if a.stage is not None and type(a.stage) != s.Stage:
+            raise Exception("Stage is not an object!")
+        
+          if stage is not None and a.stage.name is not None and stage != a.stage.name:
+            continue
+          list.append(a)
+      
+     # list = list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage)
+
+      return list
+
+
+
+    def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
+
+      return self.actions.get_actions_as_dict(processing_step=processing_step, stage=stage)
+
+
+
     def load_json_file(file_name: str) -> Meta_File:
 
       with open (file_name, "r") as file:
@@ -129,6 +181,7 @@ class Meta_File:
         meta_file = Meta_File(deploy_version=meta_file_json['general']['deploy_version'],
                               file_name=meta_file_json['general']['file_name'],
                               create_time=meta_file_json['general']['create_time'],
+                              current_stages=s.Stage_List_list(meta_file_json['general']['current_stages']),
                              )
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
@@ -143,17 +196,18 @@ class Meta_File:
     def get_all_data_as_dict(self) -> {}:
 
       list = {}
-      list['general'] = {'deploy_version': self.deploy_version,
-                         'file_name': self.file_name,
-                         'create_time': self.create_time,
-                         'update_time': datetime.datetime.utcnow(),
-                         'status':      self.status
+      list['general'] = {'deploy_version':  self.deploy_version,
+                         'file_name':       self.file_name,
+                         'create_time':     self.create_time,
+                         'update_time':     datetime.datetime.utcnow(),
+                         'status':          self.status,
+                         'current_stages':  self.current_stages.get_dict()
                         }
-      list['deploy_libs'] = {'main_lib': self.main_deploy_lib,
-                             'backup_lib': self.backup_deploy_lib,
+      list['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
+                             'backup_lib':  self.backup_deploy_lib,
                              'object_libs': self.deploy_objects.get_lib_list()
                             }
-      list['deploy_cmds'] = self.actions.get_list()
+      list['deploy_cmds'] = self.get_actions_as_dict()
       list['objects'] = self.deploy_objects.get_objectjs_as_dict()
 
       return list
@@ -161,6 +215,10 @@ class Meta_File:
 
 
     def write_meta_file(self):
+
+      file_dir = os.path.dirname(os.path.realpath(self.file_name))
+      if not os.path.isdir(file_dir):
+        os.makedirs(file_dir)
 
       with open(self.file_name, 'w') as file:
         json.dump(self.get_all_data_as_dict(), file, default=str, indent=4)
@@ -181,7 +239,7 @@ class Meta_File:
 
 
 
-    def import_objects_from_config_file(self, config_file: str):
+    def import_objects_from_config_file_old(self, config_file: str):
 
       object_config = configparser.ConfigParser()
       object_config.read(config_file, encoding='UTF-8')
@@ -191,3 +249,30 @@ class Meta_File:
           self.add_object_from_meta_structure(obj_list[obj_type].split(' '), obj_type)
 
       self.write_meta_file()
+
+
+    def import_objects_from_config_file(self, config_file: str):
+
+      with open(config_file, "r") as file:
+        for line in file:
+          tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
+          prod_obj = re.split(r"/|\.", tmp[1])
+          target_obj = tmp[2].split('/')
+          obj = do.Deploy_Object(lib=target_obj[0], prod_lib=prod_obj[0], name=prod_obj[1], type=prod_obj[3], attribute=prod_obj[2])
+          self.add_deploy_object(obj)
+
+
+
+    def load_actions_from_json(self, file: str):
+      obj_cmds = []
+
+      with open(file, "r") as file:
+        obj_cmds = json.load(file)
+
+      for stage in self.current_stages.get_all_names():
+        for oc in obj_cmds:
+          self.deploy_objects.add_object_action_from_dict(dict=oc, stage=stage)
+      
+      self.write_meta_file()
+
+

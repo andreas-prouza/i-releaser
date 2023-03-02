@@ -1,0 +1,22 @@
+[
+  {
+    "sequence": 0,
+    "environment": "PASE",
+    "stages": [
+      "START", "UAT", "END"
+    ],
+    "cmd": "echo 'Start der Stage {meta_file[general][file_name]} ... {stage[name]}'",
+    "processing_step": "pre",
+    "check_error": true
+  },
+  {
+    "sequence": 99,
+    "environment": "PASE",
+    "stages": [
+      "START", "END"
+    ],
+    "cmd": "echo 'Ende der Stage {stage}'",
+    "processing_step": "post",
+    "check_error": true
+  }
+]

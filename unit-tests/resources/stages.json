@@ -1,0 +1,34 @@
+[
+  {
+    "name": "START",
+    "next_stages": ["UAT"]
+  },
+  {
+    "name": "UAT",
+    "description": "User Acceptance Tests",
+    "host": "localhost",
+    "next_stages": ["PROD"],
+    "clear_files": true,
+    "lib_mapping": {
+      "prouzalib": "t1",
+      "prouzalib2": "t2",
+      "prouza4": "t3",
+      "prouza2": "t3"
+    }
+  },
+  {
+    "name": "PROD",
+    "description": "Production",
+    "host": "localhost",
+    "next_stages": ["END"]
+  },
+  {
+    "name": "END",
+    "description": "Finished"
+  },
+  {
+    "name": "ERROR",
+    "description": "Only for testing purpose",
+    "invalid_attribute": "xxxx"
+  }
+]

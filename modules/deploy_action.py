@@ -1,9 +1,10 @@
 from __future__ import annotations
 import os
 import logging
+from enum import Enum
 
 from etc import logger_config, constants
-from modules import meta_file
+from modules import meta_file, stages as st, run_history as rh
 
 
 
@@ -32,7 +33,6 @@ class Deploy_Action_List_list(list):
         raise TypeError(
             f"Deploy_Action value expected, got {type(value).__name__}"
         )
-
 
 
 
@@ -65,8 +65,9 @@ class Deploy_Action_List:
 
 
 
-  def add_action_cmd(self, cmd: str, type: str, processing_area: str) -> None:
-    self.add_action(Deploy_Action(cmd, self.get_next_sequence(), type=type, processing_area=processing_area))
+  def add_action_cmd(self, cmd: str, environment: str, processing_step: str, stage: str=None, check_error: bool=True) -> None:
+    self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step, 
+    stage=stage, check_error=check_error))
 
 
 
@@ -78,13 +79,27 @@ class Deploy_Action_List:
 
 
 
-  def get_actions(self, processing_area: str=None):
-    
+  def get_actions(self, processing_step: str=None, stage: str=None) -> []:
+
     list=[]
 
     for a in self.actions:
-      if a.processing_area == processing_area:
+      if processing_step is None or a.processing_step == processing_step:
+        # Consider stage if given
+        if stage is not None and a.stage is not None and stage != a.stage:
+          continue
         list.append(a)
+
+    return list
+
+
+
+  def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
+
+    list=[]
+
+    for a in self.get_actions(processing_step, stage):
+      list.append(a.get_dict())
 
     return list
 
@@ -106,7 +121,7 @@ class Deploy_Action_List:
 
 
 
-class Processing_Area:
+class Processing_Step(Enum):
 
   PRE = 'pre'
   SAVE = 'save'
@@ -118,37 +133,19 @@ class Processing_Area:
 
   PROCESSING_ORDER = [PRE, SAVE, TRANSFER, BACKUP_OLD_OBJ, PERFORM_DEPLOYMENT, POST]
 
-  def get_values() -> []:
-    list = []
-    for key, value in Processing_Area.__dict__.items():
-      if not key.startswith('__') and type(value) == str:
-        list.append(value)
-    return list
-
-  def is_valid(text : str):
-    return text in Processing_Area.get_values()
 
 
 
-class Command_Type:
+class Command_Type(Enum):
 
-  PASE = 'pase'
+  PASE = 'PASE'
   QSYS = 'QSYS'
   
-  def get_values() -> []:
-    list = []
-    for key, value in Command_Type.__dict__.items():
-      if not key.startswith('__') and type(value) == str:
-        list.append(value)
-    return list
-
-  def is_valid(text : str):
-    return text in Command_Type.get_values()
 
 
 
 class Deploy_Action:
-  """
+  """        self.assertEquals(obj, obj2)
   Parameters
   ----------
   cmd : str
@@ -159,43 +156,53 @@ class Deploy_Action:
     * ``new``: Command hast not yet been run
     * ``failed``: Command has failed
     * ``finished``: Command has finished successfully
-  processing_area : str
+  processing_step : str
     * ``pre``: will be run before deployment
     * ``post``: will be run after deployment
+  check_error : bool
+    When run the command, it must be checked for errors
   """
 
 
 
-  def __init__(self, cmd: str=None, sequence: int=None, status: str='new', type: str=Command_Type.QSYS, processing_area: str=Processing_Area.PRE, dict: {}={}):
+  def __init__(self, cmd: str=None, sequence: int=None, status: str='new',  
+    environment: str=Command_Type.QSYS, stage: str=None, processing_step: str=Processing_Step.PRE, 
+    check_error: bool=True, dict: {}={}):
+
     self.sequence = sequence
-    self.type = type
+    self.environment = environment
     self.cmd = cmd
+    self.stage = stage
     self.status = status
+    self.run_history = rh.Run_History_List()
+    self.check_error = check_error
     self.stdout = None
     self.stderr = None
 
-    self.processing_area = processing_area
+    self.processing_step = processing_step
 
-    if 'sequence' in dict.keys():
-      self.sequence=dict['sequence']
-    if 'cmd' in dict.keys():
-      self.cmd=dict['cmd']
-    if 'status' in dict.keys():
-      self.status=dict['status']
-    if 'processing_area' in dict.keys():
-      self.processing_area=dict['processing_area']
-    if 'type' in dict.keys():
-      self.type=dict['type']
-    if 'stdout' in dict.keys():
-      self.stdout=dict['stdout']
-    if 'stderr' in dict.keys():
-      self.stderr=dict['stderr']
+    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
+      raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
 
-    if not Processing_Area.is_valid(self.processing_area):
-      raise Exception(f'Processing area "{self.processing_area}" is not a valid value. Please use one of these: {Processing_Area.get_values()}')
+    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+      
+      for k, v in dict.items():
 
-    if not Command_Type.is_valid(self.type):
-      raise Exception(f'Command type "{self.type}" is not a valid value. Please use one of these: {Command_Type.get_values()}')
+        setattr(self, k, v)
+        if k=="run_history":
+          self.run_history = rh.Run_History_List()
+          self.run_history.add_historys_from_list(v)
+
+    if self.stage is None:
+      raise Exception('No Stage defined')
+    self.stage = st.Stage.get_stage(self.stage)
+
+    self.processing_step = Processing_Step(self.processing_step)
+    self.environment = Command_Type(self.environment)
+
+    if self.cmd is None:
+      raise Exception('Command is not allowed to be None')
+
 
 
 
@@ -204,8 +211,9 @@ class Deploy_Action:
       'sequence': self.sequence, 
       'cmd': self.cmd,
       'status': self.status,
-      'processing_area': self.processing_area,
-      'type': self.type,
-      'stdout': self.stdout,
-      'stderr': self.stderr
+      'stage': self.stage.name,
+      'processing_step': self.processing_step.value,
+      'environment': self.environment.value,
+      'run_history': self.run_history.get_list(),
+      'check_error': self.check_error
       }

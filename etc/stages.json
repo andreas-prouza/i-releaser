@@ -1,0 +1,57 @@
+[
+  {
+    "name": "START",
+    "next_stages": ["UAT", "ARCHIV"],
+    "host": "localhost",
+    "base_dir": "/home/prouza/dev",
+    "processing_steps": ["pre", "post"],
+    "clear_files": true
+  },
+  {
+    "name": "UAT",
+    "description": "User Acceptance Tests",
+    "host": "localhost",
+    "base_dir": "/home/prouza/uat",
+    "next_stages": ["PROD"],
+    "clear_files": true,
+    "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
+    "lib_mapping": {
+      "prouzalib": "t1",
+      "prouzalib2": "t2",
+      "prouza4": "t3",
+      "prouza2": "t3"
+    }
+  },
+  {
+    "name": "ARCHIV",
+    "description": "Tests Archiv",
+    "host": "localhost",
+    "base_dir": "/home/prouza/archiv",
+    "next_stages": ["END"],
+    "clear_files": true,
+    "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
+    "lib_mapping": {
+      "prouzalib": "t1",
+      "prouzalib2": "t2",
+      "prouza4": "t3",
+      "prouza2": "t3"
+    }
+  },
+  {
+    "name": "PROD",
+    "description": "Production",
+    "host": "localhost",
+    "base_dir": "/home/prouza/prod",
+    "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
+    "next_stages": ["END"]
+  },
+  {
+    "name": "END",
+    "description": "Finished"
+  },
+  {
+    "name": "ERROR",
+    "description": "Only for testing purpose",
+    "invalid_attribute": "xxxx"
+  }
+]
