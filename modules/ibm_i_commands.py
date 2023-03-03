@@ -38,21 +38,6 @@ class IBM_i_commands:
       actions.add_action_cmd(f"CLRSAVF {self.meta_file.main_deploy_lib}/{lib['lib']}", 
         environment=da.Command_Type.QSYS, processing_step=da.Processing_Step.SAVE, stage=stage)
 
-    # Create save file for the meta file
-    actions.add_action_cmd(f"CRTSAVF {self.meta_file.main_deploy_lib}/metafile", environment=da.Command_Type.QSYS, 
-        processing_step=da.Processing_Step.SAVE, stage=stage, check_error=False)
-    actions.add_action_cmd(f"CLRSAVF {self.meta_file.main_deploy_lib}/metafile", environment=da.Command_Type.QSYS, 
-        processing_step=da.Processing_Step.SAVE, stage=stage)
-
-    self.meta_file.current_stages.get_stage(stage).set_status('prepare')
-    self.meta_file.write_meta_file()
-
-
-
-  def set_cmd_meta_to_savf(self, stage: str) -> None:
-    self.meta_file.actions.add_action_cmd(f"SAV DEV('/qsys.lib/{self.meta_file.main_deploy_lib}.lib/metafile.file') OBJ(('{self.meta_file.file_name}'))", 
-    environment=da.Command_Type.QSYS, processing_step=da.Processing_Step.SAVE, stage=stage)
-
     self.meta_file.current_stages.get_stage(stage).set_status('prepare')
     self.meta_file.write_meta_file()
 
@@ -67,12 +52,12 @@ class IBM_i_commands:
                   ) 
     """
     actions = self.meta_file.actions
-    includes = ''
     clear_files = self.meta_file.current_stages.get_stage(stage).clear_files
     deployment_dir = os.path.dirname(os.path.realpath(self.meta_file.file_name))
 
     for lib in self.meta_file.deploy_objects.get_lib_list_with_prod_lib():
 
+      includes = ''
       for obj in self.meta_file.deploy_objects.get_obj_list_by_lib(lib['lib']):
 
         includes += f" (*INCLUDE {obj.name} {obj.type})"
@@ -115,10 +100,10 @@ class IBM_i_commands:
         processing_step=da.Processing_Step.TARGET_PREPARE, stage=stage, check_error=False)
 
     # Create save files for each lib to deploy
-    for lib in self.meta_file.deploy_objects.get_lib_list_with_prod_lib():
-      actions.add_action_cmd(f"CRTSAVF {self.meta_file.backup_deploy_lib}/{lib['prod_lib']}", 
+    for lib in self.meta_file.deploy_objects.get_lib_list_from_prod():
+      actions.add_action_cmd(f"CRTSAVF {self.meta_file.backup_deploy_lib}/{lib}", 
           environment=da.Command_Type.QSYS, processing_step=da.Processing_Step.TARGET_PREPARE, stage=stage, check_error=False)
-      actions.add_action_cmd(f"CLRSAVF {self.meta_file.backup_deploy_lib}/{lib['prod_lib']}", 
+      actions.add_action_cmd(f"CLRSAVF {self.meta_file.backup_deploy_lib}/{lib}", 
         environment=da.Command_Type.QSYS, processing_step=da.Processing_Step.TARGET_PREPARE, stage=stage)
 
     self.meta_file.current_stages.get_stage(stage).set_status('prepare')
@@ -135,12 +120,12 @@ class IBM_i_commands:
     clear_files = self.meta_file.current_stages.get_stage(stage).clear_files
     current_stage = self.meta_file.current_stages.get_stage(stage)
 
-    for lib in self.meta_file.deploy_objects.get_lib_list_with_prod_lib():
+    for lib in self.meta_file.deploy_objects.get_lib_list_from_prod():
 
-      for obj in self.meta_file.deploy_objects.get_obj_list_by_lib(lib['lib']):
+      for obj in self.meta_file.deploy_objects.get_obj_list_by_prod_lib(lib):
         includes += f" (*INCLUDE {obj.name} {obj.type})"
 
-      actions.add_action_cmd(f"SAVLIB LIB({lib['prod_lib']}) DEV(*SAVF) SAVF({self.meta_file.backup_deploy_lib}/{lib['lib']}) \
+      actions.add_action_cmd(f"SAVLIB LIB({lib}) DEV(*SAVF) SAVF({self.meta_file.backup_deploy_lib}/{lib}) \
             SELECT({includes}) DTACPR(*HIGH)", 
             environment=da.Command_Type.QSYS, processing_step=da.Processing_Step.BACKUP_OLD_OBJ, stage=stage)
 
@@ -167,27 +152,12 @@ class IBM_i_commands:
 
 
 
-  def set_cmd_restore_meta_on_target(self, stage: str) -> None:
-
-    current_stage = self.meta_file.current_stages.get_stage(stage)
-    deployment_dir = f"{current_stage.base_dir}/{os.path.basename(os.path.dirname(self.meta_file.file_name))}"
-    new_meta_file_name = f"{deployment_dir}/{os.path.basename(self.meta_file.file_name)}"
-
-    cmd=f"RST DEV('/qsys.lib/{self.meta_file.main_deploy_lib}.lib/metafile.file') OBJ(('{self.meta_file.file_name}' *INCLUDE '{new_meta_file_name}'))"
-    self.meta_file.actions.add_action_cmd(cmd=cmd, environment=da.Command_Type.QSYS, processing_step=da.Processing_Step.PERFORM_DEPLOYMENT, stage=stage)
-
-    self.meta_file.current_stages.get_stage(stage).set_status('prepare')
-    self.meta_file.write_meta_file()
-
-
-
   def set_cmd_restore_objects_on_target(self, stage: str) -> None:
     """
      RSTLIB SAVLIB(PROUZALIB) DEV(*SAVF) SAVF(QGPL/PROUZASAVF) RSTLIB(RSTLIB)
             SELECT((*INCLUDE TEST *PGM) (*INCLUDE TEST *FILE)) 
     """
     actions = self.meta_file.actions
-    includes = ''
     clear_files = self.meta_file.current_stages.get_stage(stage).clear_files
     current_stage = self.meta_file.current_stages.get_stage(stage)
     deployment_dir = f"{current_stage.base_dir}/{os.path.basename(os.path.dirname(self.meta_file.file_name))}"
@@ -212,7 +182,9 @@ class IBM_i_commands:
         if lib['prod_lib'] in current_stage.lib_mapping.keys():
           restore_to_lib = current_stage.lib_mapping[lib['lib']]
 
-      for obj in self.meta_file.deploy_objects.get_obj_list_by_lib(lib):
+      includes = ''
+      
+      for obj in self.meta_file.deploy_objects.get_obj_list_by_lib(lib['lib']):
         includes += f" (*INCLUDE {obj.name} {obj.type})"
 
       actions.add_action_cmd(f"RSTLIB SAVLIB({lib['lib']}) DEV(*SAVF) SAVF({self.meta_file.main_deploy_lib}/{lib['lib']}) \
@@ -236,7 +208,6 @@ class IBM_i_commands:
       da.Processing_Step.SAVE: 
         [
           self.set_init_cmds_for_save, 
-          self.set_cmd_meta_to_savf,
           self.set_cmd_object_to_savf
         ],
       da.Processing_Step.TRANSFER:
@@ -253,7 +224,6 @@ class IBM_i_commands:
         ],
       da.Processing_Step.PERFORM_DEPLOYMENT:
         [
-          self.set_cmd_restore_meta_on_target,
           self.set_cmd_restore_objects_on_target
         ]
       }

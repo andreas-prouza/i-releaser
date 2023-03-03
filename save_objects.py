@@ -19,9 +19,11 @@ for stage in meta_file.current_stages:
   commands.run_commands(stage=stage.name)
 
 meta_file.set_next_stage(from_stage='START')
+commands.set_cmds(stage='UAT')
+commands.run_commands(stage='UAT')
 
-for stage in meta_file.current_stages:
-  print(f"Run all commands for stage {stage.name}")
-  commands.set_cmds(stage=stage.name)
-  commands.run_commands(stage=stage.name)
+#for stage in meta_file.current_stages:
+#  print(f"Run all commands for stage {stage.name}")
+#  commands.set_cmds(stage=stage.name)
+#  commands.run_commands(stage=stage.name)
 

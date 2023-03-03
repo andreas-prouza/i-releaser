@@ -94,6 +94,15 @@ class Deploy_Object_List:
 
 
 
+  def get_obj_list_by_prod_lib(self, lib) -> [Deploy_Object]:
+    objs = []
+    for o in self.dol:
+      if o.prod_lib == lib:
+        objs.append(o)
+    return objs
+
+
+
   def get_object(self, obj_lib: str, obj_name: str, obj_type: str) -> Deploy_Object:
     for o in self.dol:
       if o.lib == obj_lib and o.type == obj_type and o.name == obj_name:
