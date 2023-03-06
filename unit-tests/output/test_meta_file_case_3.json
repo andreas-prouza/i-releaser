@@ -1,9 +1,9 @@
 {
     "general": {
-        "deploy_version": 2,
-        "file_name": "unit-tests/output/test_meta_file_case_2.json",
-        "create_time": "2023-03-04 19:14:53.041186",
-        "update_time": "2023-03-04 19:14:53.041479",
+        "deploy_version": 3,
+        "file_name": "unit-tests/output/test_meta_file_case_3.json",
+        "create_time": "2023-03-04 14:31:30.404775",
+        "update_time": "2023-03-04 17:39:52.595749",
         "status": "new",
         "current_stages": [
             {
@@ -23,14 +23,14 @@
                 "lib_replacement_necessary": null,
                 "lib_mapping": [],
                 "status": null,
-                "create_time": "2023-03-04 19:14:53.041241",
+                "create_time": "2023-03-04 17:39:52.594413",
                 "update_time": null
             }
         ]
     },
     "deploy_libs": {
-        "main_lib": "d000000002",
-        "backup_lib": "b000000002"
+        "main_lib": "d000000003",
+        "backup_lib": "b000000003"
     },
     "deploy_cmds": [],
     "objects": [

@@ -10,6 +10,9 @@ from modules import meta_file, ibm_i_commands, deploy_action as da
 meta_file = meta_file.Meta_File()
 meta_file.import_objects_from_config_file(constants.C_GNU_MAKE_OBJECT_LIST)
 meta_file.load_actions_from_json(constants.C_OBJECT_COMMANDS)
+meta_file.write_meta_file()
+
+exit(0)
 
 commands = ibm_i_commands.IBM_i_commands(meta_file)
 

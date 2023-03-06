@@ -1,9 +1,9 @@
 {
     "general": {
         "deploy_version": 1,
-        "file_name": "unit-tests/output/test_meta_file_case_1.json",
-        "create_time": "2023-03-06 12:15:45.572076",
-        "update_time": "2023-03-06 12:15:45.573374",
+        "file_name": "unit-tests/output/test_action_file_case_2.json",
+        "create_time": "2023-03-06 12:15:45.568278",
+        "update_time": "2023-03-06 12:15:45.571558",
         "status": "new",
         "current_stages": [
             {
@@ -22,9 +22,9 @@
                 ],
                 "lib_replacement_necessary": null,
                 "lib_mapping": [],
-                "status": "prepare",
-                "create_time": "2023-03-06 12:15:45.572150",
-                "update_time": "2023-03-06 12:15:45.573053"
+                "status": "finished",
+                "create_time": "2023-03-06 12:15:45.568338",
+                "update_time": "2023-03-06 12:15:45.571117"
             }
         ]
     },
@@ -35,101 +35,79 @@
     "deploy_cmds": [
         {
             "sequence": 0,
-            "cmd": "CRTLIB d000000001",
+            "cmd": "echo 'Start der Stage {meta_file[general][file_name]} ... {stage[name]}'",
             "status": "new",
             "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
-            "check_error": false
-        },
-        {
-            "sequence": 1,
-            "cmd": "CRTSAVF d000000001/prouzalib",
-            "status": "new",
-            "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
-            "check_error": false
-        },
-        {
-            "sequence": 2,
-            "cmd": "CLRSAVF d000000001/prouzalib",
-            "status": "new",
-            "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
+            "processing_step": "pre",
+            "environment": "PASE",
+            "run_history": [
+                {
+                    "create_time": "2023-03-04 14:31:30.404775",
+                    "status": "finished",
+                    "stdout": "Start der Stage unit-tests/output/test_action_file_case_2.json ... START\n",
+                    "stderr": ""
+                }
+            ],
             "check_error": true
         },
         {
-            "sequence": 3,
-            "cmd": "CRTSAVF d000000001/prouza2",
+            "sequence": 1,
+            "cmd": "pre.pre_cmd",
             "status": "new",
             "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
+            "processing_step": "pre",
+            "environment": "SCRIPT",
+            "run_history": [
+                {
+                    "create_time": "2023-03-04 14:31:30.404775",
+                    "status": "finished",
+                    "stdout": "This is a user defined pre function: unit-tests/output/test_action_file_case_2.json in stage 'START'\n",
+                    "stderr": ""
+                }
+            ],
+            "check_error": true
+        },
+        {
+            "sequence": 2,
+            "cmd": "pre_failed_xyz.pre_cmd",
+            "status": "new",
+            "stage": "START",
+            "processing_step": "pre",
+            "environment": "SCRIPT",
+            "run_history": [
+                {
+                    "create_time": "2023-03-04 14:31:30.404775",
+                    "status": "failed",
+                    "stdout": "",
+                    "stderr": "KeyError('pre_failed_xyz')\n"
+                }
+            ],
+            "check_error": false
+        },
+        {
+            "sequence": 3,
+            "cmd": "pre.pre_cmd_failed_xyz",
+            "status": "new",
+            "stage": "START",
+            "processing_step": "pre",
+            "environment": "SCRIPT",
+            "run_history": [
+                {
+                    "create_time": "2023-03-04 14:31:30.404775",
+                    "status": "failed",
+                    "stdout": "",
+                    "stderr": "AttributeError(\"module 'scripts.pre' has no attribute 'pre_cmd_failed_xyz'\")\n"
+                }
+            ],
             "check_error": false
         },
         {
             "sequence": 4,
-            "cmd": "CLRSAVF d000000001/prouza2",
+            "cmd": "echo 'Ende der Stage {stage}'",
             "status": "new",
             "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
-            "check_error": true
-        },
-        {
-            "sequence": 5,
-            "cmd": "CLRPFM prouzalib/logger",
-            "status": "new",
-            "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
-            "check_error": true
-        },
-        {
-            "sequence": 6,
-            "cmd": "SAVLIB LIB(prouzalib) DEV(*SAVF) SAVF(d000000001/prouzalib)             SELECT( (*INCLUDE logger file) (*INCLUDE logger srvpgm) (*INCLUDE errhdlsql srvpgm) (*INCLUDE cpysrc2ifs pgm) (*INCLUDE date srvpgm) (*INCLUDE testmod srvpgm) (*INCLUDE testlog2 pgm) (*INCLUDE testsqlerr pgm)) DTACPR(*HIGH)",
-            "status": "new",
-            "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
-            "check_error": true
-        },
-        {
-            "sequence": 7,
-            "cmd": "CPYTOSTMF FROMMBR('/qsys.lib/d000000001.lib/prouzalib.file') TOSTMF('/home/andreas/projekte/common/ibm-i-deployment/unit-tests/output/prouzalib.file') STMFOPT(*REPLACE)",
-            "status": "new",
-            "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
-            "check_error": true
-        },
-        {
-            "sequence": 8,
-            "cmd": "SAVLIB LIB(prouza2) DEV(*SAVF) SAVF(d000000001/prouza2)             SELECT( (*INCLUDE testlog pgm)) DTACPR(*HIGH)",
-            "status": "new",
-            "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
-            "run_history": [],
-            "check_error": true
-        },
-        {
-            "sequence": 9,
-            "cmd": "CPYTOSTMF FROMMBR('/qsys.lib/d000000001.lib/prouza2.file') TOSTMF('/home/andreas/projekte/common/ibm-i-deployment/unit-tests/output/prouza2.file') STMFOPT(*REPLACE)",
-            "status": "new",
-            "stage": "START",
-            "processing_step": "save",
-            "environment": "QSYS",
+            "processing_step": "post",
+            "environment": "PASE",
             "run_history": [],
             "check_error": true
         }
@@ -180,21 +158,21 @@
             "deploy_status": "in preperation",
             "actions": [
                 {
-                    "sequence": 2,
-                    "cmd": "CMD1",
-                    "status": "finished",
-                    "stage": "UAT",
+                    "sequence": 0,
+                    "cmd": "hier ein Command aus der JSON Konfig",
+                    "status": "new",
+                    "stage": "START",
                     "processing_step": "save",
                     "environment": "QSYS",
                     "run_history": [],
                     "check_error": true
                 },
                 {
-                    "sequence": 2,
-                    "cmd": "CMD1",
-                    "status": "finished",
-                    "stage": "PROD",
-                    "processing_step": "save",
+                    "sequence": 1,
+                    "cmd": "und noch ein Command",
+                    "status": "new",
+                    "stage": "START",
+                    "processing_step": "post",
                     "environment": "QSYS",
                     "run_history": [],
                     "check_error": true
@@ -217,7 +195,18 @@
             "obj_type": "pgm",
             "obj_attribute": "rpgle",
             "deploy_status": "in preperation",
-            "actions": []
+            "actions": [
+                {
+                    "sequence": 0,
+                    "cmd": "test cmd 1",
+                    "status": "new",
+                    "stage": "START",
+                    "processing_step": "post",
+                    "environment": "QSYS",
+                    "run_history": [],
+                    "check_error": true
+                }
+            ]
         },
         {
             "obj_lib": "prouzalib",

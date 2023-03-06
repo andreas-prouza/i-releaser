@@ -6,23 +6,43 @@ from modules import deploy_action as da
 from etc import constants
 
 
-class Deploy_Object_List:
 
-
+class Deploy_Object_List(list):
   def __init__(self):
-    self.dol = []
+      super().__init__()
+
+  def __setitem__(self, index, item):
+      super().__setitem__(index, self._validate_number(item))
+
+  def insert(self, index, item):
+      super().insert(index, self._validate_number(item))
+
+  def append(self, item):
+      super().append(self._validate_number(item))
+
+  def extend(self, other):
+      if isinstance(other, type(Deploy_Object)):
+          super().extend(other)
+      else:
+          super().extend(self._validate_number(item) for item in other)
+
+  def _validate_number(self, value):
+      if type(value) == Deploy_Object:
+          return value
+      raise TypeError(
+          f"Deploy_Object value expected, got {type(value).__name__}"
+      )
 
 
 
   def add_objects(self, objects: type[da.Deploy_Object_List]):
     
-    self.dol = self.dol + objects.get_objectjs_as_list()
-
+    self = self + objects.get_objectjs_as_list()
 
 
   def add_object(self, objects: type[Deploy_Object]):
     
-    self.dol.append(objects)
+    self.append(objects)
 
 
 
@@ -30,22 +50,22 @@ class Deploy_Object_List:
     def get_sorted_object_list_value(obj):
       return obj.lib + obj.type + obj.name
 
-    self.dol.sort(key=get_sorted_object_list_value)
+    #self.sort(key=get_sorted_object_list_value)
 
 
 
   def get_objectjs_as_list(self) -> []: 
-    self.sort_objects()
-    return self.dol
+    #self.sort_objects()
+    return self
 
 
 
   def get_objectjs_as_dict(self, processing_step: str=None, stage: str=None) -> []: 
 
-    self.sort_objects()
+    #self.sort_objects()
     objs = []
 
-    for obj in self.dol:
+    for obj in self:
       if processing_step is None or obj.processing_step == processing_step:
         # Consider stage if given
         if stage is not None and a.stage.name is not None and stage != a.stage.name:
@@ -58,7 +78,7 @@ class Deploy_Object_List:
 
   def get_lib_list(self) -> []:
     libs = []
-    for o in self.dol:
+    for o in self:
       if o.lib not in libs:
         libs.append(o.lib)
     libs.sort()
@@ -68,7 +88,7 @@ class Deploy_Object_List:
   def get_lib_list_with_prod_lib(self) -> {}:
     libs = []
     lib_list = []
-    for o in self.dol:
+    for o in self:
       if o.lib not in lib_list:
         lib_list.append(o.lib)
         libs.append({'lib' : o.lib, 'prod_lib': o.prod_lib})
@@ -78,7 +98,7 @@ class Deploy_Object_List:
 
   def get_lib_list_from_prod(self) -> {}:
     libs = []
-    for o in self.dol:
+    for o in self:
       if o.prod_lib not in libs:
         libs.append(o.prod_lib)
     return libs
@@ -87,7 +107,7 @@ class Deploy_Object_List:
 
   def get_obj_list_by_lib(self, lib) -> [Deploy_Object]:
     objs = []
-    for o in self.dol:
+    for o in self:
       if o.lib == lib:
         objs.append(o)
     return objs
@@ -96,7 +116,7 @@ class Deploy_Object_List:
 
   def get_obj_list_by_prod_lib(self, lib) -> [Deploy_Object]:
     objs = []
-    for o in self.dol:
+    for o in self:
       if o.prod_lib == lib:
         objs.append(o)
     return objs
@@ -104,7 +124,7 @@ class Deploy_Object_List:
 
 
   def get_object(self, obj_lib: str, obj_name: str, obj_type: str) -> Deploy_Object:
-    for o in self.dol:
+    for o in self:
       if o.lib == obj_lib and o.type == obj_type and o.name == obj_name:
         return o
     return None
@@ -156,11 +176,11 @@ class Deploy_Object_List:
 
     list=[]
 
-    for do in self.dol:
-      for a in do.actions.actions:
+    for do in self:
+      for a in do.actions:
         if processing_step is None or a.processing_step == processing_step:
           # Consider stage if given
-          if stage is not None and a.stage.name is not None and stage != a.stage.name:
+          if stage is not None and a.stage is not None and stage != a.stage:
             continue
           list.append(a)
 
@@ -175,6 +195,7 @@ class Deploy_Object_List:
       list.append(a.get_dict())
 
     return list
+
 
 
 
@@ -206,7 +227,7 @@ class Deploy_Object:
   def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict={}):
 
     self.deploy_status = 'in preperation'
-    self.actions = da.Deploy_Action_List()
+    self.actions = da.Deploy_Action_List_list()
 
     if len(dict) > 0:
 
@@ -244,3 +265,7 @@ class Deploy_Object:
     }
 
 
+  def __eq__(self, o):
+    if (self.lib, self.prod_lib, self.name, self.type, self.attribute, self.deploy_status, self.actions) == (o.lib, o.prod_lib, o.name, o.type, o.attribute, o.deploy_status, o.actions):
+      return True
+    return False

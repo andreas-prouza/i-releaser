@@ -1,8 +1,19 @@
 
-from modules import ibm_i_commands as ic, deploy_action, deploy_action as da, stages as s, meta_file
+#from modules import ibm_i_commands as ic
 
 from pathlib import Path
-import os
+#import os
+from scripts import *
+
+
+cmd='pre.pre_cmd'
+pre.pre_cmd('test', 'xxx')
+obj = cmd.split('.')
+x = getattr(locals()[obj[0]], obj[1])
+x('aeeeee', 'juhuuu')
+#getattr(pre, 'pre_cmd')('asdfasdf', 'dddd')
+
+exit()
 
 path = Path("/here/your/path/file.txt")
 print(os.path.basename(os.path.dirname("/here/your/path/file.txt")))
@@ -41,7 +52,7 @@ print(deploy_action.Processing_Step.is_valid('prex'))
 print(deploy_action.Processing_Step.get_values())
 exit()
 
-a = ic.Deploy_Action_List()
+a = ic.Deploy_Action_List_list()
 
 a.add_action_cmd("dsp1")
 a.add_action_cmd("dsp2")

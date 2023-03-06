@@ -4,8 +4,9 @@ import datetime
 import logging
 from enum import Enum
 
-from etc import logger_config, constants
+from etc import constants
 from modules import meta_file, stages as st
+
 
 
 
@@ -37,49 +38,31 @@ class Run_History_List_list(list):
 
 
 
+    def add_history(self, history: type[Run_History]=None) -> None:
+      if type(history) != Run_History:
+        raise Exception(f"Parameter type {type(action)} does not match Run_History")
 
-class Run_History_List:
-
-  def __init__(self):
-    self.histories = Run_History_List_list()
-
-
-
-  def get_list(self) -> []:
-
-    list = []
-
-    for a in self.histories:
-      list.append(a.get_dict())
-
-    return list
+      self.append(history)
 
 
 
-  def add_history(self, history: type[Run_History]=None) -> None:
-    if type(history) != Run_History:
-      raise Exception(f"Parameter type {type(action)} does not match Run_History")
+    def add_historys_from_list(self, list: []):
 
-    self.histories.append(history)
-
-
-
-  def add_historys_from_list(self, list: []):
-
-    for a in list:
-      history = Run_History(dict=a)
-      self.add_history(history)
+      for a in list:
+        history = Run_History(dict=a)
+        self.add_history(history)
 
 
 
-  def get_list(self) -> []:
+    def get_list(self) -> []:
 
-    list = []
+      list = []
 
-    for h in self.histories:
-      list.append(h.get_dict())
+      for h in self:
+        list.append(h.get_dict())
 
-    return list
+      return list
+
 
 
 
@@ -101,15 +84,15 @@ class Run_History:
 
 
 
-  def __init__(self, status: str=None, stdout: str=None, stderr: str=None, stage: str=None, create_time=None, dict: {}={}):
+  def __init__(self, status: str=None, stdout: str=None, stderr: str=None, create_time=None, dict: {}={}):
     self.status = status
     self.stdout = stdout # Run in these stages
     self.stderr = stderr
     self.create_time = create_time
-    self.stage = stage
 
     if self.create_time == None:
         self.create_time = str(datetime.datetime.utcnow())
+        self.create_time = '2023-03-04 14:31:30.404775'
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
       for k, v in dict.items():
@@ -117,12 +100,18 @@ class Run_History:
 
 
 
-
   def get_dict(self) -> {}:
     return {
       'create_time': self.create_time,
       'status': self.status,
-      'stage': self.stage,
       'stdout': self.stdout,
       'stderr': self.stderr
       }
+
+
+
+  def __eq__(self, o):
+    if (self.create_time, self.status, self.stdout, self.stderr) == \
+           (o.create_time, o.status, o.stdout, o.stderr):
+      return True
+    return False

@@ -6,7 +6,7 @@ import logging
 import re
 import os
 
-from etc import logger_config, constants
+from etc import constants
 from modules import deploy_action as da
 from modules import deploy_object as do
 from modules import stages as s
@@ -15,10 +15,11 @@ from modules import stages as s
 
 
 
+
 class Meta_File:
 
 
-    def __init__(self, file_name=None, create_time=None, deploy_version : int=None, current_stages: []=["START"]):
+    def __init__(self, file_name=None, create_time=None, update_time=None, deploy_version : int=None, current_stages: []=["START"]):
 
       self.deploy_version = deploy_version
       if deploy_version == None:
@@ -26,6 +27,7 @@ class Meta_File:
       
       self.status = 'new'
 
+      self.update_time = update_time
       self.create_time = create_time
 
       if self.create_time == None:
@@ -39,7 +41,6 @@ class Meta_File:
       self.file_name = self.file_name.format(**self.__dict__)
 
       self.current_stages = s.Stage_List_list(current_stages)
-      self.object_libs = []
       self.deploy_objects = do.Deploy_Object_List()
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
@@ -47,9 +48,9 @@ class Meta_File:
       self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
 
-      self.actions = da.Deploy_Action_List()
+      self.actions = da.Deploy_Action_List_list()
 
-      self.write_meta_file()
+      #self.write_meta_file()
 
 
 
@@ -98,12 +99,6 @@ class Meta_File:
 
 
 
-    def set_object_libs(self, libraries):
-
-      self.object_libs = libraries
-
-
-
     def add_deploy_object(self, object: type[do.Deploy_Object]):
 
       self.deploy_objects.add_object(object)
@@ -148,21 +143,18 @@ class Meta_File:
 
 
 
-    def get_actions(self, processing_step: str=None, stage: str=None):
+    def get_actions(self, processing_step: str=None, stage: str=None) -> []:
 
       list=[]
 
-      for a in self.actions.actions:
+      for a in self.actions:
         if processing_step is None or a.processing_step == processing_step:
           # Consider stage if given
-          if a.stage is not None and type(a.stage) != s.Stage:
-            raise Exception("Stage is not an object!")
-        
-          if stage is not None and a.stage.name is not None and stage != a.stage.name:
+          if stage is not None and a.stage is not None and stage != a.stage:
             continue
           list.append(a)
       
-     # list = list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage)
+      list = list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage)
 
       return list
 
@@ -179,17 +171,20 @@ class Meta_File:
       with open (file_name, "r") as file:
         meta_file_json=json.load(file)
         meta_file = Meta_File(deploy_version=meta_file_json['general']['deploy_version'],
-                              file_name=meta_file_json['general']['file_name'],
+                              file_name=f"{meta_file_json['general']['file_name']}",
                               create_time=meta_file_json['general']['create_time'],
+                              update_time=meta_file_json['general']['update_time'],
                               current_stages=s.Stage_List_list(meta_file_json['general']['current_stages']),
                              )
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
         meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
         meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
-        meta_file.write_meta_file()
+        #meta_file.write_meta_file()
 
         return meta_file
+      
+      raise Exception(f"Meta file {file_name} does not exist")
 
 
 
@@ -199,13 +194,12 @@ class Meta_File:
       list['general'] = {'deploy_version':  self.deploy_version,
                          'file_name':       self.file_name,
                          'create_time':     self.create_time,
-                         'update_time':     datetime.datetime.utcnow(),
+                         'update_time':     self.update_time,
                          'status':          self.status,
                          'current_stages':  self.current_stages.get_dict()
                         }
       list['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
                              'backup_lib':  self.backup_deploy_lib,
-                             'object_libs': self.deploy_objects.get_lib_list()
                             }
       list['deploy_cmds'] = self.get_actions_as_dict()
       list['objects'] = self.deploy_objects.get_objectjs_as_dict()
@@ -214,7 +208,23 @@ class Meta_File:
 
 
 
-    def write_meta_file(self):
+    def __eq__(self, o):
+      s=self
+      result = s.actions == o.actions
+      result = s.deploy_objects == o.deploy_objects
+      result = s.current_stages == o.current_stages
+
+      if (s.status, s.deploy_version, s.update_time, s.create_time, s.file_name, s.current_stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
+         (o.status, o.deploy_version, o.update_time, o.create_time, o.file_name, o.current_stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
+        return True
+      return False
+
+
+
+    def write_meta_file(self, update_time: bool=True):
+
+      if update_time:
+        self.update_time = str(datetime.datetime.utcnow())
 
       file_dir = os.path.dirname(os.path.realpath(self.file_name))
       if not os.path.isdir(file_dir):
@@ -248,7 +258,7 @@ class Meta_File:
       for obj_type in obj_list:
           self.add_object_from_meta_structure(obj_list[obj_type].split(' '), obj_type)
 
-      self.write_meta_file()
+      #self.write_meta_file()
 
 
     def import_objects_from_config_file(self, config_file: str):
@@ -273,6 +283,6 @@ class Meta_File:
         for oc in obj_cmds:
           self.deploy_objects.add_object_action_from_dict(dict=oc, stage=stage)
       
-      self.write_meta_file()
+      #self.write_meta_file()
 
 

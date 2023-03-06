@@ -3,43 +3,37 @@ import os
 import logging
 from enum import Enum
 
-from etc import logger_config, constants
+from etc import constants
 from modules import meta_file, stages as st, run_history as rh
 
 
 
+
 class Deploy_Action_List_list(list):
-    def __init__(self):
-        super().__init__()
-
-    def __setitem__(self, index, item):
-        super().__setitem__(index, self._validate_number(item))
-
-    def insert(self, index, item):
-        super().insert(index, self._validate_number(item))
-
-    def append(self, item):
-        super().append(self._validate_number(item))
-
-    def extend(self, other):
-        if isinstance(other, type(Deploy_Action)):
-            super().extend(other)
-        else:
-            super().extend(self._validate_number(item) for item in other)
-
-    def _validate_number(self, value):
-        if type(value) == Deploy_Action:
-            return value
-        raise TypeError(
-            f"Deploy_Action value expected, got {type(value).__name__}"
-        )
-
-
-
-class Deploy_Action_List:
-
   def __init__(self):
-    self.actions = Deploy_Action_List_list()
+      super().__init__()
+
+  def __setitem__(self, index, item):
+      super().__setitem__(index, self._validate_number(item))
+
+  def insert(self, index, item):
+      super().insert(index, self._validate_number(item))
+
+  def append(self, item):
+      super().append(self._validate_number(item))
+
+  def extend(self, other):
+      if isinstance(other, type(Deploy_Action)):
+          super().extend(other)
+      else:
+          super().extend(self._validate_number(item) for item in other)
+
+  def _validate_number(self, value):
+      if type(value) == Deploy_Action:
+          return value
+      raise TypeError(
+          f"Deploy_Action value expected, got {type(value).__name__}"
+      )
 
 
 
@@ -47,7 +41,7 @@ class Deploy_Action_List:
 
     list = []
 
-    for a in self.actions:
+    for a in self:
       list.append(a.get_dict())
 
     return list
@@ -61,7 +55,7 @@ class Deploy_Action_List:
     if action.sequence is None:
       action.sequence = self.get_next_sequence()
 
-    self.actions.append(action)
+    self.append(action)
 
 
 
@@ -83,7 +77,7 @@ class Deploy_Action_List:
 
     list=[]
 
-    for a in self.actions:
+    for a in self:
       if processing_step is None or a.processing_step == processing_step:
         # Consider stage if given
         if stage is not None and a.stage is not None and stage != a.stage:
@@ -107,15 +101,16 @@ class Deploy_Action_List:
 
   def get_next_sequence(self) -> int:
 
-    if len(self.actions) == 0:
+    if len(self) == 0:
       return 0
 
     seq = 0
-    for a in self.actions:
+    for a in self:
       if a.sequence > seq:
         seq = a.sequence
     
     return seq + 1
+
 
 
 
@@ -136,11 +131,14 @@ class Processing_Step(Enum):
 
 
 
+
 class Command_Type(Enum):
 
   PASE = 'PASE'
   QSYS = 'QSYS'
+  SCRIPT = 'SCRIPT'
   
+
 
 
 
@@ -174,10 +172,8 @@ class Deploy_Action:
     self.cmd = cmd
     self.stage = stage
     self.status = status
-    self.run_history = rh.Run_History_List()
+    self.run_history = rh.Run_History_List_list()
     self.check_error = check_error
-    self.stdout = None
-    self.stderr = None
 
     self.processing_step = processing_step
 
@@ -190,12 +186,12 @@ class Deploy_Action:
 
         setattr(self, k, v)
         if k=="run_history":
-          self.run_history = rh.Run_History_List()
+          self.run_history = rh.Run_History_List_list()
           self.run_history.add_historys_from_list(v)
 
     if self.stage is None:
       raise Exception('No Stage defined')
-    self.stage = st.Stage.get_stage(self.stage)
+    #self.stage = st.Stage.get_stage(self.stage)
 
     self.processing_step = Processing_Step(self.processing_step)
     self.environment = Command_Type(self.environment)
@@ -211,9 +207,17 @@ class Deploy_Action:
       'sequence': self.sequence, 
       'cmd': self.cmd,
       'status': self.status,
-      'stage': self.stage.name,
+     # 'stage': self.stage.name,
+      'stage': self.stage,
       'processing_step': self.processing_step.value,
       'environment': self.environment.value,
       'run_history': self.run_history.get_list(),
       'check_error': self.check_error
       }
+
+
+
+  def __eq__(self, o):
+    if (self.sequence, self.environment, self.cmd, self.stage, self.status, self.run_history, self.check_error, self.processing_step) == (o.sequence, o.environment, o.cmd, o.stage, o.status, o.run_history, o.check_error, o.processing_step):
+      return True
+    return False

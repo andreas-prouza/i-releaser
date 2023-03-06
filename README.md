@@ -16,3 +16,8 @@ python -m venv --system-site-packages ./.venv
 source .venv/bin/activate
 pip install --upgrade pip
 ```
+
+
+# Coverage
+
+https://coverage.readthedocs.io/en/6.0/source.html

@@ -9,6 +9,7 @@ from modules import deploy_action as da
 
 
 
+
 class Stage:
 
 
@@ -24,6 +25,7 @@ class Stage:
     self.processing_steps = []
     self.status = None
     self.create_time = str(datetime.datetime.utcnow())
+#    self.create_time = '2023-03-04 14:31:30.404775'
     self.update_time = None
 
 
@@ -43,6 +45,7 @@ class Stage:
   def set_status(self, status: str):
     self.status = status
     self.update_time = str(datetime.datetime.utcnow())
+#    self.update_time = '2023-03-04 14:31:30.404775'
 
 
   def get_stage(name: str):
@@ -79,7 +82,6 @@ class Stage:
 
 
 
-
   def get_dict(self) -> {}:
     return {
       'name' : self.name,
@@ -88,6 +90,7 @@ class Stage:
       'base_dir' : self.base_dir,
       'next_stages' : self.next_stages.get_all_names(),
       'clear_files' : self.clear_files,
+      'processing_steps' : self.processing_steps,
       'lib_replacement_necessary' : self.lib_replacement_necessary,
       'lib_mapping' : self.lib_mapping,
       'status' : self.status,
@@ -116,6 +119,17 @@ class Stage:
       new_next_stages.append(next_stage.name)
 
     return new_next_stages
+
+
+
+  def __eq__(self, other):
+    print('equals 2 stages')
+ #   other.next_stages !!! ist das Problem
+    if (self.description, self.host, self.base_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time) != \
+       (other.description, other.host, other.base_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time):
+      return False
+
+    return True
 
 
 
@@ -154,7 +168,7 @@ class Stage_List_list(list):
         super().append(self._validate_item(item))
 
     def extend(self, other):
-        if isinstance(other, type(Deploy_Action)):
+        if isinstance(other, type(Stage())):
             super().extend(other)
         else:
             super().extend(self._validate_item(item) for item in other)
@@ -204,3 +218,4 @@ class Stage_List_list(list):
         if o.name == name:
           del self[i]
           return
+

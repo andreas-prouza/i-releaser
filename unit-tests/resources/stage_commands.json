@@ -20,6 +20,26 @@
     "check_error": true
   },
   {
+    "sequence": 2,
+    "environment": "SCRIPT",
+    "stages": [
+      "START"
+    ],
+    "cmd": "pre_failed_xyz.pre_cmd",
+    "processing_step": "pre",
+    "check_error": false
+  },
+  {
+    "sequence": 3,
+    "environment": "SCRIPT",
+    "stages": [
+      "START"
+    ],
+    "cmd": "pre.pre_cmd_failed_xyz",
+    "processing_step": "pre",
+    "check_error": false
+  },
+  {
     "sequence": 99,
     "environment": "PASE",
     "stages": [
