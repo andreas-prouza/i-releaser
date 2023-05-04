@@ -70,7 +70,9 @@ class Run_History_List_list(list):
 
 
 class Run_History:
-  """        self.assertEquals(obj, obj2)
+  """       
+  History of executed commands (runs)
+
   Parameters
   ----------
   timestamp : datetime
@@ -80,7 +82,7 @@ class Run_History:
     * ``finished``: Command has finished successfully
   stdout : str
   stderr : str
-"""
+  """
 
 
 
