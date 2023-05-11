@@ -1,6 +1,6 @@
 # ibm-i-deployment
 
-# Set-Up
+# Development set-up
 
 ```sh
 yum install python39 python39-devel python39-wheel python39-six python39-setuptools
@@ -19,12 +19,27 @@ pip install --upgrade pip
 
 # Directory structure
 
-## etc (configurationsd)
+Below you will find a list of directories, the containing files and the description.
+
+* etc
+    Configurations
+* log
+* modules
+    Core scripts
+* meta
+    Meta-files (json) containing the deployment information
+* scripts
+    Can be used for defined steps in you workflow process
+* unit-tests
+
+
+
+## etc (configurations)
 
 * constants.py
   
-    Contains all constants
-
+    Contains all constants used in the scripts like:
+    
   * codepage
   * directory names
   * file name templates
@@ -51,16 +66,23 @@ pip install --upgrade pip
 
 ## modules
 
-This folder contains all modules which are necessary to run process the workflow.
+This folder contains all internal modules which are necessary to run this framework.
 
 This is a collection of classes and functions.
 
-E.g.: Meta_File class which will handle all stuff with meta files:
+E.g.: ```meta_file.py``` (Meta_File class) which will handle all stuff with meta files:
 * save & read json files
 * several checks
 * stores object structures
 * execution history of each object
 * etc.
+
+## scripts
+
+All scripts in this folder can be used in any json-config file where a cmd can be defined.
+
+
+# Configurations
 
 ## attribute "cmd"
 

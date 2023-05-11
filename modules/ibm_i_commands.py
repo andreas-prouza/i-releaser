@@ -72,17 +72,19 @@ class IBM_i_commands:
     do_steps = self.meta_file.current_stages.get_stage(stage).processing_steps
     actions = self.meta_file.actions
 
-    for k, v in cmd_mapping.items():
+    for k, v in constants.C_STEP_2_CMD_MAPPING.items():
 
-      if k.value not in do_steps:
+      if k not in do_steps:
         continue
 
       for cmd in v:
         # All script function have the same structur: function(metafile, stage)
-        cmd(self.meta_file, stage)
+        obj = cmd.split('.')
+        func = getattr(globals()[obj[0]], obj[1])
+        func(self.meta_file, stage)
 
       for sc in stage_cmds:
-        if len(sc['stages']) == 0 or stage in sc['stages'] and k.value == sc['processing_step']:
+        if len(sc['stages']) == 0 or stage in sc['stages'] and k == sc['processing_step']:
           actions.add_action_cmd(cmd=sc['cmd'], environment=sc['environment'], 
                 processing_step=sc['processing_step'], stage=stage, check_error=sc['check_error'])
 

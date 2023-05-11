@@ -115,18 +115,17 @@ class Deploy_Action_List_list(list):
 
 
 
-
 class Processing_Step(Enum):
 
-  PRE = 'pre'
-  SAVE = 'save'
-  TRANSFER = 'transfer'
-  TARGET_PREPARE = 'target-prepare'
-  BACKUP_OLD_OBJ = 'backup-old-objects'
-  PERFORM_DEPLOYMENT = 'perform-deployment'
-  POST = 'post'
+  PRE = constants.C_PRE
+  SAVE = constants.C_SAVE
+  TRANSFER = constants.C_TRANSFER
+  TARGET_PREPARE = constants.C_TARGET_PREPARE
+  BACKUP_OLD_OBJ = constants.C_BACKUP_OLD_OBJ
+  PERFORM_DEPLOYMENT = constants.C_PERFORM_DEPLOYMENT
+  POST = constants.C_POST
 
-  PROCESSING_ORDER = [PRE, SAVE, TRANSFER, BACKUP_OLD_OBJ, PERFORM_DEPLOYMENT, POST]
+  PROCESSING_ORDER = [PRE, SAVE, TRANSFER, TARGET_PREPARE, BACKUP_OLD_OBJ, PERFORM_DEPLOYMENT, POST]
 
 
 
