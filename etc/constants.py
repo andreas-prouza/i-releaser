@@ -6,7 +6,7 @@ C_OBJECT_COMMANDS = 'etc/object_commands.json'
 C_STAGE_COMMANDS = 'etc/stage_commands.json'
 
 C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta"
-C_DEPLOY_DIR = f"{C_META_DIR}/{{deploy_version}}-{{create_date}}"
+C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}"
 C_DEPLOY_META_FILE = f'{C_DEPLOY_DIR}/deployment_{{deploy_version}}.json'
 
 #C_GNU_MAKE_OBJECT_LIST = 'objects.txt'

@@ -71,7 +71,7 @@ class IBM_i_commands:
 
 
 
-  def run_commands(self, processing_step: str=None, stage: str=None) -> None:
+  def run_commands(self, stage: str=None, processing_step: str=None) -> None:
 
     executions = {
       da.Command_Type.QSYS: self.run_qsys_cmd,
@@ -90,8 +90,10 @@ class IBM_i_commands:
       run_history = executions.get(action.environment)(cmd, action)
       action.run_history.add_history(run_history)
 
+      action.status = run_history.status
+      self.meta_file.current_stages.get_stage(stage).set_status(run_history.status)
+
       if run_history.status == 'failed' and action.check_error:
-        self.meta_file.current_stages.get_stage(action.stage).set_status('failed')
         self.meta_file.write_meta_file()
         raise Command_Exception(run_history.stderr)
     

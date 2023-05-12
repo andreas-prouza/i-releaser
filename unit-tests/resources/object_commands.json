@@ -13,8 +13,8 @@
         },
         {
             "sequence": 1,
-            "environment": "QSYS",
-            "cmd": "und noch ein Command",
+            "environment": "PASE",
+            "cmd": "echo 'und noch ein Command'",
             "processing_step": "post"
         }
     ]
@@ -27,15 +27,15 @@
       {
           "sequence": 0,
           "stages": [],
-          "environment": "QSYS",
-          "cmd": "test cmd 1",
+          "environment": "PASE",
+          "cmd": "echo 'test cmd 1'",
           "processing_step": "post"
         },
         {
           "sequence": 1,
           "stages": ["UAT", "PROD"],
           "environment": "PASE",
-          "cmd": "test cmd 2",
+          "cmd": "echo 'test cmd 2'",
           "processing_step": "post"
       }
     ]

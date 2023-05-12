@@ -11,8 +11,7 @@ from modules import deploy_action as da
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
-
-
+from modules import ibm_i_commands
 
 
 
@@ -20,7 +19,7 @@ from modules import workflow as wf
 class Meta_File:
 
 
-    def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, deploy_version : int=None, current_stages: []=["START"]):
+    def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, deploy_version : int=None, current_stages: []=["START"], imported_from_dict=False):
 
       self.deploy_version = deploy_version
       if deploy_version == None:
@@ -55,7 +54,10 @@ class Meta_File:
 
       self.actions = da.Deploy_Action_List_list()
 
-      #self.write_meta_file()
+      # Set global stages commands for current stages
+      if not imported_from_dict:
+        commands = ibm_i_commands.IBM_i_commands(self)
+        commands.set_cmds('START')
 
 
 
@@ -82,11 +84,17 @@ class Meta_File:
       from_stage_obj = self.current_stages.get_stage(from_stage)
       next_stages = from_stage_obj.get_next_stages_name
 
+      commands = ibm_i_commands.IBM_i_commands(self)
+
       # 1. Remove the from_stage from current stages
       # 2. Add next stages to current stages
+      # 3. Set global stages commands
       self.current_stages.remove_stage(from_stage)
+
       for next_stage in next_stages:
+
         self.current_stages.append(s.Stage(self.workflow.name, next_stage))
+        commands.set_cmds(next_stage)
 
 
 
@@ -177,6 +185,7 @@ class Meta_File:
                               create_time=meta_file_json['general']['create_time'],
                               update_time=meta_file_json['general']['update_time'],
                               current_stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['current_stages']),
+                              imported_from_dict=True
                              )
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
@@ -233,6 +242,8 @@ class Meta_File:
       if not os.path.isdir(file_dir):
         os.makedirs(file_dir)
 
+      logging.debug(f"Save meta file to {self.file_name}")
+      
       with open(self.file_name, 'w') as file:
         json.dump(self.get_all_data_as_dict(), file, default=str, indent=4)
 
@@ -273,6 +284,9 @@ class Meta_File:
           target_obj = tmp[2].split('/')
           obj = do.Deploy_Object(lib=target_obj[0], prod_lib=prod_obj[0], name=prod_obj[1], type=prod_obj[3], attribute=prod_obj[2])
           self.add_deploy_object(obj)
+      
+      self.load_actions_from_json(constants.C_OBJECT_COMMANDS)
+
 
 
 

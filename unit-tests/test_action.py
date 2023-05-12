@@ -21,8 +21,8 @@ class TestAction(unittest.TestCase):
         for stage in meta_file1.current_stages:
           print(f"Run all commands for stage {stage.name}")
           try:
-            commands.run_commands('pre', stage=stage.name)
-            commands.run_commands('save', stage=stage.name)
+            commands.run_commands(stage=stage.name, processing_step='pre')
+            commands.run_commands(stage=stage.name, processing_step='save')
           except Exception as e:
             self.assertEqual(type(e), ibm_i_commands.Command_Exception)
 
@@ -62,6 +62,27 @@ class TestAction(unittest.TestCase):
       commands = ibm_i_commands.IBM_i_commands(mf)
 
       commands.set_cmds('START', 'unit-tests/resources/stage_commands.json')
-      commands.run_commands('pre', 'START')
+      commands.run_commands('START', 'pre')
+      commands.run_commands('START', 'post')
+
+
+      self.assertEqual(mf.get_actions()[0].sequence, 0)
+      self.assertEqual(mf.get_actions()[0].stage, 'START')
+      self.assertEqual(mf.get_actions()[0].processing_step, 'pre')
+      self.assertEqual(mf.get_actions()[0].status, 'finished')
+      self.assertEqual(mf.get_actions()[0].run_history[0].status, 'finished')
+
+      self.assertEqual(mf.get_actions()[3].sequence, 3)
+      self.assertEqual(mf.get_actions()[3].stage, 'START')
+      self.assertEqual(mf.get_actions()[3].processing_step, 'pre')
+      self.assertEqual(mf.get_actions()[3].status, 'failed')
+      self.assertEqual(mf.get_actions()[3].run_history[0].status, 'failed')
+
+      date = mf.deploy_objects.get_object('prouzalib', 'date', 'srvpgm')
+      self.assertEqual(date.actions.get_actions()[1].sequence, 1)
+      self.assertEqual(date.actions.get_actions()[1].stage, 'START')
+      self.assertEqual(date.actions.get_actions()[1].processing_step, 'post')
+      self.assertEqual(date.actions.get_actions()[1].status, 'finished')
+      self.assertEqual(date.actions.get_actions()[1].run_history[0].status, 'finished')
 
       mf.write_meta_file()

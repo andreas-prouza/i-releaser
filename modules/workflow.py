@@ -25,13 +25,13 @@ class Workflow:
   def __init__(self, name='', dict={}):
 
     self.name = name
+    self.object_commands = []
 
     if len(dict) > 0:
 
       self.name = dict['name'].lower()
-      
-      if len(dict['step_2_script_mapping']) > 0:
-        self.step_2_script_mapping = dict['step_2_script_mapping']
+      self.object_commands = dict['object_commands']
+      self.step_2_script_mapping = dict['step_2_script_mapping']
 
       return
 
@@ -61,8 +61,9 @@ class Workflow:
 
   def get_dict(self) -> {}:
     return {
-      'name' : self.name,
-      'step_2_script_mapping' : self.step_2_script_mapping,
+      'name': self.name,
+      'step_2_script_mapping': self.step_2_script_mapping,
+      'object_commands': self.object_commands
     }
 
 

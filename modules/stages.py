@@ -185,7 +185,7 @@ class Stage_List_list(list):
 
 
 
-    def get_all_names(self):
+    def get_all_names(self) ->[]:
       list = []
 
       for s in self:

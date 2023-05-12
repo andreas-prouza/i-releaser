@@ -1,4 +1,7 @@
-- [ibm-i-deployment](#ibm-i-deployment)
+- [IBM i deployment](#ibm-i-deployment)
+- [Get started](#get-started)
+  - [Create a new deployment request](#create-a-new-deployment-request)
+  - [Run stage](#run-stage)
 - [Concept of this framework](#concept-of-this-framework)
   - [Detailed description](#detailed-description)
     - [Workflow name](#workflow-name)
@@ -14,7 +17,42 @@
 - [Coverage](#coverage)
 
 
-# ibm-i-deployment
+
+# IBM i deployment
+
+
+This framework is used to organize the staging and deployment in projects.
+
+It's very flexible and open and can be adabtet using existing configuration files.
+
+
+
+# Get started
+
+## Create a new deployment request
+
+Run the python `deployment.py` script to create a new deployment request (meta file).  
+This script expects 2 parameters:
+
+* -w / --workflow
+    
+    The name of the workflow which will be used
+
+* -o / --object_file_list
+  
+    The name of the file containing the deployment objects.
+
+```sh
+python deployment.py -w default -o prod_obj.txt
+```
+
+The directory meta file and its file name is defined in the `./etc/constants.py` script. It's the variable `C_DEPLOY_META_FILE`.
+
+
+## Run stage
+
+
+
 
 
 # Concept of this framework
