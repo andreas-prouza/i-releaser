@@ -6,10 +6,10 @@ class TestStage(unittest.TestCase):
 
 
     def test_content(self):
-        stage = s.Stage.get_stage('UAT')
+        stage = s.Stage.get_stage('default', 'UAT')
         self.assertIn('PROD', stage.get_next_stages_name())
 
-        next_stages = s.Stage_List_list(stage.next_stages)
+        next_stages = s.Stage_List_list('default', stage.next_stages)
         self.assertEqual(len(stage.next_stages), len(next_stages))
         
         # It's not allowed to call Constructor
@@ -24,7 +24,7 @@ class TestStage(unittest.TestCase):
     def test_content2(self):
 
         stage_list = ['UAT', 'START', 'PROD']
-        stages = s.Stage_List_list(stage_list)
+        stages = s.Stage_List_list('default', stage_list)
 
         self.assertEqual(len(stage_list), len(stages))
 
@@ -41,9 +41,9 @@ class TestStage(unittest.TestCase):
         
         stage_list_1 = ['UAT', 'START', 'PROD']
         stage_list_2 = ['UAT', 'START', 'PROD']
-        stages_1 = s.Stage_List_list(stage_list_1)
-        stages_2 = s.Stage_List_list(stage_list_2)
-        stages_1_1 = s.Stage_List_list(stages_1.get_dict())
+        stages_1 = s.Stage_List_list('default', stage_list_1)
+        stages_2 = s.Stage_List_list('default', stage_list_2)
+        stages_1_1 = s.Stage_List_list('default', stages_1.get_dict())
 
         # Not equal because of different timestamps
         self.assertNotEqual(stages_1, stages_2)

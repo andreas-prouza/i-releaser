@@ -1,7 +1,7 @@
 C_LOCAL_BASE_DIR = '/home/andreas/projekte/deployment'
 
 C_DEPLOY_VERSION = 'etc/deploy_version.json'
-C_STAGES = 'etc/stages.json'
+C_WORKFLOW = 'etc/workflow.json'
 C_OBJECT_COMMANDS = 'etc/object_commands.json'
 C_STAGE_COMMANDS = 'etc/stage_commands.json'
 
@@ -35,33 +35,47 @@ C_POST = 'post'
 # Command is in the format {filen-ame}.{function-name}
 #   E.g.: file = pre.py; function = pre_cmd  
 #         ==> cmd-string = 'pre.pre_cmd'
-C_STEP_2_CMD_MAPPING = {
-  C_PRE:
-    [
+C_DEFAULT_STEP_2_CMD_MAPPING = [
+  {
+    "step": C_PRE,
+    "scripts": [
       'pre.pre_cmd'
-    ],
-  C_POST:
-    [
-    ],
-  C_SAVE: 
-    [
+    ]
+  },
+  {
+    "step": C_SAVE,
+    "scripts": [
       'save_objects.set_init_cmds_for_save', 
       'save_objects.set_cmd_object_to_savf'
-    ],
-  C_TRANSFER:
-    [
+    ]
+  },
+  {
+    "step": C_TRANSFER,
+    "scripts": [
       'transfer.set_cmd_transfer_to_target'
-    ],
-  C_TARGET_PREPARE:
-    [
+    ]
+  },
+  {
+    "step": C_TARGET_PREPARE,
+    "scripts": [
       'target_prepare.set_init_cmds_for_deployment'
-    ],
-  C_BACKUP_OLD_OBJ:
-    [
+    ]
+  },
+  {
+    "step": C_BACKUP_OLD_OBJ,
+    "scripts": [
     #  'backup.set_cmd_backup_objects_on_target'
-    ],
-  C_PERFORM_DEPLOYMENT:
-    [
+    ]
+  },
+  {
+    "step": C_PERFORM_DEPLOYMENT,
+    "scripts": [
       'target_deployment.set_cmd_restore_objects_on_target'
     ]
+  },
+  {
+    "step": C_POST,
+    "scripts": [
+    ]
   }
+]

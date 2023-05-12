@@ -10,6 +10,7 @@ from etc import constants
 from modules import deploy_action as da
 from modules import deploy_object as do
 from modules import stages as s
+from modules import workflow as wf
 
 
 
@@ -19,7 +20,7 @@ from modules import stages as s
 class Meta_File:
 
 
-    def __init__(self, file_name=None, create_time=None, update_time=None, deploy_version : int=None, current_stages: []=["START"]):
+    def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, deploy_version : int=None, current_stages: []=["START"]):
 
       self.deploy_version = deploy_version
       if deploy_version == None:
@@ -40,7 +41,11 @@ class Meta_File:
         self.file_name = constants.C_DEPLOY_META_FILE
       self.file_name = self.file_name.format(**self.__dict__)
 
-      self.current_stages = s.Stage_List_list(current_stages)
+      self.workflow = workflow
+      if workflow_name is not None:
+        self.workflow = wf.Workflow(name=workflow_name)
+      
+      self.current_stages = s.Stage_List_list(self.workflow.name, current_stages)
       self.deploy_objects = do.Deploy_Object_List()
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
@@ -71,21 +76,17 @@ class Meta_File:
 
     def set_next_stage(self, from_stage: str):
 
-      with open(constants.C_STAGES, "r") as file:
-          stages_json = json.load(file)
-
       if from_stage not in self.current_stages.get_all_names():
         raise Exception(f"Stage {from_stage} ist not in the list of current stages: {self.current_stages.get_all_names()}")
 
-      for sj in stages_json:
-        if from_stage == sj['name']:
-          self.current_stages.remove_stage(from_stage)
-          for next_stage in sj['next_stages']:
-            self.current_stages.append(s.Stage.get_stage(next_stage))
+      from_stage_obj = self.current_stages.get_stage(from_stage)
+      next_stages = from_stage_obj.get_next_stages_name
 
-          return
-
-      raise Exception(f"Stage {from_stage} ist not in the list of current stages: {self.current_stages.get_all_names()}")
+      # 1. Remove the from_stage from current stages
+      # 2. Add next stages to current stages
+      self.current_stages.remove_stage(from_stage)
+      for next_stage in next_stages:
+        self.current_stages.append(s.Stage(self.workflow.name, next_stage))
 
 
 
@@ -170,11 +171,12 @@ class Meta_File:
 
       with open (file_name, "r") as file:
         meta_file_json=json.load(file)
-        meta_file = Meta_File(deploy_version=meta_file_json['general']['deploy_version'],
+        meta_file = Meta_File(workflow=wf.Workflow(dict=meta_file_json['general']['workflow']),
+                              deploy_version=meta_file_json['general']['deploy_version'],
                               file_name=f"{meta_file_json['general']['file_name']}",
                               create_time=meta_file_json['general']['create_time'],
                               update_time=meta_file_json['general']['update_time'],
-                              current_stages=s.Stage_List_list(meta_file_json['general']['current_stages']),
+                              current_stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['current_stages']),
                              )
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
@@ -191,7 +193,8 @@ class Meta_File:
     def get_all_data_as_dict(self) -> {}:
 
       list = {}
-      list['general'] = {'deploy_version':  self.deploy_version,
+      list['general'] = {'workflow':        self.workflow.get_dict(),
+                         'deploy_version':  self.deploy_version,
                          'file_name':       self.file_name,
                          'create_time':     self.create_time,
                          'update_time':     self.update_time,

@@ -14,6 +14,7 @@ class Stage:
 
 
   def __init__(self, dict: {}={}):
+    self.workflow = None
     self.name = None
     self.description = None
     self.host = None
@@ -36,10 +37,6 @@ class Stage:
       
       for k, v in dict.items():
         setattr(self, k, v)
-    
-    # check of correct data
-    for ps in self.processing_steps:
-      da.Processing_Step(ps)
 
 
   def set_status(self, status: str):
@@ -48,24 +45,27 @@ class Stage:
 #    self.update_time = '2023-03-04 14:31:30.404775'
 
 
-  def get_stage(name: str):
+  def get_stage(workflow:str, name: str):
     stages = []
     stage = Stage()
 
-    with open(constants.C_STAGES, "r") as file:
-      stages = json.load(file)
+    with open(constants.C_WORKFLOW, "r") as file:
+      workflows_json = json.load(file)
 
-    for s in stages:
+    for wf in workflows_json:
+        if workflow == wf['name']:
 
-      if s['name'] == name:
+          for stage in wf['stages']:
 
-        return Stage.get_stage_from_dict(s)
+              if stage['name'] == name:
 
-    raise Exception(f"No stage found with name '{name}' in '{constants.C_STAGES}'")
+                return Stage.get_stage_from_dict(workflow, stage)
+
+    raise Exception(f"No stage found with name '{name}' in '{constants.C_WORKFLOW}'")
 
 
 
-  def get_stage_from_dict(dict: {}={}):
+  def get_stage_from_dict(workflow:str, dict: {}={}):
 
     stage = Stage()
 
@@ -76,7 +76,7 @@ class Stage:
     for k, v in dict.items():
       setattr(stage, k, v)
 
-    stage.next_stages = Stage_List_list(stage.next_stages)
+    stage.next_stages = Stage_List_list(workflow, stage.next_stages)
 
     return stage
 
@@ -111,7 +111,7 @@ class Stage:
 
 
 
-  def get_next_stages_name(self) -> Stage_List_list:
+  def get_next_stages_name(self) -> []:
 
     new_next_stages = []
     
@@ -137,17 +137,20 @@ class Stage:
 
 class Stage_List_list(list):
 
-    def __init__(self, iterable=None):
+    def __init__(self, workflow:str=None, iterable=None):
 
       # This is only not to change the original parameter
       iterable2 = []
-      if iterable is not None and len(iterable) > 0:
+      if (iterable is not None and workflow is None) or (iterable is None and workflow is not None):
+        raise Exception(f'Missing parameter to get the list data: {iterable=}, {workflow=}')
+
+      if iterable is not None and len(iterable) > 0 and workflow is not None:
         for i, s in enumerate(iterable):
           iterable2.append(s)
           if type(s) == str:
-             iterable2[i] = Stage.get_stage(s)
+             iterable2[i] = Stage.get_stage(workflow, s)
           if type(s) == dict:
-             iterable2[i] = Stage.get_stage_from_dict(s)
+             iterable2[i] = Stage.get_stage_from_dict(workflow, s)
              
         super().__init__(iterable2)
         return

@@ -8,26 +8,26 @@ from scripts import save_objects as so
 class TestContent(unittest.TestCase):
 
     def test_save_load_compare(self):
-        meta_file_1 = meta_file.Meta_File("unit-tests/output/test_meta_file_case_1.json", deploy_version=1)
+        meta_file_1 = meta_file.Meta_File(workflow_name='default', file_name="unit-tests/output/test_meta_file_case_1.json", deploy_version=1)
         meta_file_1.import_objects_from_config_file("unit-tests/resources/objects.txt")
         obj=meta_file_1.deploy_objects.get_object('prouzalib', 'date', 'srvpgm')
         obj.actions.add_action(da.Deploy_Action(cmd='CMD1', 
                         sequence=2, 
                         status='finished', 
                         stage='UAT',
-                        processing_step=ct.Processing_Step.SAVE,
+                        processing_step='save',
                         environment=ct.Command_Type.QSYS))
         obj.actions.add_action(da.Deploy_Action(cmd='CMD1', 
                         sequence=2, 
                         status='finished', 
                         stage='PROD',
-                        processing_step=ct.Processing_Step.SAVE,
+                        processing_step='save',
                         environment=ct.Command_Type.QSYS))
 
         
         icmd = ic.IBM_i_commands(meta_file_1)
-        so.set_init_cmds_for_save(meta_file_1, 'START')
-        so.set_cmd_object_to_savf(meta_file_1, 'START')
+        so.set_init_cmds_for_save(meta_file_1, 'START', 'save')
+        so.set_cmd_object_to_savf(meta_file_1, 'START', 'save')
         meta_file_1.write_meta_file()
 
         meta_file_1_list = meta_file_1.get_all_data_as_dict()

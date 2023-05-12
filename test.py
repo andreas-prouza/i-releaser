@@ -32,13 +32,13 @@ print(a.keys())
 exit()
 
 
-m = meta_file.Meta_File()
+m = meta_file.Meta_File(workflow_name='default')
 m.import_objects_from_config_file2('prod_obj.txt')
 print(m.get_all_data_as_dict())
 exit()
 
 #print(s.Stage.get_stage('PROD'))
-stages=s.Stage_List_list(['END', s.Stage.get_stage('PROD')])
+stages=s.Stage_List_list('default', ['END', s.Stage.get_stage('PROD')])
 #stages.append(s.Stage.get_stage('PROD'))
 print(stages)
 exit()
@@ -46,10 +46,6 @@ exit()
 a=['b', 'a', 'd', 'e']
 b=['a', 'b', 'c', 'x'] # Basis
 print(set(a) - set(b))
-exit()
-
-print(deploy_action.Processing_Step.is_valid('prex'))
-print(deploy_action.Processing_Step.get_values())
 exit()
 
 a = ic.Deploy_Action_List_list()

@@ -6,7 +6,7 @@ from modules import meta_file as mf
 from modules import deploy_action as da
 
 
-def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage: str) -> None:
+def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage: str, processing_step: str) -> None:
     """
      Save production objects bevore deployment
     """
@@ -22,7 +22,7 @@ def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage: str) -> Non
 
         actions.add_action_cmd(f"SAVLIB LIB({lib}) DEV(*SAVF) SAVF({meta_file.backup_deploy_lib}/{lib}) \
             SELECT({includes}) DTACPR(*HIGH)", 
-            environment=da.Command_Type.QSYS, processing_step=da.Processing_Step.BACKUP_OLD_OBJ, stage=stage)
+            environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage)
 
     meta_file.current_stages.get_stage(stage).set_status('prepare')
     meta_file.write_meta_file()

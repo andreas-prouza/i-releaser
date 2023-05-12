@@ -6,7 +6,7 @@ from modules import meta_file as mf
 from modules import deploy_action as da
 
 
-def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str) -> None:
+def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
     """Create library & save files to transfer new objects
 
     Args:
@@ -21,7 +21,7 @@ def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str) -> None:
     actions.add_action_cmd(
         f"CRTLIB {meta_file.main_deploy_lib}",
         environment=da.Command_Type.QSYS,
-        processing_step=da.Processing_Step.SAVE,
+        processing_step=processing_step,
         stage=stage,
         check_error=False,
     )
@@ -31,14 +31,14 @@ def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str) -> None:
         actions.add_action_cmd(
             f"CRTSAVF {meta_file.main_deploy_lib}/{lib['lib']}",
             environment=da.Command_Type.QSYS,
-            processing_step=da.Processing_Step.SAVE,
+            processing_step=processing_step,
             stage=stage,
             check_error=False,
         )
         actions.add_action_cmd(
             f"CLRSAVF {meta_file.main_deploy_lib}/{lib['lib']}",
             environment=da.Command_Type.QSYS,
-            processing_step=da.Processing_Step.SAVE,
+            processing_step=processing_step,
             stage=stage,
         )
 
@@ -46,7 +46,7 @@ def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str) -> None:
     meta_file.write_meta_file()
 
 
-def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str) -> None:
+def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step: str) -> None:
     """
     SAVLIB LIB(PROUZALIB) DEV(*SAVF) SAVF(QGPL/PROUZASAVF)
            SELECT(
@@ -70,7 +70,7 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str) -> None:
                 actions.add_action_cmd(
                     f"CLRPFM {obj.lib}/{obj.name}",
                     environment=da.Command_Type.QSYS,
-                    processing_step=da.Processing_Step.SAVE,
+                    processing_step=processing_step,
                     stage=stage,
                 )
 
@@ -84,7 +84,7 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str) -> None:
             f"SAVLIB LIB({lib['lib']}) DEV(*SAVF) SAVF({savf}) \
             SELECT({includes}) DTACPR(*HIGH)",
             environment=da.Command_Type.QSYS,
-            processing_step=da.Processing_Step.SAVE,
+            processing_step=processing_step,
             stage=stage,
         )
 
@@ -92,7 +92,7 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str) -> None:
         actions.add_action_cmd(
             cmd=cmd,
             environment=da.Command_Type.QSYS,
-            processing_step=da.Processing_Step.SAVE,
+            processing_step=processing_step,
             stage=stage,
         )
 

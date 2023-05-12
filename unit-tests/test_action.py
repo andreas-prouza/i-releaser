@@ -9,7 +9,7 @@ class TestAction(unittest.TestCase):
 
     def test_actions_and_compare_content(self):
 
-      meta_file1 = meta_file.Meta_File("unit-tests/output/test_action_file_case_1.json", deploy_version=1)
+      meta_file1 = meta_file.Meta_File(workflow_name='default', file_name="unit-tests/output/test_action_file_case_1.json", deploy_version=1)
       meta_file1.import_objects_from_config_file('unit-tests/resources/objects.txt')
       meta_file1.load_actions_from_json('unit-tests/resources/object_commands.json')
 
@@ -21,14 +21,14 @@ class TestAction(unittest.TestCase):
         for stage in meta_file1.current_stages:
           print(f"Run all commands for stage {stage.name}")
           try:
-            commands.run_commands(da.Processing_Step.PRE, stage=stage.name)
-            commands.run_commands(da.Processing_Step.SAVE, stage=stage.name)
+            commands.run_commands('pre', stage=stage.name)
+            commands.run_commands('save', stage=stage.name)
           except Exception as e:
             self.assertEqual(type(e), ibm_i_commands.Command_Exception)
 
       # Check if they run
       for action in meta_file1.get_actions(stage='START'):
-        if action.processing_step not in [da.Processing_Step.SAVE, da.Processing_Step.PRE]:
+        if action.processing_step not in ['save', 'pre']:
           continue
         self.assertGreaterEqual(len(action.run_history), 1)
 
@@ -55,13 +55,13 @@ class TestAction(unittest.TestCase):
 
 
     def test_script_execution(self):
-      mf = meta_file.Meta_File("unit-tests/output/test_action_file_case_2.json", deploy_version=1)
+      mf = meta_file.Meta_File(workflow_name='default', file_name="unit-tests/output/test_action_file_case_2.json", deploy_version=1)
       mf.import_objects_from_config_file('unit-tests/resources/objects.txt')
       mf.load_actions_from_json('unit-tests/resources/object_commands.json')
 
       commands = ibm_i_commands.IBM_i_commands(mf)
 
       commands.set_cmds('START', 'unit-tests/resources/stage_commands.json')
-      commands.run_commands(da.Processing_Step.PRE, 'START')
+      commands.run_commands('pre', 'START')
 
       mf.write_meta_file()

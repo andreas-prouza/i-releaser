@@ -115,21 +115,6 @@ class Deploy_Action_List_list(list):
 
 
 
-class Processing_Step(Enum):
-
-  PRE = constants.C_PRE
-  SAVE = constants.C_SAVE
-  TRANSFER = constants.C_TRANSFER
-  TARGET_PREPARE = constants.C_TARGET_PREPARE
-  BACKUP_OLD_OBJ = constants.C_BACKUP_OLD_OBJ
-  PERFORM_DEPLOYMENT = constants.C_PERFORM_DEPLOYMENT
-  POST = constants.C_POST
-
-  PROCESSING_ORDER = [PRE, SAVE, TRANSFER, TARGET_PREPARE, BACKUP_OLD_OBJ, PERFORM_DEPLOYMENT, POST]
-
-
-
-
 
 class Command_Type(Enum):
 
@@ -163,7 +148,7 @@ class Deploy_Action:
 
 
   def __init__(self, cmd: str=None, sequence: int=None, status: str='new',  
-    environment: str=Command_Type.QSYS, stage: str=None, processing_step: str=Processing_Step.PRE, 
+    environment: str=Command_Type.QSYS, stage: str=None, processing_step: str=None, 
     check_error: bool=True, dict: {}={}):
 
     self.sequence = sequence
@@ -190,9 +175,10 @@ class Deploy_Action:
 
     if self.stage is None:
       raise Exception('No Stage defined')
-    #self.stage = st.Stage.get_stage(self.stage)
-
-    self.processing_step = Processing_Step(self.processing_step)
+    
+    if self.stage is None:
+      raise Exception('No Stage defined')
+    
     self.environment = Command_Type(self.environment)
 
     if self.cmd is None:
@@ -208,7 +194,7 @@ class Deploy_Action:
       'status': self.status,
      # 'stage': self.stage.name,
       'stage': self.stage,
-      'processing_step': self.processing_step.value,
+      'processing_step': self.processing_step,
       'environment': self.environment.value,
       'run_history': self.run_history.get_list(),
       'check_error': self.check_error

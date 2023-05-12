@@ -35,56 +35,25 @@ class IBM_i_commands:
         stage (str): Name of stage
     """
 
-    cmd_mapping = {
-      da.Processing_Step.PRE:
-        [
-          pre.pre_cmd
-        ],
-      da.Processing_Step.POST:
-        [
-        ],
-      da.Processing_Step.SAVE: 
-        [
-          save_objects.set_init_cmds_for_save, 
-          save_objects.set_cmd_object_to_savf
-        ],
-      da.Processing_Step.TRANSFER:
-        [
-          transfer.set_cmd_transfer_to_target
-        ],
-      da.Processing_Step.TARGET_PREPARE:
-        [
-          target_prepare.set_init_cmds_for_deployment
-        ],
-      da.Processing_Step.BACKUP_OLD_OBJ:
-        [
-        #  backup.set_cmd_backup_objects_on_target
-        ],
-      da.Processing_Step.PERFORM_DEPLOYMENT:
-        [
-          target_deployment.set_cmd_restore_objects_on_target
-        ]
-      }
-    
     with open(stage_cmds, "r") as file:
       stage_cmds = json.load(file)
 
     do_steps = self.meta_file.current_stages.get_stage(stage).processing_steps
     actions = self.meta_file.actions
 
-    for k, v in constants.C_STEP_2_CMD_MAPPING.items():
+    for wf_steps in self.meta_file.workflow.get_workflow_steps():
 
-      if k not in do_steps:
+      if wf_steps['step'] not in do_steps:
         continue
 
-      for cmd in v:
-        # All script function have the same structur: function(metafile, stage)
+      for cmd in wf_steps['scripts']:
+        # All script function have the same structur: function(metafile, stage, step)
         obj = cmd.split('.')
         func = getattr(globals()[obj[0]], obj[1])
-        func(self.meta_file, stage)
+        func(self.meta_file, stage, wf_steps['step'])
 
       for sc in stage_cmds:
-        if len(sc['stages']) == 0 or stage in sc['stages'] and k == sc['processing_step']:
+        if len(sc['stages']) == 0 or stage in sc['stages'] and wf_steps['step'] == sc['processing_step']:
           actions.add_action_cmd(cmd=sc['cmd'], environment=sc['environment'], 
                 processing_step=sc['processing_step'], stage=stage, check_error=sc['check_error'])
 
@@ -93,7 +62,7 @@ class IBM_i_commands:
   def get_all_attributes(self, processing_step: str=None, stage: str=None) -> {}:
     dict = {
       'processing_step': processing_step,
-      'stage': s.Stage.get_stage(stage).get_dict()
+      'stage': s.Stage.get_stage(self.meta_file.workflow.name, stage).get_dict()
     }
 
     dict['meta_file'] = self.meta_file.get_all_data_as_dict()
@@ -154,7 +123,7 @@ class IBM_i_commands:
     
     try:
       func = getattr(globals()[obj[0]], obj[1])
-      func(self.meta_file, action.stage)
+      func(self.meta_file, action.stage, action.processing_step)
       run_history.status = 'finished'
 
     except Exception as e:
