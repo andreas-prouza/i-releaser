@@ -1,3 +1,19 @@
+- [ibm-i-deployment](#ibm-i-deployment)
+- [Concept of this framework](#concept-of-this-framework)
+  - [Detailed description](#detailed-description)
+    - [Workflow name](#workflow-name)
+    - [Stage](#stage)
+    - [Run steps within a stage](#run-steps-within-a-stage)
+- [Development set-up](#development-set-up)
+- [Directory structure](#directory-structure)
+  - [etc (configurations)](#etc-configurations)
+  - [modules](#modules)
+  - [scripts](#scripts)
+- [Configuration files](#configuration-files)
+  - [attribute "cmd"](#attribute-cmd)
+- [Coverage](#coverage)
+
+
 # ibm-i-deployment
 
 
@@ -68,7 +84,6 @@ Following features exist:
 
     For each workflow user specific scripts can be defined for each step.
 
-* 
 
 
 ## Detailed description
