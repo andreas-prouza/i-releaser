@@ -6,26 +6,38 @@ import logging
 import re
 import os
 
+from enum import StrEnum
+
 from etc import constants
 from modules import deploy_action as da
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
 from modules import ibm_i_commands
+from modules import deploy_version as dv
 
+
+class Meta_file_status(StrEnum):
+
+  NEW = 'new'
+  READY = 'ready'
+  IN_PROCESS = 'in_process'
+  FAILED = 'failed'
+  FINISHED = 'finished'
+  
 
 
 
 class Meta_File:
 
 
-    def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, deploy_version : int=None, current_stages: []=["START"], imported_from_dict=False):
+    def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :str='new', deploy_version : int=None, current_stages: []=["START"], imported_from_dict=False):
+
+      self.set_status(status)
 
       self.deploy_version = deploy_version
       if deploy_version == None:
-        self.deploy_version = Meta_File.get_next_deploy_version()
-      
-      self.status = 'new'
+        self.deploy_version = dv.Deploy_Version.get_next_deploy_version(self.status)
 
       self.update_time = update_time
       self.create_time = create_time
@@ -40,6 +52,7 @@ class Meta_File:
         self.file_name = constants.C_DEPLOY_META_FILE
       self.file_name = self.file_name.format(**self.__dict__)
 
+        
       self.workflow = workflow
       if workflow_name is not None:
         self.workflow = wf.Workflow(name=workflow_name)
@@ -49,9 +62,6 @@ class Meta_File:
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
 
-      self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
-      self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
-
       self.actions = da.Deploy_Action_List_list()
 
       # Set global stages commands for current stages
@@ -59,20 +69,17 @@ class Meta_File:
         commands = ibm_i_commands.IBM_i_commands(self)
         commands.set_cmds('START')
 
+      self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
+      self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
 
 
-    def get_next_deploy_version():
 
-        with open(constants.C_DEPLOY_VERSION, "r") as file:
-            versions_config = json.load(file)
+    def set_status(self, status : str):
+      self.status = Meta_file_status(status)
 
-        version = versions_config['versions']['last_deploy_version'] + 1
-        versions_config['versions']['last_deploy_version'] = version
-
-        with open(constants.C_DEPLOY_VERSION, 'w') as file:
-            json.dump(versions_config, file)
-
-        return version
+      if self.status is not Meta_file_status.NEW:
+        dv.Deploy_Version.update_deploy_status(self.deploy_version, self.status, self.file_name)
+        self.write_meta_file()
 
 
 
@@ -181,6 +188,7 @@ class Meta_File:
         meta_file_json=json.load(file)
         meta_file = Meta_File(workflow=wf.Workflow(dict=meta_file_json['general']['workflow']),
                               deploy_version=meta_file_json['general']['deploy_version'],
+                              status=meta_file_json['general']['status'],
                               file_name=f"{meta_file_json['general']['file_name']}",
                               create_time=meta_file_json['general']['create_time'],
                               update_time=meta_file_json['general']['update_time'],
@@ -201,8 +209,8 @@ class Meta_File:
 
     def get_all_data_as_dict(self) -> {}:
 
-      list = {}
-      list['general'] = {'workflow':        self.workflow.get_dict(),
+      dict = {}
+      dict['general'] = {'workflow':        self.workflow.get_dict(),
                          'deploy_version':  self.deploy_version,
                          'file_name':       self.file_name,
                          'create_time':     self.create_time,
@@ -210,13 +218,13 @@ class Meta_File:
                          'status':          self.status,
                          'current_stages':  self.current_stages.get_dict()
                         }
-      list['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
+      dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
                              'backup_lib':  self.backup_deploy_lib,
                             }
-      list['deploy_cmds'] = self.get_actions_as_dict()
-      list['objects'] = self.deploy_objects.get_objectjs_as_dict()
+      dict['deploy_cmds'] = self.get_actions_as_dict()
+      dict['objects'] = self.deploy_objects.get_objectjs_as_dict()
 
-      return list
+      return dict
 
 
 

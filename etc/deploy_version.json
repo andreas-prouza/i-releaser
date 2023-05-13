@@ -1,1 +1,110 @@
-{"versions": {"last_deploy_version": 387}}
+{
+  "versions": {
+    "last_deploy_version": 425
+  },
+  "deployments": [
+    {
+      "version": 425,
+      "status": "new",
+      "timestamp": "2023-05-13 06:44:55.408836"
+    },
+    {
+      "version": 424,
+      "status": "ready",
+      "timestamp": "2023-05-13 06:37:34.981755",
+      "meta_file": "/home/andreas/projekte/deployment/meta/2023-05-13/deployment_424.json"
+    },
+    {
+      "version": 423,
+      "status": "ready",
+      "timestamp": "2023-05-13 06:35:47.523314",
+      "meta_file": "/home/andreas/projekte/deployment/meta/2023-05-13/deployment_423.json"
+    },
+    {
+      "version": 413,
+      "status": "new",
+      "timestamp": "2023-05-13 06:26:10.844210"
+    },
+    {
+      "version": 412,
+      "status": "new",
+      "timestamp": "2023-05-13 06:25:40.674162"
+    },
+    {
+      "version": 411,
+      "status": "new",
+      "timestamp": "2023-05-13 06:24:35.052982"
+    },
+    {
+      "version": 410,
+      "status": "new",
+      "timestamp": "2023-05-13 06:24:25.729740"
+    },
+    {
+      "version": 409,
+      "status": "new",
+      "timestamp": "2023-05-13 06:23:48.626425"
+    },
+    {
+      "version": 408,
+      "status": "new",
+      "timestamp": "2023-05-13 06:22:21.283129"
+    },
+    {
+      "version": 407,
+      "status": "new",
+      "timestamp": "2023-05-13 06:19:15.167842"
+    },
+    {
+      "version": 406,
+      "status": "ready",
+      "meta_file": "/home/andreas/projekte/deployment/meta/2023-05-13/deployment_None.json",
+      "timestamp": "2023-05-13 06:08:42.795042"
+    },
+    {
+      "version": 405,
+      "status": "ready",
+      "timestamp": "2023-05-13 06:04:44.745646"
+    },
+    {
+      "version": 404,
+      "status": "ready",
+      "timestamp": "2023-05-13 06:04:29.334354"
+    },
+    {
+      "version": 403,
+      "status": "ready",
+      "timestamp": "2023-05-13 06:02:38.290580"
+    },
+    {
+      "version": 402,
+      "status": "ready",
+      "timestamp": "2023-05-13 06:02:03.482149"
+    },
+    {
+      "version": 401,
+      "status": "ready",
+      "timestamp": "2023-05-13 06:01:01.661846"
+    },
+    {
+      "version": 400,
+      "status": "ready",
+      "timestamp": "2023-05-13 05:58:52.582486"
+    },
+    {
+      "version": 399,
+      "status": "new",
+      "timestamp": "2023-05-13 05:55:39.205947"
+    },
+    {
+      "version": 398,
+      "status": "ready",
+      "timestamp": "2023-05-13 05:47:45.840323"
+    },
+    {
+      "version": 397,
+      "status": "new",
+      "timestamp": "2023-05-13 05:46:25.498095"
+    }
+  ]
+}
