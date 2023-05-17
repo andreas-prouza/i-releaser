@@ -9,13 +9,15 @@
             "environment": "QSYS",
             "stages": null,
             "cmd": "hier ein Command aus der JSON Konfig",
-            "processing_step": "save"
+            "processing_step": "save",
+            "check_error": false
         },
         {
             "sequence": 1,
             "environment": "QSYS",
             "cmd": "und noch ein Command",
-            "processing_step": "post"
+            "processing_step": "post",
+            "check_error": false
         }
     ]
   },
@@ -29,14 +31,16 @@
           "stages": [],
           "environment": "QSYS",
           "cmd": "test cmd 1",
-          "processing_step": "post"
+          "processing_step": "post",
+          "check_error": false
         },
         {
           "sequence": 1,
           "stages": ["UAT", "PROD"],
           "environment": "PASE",
           "cmd": "test cmd 2",
-          "processing_step": "post"
+          "processing_step": "post",
+          "check_error": false
       }
     ]
   }

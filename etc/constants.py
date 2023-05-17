@@ -23,6 +23,7 @@ C_PHYSICAL_FILE_ATTRIBUTES =  ['sqltable', 'pf']
 
 # Definition of available steps within a stage
 C_PRE = 'pre'
+C_SAVE_INIT = 'save_init'
 C_SAVE = 'save'
 C_TRANSFER = 'transfer'
 C_TARGET_PREPARE = 'target-prepare'
@@ -37,45 +38,51 @@ C_POST = 'post'
 #         ==> cmd-string = 'pre.pre_cmd'
 C_DEFAULT_STEP_2_CMD_MAPPING = [
   {
-    "step": C_PRE,
-    "scripts": [
-      'pre.pre_cmd'
-    ]
+    "processing_step": C_PRE,
+    "environment": "SCRIPT",
+    "execute": 'pre.pre_cmd',
+    "check_error": True
   },
   {
-    "step": C_SAVE,
-    "scripts": [
-      'save_objects.set_init_cmds_for_save', 
-      'save_objects.set_cmd_object_to_savf'
-    ]
+    "processing_step": C_SAVE_INIT,
+    "environment": "SCRIPT",
+    "execute": 'save_objects.set_init_cmds_for_save',
+    "check_error": True
   },
   {
-    "step": C_TRANSFER,
-    "scripts": [
-      'transfer.set_cmd_transfer_to_target'
-    ]
+    "processing_step": C_SAVE,
+    "environment": "SCRIPT",
+    "execute": 'save_objects.set_cmd_object_to_savf',
+    "check_error": True
   },
   {
-    "step": C_TARGET_PREPARE,
-    "scripts": [
-      'target_prepare.set_init_cmds_for_deployment'
-    ]
+    "processing_step": C_TRANSFER,
+    "environment": "SCRIPT",
+    "execute": 'transfer.set_cmd_transfer_to_target',
+    "check_error": True
   },
   {
-    "step": C_BACKUP_OLD_OBJ,
-    "scripts": [
-    #  'backup.set_cmd_backup_objects_on_target'
-    ]
+    "processing_step": C_TARGET_PREPARE,
+    "environment": "SCRIPT",
+    "execute": 'target_prepare.set_init_cmds_for_deployment',
+    "check_error": True
   },
   {
-    "step": C_PERFORM_DEPLOYMENT,
-    "scripts": [
-      'target_deployment.set_cmd_restore_objects_on_target'
-    ]
+    "processing_step": C_BACKUP_OLD_OBJ,
+    "environment": "PASE",
+    "execute": '',#  'backup.set_cmd_backup_objects_on_target',
+    "check_error": True
   },
   {
-    "step": C_POST,
-    "scripts": [
-    ]
+    "processing_step": C_PERFORM_DEPLOYMENT,
+    "environment": "SCRIPT",
+    "execute": 'target_deployment.set_cmd_restore_objects_on_target',
+    "check_error": True
+  },
+  {
+    "processing_step": C_POST,
+    "environment": "PASE",
+    "execute": '',
+    "check_error": True
   }
 ]

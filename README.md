@@ -29,16 +29,25 @@ It's very flexible and open and can be adabtet using existing configuration file
 
 # Get started
 
+Use the `deployment.py` script to:
+* Create a new deployment
+* Running a stage of a deployment
+
+
 ## Create a new deployment request
 
 Run the python `deployment.py` script to create a new deployment request (meta file).  
 This script expects 2 parameters:
 
+* -c / --create
+    
+    Creates a new deployment request
+
 * -w / --workflow
     
     The name of the workflow which will be used
 
-* -o / --object_file_list
+* -o / --object-file-list
   
     The name of the file containing the deployment objects.
 
@@ -51,8 +60,25 @@ The directory meta file and its file name is defined in the `./etc/constants.py`
 
 ## Run stage
 
+Run the python `deployment.py` script to run a stage of a deployment request (meta file).  
+This script expects 2 parameters:
 
+* -r / --run
+  
+    Run a stage
 
+* -d / --deploy-version
+
+    Version (id) of the deployment
+
+* -s / --stage
+  
+    Provide the stage name, which should be run.
+    The stage musst be in the "current stage list"
+
+```sh
+python deployment.py -r -d 4711 -s START
+```
 
 
 # Concept of this framework

@@ -28,34 +28,28 @@ class IBM_i_commands:
 
 
 
-  def set_cmds(self, stage: str, stage_cmds: str=constants.C_STAGE_COMMANDS):
+  def set_cmds(self, stage: str):
     """Set all commands which are allowed for this stage
 
     Args:
         stage (str): Name of stage
     """
 
-    with open(stage_cmds, "r") as file:
-      stage_cmds = json.load(file)
-
+    #get all processing steps for given stage
     do_steps = self.meta_file.current_stages.get_stage(stage).processing_steps
     actions = self.meta_file.actions
 
-    for wf_steps in self.meta_file.workflow.get_workflow_steps():
+    wf_steps = self.meta_file.workflow.get_workflow_steps_mapping()
 
-      if wf_steps['step'] not in do_steps:
-        continue
+    all_steps = {x['processing_step']:x for x in constants.C_DEFAULT_STEP_2_CMD_MAPPING + wf_steps}.values()
 
-      for cmd in wf_steps['scripts']:
-        # All script function have the same structur: function(metafile, stage, step)
-        obj = cmd.split('.')
-        func = getattr(globals()[obj[0]], obj[1])
-        func(self.meta_file, stage, wf_steps['step'])
+    for step in do_steps:
 
-      for sc in stage_cmds:
-        if len(sc['stages']) == 0 or stage in sc['stages'] and wf_steps['step'] == sc['processing_step']:
-          actions.add_action_cmd(cmd=sc['cmd'], environment=sc['environment'], 
-                processing_step=sc['processing_step'], stage=stage, check_error=sc['check_error'])
+      for all_step in all_steps:
+        if step == all_step['processing_step']:
+          actions.add_action_cmd(cmd=all_step['execute'], environment=all_step['environment'], 
+                processing_step=all_step['processing_step'], stage=stage, check_error=all_step['check_error'])
+          break
 
 
 
@@ -91,13 +85,14 @@ class IBM_i_commands:
       action.run_history.add_history(run_history)
 
       action.status = run_history.status
-      self.meta_file.current_stages.get_stage(stage).set_status(run_history.status)
 
       if run_history.status == 'failed' and action.check_error:
+        self.meta_file.current_stages.get_stage(stage).set_status(run_history.status)
         self.meta_file.write_meta_file()
         raise Command_Exception(run_history.stderr)
     
-    self.meta_file.current_stages.get_stage(stage).set_status('finished')
+    # should be set on a higher level because of multiple processing_steps to run
+    #self.meta_file.current_stages.get_stage(stage).set_status('finished')
     self.meta_file.write_meta_file()
 
     #iconv -f IBM-1252 -t utf-8 './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' > './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp && mv './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' 

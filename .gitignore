@@ -1,3 +1,6 @@
 **/__pycache__
 *coverage*
 log
+.pytest_cache
+.venv
+unit-tests/output

@@ -14,7 +14,7 @@ class TestAction(unittest.TestCase):
       meta_file1.load_actions_from_json('unit-tests/resources/object_commands.json')
 
       commands = ibm_i_commands.IBM_i_commands(meta_file1)
-      commands.set_cmds('START', 'unit-tests/resources/stage_commands.json')
+      commands.set_cmds('START')
       
       # Let's run them twice, just to see if multiple run-histories will written
       for i in [1, 2]:
@@ -61,10 +61,8 @@ class TestAction(unittest.TestCase):
 
       commands = ibm_i_commands.IBM_i_commands(mf)
 
-      commands.set_cmds('START', 'unit-tests/resources/stage_commands.json')
-      commands.run_commands('START', 'pre')
-      commands.run_commands('START', 'post')
-
+      mf.write_meta_file()
+      mf.run_current_stages()
 
       self.assertEqual(mf.get_actions()[0].sequence, 0)
       self.assertEqual(mf.get_actions()[0].stage, 'START')

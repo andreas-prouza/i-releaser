@@ -10,7 +10,7 @@ class TestContent(unittest.TestCase):
     def test_save_load_compare(self):
         meta_file_1 = meta_file.Meta_File(workflow_name='default', file_name="unit-tests/output/test_meta_file_case_1.json", deploy_version=1)
         meta_file_1.import_objects_from_config_file("unit-tests/resources/objects.txt")
-        obj=meta_file_1.deploy_objects.get_object('prouzalib', 'date', 'srvpgm')
+        obj=meta_file_1.deploy_objects.get_object('prouzalib', 'date_test', 'srvpgm')
         obj.actions.add_action(da.Deploy_Action(cmd='CMD1', 
                         sequence=2, 
                         status='finished', 
@@ -37,7 +37,7 @@ class TestContent(unittest.TestCase):
         self.assertGreater(len(meta_file_2.actions.get_list()), 2)
         self.assertEqual(meta_file_1_list, meta_file_2_list)
 
-        obj2=meta_file_2.deploy_objects.get_object('prouzalib', 'date', 'srvpgm')
+        obj2=meta_file_2.deploy_objects.get_object('prouzalib', 'date_test', 'srvpgm')
         action_list = [{
                     "sequence": 2,
                     "cmd": "CMD1",

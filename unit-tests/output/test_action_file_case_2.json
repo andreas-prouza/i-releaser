@@ -1,11 +1,35 @@
 {
     "general": {
+        "workflow": {
+            "name": "default",
+            "step_2_script_mapping": [
+                {
+                    "processing_step": "pre",
+                    "environment": "SCRIPT",
+                    "execute": "pre.pre_cmd",
+                    "check_error": true
+                },
+                {
+                    "processing_step": "save_init",
+                    "environment": "SCRIPT",
+                    "execute": "save_objects.set_init_cmds_for_save",
+                    "check_error": true
+                },
+                {
+                    "processing_step": "save",
+                    "environment": "SCRIPT",
+                    "execute": "save_objects.set_cmd_object_to_savf",
+                    "check_error": true
+                }
+            ],
+            "object_commands": []
+        },
         "deploy_version": 1,
         "file_name": "unit-tests/output/test_action_file_case_2.json",
-        "create_time": "2023-03-06 12:15:45.568278",
-        "update_time": "2023-03-06 12:15:45.571558",
+        "create_time": "2023-05-17 18:38:30.849022",
+        "update_time": "2023-05-17 18:38:30.855037",
         "status": "new",
-        "current_stages": [
+        "completed_stages": [
             {
                 "name": "START",
                 "description": null,
@@ -22,9 +46,69 @@
                 ],
                 "lib_replacement_necessary": null,
                 "lib_mapping": [],
-                "status": "finished",
-                "create_time": "2023-03-06 12:15:45.568338",
-                "update_time": "2023-03-06 12:15:45.571117"
+                "status": "in process",
+                "create_time": "2023-05-17 18:38:30.849166",
+                "update_time": "2023-05-17 18:38:30.851310"
+            }
+        ],
+        "current_stages": [
+            {
+                "name": "UAT",
+                "description": "User Acceptance Tests",
+                "host": "localhost",
+                "base_dir": "/home/prouza/uat",
+                "next_stages": [
+                    "PROD"
+                ],
+                "clear_files": true,
+                "processing_steps": [
+                    "pre",
+                    "save",
+                    "transfer",
+                    "target-prepare",
+                    "backup-old-objects",
+                    "perform-deployment",
+                    "post"
+                ],
+                "lib_replacement_necessary": null,
+                "lib_mapping": {
+                    "prouzalib": "t1",
+                    "prouzalib2": "t2",
+                    "prouza4": "t3",
+                    "prouza2": "t3"
+                },
+                "status": null,
+                "create_time": "2023-05-17 18:38:30.854543",
+                "update_time": null
+            },
+            {
+                "name": "ARCHIV",
+                "description": "Tests Archiv",
+                "host": "localhost",
+                "base_dir": "/home/prouza/archiv",
+                "next_stages": [
+                    "END"
+                ],
+                "clear_files": true,
+                "processing_steps": [
+                    "pre",
+                    "save",
+                    "transfer",
+                    "target-prepare",
+                    "backup-old-objects",
+                    "perform-deployment",
+                    "post"
+                ],
+                "lib_replacement_necessary": null,
+                "lib_mapping": {
+                    "prouzalib": "t1",
+                    "prouzalib2": "t2",
+                    "prouza4": "t3",
+                    "prouza2": "t3"
+                },
+                "status": null,
+                "create_time": "2023-05-17 18:38:30.854861",
+                "update_time": null
             }
         ]
     },
@@ -35,16 +119,16 @@
     "deploy_cmds": [
         {
             "sequence": 0,
-            "cmd": "echo 'Start der Stage {meta_file[general][file_name]} ... {stage[name]}'",
-            "status": "new",
+            "cmd": "pre.pre_cmd",
+            "status": "finished",
             "stage": "START",
             "processing_step": "pre",
-            "environment": "PASE",
+            "environment": "SCRIPT",
             "run_history": [
                 {
                     "create_time": "2023-03-04 14:31:30.404775",
                     "status": "finished",
-                    "stdout": "Start der Stage unit-tests/output/test_action_file_case_2.json ... START\n",
+                    "stdout": "This is a user defined pre function: unit-tests/output/test_action_file_case_2.json in stage 'START, processing step pre'\n",
                     "stderr": ""
                 }
             ],
@@ -52,16 +136,16 @@
         },
         {
             "sequence": 1,
-            "cmd": "pre.pre_cmd",
-            "status": "new",
+            "cmd": "",
+            "status": "finished",
             "stage": "START",
-            "processing_step": "pre",
-            "environment": "SCRIPT",
+            "processing_step": "post",
+            "environment": "PASE",
             "run_history": [
                 {
                     "create_time": "2023-03-04 14:31:30.404775",
                     "status": "finished",
-                    "stdout": "This is a user defined pre function: unit-tests/output/test_action_file_case_2.json in stage 'START'\n",
+                    "stdout": "",
                     "stderr": ""
                 }
             ],
@@ -69,43 +153,139 @@
         },
         {
             "sequence": 2,
-            "cmd": "pre_failed_xyz.pre_cmd",
+            "cmd": "pre.pre_cmd",
             "status": "new",
-            "stage": "START",
+            "stage": "UAT",
             "processing_step": "pre",
             "environment": "SCRIPT",
-            "run_history": [
-                {
-                    "create_time": "2023-03-04 14:31:30.404775",
-                    "status": "failed",
-                    "stdout": "",
-                    "stderr": "KeyError('pre_failed_xyz')\n"
-                }
-            ],
-            "check_error": false
+            "run_history": [],
+            "check_error": true
         },
         {
             "sequence": 3,
-            "cmd": "pre.pre_cmd_failed_xyz",
+            "cmd": "save_objects.set_cmd_object_to_savf",
             "status": "new",
-            "stage": "START",
-            "processing_step": "pre",
+            "stage": "UAT",
+            "processing_step": "save",
             "environment": "SCRIPT",
-            "run_history": [
-                {
-                    "create_time": "2023-03-04 14:31:30.404775",
-                    "status": "failed",
-                    "stdout": "",
-                    "stderr": "AttributeError(\"module 'scripts.pre' has no attribute 'pre_cmd_failed_xyz'\")\n"
-                }
-            ],
-            "check_error": false
+            "run_history": [],
+            "check_error": true
         },
         {
             "sequence": 4,
-            "cmd": "echo 'Ende der Stage {stage}'",
+            "cmd": "transfer.set_cmd_transfer_to_target",
             "status": "new",
-            "stage": "START",
+            "stage": "UAT",
+            "processing_step": "transfer",
+            "environment": "SCRIPT",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 5,
+            "cmd": "target_prepare.set_init_cmds_for_deployment",
+            "status": "new",
+            "stage": "UAT",
+            "processing_step": "target-prepare",
+            "environment": "SCRIPT",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 6,
+            "cmd": "",
+            "status": "new",
+            "stage": "UAT",
+            "processing_step": "backup-old-objects",
+            "environment": "PASE",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 7,
+            "cmd": "target_deployment.set_cmd_restore_objects_on_target",
+            "status": "new",
+            "stage": "UAT",
+            "processing_step": "perform-deployment",
+            "environment": "SCRIPT",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 8,
+            "cmd": "",
+            "status": "new",
+            "stage": "UAT",
+            "processing_step": "post",
+            "environment": "PASE",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 9,
+            "cmd": "pre.pre_cmd",
+            "status": "new",
+            "stage": "ARCHIV",
+            "processing_step": "pre",
+            "environment": "SCRIPT",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 10,
+            "cmd": "save_objects.set_cmd_object_to_savf",
+            "status": "new",
+            "stage": "ARCHIV",
+            "processing_step": "save",
+            "environment": "SCRIPT",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 11,
+            "cmd": "transfer.set_cmd_transfer_to_target",
+            "status": "new",
+            "stage": "ARCHIV",
+            "processing_step": "transfer",
+            "environment": "SCRIPT",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 12,
+            "cmd": "target_prepare.set_init_cmds_for_deployment",
+            "status": "new",
+            "stage": "ARCHIV",
+            "processing_step": "target-prepare",
+            "environment": "SCRIPT",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 13,
+            "cmd": "",
+            "status": "new",
+            "stage": "ARCHIV",
+            "processing_step": "backup-old-objects",
+            "environment": "PASE",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 14,
+            "cmd": "target_deployment.set_cmd_restore_objects_on_target",
+            "status": "new",
+            "stage": "ARCHIV",
+            "processing_step": "perform-deployment",
+            "environment": "SCRIPT",
+            "run_history": [],
+            "check_error": true
+        },
+        {
+            "sequence": 15,
+            "cmd": "",
+            "status": "new",
+            "stage": "ARCHIV",
             "processing_step": "post",
             "environment": "PASE",
             "run_history": [],
@@ -116,7 +296,7 @@
         {
             "obj_lib": "prouzalib",
             "obj_prod_lib": "prouzalib",
-            "obj_name": "logger",
+            "obj_name": "logger_test",
             "obj_type": "file",
             "obj_attribute": "sqltable",
             "deploy_status": "in preperation",
@@ -125,7 +305,7 @@
         {
             "obj_lib": "prouzalib",
             "obj_prod_lib": "prouzalib",
-            "obj_name": "logger",
+            "obj_name": "logger_test",
             "obj_type": "srvpgm",
             "obj_attribute": "sqlrpgle",
             "deploy_status": "in preperation",
@@ -134,7 +314,7 @@
         {
             "obj_lib": "prouzalib",
             "obj_prod_lib": "prouzalib",
-            "obj_name": "errhdlsql",
+            "obj_name": "errhdlsql_test",
             "obj_type": "srvpgm",
             "obj_attribute": "sqlrpgle",
             "deploy_status": "in preperation",
@@ -143,7 +323,7 @@
         {
             "obj_lib": "prouzalib",
             "obj_prod_lib": "prouzalib",
-            "obj_name": "cpysrc2ifs",
+            "obj_name": "cpysrc2ifs_test",
             "obj_type": "pgm",
             "obj_attribute": "sqlrpgle",
             "deploy_status": "in preperation",
@@ -152,66 +332,34 @@
         {
             "obj_lib": "prouzalib",
             "obj_prod_lib": "prouzalib",
-            "obj_name": "date",
+            "obj_name": "date_test",
             "obj_type": "srvpgm",
             "obj_attribute": "sqlrpgle",
             "deploy_status": "in preperation",
-            "actions": [
-                {
-                    "sequence": 0,
-                    "cmd": "hier ein Command aus der JSON Konfig",
-                    "status": "new",
-                    "stage": "START",
-                    "processing_step": "save",
-                    "environment": "QSYS",
-                    "run_history": [],
-                    "check_error": true
-                },
-                {
-                    "sequence": 1,
-                    "cmd": "und noch ein Command",
-                    "status": "new",
-                    "stage": "START",
-                    "processing_step": "post",
-                    "environment": "QSYS",
-                    "run_history": [],
-                    "check_error": true
-                }
-            ]
+            "actions": []
         },
         {
             "obj_lib": "prouzalib",
             "obj_prod_lib": "prouzalib",
             "obj_name": "testmod",
             "obj_type": "srvpgm",
-            "obj_attribute": "rpgle",
+            "obj_attribute": "_testrpgle",
             "deploy_status": "in preperation",
             "actions": []
         },
         {
             "obj_lib": "prouza2",
             "obj_prod_lib": "prouzalib",
-            "obj_name": "testlog",
+            "obj_name": "testlog_test",
             "obj_type": "pgm",
             "obj_attribute": "rpgle",
             "deploy_status": "in preperation",
-            "actions": [
-                {
-                    "sequence": 0,
-                    "cmd": "test cmd 1",
-                    "status": "new",
-                    "stage": "START",
-                    "processing_step": "post",
-                    "environment": "QSYS",
-                    "run_history": [],
-                    "check_error": true
-                }
-            ]
+            "actions": []
         },
         {
             "obj_lib": "prouzalib",
             "obj_prod_lib": "prouzalib",
-            "obj_name": "testlog2",
+            "obj_name": "testlog2_test",
             "obj_type": "pgm",
             "obj_attribute": "sqlrpgle",
             "deploy_status": "in preperation",
@@ -220,7 +368,7 @@
         {
             "obj_lib": "prouzalib",
             "obj_prod_lib": "prouzalib",
-            "obj_name": "testsqlerr",
+            "obj_name": "testsqlerr_test",
             "obj_type": "pgm",
             "obj_attribute": "sqlrpgle",
             "deploy_status": "in preperation",

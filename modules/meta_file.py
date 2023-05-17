@@ -8,6 +8,8 @@ import os
 
 from enum import StrEnum
 
+from pydantic import validate_arguments
+
 from etc import constants
 from modules import deploy_action as da
 from modules import deploy_object as do
@@ -28,13 +30,18 @@ class Meta_file_status(StrEnum):
 
 
 
+
 class Meta_File:
 
 
-    def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :str='new', deploy_version : int=None, current_stages: []=["START"], imported_from_dict=False):
+    @validate_arguments
+    def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :str='new', deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
 
-      self.set_status(status)
-
+      if imported_from_dict == False:
+        self.set_status(status)
+      else:
+        self.status = Meta_file_status(status)
+        
       self.deploy_version = deploy_version
       if deploy_version == None:
         self.deploy_version = dv.Deploy_Version.get_next_deploy_version(self.status)
@@ -56,7 +63,8 @@ class Meta_File:
       self.workflow = workflow
       if workflow_name is not None:
         self.workflow = wf.Workflow(name=workflow_name)
-      
+       
+      self.completed_stages = completed_stages
       self.current_stages = s.Stage_List_list(self.workflow.name, current_stages)
       self.deploy_objects = do.Deploy_Object_List()
       self.backup_deploy_lib = None
@@ -74,6 +82,7 @@ class Meta_File:
 
 
 
+    @validate_arguments
     def set_status(self, status : str):
       self.status = Meta_file_status(status)
 
@@ -83,44 +92,71 @@ class Meta_File:
 
 
 
+    @validate_arguments
     def set_next_stage(self, from_stage: str):
 
       if from_stage not in self.current_stages.get_all_names():
         raise Exception(f"Stage {from_stage} ist not in the list of current stages: {self.current_stages.get_all_names()}")
 
       from_stage_obj = self.current_stages.get_stage(from_stage)
-      next_stages = from_stage_obj.get_next_stages_name
+      next_stages = from_stage_obj.get_next_stages_name()
 
       commands = ibm_i_commands.IBM_i_commands(self)
 
       # 1. Remove the from_stage from current stages
       # 2. Add next stages to current stages
       # 3. Set global stages commands
+      self.completed_stages.append(from_stage_obj)
       self.current_stages.remove_stage(from_stage)
 
       for next_stage in next_stages:
 
-        self.current_stages.append(s.Stage(self.workflow.name, next_stage))
+        self.current_stages.append(s.Stage.get_stage(self.workflow.name, next_stage))
         commands.set_cmds(next_stage)
+      
+      self.write_meta_file()
 
 
 
-    def set_deploy_main_lib(self, library):
+    def run_current_stages(self) -> None:
+
+      names = self.current_stages.get_all_names()
+      for name in names:
+        self.run_current_stage(name)
+
+
+
+    @validate_arguments
+    def run_current_stage(self, stage: str) -> None:
+      cmd = ibm_i_commands.IBM_i_commands(self)
+      
+      for step in self.current_stages.get_stage(stage).processing_steps:
+        cmd.run_commands(stage=stage, processing_step=step)
+
+      self.set_next_stage(stage)
+
+
+
+    @validate_arguments
+    def set_deploy_main_lib(self, library: str):
       self.main_deploy_lib = library.lower()
 
 
 
-    def set_deploy_backup_lib(self, library):
+    @validate_arguments
+    def set_deploy_backup_lib(self, library: str):
       self.backup_deploy_lib = library.lower()
 
 
 
+    
     def add_deploy_object(self, object: type[do.Deploy_Object]):
 
       self.deploy_objects.add_object(object)
 
 
 
+    
     def is_backup_name_already_in_use(self, obj_lib: str, obj_name: str, backup_name: str, obj_type: str):
       """
       Parameters
@@ -159,6 +195,7 @@ class Meta_File:
 
 
 
+    
     def get_actions(self, processing_step: str=None, stage: str=None) -> []:
 
       list=[]
@@ -176,6 +213,7 @@ class Meta_File:
 
 
 
+    
     def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
 
       return self.actions.get_actions_as_dict(processing_step=processing_step, stage=stage)
@@ -192,6 +230,7 @@ class Meta_File:
                               file_name=f"{meta_file_json['general']['file_name']}",
                               create_time=meta_file_json['general']['create_time'],
                               update_time=meta_file_json['general']['update_time'],
+                              completed_stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['completed_stages']),
                               current_stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['current_stages']),
                               imported_from_dict=True
                              )
@@ -207,6 +246,18 @@ class Meta_File:
 
 
 
+    
+    def load_version(version: int) -> Meta_File:
+
+      deployment = dv.Deploy_Version.get_deployment(version)
+
+      if deployment is None or 'meta_file' not in deployment:
+        raise Exception(f"Couldn't find deployment version {version}: {deployment=}")
+
+      return Meta_File.load_json_file(deployment['meta_file'])
+
+
+
     def get_all_data_as_dict(self) -> {}:
 
       dict = {}
@@ -216,6 +267,7 @@ class Meta_File:
                          'create_time':     self.create_time,
                          'update_time':     self.update_time,
                          'status':          self.status,
+                         'completed_stages':  self.completed_stages.get_dict(),
                          'current_stages':  self.current_stages.get_dict()
                         }
       dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
@@ -241,6 +293,7 @@ class Meta_File:
 
 
 
+    
     def write_meta_file(self, update_time: bool=True):
 
       if update_time:
@@ -257,6 +310,7 @@ class Meta_File:
 
 
 
+    
     def add_object_from_meta_structure(self, objects: [], object_type: str):
 
       for obj in objects:
@@ -271,6 +325,7 @@ class Meta_File:
 
 
 
+    
     def import_objects_from_config_file_old(self, config_file: str):
 
       object_config = configparser.ConfigParser()
@@ -283,6 +338,7 @@ class Meta_File:
       #self.write_meta_file()
 
 
+    
     def import_objects_from_config_file(self, config_file: str):
 
       with open(config_file, "r") as file:
@@ -298,6 +354,7 @@ class Meta_File:
 
 
 
+    
     def load_actions_from_json(self, file: str):
       obj_cmds = []
 

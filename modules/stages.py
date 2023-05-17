@@ -3,9 +3,10 @@ import json
 import datetime
 import logging
 
-from etc import constants
-from modules import deploy_action as da
+from pydantic import validate_arguments
 
+from etc import constants
+from modules import workflow as wf
 
 
 
@@ -45,23 +46,28 @@ class Stage:
 #    self.update_time = '2023-03-04 14:31:30.404775'
 
 
-  def get_stage(workflow:str, name: str):
-    stages = []
-    stage = Stage()
 
-    with open(constants.C_WORKFLOW, "r") as file:
-      workflows_json = json.load(file)
+  def get_stage(workflow_name:str, stage_name: str) -> Stage:
+    """Retrieves stage from workflow
+        This is also a check if the wanted stage exist in the workflow config
 
-    for wf in workflows_json:
-        if workflow == wf['name']:
+    Args:
+        workflow (str): Name of workflow
+        name (str): Name of stage
 
-          for stage in wf['stages']:
+    Raises:
+        Exception: If give stage does not exist in workflow cofig
 
-              if stage['name'] == name:
+    Returns:
+        Stage: Stage object
+    """
+    
+    stage = wf.Workflow.get_workflow_stage(workflow_name, stage_name)
+    
+    if stage is not None:
+      return Stage.get_stage_from_dict(workflow_name, stage)
 
-                return Stage.get_stage_from_dict(workflow, stage)
-
-    raise Exception(f"No stage found with name '{name}' in '{constants.C_WORKFLOW}'")
+    raise Exception(f"No stage found with '{workflow_name=}' & '{stage_name=}' in '{constants.C_WORKFLOW}'")
 
 
 
@@ -69,9 +75,7 @@ class Stage:
 
     stage = Stage()
 
-    if len(list(set(dict.keys()) - set(stage.__dict__.keys()))) > 0:
-      raise Exception(f"Attributes from parameter {dict} does not match with class attributes. \
-        Unknown attribute(s) are: {list(set(dict.keys()) - set(stage.__dict__.keys()))}")
+    Stage.validate(dict)
 
     for k, v in dict.items():
       setattr(stage, k, v)
@@ -119,6 +123,20 @@ class Stage:
       new_next_stages.append(next_stage.name)
 
     return new_next_stages
+
+
+
+  def validate(stage_dict: {}):
+
+    for key in stage_dict.keys():
+      if key not in ['name', 'description', 'host', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'lib_mapping', 'status', 'create_time', 'update_time']:
+        raise Exception(f"Attribute {key} is invalid for a stage!")
+    
+    stage = Stage()
+
+    if len(list(set(stage_dict.keys()) - set(stage.__dict__.keys()))) > 0:
+      raise Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
+        Unknown attribute(s) are: {list(set(stage_dict.keys()) - set(stage.__dict__.keys()))}")
 
 
 
@@ -184,6 +202,12 @@ class Stage_List_list(list):
         )
 
 
+    def validate_items(dict: []) -> None:
+
+      for item in dict:
+        Stage.validate(item)
+
+        
 
     def get_all_names(self) ->[]:
       list = []
@@ -205,6 +229,7 @@ class Stage_List_list(list):
 
 
 
+    @validate_arguments
     def get_stage(self, name: str) -> Stage:
 
       for s in self:
