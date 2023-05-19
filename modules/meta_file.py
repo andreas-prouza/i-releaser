@@ -50,7 +50,7 @@ class Meta_File:
       self.create_time = create_time
 
       if self.create_time == None:
-        self.create_time = str(datetime.datetime.utcnow())
+        self.create_time = str(datetime.datetime.now())
 
       self.create_date = re.sub(" .*", '', self.create_time)
 
@@ -297,7 +297,7 @@ class Meta_File:
     def write_meta_file(self, update_time: bool=True):
 
       if update_time:
-        self.update_time = str(datetime.datetime.utcnow())
+        self.update_time = str(datetime.datetime.now())
 
       file_dir = os.path.dirname(os.path.realpath(self.file_name))
       if not os.path.isdir(file_dir):

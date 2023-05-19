@@ -26,7 +26,7 @@ class Stage:
     self.lib_mapping = []
     self.processing_steps = []
     self.status = None
-    self.create_time = str(datetime.datetime.utcnow())
+    self.create_time = str(datetime.datetime.now())
 #    self.create_time = '2023-03-04 14:31:30.404775'
     self.update_time = None
 
@@ -42,7 +42,7 @@ class Stage:
 
   def set_status(self, status: str):
     self.status = status
-    self.update_time = str(datetime.datetime.utcnow())
+    self.update_time = str(datetime.datetime.now())
 #    self.update_time = '2023-03-04 14:31:30.404775'
 
 

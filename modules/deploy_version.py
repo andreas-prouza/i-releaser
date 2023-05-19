@@ -23,7 +23,7 @@ class Deploy_Version:
       versions_config['deployments'].append({
         'version': version,
         'status': status,
-        'timestamp': str(datetime.datetime.utcnow())
+        'timestamp': str(datetime.datetime.now())
       })
 
       versions_config['deployments'] = sorted(versions_config['deployments'], key=lambda d: d['version'], reverse=True)
@@ -48,7 +48,7 @@ class Deploy_Version:
         if d['version'] == version:
           d['status'] = status
           d['meta_file'] = meta_file_name
-          d['timestamp'] = str(datetime.datetime.utcnow())
+          d['timestamp'] = str(datetime.datetime.now())
           break
 
         if (status == meta_file.Meta_file_status.IN_PROCESS and 
