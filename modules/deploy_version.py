@@ -44,7 +44,7 @@ class Deploy_Version:
 
       deployments = versions_config['deployments']
 
-      for d in reversed(deployments):
+      for d in deployments:
         if d['version'] == version:
           d['status'] = status
           d['meta_file'] = meta_file_name

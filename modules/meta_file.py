@@ -37,15 +37,14 @@ class Meta_File:
     @validate_arguments
     def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :str='new', deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
 
+      self.backup_deploy_lib = None
+      self.main_deploy_lib = None
+
       if imported_from_dict == False:
         self.set_status(status)
       else:
         self.status = Meta_file_status(status)
         
-      self.deploy_version = deploy_version
-      if deploy_version == None:
-        self.deploy_version = dv.Deploy_Version.get_next_deploy_version(self.status)
-
       self.update_time = update_time
       self.create_time = create_time
 
@@ -53,12 +52,6 @@ class Meta_File:
         self.create_time = str(datetime.datetime.now())
 
       self.create_date = re.sub(" .*", '', self.create_time)
-
-      self.file_name = file_name
-      if self.file_name == None:
-        self.file_name = constants.C_DEPLOY_META_FILE
-      self.file_name = self.file_name.format(**self.__dict__)
-
         
       self.workflow = workflow
       if workflow_name is not None:
@@ -67,8 +60,6 @@ class Meta_File:
       self.completed_stages = completed_stages
       self.current_stages = s.Stage_List_list(self.workflow.name, current_stages)
       self.deploy_objects = do.Deploy_Object_List()
-      self.backup_deploy_lib = None
-      self.main_deploy_lib = None
 
       self.actions = da.Deploy_Action_List_list()
 
@@ -77,8 +68,19 @@ class Meta_File:
         commands = ibm_i_commands.IBM_i_commands(self)
         commands.set_cmds('START')
 
+      self.deploy_version = deploy_version
+      if deploy_version == None:
+        self.deploy_version = dv.Deploy_Version.get_next_deploy_version(self.status)
+
+      self.file_name = file_name
+      if self.file_name == None:
+        self.file_name = constants.C_DEPLOY_META_FILE
+      self.file_name = self.file_name.format(**self.__dict__)
+
       self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
+
+      dv.Deploy_Version.update_deploy_status(self.deploy_version, self.status, self.file_name)
 
 
 
