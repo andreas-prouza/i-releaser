@@ -52,9 +52,9 @@ class TestStage(unittest.TestCase):
         self.assertEqual(stages_1, stages_1_1)
 
 
-        with open('stage-list.1.pkl', 'wb') as out_file:
+        with open('unit-tests/output/stage-list.1.pkl', 'wb') as out_file:
             pickle.dump(stages_1, out_file)
-        with open('stage-list.2.pkl', 'wb') as out_file:
+        with open('unit-tests/output/stage-list.2.pkl', 'wb') as out_file:
             pickle.dump(stages_2, out_file)
 
 #        with open(f'{meta_file_1.file_name}.1.pkl', 'rb') as in_file:

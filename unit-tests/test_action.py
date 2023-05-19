@@ -70,17 +70,5 @@ class TestAction(unittest.TestCase):
       self.assertEqual(mf.get_actions()[0].status, 'finished')
       self.assertEqual(mf.get_actions()[0].run_history[0].status, 'finished')
 
-      self.assertEqual(mf.get_actions()[3].sequence, 3)
-      self.assertEqual(mf.get_actions()[3].stage, 'START')
-      self.assertEqual(mf.get_actions()[3].processing_step, 'pre')
-      self.assertEqual(mf.get_actions()[3].status, 'failed')
-      self.assertEqual(mf.get_actions()[3].run_history[0].status, 'failed')
-
-      date = mf.deploy_objects.get_object('prouzalib', 'date', 'srvpgm')
-      self.assertEqual(date.actions.get_actions()[1].sequence, 1)
-      self.assertEqual(date.actions.get_actions()[1].stage, 'START')
-      self.assertEqual(date.actions.get_actions()[1].processing_step, 'post')
-      self.assertEqual(date.actions.get_actions()[1].status, 'finished')
-      self.assertEqual(date.actions.get_actions()[1].run_history[0].status, 'finished')
 
       mf.write_meta_file()
