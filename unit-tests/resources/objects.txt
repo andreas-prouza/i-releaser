@@ -1,9 +1,0 @@
-prod_obj|prouzalib/logger_test.sqltable.file|PROUZALIB/logger_test
-prod_obj|prouzalib/logger_test.sqlrpgle.srvpgm|PROUZALIB/logger_test
-prod_obj|prouzalib/errhdlsql_test.sqlrpgle.srvpgm|PROUZALIB/errhdlsql_test
-prod_obj|prouzalib/cpysrc2ifs_test.sqlrpgle.pgm|PROUZALIB/cpysrc2ifs_test
-prod_obj|prouzalib/date_test.sqlrpgle.srvpgm|PROUZALIB/date_test
-prod_obj|prouzalib/testmod._testrpgle.srvpgm|PROUZALIB/testmod_test
-prod_obj|prouzalib/testlog_test.rpgle.pgm|PROUZA2/testlog_test
-prod_obj|prouzalib/testlog2_test.sqlrpgle.pgm|PROUZALIB/testlog2_test
-prod_obj|prouzalib/testsqlerr_test.sqlrpgle.pgm|PROUZALIB/testsqlerr_test
