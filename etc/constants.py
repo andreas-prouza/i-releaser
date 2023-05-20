@@ -1,6 +1,6 @@
 C_LOCAL_BASE_DIR = '/home/andreas/projekte/deployment'
 
-C_DEPLOY_VERSION = 'etc/deploy_version.json'
+C_DEPLOY_VERSION = 'etc/deploy_version_{project}.json'
 C_WORKFLOW = 'etc/workflow.json'
 C_OBJECT_COMMANDS = 'etc/object_commands.json'
 C_STAGE_COMMANDS = 'etc/stage_commands.json'

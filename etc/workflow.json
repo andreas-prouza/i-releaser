@@ -1,6 +1,7 @@
 [
   {
     "name": "test_attributes",
+    "default_project": "test",
     "step_2_script_mapping": [
       {
         "processing_step": "pre",
@@ -45,6 +46,7 @@
   },
   {
     "name": "test",
+    "default_project": "test",
     "step_2_script_mapping": [
       {
         "processing_step": "pre",
@@ -120,6 +122,7 @@
   },
   {
     "name": "default",
+    "default_project": "default",
     "step_2_script_mapping": [
       {
         "processing_step": "pre",
