@@ -6,6 +6,7 @@ from enum import Enum
 
 from etc import constants
 from modules import meta_file, stages as st
+from modules.cmd_status import Status as Cmd_Status
 
 
 
@@ -86,7 +87,7 @@ class Run_History:
 
 
 
-  def __init__(self, status: str=None, stdout: str=None, stderr: str=None, create_time=None, dict: {}={}):
+  def __init__(self, status: Cmd_Status=Cmd_Status.NEW, stdout: str=None, stderr: str=None, create_time=None, dict: {}={}):
     self.status = status
     self.stdout = stdout # Run in these stages
     self.stderr = stderr
@@ -100,12 +101,14 @@ class Run_History:
       for k, v in dict.items():
         setattr(self, k, v)
 
+    self.status = Cmd_Status(self.status)
+
 
 
   def get_dict(self) -> {}:
     return {
       'create_time': self.create_time,
-      'status': self.status,
+      'status': self.status.value,
       'stdout': self.stdout,
       'stderr': self.stderr
       }

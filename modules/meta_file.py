@@ -17,6 +17,7 @@ from modules import stages as s
 from modules import workflow as wf
 from modules import ibm_i_commands
 from modules import deploy_version as dv
+from modules.cmd_status import Status as Cmd_Status
 
 
 class Meta_file_status(StrEnum):
@@ -134,11 +135,18 @@ class Meta_File:
 
     @validate_arguments
     def run_current_stage(self, stage: str) -> None:
+
+      if self.status != Meta_file_status.READY:
+        raise Exception(f"Meta file is not in status 'ready', but in status '{self.status}'!")
+
       cmd = ibm_i_commands.IBM_i_commands(self)
+
+      stage_obj = self.current_stages.get_stage(stage)
       
-      for step in self.current_stages.get_stage(stage).processing_steps:
+      for step in stage_obj.processing_steps:
         cmd.run_commands(stage=stage, processing_step=step)
 
+      stage_obj.status = Cmd_Status.FINISHED
       self.set_next_stage(stage)
 
 

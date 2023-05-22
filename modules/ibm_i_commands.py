@@ -12,6 +12,7 @@ from modules import meta_file
 from modules import deploy_action as da
 from modules import run_history as rh
 from modules import stages as s
+from modules.cmd_status import Status as Cmd_Status
 
 from scripts import *
 
@@ -86,7 +87,7 @@ class IBM_i_commands:
 
       action.status = run_history.status
 
-      if run_history.status == 'failed' and action.check_error:
+      if run_history.status == Cmd_Status.FAILED and action.check_error:
         self.meta_file.current_stages.get_stage(stage).set_status(run_history.status)
         self.meta_file.write_meta_file()
         raise Command_Exception(run_history.stderr)
@@ -121,12 +122,12 @@ class IBM_i_commands:
     try:
       func = getattr(globals()[obj[0]], obj[1])
       func(self.meta_file, action.stage, action.processing_step)
-      run_history.status = 'finished'
+      run_history.status = Cmd_Status.FINISHED
 
     except Exception as e:
       print(repr(e), file=sys.stderr)
       logging.exception(e)
-      run_history.status = 'failed'
+      run_history.status = Cmd_Status.FAILED
 
     run_history.stdout = stdout_new.getvalue()
     run_history.stderr = stderr_new.getvalue()
@@ -160,9 +161,9 @@ class IBM_i_commands:
       run_history.stdout = stdout
       run_history.stderr = stderr
 
-      run_history.status = 'finished'
+      run_history.status = Cmd_Status.FINISHED
 
       if s.returncode != 0:
-        run_history.status = 'failed'
+        run_history.status = Cmd_Status.FAILED
 
       return run_history
