@@ -236,6 +236,7 @@ class Stage_List_list(list):
         if s.name == name:
           return s
 
+      raise Exception(f"Stage {name} not found in list {self.get_all_names()}")
       return None
 
 

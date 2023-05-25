@@ -73,11 +73,16 @@ class IBM_i_commands:
       da.Command_Type.PASE: self.run_pase_cmd,
       da.Command_Type.SCRIPT: self.run_script_cmd,
     }
+
     all_attributes = self.get_all_attributes(processing_step=processing_step, stage=stage)
 
     self.meta_file.current_stages.get_stage(stage).set_status('in process')
 
     for action in self.meta_file.get_actions(processing_step=processing_step, stage=stage):
+
+      if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
+        logging.info(f"Action {stage=}, {processing_step=}, {action.sequence=} is already finished. Proceed with next.")
+        continue
 
       cmd = action.cmd.format(**all_attributes)
 

@@ -261,7 +261,7 @@ class Deploy_Object:
       'obj_type' : self.type,
       'obj_attribute' : self.attribute,
       'deploy_status' : self.deploy_status,
-      'actions' : self.actions.get_list()
+      'actions' : self.actions.get_actions_as_dict()
     }
 
 

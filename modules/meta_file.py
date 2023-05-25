@@ -134,7 +134,17 @@ class Meta_File:
 
 
     @validate_arguments
-    def run_current_stage(self, stage: str) -> None:
+    def run_current_stage(self, stage: str, processing_step: str=None) -> None:
+      """Run given stage
+
+      Args:
+          stage (str): Stage name
+          processing_step (str, optional): Step of stage. Defaults to None.
+              If None, all steps will be issued
+
+      Raises:
+          Exception: If a processing step was given, which is not in the step list of that stage
+      """
 
       if self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status}'!")
@@ -143,10 +153,31 @@ class Meta_File:
 
       stage_obj = self.current_stages.get_stage(stage)
       
-      for step in stage_obj.processing_steps:
-        cmd.run_commands(stage=stage, processing_step=step)
+      if processing_step is not None and processing_step not in stage_obj.processing_steps:
+        raise Exception(f"Processing step '{processing_step}' is not defined in stage '{stage}'. Defined steps are: {stage_obj.processing_steps}")
 
+      if processing_step is not None:
+        cmd.run_commands(stage=stage, processing_step=processing_step)
+
+      if processing_step is None:
+        for step in stage_obj.processing_steps:
+          cmd.run_commands(stage=stage, processing_step=step)
+
+      self.check_stage_finish(stage)
+
+
+
+    @validate_arguments
+    def check_stage_finish(self, stage: str) -> None:
+
+      for action in self.actions.get_actions(stage=stage):
+        if action.status not in [Cmd_Status.FINISHED, Cmd_Status.FAILED] or (action.status == Cmd_Status.FAILED and action.check_error == True):
+          return
+
+      stage_obj = self.current_stages.get_stage(stage)
       stage_obj.status = Cmd_Status.FINISHED
+
+      logging.info(f"Stage {stage} has been finished. Setting next stage(s)")
       self.set_next_stage(stage)
 
 
