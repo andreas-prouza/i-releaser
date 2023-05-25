@@ -68,11 +68,12 @@ class Deploy_Action_List_list(list):
 
 
 
-  def add_actions_from_list(self, list: []):
+  def add_actions_from_list(self, dict: {}):
 
-    for a in list:
-      action = Deploy_Action(dict=a)
-      self.add_action(action)
+    for k, cmds in dict.items():
+      for cmd in cmds:
+        action = Deploy_Action(dict=cmd)
+        self.add_action(action)
 
 
 
@@ -94,17 +95,16 @@ class Deploy_Action_List_list(list):
 
   def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> []:
 
-    list=[]
+    dict={}
 
     for a in self.get_actions(processing_step, stage):
-      for entry in list:
-        if a.stage in entry.keys():
-          entry[a.stage].append(a.get_dict())
-          break
-      else:
-        list.append({a.stage: [a.get_dict()]})
+      if a.stage in dict.keys():
+        dict[a.stage].append(a.get_dict())
+        continue
 
-    return list
+      dict[a.stage] = [a.get_dict()]
+
+    return dict
 
 
 
@@ -170,20 +170,17 @@ class Deploy_Action:
 
     self.processing_step = processing_step
 
-    for stage_key, action_values in dict.items():
+    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
+      raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
 
-      for action_value in action_values:
-        if len(list(set(action_value.keys()) - set(self.__dict__.keys()))) > 0 and len(action_value) > 0:
-          raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {action_value=}")
+    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+      
+      for k, v in dict.items():
 
-        if len(list(set(action_value.keys()) - set(self.__dict__.keys()))) == 0:
-          
-          for k, v in action_value.items():
-
-            setattr(self, k, v)
-            if k=="run_history":
-              self.run_history = rh.Run_History_List_list()
-              self.run_history.add_historys_from_list(v)
+        setattr(self, k, v)
+        if k=="run_history":
+          self.run_history = rh.Run_History_List_list()
+          self.run_history.add_historys_from_list(v)
 
     if self.stage is None:
       raise Exception('No Stage defined')

@@ -238,8 +238,9 @@ class Deploy_Object:
       self.attribute = dict['obj_attribute'].lower()
 
       if len(dict['actions']) > 0:
-        for a in dict['actions']:
-          self.actions.add_action(da.Deploy_Action(dict=a))
+        for key_stages in dict['actions'].keys():
+          for cmd in dict['actions'][key_stages]:
+            self.actions.add_action(da.Deploy_Action(dict=cmd))
       return
 
     self.prod_lib = prod_lib.lower()
