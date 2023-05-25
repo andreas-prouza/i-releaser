@@ -51,5 +51,4 @@ def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage: str, processing
             stage=stage,
         )
 
-    meta_file.current_stages.get_stage(stage).set_status("prepare")
-    meta_file.write_meta_file()
+

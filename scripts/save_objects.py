@@ -42,8 +42,6 @@ def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str, processing_step:
             stage=stage,
         )
 
-    meta_file.current_stages.get_stage(stage).set_status("prepare")
-    meta_file.write_meta_file()
 
 
 def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step: str) -> None:
@@ -96,5 +94,3 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
             stage=stage,
         )
 
-    meta_file.current_stages.get_stage(stage).set_status("prepare")
-    meta_file.write_meta_file()

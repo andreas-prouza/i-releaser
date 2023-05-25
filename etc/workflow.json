@@ -1,142 +1,11 @@
 [
   {
-    "name": "test_attributes",
-    "step_2_script_mapping": [
-      {
-        "processing_step": "pre",
-        "environment": "PASE",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "test_error",
-        "environment": "PASE",
-        "execute": "Wrong definition",
-        "check_error": true
-      },
-      {
-        "processing_step": "test_error_OK",
-        "environment": "PASE",
-        "execute": "Wrong definition, but OK",
-        "check_error": false
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["ERROR_TEST"],
-        "host": "localhost",
-        "base_dir": "/home/prouza/dev",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "ERROR_TEST",
-        "description": "Only for testing purpose",
-        "invalid_attribute": "xxxx",
-        "processing_steps": ["test_error"],
-        "next_stages": ["END"]
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "test",
-    "step_2_script_mapping": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "save_init",
-        "environment": "SCRIPT",
-        "execute": "save_objects.set_init_cmds_for_save",
-        "check_error": true
-      },
-      {
-        "processing_step": "save",
-        "environment": "SCRIPT",
-        "execute": "save_objects.set_cmd_object_to_savf",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["UAT_TEST", "ARCHIV_TEST"],
-        "host": "localhost",
-        "base_dir": "/home/prouza/dev",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "UAT_TEST",
-        "description": "User Acceptance Tests",
-        "host": "localhost",
-        "base_dir": "/home/prouza/uat",
-        "next_stages": ["PROD_TEST"],
-        "clear_files": true,
-        "processing_steps": ["pre", "post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "ARCHIV_TEST",
-        "description": "Tests Archiv",
-        "host": "localhost",
-        "base_dir": "/home/prouza/archiv",
-        "next_stages": ["END"],
-        "clear_files": true,
-        "processing_steps": ["pre", "post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "PROD_TEST",
-        "description": "Production",
-        "host": "localhost",
-        "base_dir": "/home/prouza/prod",
-        "processing_steps": ["pre", "post"],
-        "next_stages": ["END"]
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
     "name": "default",
     "step_2_script_mapping": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
         "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "save_init",
-        "environment": "SCRIPT",
-        "execute": "save_objects.set_init_cmds_for_save",
-        "check_error": true
-      },
-      {
-        "processing_step": "save",
-        "environment": "SCRIPT",
-        "execute": "save_objects.set_cmd_object_to_savf",
         "check_error": true
       }
     ],
@@ -156,7 +25,7 @@
         "base_dir": "/home/prouza/uat",
         "next_stages": ["PROD"],
         "clear_files": true,
-        "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
+        "processing_steps": ["pre", "gen-commands", "prepare-save", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
         "lib_mapping": {
           "prouzalib": "t1",
           "prouzalib2": "t2",
