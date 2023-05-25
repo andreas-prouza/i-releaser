@@ -5,6 +5,7 @@ from enum import Enum
 
 from etc import constants
 from modules import meta_file, stages as st, run_history as rh
+from modules.cmd_status import Status as Cmd_Status
 
 
 
@@ -48,7 +49,7 @@ class Deploy_Action_List_list(list):
 
 
 
-  def add_action(self, action: type[Deploy_Action]) -> None:
+  def add_action(self, action: type[Deploy_Action]) -> int:
     if type(action) != Deploy_Action:
       raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
 
@@ -57,10 +58,12 @@ class Deploy_Action_List_list(list):
 
     self.append(action)
 
+    return action.sequence
 
 
-  def add_action_cmd(self, cmd: str, environment: str, processing_step: str, stage: str=None, check_error: bool=True) -> None:
-    self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step, 
+
+  def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True) -> int:
+    return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step, 
     stage=stage, check_error=check_error))
 
 
@@ -147,8 +150,8 @@ class Deploy_Action:
 
 
 
-  def __init__(self, cmd: str=None, sequence: int=None, status: str='new',  
-    environment: str=Command_Type.QSYS, stage: str=None, processing_step: str=None, 
+  def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=Cmd_Status.NEW,  
+    environment: Command_Type=Command_Type.QSYS, stage: str=None, processing_step: str=None, 
     check_error: bool=True, dict: {}={}):
 
     self.sequence = sequence
@@ -180,6 +183,7 @@ class Deploy_Action:
       raise Exception('No Stage defined')
     
     self.environment = Command_Type(self.environment)
+    self.status = Cmd_Status(self.status)
 
     if self.cmd is None:
       raise Exception('Command is not allowed to be None')
@@ -191,7 +195,7 @@ class Deploy_Action:
     return {
       'sequence': self.sequence, 
       'cmd': self.cmd,
-      'status': self.status,
+      'status': self.status.value,
      # 'stage': self.stage.name,
       'stage': self.stage,
       'processing_step': self.processing_step,

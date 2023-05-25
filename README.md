@@ -39,7 +39,7 @@ Use the `deployment.py` script to:
 Run the python `deployment.py` script to create a new deployment request (meta file).  
 This script expects 2 parameters:
 
-* -c / --create
+* -a / --action create
     
     Creates a new deployment request
 
@@ -52,7 +52,7 @@ This script expects 2 parameters:
     The name of the file containing the deployment objects.
 
 ```sh
-python deployment.py -w default -o prod_obj.txt
+python deployment.py -a create -w default_workflow -o prod_obj.txt
 ```
 
 The directory meta file and its file name is defined in the `./etc/constants.py` script. It's the variable `C_DEPLOY_META_FILE`.
@@ -63,7 +63,7 @@ The directory meta file and its file name is defined in the `./etc/constants.py`
 Run the python `deployment.py` script to run a stage of a deployment request (meta file).  
 This script expects 2 parameters:
 
-* -r / --run
+* -a / --action run
   
     Run a stage
 
@@ -77,7 +77,7 @@ This script expects 2 parameters:
     The stage musst be in the "current stage list"
 
 ```sh
-python deployment.py -r -d 4711 -s START
+python deployment.py -a run -d 4711 -s START
 ```
 
 
@@ -266,7 +266,6 @@ Below you will find a list of directories, the containing files and the descript
     
     Can be used for defined steps in you workflow process
 
-* unit-tests
 
 
 ## etc (configurations)
@@ -327,10 +326,23 @@ Below some descriptions to the JSON config files you need to know.
 
 ## attribute "cmd"
 
-The command can be a shell command.
+Depending on the command type, the command can be a shell command, or it can also be a function of a python script.
 
-It can also be a function of a python script.
-The syntax for this is:
+command types:
+* QSYS
+  
+  Call of IBM i commands
+
+* PASE
+  
+  Call of shell commands
+
+* SCRIPT
+  
+  Call of a python function from a script
+
+
+To run python functions, the syntax is:
 
 `"cmd": "{script-name}.{function-name}"`
 

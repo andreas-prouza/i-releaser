@@ -17,6 +17,7 @@ from modules import stages as s
 from modules import workflow as wf
 from modules import ibm_i_commands
 from modules import deploy_version as dv
+from modules.cmd_status import Status as Cmd_Status
 
 
 class Meta_file_status(StrEnum):
@@ -35,17 +36,17 @@ class Meta_File:
 
 
     @validate_arguments
-    def __init__(self, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :str='new', deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
+    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :str='new', deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
+
+      self.backup_deploy_lib = None
+      self.main_deploy_lib = None
+      self.project = project
 
       if imported_from_dict == False:
         self.set_status(status)
       else:
         self.status = Meta_file_status(status)
         
-      self.deploy_version = deploy_version
-      if deploy_version == None:
-        self.deploy_version = dv.Deploy_Version.get_next_deploy_version(self.status)
-
       self.update_time = update_time
       self.create_time = create_time
 
@@ -53,22 +54,17 @@ class Meta_File:
         self.create_time = str(datetime.datetime.now())
 
       self.create_date = re.sub(" .*", '', self.create_time)
-
-      self.file_name = file_name
-      if self.file_name == None:
-        self.file_name = constants.C_DEPLOY_META_FILE
-      self.file_name = self.file_name.format(**self.__dict__)
-
         
       self.workflow = workflow
       if workflow_name is not None:
         self.workflow = wf.Workflow(name=workflow_name)
-       
+      
+      if self.project is None:
+        self.project = self.workflow.default_project
+
       self.completed_stages = completed_stages
       self.current_stages = s.Stage_List_list(self.workflow.name, current_stages)
       self.deploy_objects = do.Deploy_Object_List()
-      self.backup_deploy_lib = None
-      self.main_deploy_lib = None
 
       self.actions = da.Deploy_Action_List_list()
 
@@ -77,8 +73,19 @@ class Meta_File:
         commands = ibm_i_commands.IBM_i_commands(self)
         commands.set_cmds('START')
 
+      self.deploy_version = deploy_version
+      if deploy_version == None:
+        self.deploy_version = dv.Deploy_Version.get_next_deploy_version(project=self.project, status=self.status)
+
+      self.file_name = file_name
+      if self.file_name == None:
+        self.file_name = constants.C_DEPLOY_META_FILE
+      self.file_name = self.file_name.format(**self.__dict__)
+
       self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
+
+      dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
 
 
 
@@ -87,7 +94,7 @@ class Meta_File:
       self.status = Meta_file_status(status)
 
       if self.status is not Meta_file_status.NEW:
-        dv.Deploy_Version.update_deploy_status(self.deploy_version, self.status, self.file_name)
+        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
         self.write_meta_file()
 
 
@@ -128,11 +135,18 @@ class Meta_File:
 
     @validate_arguments
     def run_current_stage(self, stage: str) -> None:
+
+      if self.status != Meta_file_status.READY:
+        raise Exception(f"Meta file is not in status 'ready', but in status '{self.status}'!")
+
       cmd = ibm_i_commands.IBM_i_commands(self)
+
+      stage_obj = self.current_stages.get_stage(stage)
       
-      for step in self.current_stages.get_stage(stage).processing_steps:
+      for step in stage_obj.processing_steps:
         cmd.run_commands(stage=stage, processing_step=step)
 
+      stage_obj.status = Cmd_Status.FINISHED
       self.set_next_stage(stage)
 
 
@@ -225,6 +239,7 @@ class Meta_File:
       with open (file_name, "r") as file:
         meta_file_json=json.load(file)
         meta_file = Meta_File(workflow=wf.Workflow(dict=meta_file_json['general']['workflow']),
+                              project=meta_file_json['general']['project'],
                               deploy_version=meta_file_json['general']['deploy_version'],
                               status=meta_file_json['general']['status'],
                               file_name=f"{meta_file_json['general']['file_name']}",
@@ -247,12 +262,12 @@ class Meta_File:
 
 
     
-    def load_version(version: int) -> Meta_File:
+    def load_version(project:str, version: int) -> Meta_File:
 
-      deployment = dv.Deploy_Version.get_deployment(version)
+      deployment = dv.Deploy_Version.get_deployment(project, version)
 
       if deployment is None or 'meta_file' not in deployment:
-        raise Exception(f"Couldn't find deployment version {version}: {deployment=}")
+        raise Exception(f"Couldn't find deployment version {version}: {project=}, {deployment=}")
 
       return Meta_File.load_json_file(deployment['meta_file'])
 
@@ -262,6 +277,7 @@ class Meta_File:
 
       dict = {}
       dict['general'] = {'workflow':        self.workflow.get_dict(),
+                         'project':         self.project,
                          'deploy_version':  self.deploy_version,
                          'file_name':       self.file_name,
                          'create_time':     self.create_time,
@@ -286,8 +302,8 @@ class Meta_File:
       result = s.deploy_objects == o.deploy_objects
       result = s.current_stages == o.current_stages
 
-      if (s.status, s.deploy_version, s.update_time, s.create_time, s.file_name, s.current_stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
-         (o.status, o.deploy_version, o.update_time, o.create_time, o.file_name, o.current_stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
+      if (s.status, s.project, s.deploy_version, s.update_time, s.create_time, s.file_name, s.current_stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
+         (o.status, o.project, o.deploy_version, o.update_time, o.create_time, o.file_name, o.current_stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
         return True
       return False
 

@@ -1,6 +1,7 @@
 [
   {
     "name": "default",
+    "default_project": "default",
     "step_2_script_mapping": [
       {
         "processing_step": "pre",

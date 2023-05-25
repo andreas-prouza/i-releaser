@@ -29,16 +29,41 @@ class Workflow:
 
     self.name = name
     self.object_commands = []
+    self.default_project = None
 
     if len(dict) > 0:
 
       self.name = dict['name'].lower()
-      self.object_commands = dict['object_commands']
-      self.step_2_script_mapping = dict['step_2_script_mapping']
+      
+      if 'step_2_script_mapping' in dict:
+        self.step_2_script_mapping = dict['step_2_script_mapping']
+
+      if 'default_project' in dict:
+        self.default_project = dict['default_project']
 
       return
 
-    self.step_2_script_mapping = self.get_workflow_steps_mapping()
+    self.load_workflow_data()
+    #self.step_2_script_mapping = self.get_workflow_steps_mapping()
+
+
+
+  def load_workflow_data(self) -> None:
+
+    with open(constants.C_WORKFLOW, "r") as file:
+      workflows_json = json.load(file)
+
+    for wf in workflows_json:
+
+      if self.name == wf['name']:
+
+        Workflow.validate_workflow(wf)
+        if 'step_2_script_mapping' in wf:
+          self.step_2_script_mapping = wf["step_2_script_mapping"]
+        if 'default_project' in wf:
+          self.default_project = wf["default_project"]
+
+        return
 
 
 
@@ -85,7 +110,7 @@ class Workflow:
     stages.Stage_List_list.validate_items(workflow_dict['stages'])
 
     for key in workflow_dict.keys():
-      if key not in ['name', 'step_2_script_mapping', 'stages']:
+      if key not in ['name', 'step_2_script_mapping', 'stages', 'default_project']:
         raise Exception(f"Workflow attribute '{key}' is invalid!")
     
     if 'step_2_script_mapping' in workflow_dict.keys():
@@ -109,12 +134,13 @@ class Workflow:
     return {
       'name': self.name,
       'step_2_script_mapping': self.step_2_script_mapping,
-      'object_commands': self.object_commands
+      'object_commands': self.object_commands,
+      'default_project': self.default_project
     }
 
 
 
   def __eq__(self, o):
-    if self.name == o.name:
+    if self.name == o.name and self.step_2_script_mapping == o.step_2_script_mapping:
       return True
     return False
