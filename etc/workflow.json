@@ -8,6 +8,12 @@
         "environment": "SCRIPT",
         "execute": "pre.pre_cmd",
         "check_error": true
+      },
+      {
+        "processing_step": "gen-commands",
+        "environment": "SCRIPT",
+        "execute": "gen_commands.generate_commands",
+        "check_error": true
       }
     ],
     "stages" : [

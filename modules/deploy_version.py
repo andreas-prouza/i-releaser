@@ -4,6 +4,8 @@ import datetime
 import json
 import logging
 
+from pydantic import validate_arguments
+
 from etc import constants
 from modules import meta_file
 
@@ -73,19 +75,25 @@ class Deploy_Version:
 
 
 
+    @validate_arguments
     def get_deployment(project:str, version : int) -> {}:
 
-      logging.debug(f"Get deployment version {version}") 
+      logging.debug(f"Get deployment {version=}, {project=}") 
+      logging.debug(f"{constants.C_DEPLOY_VERSION=}") 
       version_file = constants.C_DEPLOY_VERSION.format(project=project)
+      logging.debug(f"{os.path.abspath(version_file)}")
 
       with open(version_file, "r") as file:
           versions_config = json.load(file)
 
       deployments = versions_config['deployments']
 
+
       for d in reversed(deployments):
         if d['version'] == version:
           return d
 
-      return None
+      err = Exception(f"Couldn't find deployment version {version}: {project=}") 
+      logging.error(err)
+      raise Exception(f"Couldn't find deployment version {version}: {project=}") 
 

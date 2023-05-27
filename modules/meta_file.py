@@ -5,6 +5,7 @@ import configparser
 import logging
 import re
 import os
+import sys
 
 from enum import StrEnum
 
@@ -37,6 +38,8 @@ class Meta_File:
 
     @validate_arguments
     def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :str='new', deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
+
+      logging.debug(f"{sys.path=}")
 
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
@@ -86,6 +89,9 @@ class Meta_File:
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
 
       dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
+
+      self.write_meta_file(False)
+
 
 
 
@@ -398,6 +404,10 @@ class Meta_File:
       
       self.load_actions_from_json(constants.C_OBJECT_COMMANDS)
 
+      config_file_name = os.path.basename(config_file)
+      path = os.path.dirname(os.path.realpath(self.file_name))
+
+      os.rename(config_file, f"{path}/{self.deploy_version}_{config_file_name}")
 
 
 
