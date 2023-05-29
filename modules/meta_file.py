@@ -131,6 +131,9 @@ class Meta_File:
         self.current_stages.append(s.Stage.get_stage(self.workflow.name, next_stage))
         commands.set_cmds(next_stage)
       
+      if self.current_stages == []:
+        self.set_status(Meta_file_status.FINISHED)
+
       self.write_meta_file()
 
 
@@ -159,6 +162,8 @@ class Meta_File:
       if self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
 
+      self.set_status(Meta_file_status.IN_PROCESS)
+
       cmd = ibm_i_commands.IBM_i_commands(self)
 
       stage_obj = self.current_stages.get_stage(stage)
@@ -175,6 +180,9 @@ class Meta_File:
 
       self.check_stage_finish(stage)
 
+      self.set_status(Meta_file_status.READY)
+      
+
 
 
     @validate_arguments
@@ -182,6 +190,7 @@ class Meta_File:
 
       for action in self.actions.get_actions(stage=stage):
         if action.status not in [Cmd_Status.FINISHED, Cmd_Status.FAILED] or (action.status == Cmd_Status.FAILED and action.check_error == True):
+          # if stage is not completed, don't set the FINISHED status.
           return
 
       stage_obj = self.current_stages.get_stage(stage)
