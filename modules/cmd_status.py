@@ -9,5 +9,6 @@ class Status(Enum):
   NEW = 'new'
   FINISHED = 'finished'
   IN_PROCESS = 'in process'
+  PREPARE = 'prepare'
   FAILED = 'failed'
   

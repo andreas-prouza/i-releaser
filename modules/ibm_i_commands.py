@@ -147,7 +147,7 @@ class IBM_i_commands:
 
   def run_qsys_cmd(self, cmd: str, action: da.Deploy_Action) -> Run_History:
     
-    cmd = f'(cl -v "{cmd}"; cl -v "dspjoblog")'
+    cmd = f'(cl -vS "{cmd}"; cl -v "dspjoblog")'
     return self.run_pase_cmd(cmd, action)
     
 
@@ -168,7 +168,7 @@ class IBM_i_commands:
 
       run_history.status = Cmd_Status.FINISHED
 
-      if s.returncode != 0:
+      if s.returncode != 0 or stderr != '':
         run_history.status = Cmd_Status.FAILED
 
       return run_history

@@ -59,7 +59,7 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
     for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
         includes = ""
         for obj in meta_file.deploy_objects.get_obj_list_by_lib(lib["lib"]):
-            includes += f" (*INCLUDE {obj.name} {obj.type})"
+            includes += f" (*INCLUDE {obj.name} *{obj.type})"
 
             if (
                 clear_files is True

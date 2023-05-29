@@ -5,6 +5,8 @@ from etc import constants
 from modules import meta_file as mf
 from modules import deploy_action as da
 
+from modules.cmd_status import Status as Cmd_Status
+
 
 def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage: str, processing_step: str) -> None:
     """
@@ -24,5 +26,5 @@ def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage: str, proces
             SELECT({includes}) DTACPR(*HIGH)", 
             environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage)
 
-    meta_file.current_stages.get_stage(stage).set_status('prepare')
+    meta_file.current_stages.get_stage(stage).set_status(Cmd_Status.PREPARE)
     meta_file.write_meta_file()

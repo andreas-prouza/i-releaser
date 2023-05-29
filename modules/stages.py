@@ -7,7 +7,7 @@ from pydantic import validate_arguments
 
 from etc import constants
 from modules import workflow as wf
-
+from modules.cmd_status import Status as Cmd_Status
 
 
 
@@ -25,7 +25,7 @@ class Stage:
     self.lib_replacement_necessary = None
     self.lib_mapping = []
     self.processing_steps = []
-    self.status = None
+    self.status = Cmd_Status.NEW
     self.create_time = str(datetime.datetime.now())
 #    self.create_time = '2023-03-04 14:31:30.404775'
     self.update_time = None
@@ -40,9 +40,13 @@ class Stage:
         setattr(self, k, v)
 
 
-  def set_status(self, status: str):
+  def set_status(self, status, update_time=True):
+
+    if (type(status) == str):
+      status = Cmd_Status(status)
     self.status = status
-    self.update_time = str(datetime.datetime.now())
+    if update_time:
+      self.update_time = str(datetime.datetime.now())
 #    self.update_time = '2023-03-04 14:31:30.404775'
 
 
@@ -80,6 +84,8 @@ class Stage:
     for k, v in dict.items():
       setattr(stage, k, v)
 
+    stage.set_status(stage.status, False)
+    
     stage.next_stages = Stage_List_list(workflow, stage.next_stages)
 
     return stage
@@ -97,7 +103,7 @@ class Stage:
       'processing_steps' : self.processing_steps,
       'lib_replacement_necessary' : self.lib_replacement_necessary,
       'lib_mapping' : self.lib_mapping,
-      'status' : self.status,
+      'status' : self.status.value,
       'create_time' : self.create_time,
       'update_time' : self.update_time,
     }

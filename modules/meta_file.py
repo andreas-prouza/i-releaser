@@ -36,7 +36,7 @@ class Meta_file_status(Enum):
 class Meta_File:
 
 
-    @validate_arguments
+#    @validate_arguments
     def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
@@ -157,7 +157,7 @@ class Meta_File:
       """
 
       if self.status != Meta_file_status.READY:
-        raise Exception(f"Meta file is not in status 'ready', but in status '{self.status}'!")
+        raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
 
       cmd = ibm_i_commands.IBM_i_commands(self)
 
