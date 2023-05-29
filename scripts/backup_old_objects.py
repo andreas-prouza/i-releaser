@@ -20,7 +20,7 @@ def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage: str, proces
     for lib in meta_file.deploy_objects.get_lib_list_from_prod():
 
         for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib):
-            includes += f" (*INCLUDE {obj.name} {obj.type})"
+            includes += f" (*INCLUDE {obj.name} *{obj.type})"
 
         actions.add_action_cmd(f"SAVLIB LIB({lib}) DEV(*SAVF) SAVF({meta_file.backup_deploy_lib}/{lib}) \
             SELECT({includes}) DTACPR(*HIGH)", 
