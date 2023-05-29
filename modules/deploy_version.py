@@ -36,14 +36,14 @@ class Deploy_Version:
 
       versions_config['deployments'].append({
         'version': version,
-        'status': status,
+        'status': status.value,
         'timestamp': str(datetime.datetime.now())
       })
 
       versions_config['deployments'] = sorted(versions_config['deployments'], key=lambda d: d['version'], reverse=True)
 
       with open(version_file, 'w') as file:
-          json.dump(versions_config, file, indent=2)
+          json.dump(versions_config, file, default=str, indent=2)
 
       return version
 
@@ -61,7 +61,7 @@ class Deploy_Version:
 
       for d in deployments:
         if d['version'] == version:
-          d['status'] = status
+          d['status'] = status.value
           d['meta_file'] = meta_file_name
           d['timestamp'] = str(datetime.datetime.now())
           break
@@ -71,7 +71,7 @@ class Deploy_Version:
           raise Exception(f"Because version {d['version']} is still in status {status}, version {version} can't be updated to status {status}")
 
       with open(version_file, 'w') as file:
-          json.dump(versions_config, file, indent=2)
+          json.dump(versions_config, file, default=str, indent=2)
 
 
 

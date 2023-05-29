@@ -7,7 +7,7 @@ import re
 import os
 import sys
 
-from enum import StrEnum
+from enum import Enum
 
 from pydantic import validate_arguments
 
@@ -21,7 +21,7 @@ from modules import deploy_version as dv
 from modules.cmd_status import Status as Cmd_Status
 
 
-class Meta_file_status(StrEnum):
+class Meta_file_status(Enum):
 
   NEW = 'new'
   READY = 'ready'
@@ -37,18 +37,20 @@ class Meta_File:
 
 
     @validate_arguments
-    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :str='new', deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
+    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
 
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
       self.project = project
+      self.file_name = file_name
+      self.deploy_version = deploy_version
 
-      if imported_from_dict == False:
-        self.set_status(status)
-      else:
-        self.status = Meta_file_status(status)
+#      if imported_from_dict == False:
+      self.set_status(status, False)
+#      else:
+#        self.status = Meta_file_status(status)
         
       self.update_time = update_time
       self.create_time = create_time
@@ -76,11 +78,9 @@ class Meta_File:
         commands = ibm_i_commands.IBM_i_commands(self)
         commands.set_cmds('START')
 
-      self.deploy_version = deploy_version
       if deploy_version == None:
         self.deploy_version = dv.Deploy_Version.get_next_deploy_version(project=self.project, status=self.status)
 
-      self.file_name = file_name
       if self.file_name == None:
         self.file_name = constants.C_DEPLOY_META_FILE
       self.file_name = self.file_name.format(**self.__dict__)
@@ -96,10 +96,14 @@ class Meta_File:
 
 
     @validate_arguments
-    def set_status(self, status : str):
-      self.status = Meta_file_status(status)
+    def set_status(self, status, update_meta_file=True):
 
-      if self.status is not Meta_file_status.NEW:
+      if type(status) == str:
+        status = Meta_file_status(status)
+
+      self.status = status
+
+      if update_meta_file and self.status is not Meta_file_status.NEW:
         dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
         self.write_meta_file()
 
@@ -319,7 +323,7 @@ class Meta_File:
                          'file_name':       self.file_name,
                          'create_time':     self.create_time,
                          'update_time':     self.update_time,
-                         'status':          self.status,
+                         'status':          self.status.value,
                          'completed_stages':  self.completed_stages.get_dict(),
                          'current_stages':  self.current_stages.get_dict()
                         }
