@@ -76,7 +76,7 @@ class Deploy_Version:
 
 
     @validate_arguments
-    def get_deployment(project:str, version : int) -> {}:
+    def get_deployment(project:str, version : int):
 
       logging.debug(f"Get deployment {version=}, {project=}") 
       logging.debug(f"{constants.C_DEPLOY_VERSION=}") 
