@@ -161,15 +161,15 @@ class Meta_File:
 
       if self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
-
-      self.set_status(Meta_file_status.IN_PROCESS)
-
+      
       cmd = ibm_i_commands.IBM_i_commands(self)
 
       stage_obj = self.current_stages.get_stage(stage)
       
       if processing_step is not None and processing_step not in stage_obj.processing_steps:
         raise Exception(f"Processing step '{processing_step}' is not defined in stage '{stage}'. Defined steps are: {stage_obj.processing_steps}")
+
+      self.set_status(Meta_file_status.IN_PROCESS)
 
       if processing_step is not None:
         cmd.run_commands(stage=stage, processing_step=processing_step)
@@ -178,10 +178,11 @@ class Meta_File:
         for step in stage_obj.processing_steps:
           cmd.run_commands(stage=stage, processing_step=step)
 
-      self.check_stage_finish(stage)
-
       self.set_status(Meta_file_status.READY)
-      
+
+      self.check_stage_finish(stage)
+      self.check_deployment_finish()
+
 
 
 
@@ -198,6 +199,16 @@ class Meta_File:
 
       logging.info(f"Stage {stage} has been finished. Setting next stage(s)")
       self.set_next_stage(stage)
+
+
+
+
+    @validate_arguments
+    def check_deployment_finish(self) -> None:
+
+      if len(self.current_stages) == 0:
+        logging.info(f"Deployment {self.file_name} has been finished.")
+        self.set_status(Meta_file_status.FINISHED)
 
 
 
