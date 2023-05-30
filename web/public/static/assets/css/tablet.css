@@ -1,0 +1,134 @@
+section.meta-area,
+section.header
+{
+	display:block;
+}
+section.meta-area-mobile
+{
+	display:none;
+}
+
+.navbar
+{
+	border-radius:0px !important;
+}
+
+nav.nav-header ul.nav-main
+{
+	margin:0;
+	padding:0;
+	list-style-type: none;
+	height:100%;
+}
+
+nav.nav-header ul.nav-main li
+{
+	display:block;
+	float:left;
+	padding:0px 16px;
+	height:40px;
+}
+
+nav.nav-header ul.nav-main li:before
+{
+	content: "";
+	display: inline-block;
+	height: 100%;
+	vertical-align: middle;
+}
+
+nav.nav-header ul.nav-main li a
+{
+	color:#fff;
+}
+
+#booking_form_container div.confirmation-template-wrapper .dl-horizontal dt
+{
+	width:240px;
+}
+
+#booking_form_container div.confirmation-template-wrapper .dl-horizontal dd
+{
+	margin-left:260px;
+}
+
+section.navigation .logo
+{
+	display:none;
+}
+
+div.section-filter
+{
+	position:static;
+	left:auto;
+	top:auto;
+	background:transparent;
+	width:auto;
+	z-index:auto;
+	padding:0;
+	height:initial !important;
+	overflow:visible;
+	box-shadow:none;
+}
+
+div.section-filter.clicked
+{
+	box-shadow:none;
+}
+
+div.backdrop-mobile-filter
+{
+	display:none;
+}
+
+section.content
+{
+	padding: 23px 0px 125px;
+}
+
+section.navigation
+{
+	background: #37424A;
+	margin-bottom: 0px;
+}
+
+[data-view="cart"] .cartTotalCostsContainer {
+	padding-right: 30px;
+}
+
+[data-view="cart"] .shippingInfo {
+	padding-right: 15px;
+}
+
+[data-view="cart"] .cartButtonsContainer {
+	margin: 0 -15px;
+}
+
+[data-view="cart"] .proceedButtonTopContainer {
+	position: relative;
+	top: 0;
+	right: 0;
+}
+
+.cartContainer {
+	margin-top: 0;
+}
+
+[data-view="checkoutForm"] .nav-steps a {
+	text-align: left;
+}
+
+[data-view="checkoutForm"] .nav-steps a span.step i{
+	left:-8px;
+}
+
+[data-view="checkoutForm"] .overviewSucceedButtonTopContainer {
+	text-align: right;
+}
+
+[data-view="checkoutForm"] .overviewSucceedButtonBottomContainer {
+	text-align: right;
+}
+
+
+

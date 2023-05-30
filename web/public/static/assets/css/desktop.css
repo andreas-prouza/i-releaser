@@ -1,0 +1,9 @@
+div.alert-filters a[data-action="reset-all-filters"] span:last-child
+{
+    padding:0 10px;
+}
+
+.pagination
+{
+    float:right;
+}

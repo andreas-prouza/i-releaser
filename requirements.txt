@@ -1,2 +1,12 @@
 coverage
 pydantic
+
+gunicorn >= 20.0.4
+DBUtils >= 2.0
+
+pyodbc
+flask-cors
+gunicorn
+Flask-Session
+Flask-FontAwesome
+Flask-Minify
