@@ -1,0 +1,92 @@
+#!/bin/bash
+
+FILE=/QOpenSys/run/webapp.sock
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+#SCRIPT_DIR=$SCRIPT_DIR/webapp
+
+
+PID=$SCRIPT_DIR/etc/webapp.pid
+LOG_FILE=$SCRIPT_DIR/log/webapp
+LOG_LEVEL='debug'
+PROCESS_COUNT=3
+SOCKET_FILE=/QOpenSys/run/webapp.sock
+
+
+#START_CMD=$SCRIPT_DIR/venv/bin/python $SCRIPT_DIR/venv/bin/gunicorn --reload -p $PID --log-file $LOG_FILE --log-level $LOG_LEVEL --workers $PROCESS_COUNT --bind unix:$SOCKET_FILE wsgi:app &
+#START_CMD=$SCRIPT_DIR/../.venv/bin/python $SCRIPT_DIR/../.venv/bin/gunicorn --reload -p $PID --log-file $LOG_FILE --log-level $LOG_LEVEL --workers $PROCESS_COUNT --bind :7000 wsgi:app &
+# START_CMD=$SCRIPT_DIR/venv/bin/gunicorn -b :7000  webapp.wsgi
+# START_CMD=$SCRIPT_DIR/venv/bin/python $SCRIPT_DIR/venv/bin/gunicorn --workers 3 --bind unix:/QOpenSys/run/webapp.sock wsgi:app &
+
+
+start() {
+    if [ -f $PID ]; then
+        echo "Process already exist"
+        echo "1. Check if process is running:"
+        echo "    ps -ef | grep gunicorn"
+        echo "2. If no precess is running check if socket file exists and remove it:"
+        echo "    rm $PID"
+
+    else
+        echo "Activate virtual environment: $SCRIPT_DIR/venv/bin/activate"
+
+        source $SCRIPT_DIR/../.venv/bin/activate
+        echo "Start service"
+        $SCRIPT_DIR/../.venv/bin/python $SCRIPT_DIR/../.venv/bin/gunicorn --reload -p $PID --log-file $LOG_FILE --log-level $LOG_LEVEL --workers $PROCESS_COUNT --bind :5000 wsgi:app &
+    fi
+    
+    sleep 1
+    status
+}
+
+
+stop() {
+    echo "Killing process `cat $PID`"
+    kill `cat $PID`
+    echo "remove $PID"
+    rm $PID
+
+    status
+}
+
+
+status() {
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    NC='\033[0m' # No Color
+    White='\033[0;37m'
+    On_Green='\033[42m'
+    IGreen='\033[0;92m'
+
+    RUNNING='\033[102;97m'
+    STOPPED='\033[101;31m'
+
+    if [ -f $PID ]; then
+        echo -e "Service is ${RUNNING}running${NC} ..."
+        ps -ef | grep gunicorn
+
+    else
+        echo -e "Service ${STOPPED}stopped${NC}"
+    fi
+}
+
+
+case "$1" in 
+    start)
+       start
+       ;;
+    stop)
+       stop
+       ;;
+    restart)
+       stop
+       start
+       ;;
+    status)
+       # code to check status of app comes here 
+       # example: status program_name
+       status
+       ;;
+    *)
+       echo "Usage: $0 {start|stop|status|restart}"
+esac

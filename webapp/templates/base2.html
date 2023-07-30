@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
+
+-->
+
+<!-- { { fontawesome_html() } } -->
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>{% block title %}{% endblock %}</title>
+
+</head>
+
+<body>
+
+    <div class="wrapper">
+        <!-- Sidebar  -->
+
+        <!-- Page Content  -->
+        <div id="content">
+
+            <form name="main" method="post">
+                <input type="hidden" name="action" id="action" value="{{ action }}">
+
+                {% block content %}
+                {% endblock %}
+            </form>
+        </div>
+
+    </div>
+    <!-- Dark Overlay element -->
+    <div class="overlay"></div>
+
+
+</body>
+
+</html>

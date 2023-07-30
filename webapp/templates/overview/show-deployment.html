@@ -1,0 +1,266 @@
+{% extends 'base2.html' %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+<style>
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 90px;
+    height: 34px;
+  }
+  
+  .switch input {display:none;}
+  
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ca2222;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+  
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+  
+  input:checked + .slider {
+    background-color: #2ab934;
+  }
+  
+  input:focus + .slider {
+    box-shadow: 0 0 1px #2196F3;
+  }
+  
+  input:checked + .slider:before {
+    -webkit-transform: translateX(55px);
+    -ms-transform: translateX(55px);
+    transform: translateX(55px);
+  }
+  
+  /*------ ADDED CSS ---------*/
+  .on
+  {
+    display: none;
+  }
+  
+  .on, .off
+  {
+    color: white;
+    position: absolute;
+    transform: translate(-50%,-50%);
+    top: 50%;
+    left: 50%;
+    font-size: 10px;
+    font-family: Verdana, sans-serif;
+  }
+  
+  input:checked+ .slider .on
+  {display: block;}
+  
+  input:checked + .slider .off
+  {display: none;}
+  
+  /*--------- END --------*/
+  
+  /* Rounded sliders */
+  .slider.round {
+    border-radius: 34px;
+  }
+  
+  .slider.round:before {
+    border-radius: 50%;}
+</style>
+
+<div class="box box-info">
+
+    <form>
+        <input type=button onClick="location.href='/'" value='Back to overview'>
+    </form>
+
+    <!-- /.box-header -->
+    <div>
+        <h2>Projekt: {{ deployment_dict['general']['project'] }} | Version: {{ deployment_dict['general']['deploy_version'] }} </h2>
+        <h3>Status: {{ deployment_dict['general']['status'] }} </h3>
+    </div>
+    <table>
+        <tr>
+            <th>Created</th><td> {{ deployment_dict['general']['create_time'] }}</td>
+        </tr>
+        <tr>
+            <th>Last update</th><td> {{ deployment_dict['general']['update_time'] }}</td>
+        </tr>
+        <tr>
+            <th>File name</th><td>{{ deployment_dict['general']['file_name'] }}</td>
+        </tr>
+    </table>
+
+
+    <hr>
+
+    <h3>Current stages</h3>
+    <table>
+        <thead>
+            <th>Name</th><th>Status</th><th>Last update</th>
+        </thead>
+        {% for stage in deployment_dict['general']['current_stages'] %}
+        <tr>
+            <td>{{ stage['name'] }}</td>
+            <td>{{ stage['status'] }}</td>
+            <td>{{ stage['update_time'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <hr>
+
+    <br/>
+    <details><summary><b>Completed stages</b></summary>
+    <table>
+        <thead>
+            <th>Name</th><th>Status</th><th>Last update</th>
+        </thead>
+        {% for stage in deployment_dict['general']['completed_stages'] %}
+        <tr>
+            <td>{{ stage['name'] }}</td>
+            <td>{{ stage['status'] }}</td>
+            <td>{{ stage['update_time'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    </details>
+
+    <hr>
+
+    <h3>Deployment actions</h3>
+    <table>
+        {% for stage, cmds in deployment_dict['deploy_cmds'].items() %}
+        <tr>
+            <td><details>
+                <summary>{{ stage }}</summary>
+                <table>
+                    <thead>
+                        <th>Sequence</th>
+                        <th>Status</th>
+                        <th>Check error</th>
+                        <th>Command</th>
+                        <th>Logs</th>
+                    </thead>
+                    {% for cmd in cmds %}
+                    <tr>
+                        <td>{{ cmd['sequence'] }}</td>
+                        <td>{{ cmd['status'] }}</td>
+                        <td>{{ cmd['check_error'] }}
+                            <label class="switch">
+                                <input type="checkbox" id="togBtn" {% if cmd['check_error'] %}checked{% endif %} onchange="alert('changed to' + this.checked)">
+                                <div class="slider round">
+                                 <!--ADDED HTML -->
+                                 <span class="on">ON</span>
+                                 <span class="off">OFF</span>
+                                 <!--END-->
+                                </div>
+                            </label>
+                        </td>
+                        <td>{% if cmd['cmd'] != '' %}
+                                {% if cmd['cmd']|length > 30 %}
+                                    <details><summary>{{ cmd['cmd'][:30] }} ...</summary><pre>{{ cmd['cmd'] }}</pre></details>
+                                {% else %}
+                                    {{ cmd['cmd'] }}
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <table>
+                                <thead>
+                                    <th>Status</th>
+                                    <th>Standard-Log</th>
+                                    <th>Error-Log</th>
+                                </thead>
+                            {% for history in cmd['run_history'] %}
+                                <tr>
+                                    <td>{{ history['status'] }}</td>
+                                    <td>{% if history['stdout'] != '' %}<details><summary>Show log</summary><pre class="prettyprint ">{{ history['stdout'] }}</pre></details>{% endif %}</td>
+                                    <td>{% if history['stderr'] != '' %}<details><summary>Show log</summary><pre class="prettyprint ">{{ history['stderr'] }}</pre></details>{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                            </table>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+              </details>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+
+    <hr>
+
+    <h3>Objects to deploy</h3>
+    <table>
+        <thead>
+            <th>Production Lib</th><th>Name</th><th>Type</th><th>Attribute</th><th>Status</th>
+        </thead>
+        {% for object in deployment_dict['objects'] %}
+        <tr>
+            <td>{{ object['obj_prod_lib'] }}</td>
+            <td>{{ object['obj_name'] }}</td>
+            <td>{{ object['obj_type'] }}</td>
+            <td>{{ object['obj_attribute'] }}</td>
+            <td>{{ object['obj_status'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <hr>
+
+
+    <h3>Raw JSON file</h3>
+
+    <pre class="prettyprint lang-js">
+        {{ deployment_json }}
+    </pre>
+</div>
+
+
+<script type="text/javascript">
+
+    (function(d) {
+
+stylizePreElements = function() {
+  var preElements = document.getElementsByTagName("pre");
+  for (i = 0; i < preElements.length; ++i) {
+    var preElement = preElements[i];
+    preElement.className += "prettyprint";
+  }
+};
+
+injectPrettifyScript = function() {
+  // https://github.com/googlearchive/code-prettify
+  var scriptElement = document.createElement('script');
+  scriptElement.setAttribute("src", "https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js");
+  document.head.appendChild(scriptElement);
+};
+
+stylizePreElements();
+injectPrettifyScript();
+
+})(document)
+</script>
+
+{% endblock %}

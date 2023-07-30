@@ -1,0 +1,463 @@
+{
+  "versions": {
+    "last_deploy_version": 76
+  },
+  "deployments": [
+    {
+      "version": 76,
+      "status": "new",
+      "timestamp": "2023-05-30 10:14:37.147786",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 75,
+      "status": "in_process",
+      "timestamp": "2023-05-30 10:14:36.840093",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-30/75/deployment_75.json"
+    },
+    {
+      "version": 74,
+      "status": "ready",
+      "timestamp": "2023-05-30 10:14:35.825748",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 73,
+      "status": "new",
+      "timestamp": "2023-05-30 10:13:33.375436",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 72,
+      "status": "in_process",
+      "timestamp": "2023-05-30 10:13:33.081423",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-30/72/deployment_72.json"
+    },
+    {
+      "version": 71,
+      "status": "ready",
+      "timestamp": "2023-05-30 10:13:32.168911",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 70,
+      "status": "new",
+      "timestamp": "2023-05-29 22:11:09.290777",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 69,
+      "status": "ready",
+      "timestamp": "2023-05-29 22:11:08.685850",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/69/deployment_69.json"
+    },
+    {
+      "version": 68,
+      "status": "ready",
+      "timestamp": "2023-05-29 22:11:07.442911",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 67,
+      "status": "new",
+      "timestamp": "2023-05-29 21:52:30.725904",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 66,
+      "status": "ready",
+      "timestamp": "2023-05-29 21:52:30.285812",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/66/deployment_66.json"
+    },
+    {
+      "version": 65,
+      "status": "ready",
+      "timestamp": "2023-05-29 21:52:29.193324",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 64,
+      "status": "new",
+      "timestamp": "2023-05-29 21:48:15.414365",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 63,
+      "status": "ready",
+      "timestamp": "2023-05-29 21:45:24.393362",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/63/deployment_63.json"
+    },
+    {
+      "version": 62,
+      "status": "new",
+      "timestamp": "2023-05-29 21:44:51.553879",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 61,
+      "status": "ready",
+      "timestamp": "2023-05-29 21:44:50.816562",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/61/deployment_61.json"
+    },
+    {
+      "version": 60,
+      "status": "ready",
+      "timestamp": "2023-05-29 21:44:48.349697",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 59,
+      "status": "new",
+      "timestamp": "2023-05-29 10:13:58.515132",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 58,
+      "status": "ready",
+      "timestamp": "2023-05-29 10:13:58.011812",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_58.json"
+    },
+    {
+      "version": 57,
+      "status": "ready",
+      "timestamp": "2023-05-29 10:13:56.161859",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 56,
+      "status": "new",
+      "timestamp": "2023-05-29 10:12:32.780652",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 55,
+      "status": "ready",
+      "timestamp": "2023-05-29 10:12:32.162368",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_55.json"
+    },
+    {
+      "version": 54,
+      "status": "ready",
+      "timestamp": "2023-05-29 10:12:30.932068",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 53,
+      "status": "new",
+      "timestamp": "2023-05-29 10:11:14.339829",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 52,
+      "status": "ready",
+      "timestamp": "2023-05-29 10:11:13.877879",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_52.json"
+    },
+    {
+      "version": 51,
+      "status": "ready",
+      "timestamp": "2023-05-29 10:11:12.902003",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 50,
+      "status": "new",
+      "timestamp": "2023-05-29 10:10:36.923360",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 49,
+      "status": "new",
+      "timestamp": "2023-05-29 10:10:36.373800",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_49.json"
+    },
+    {
+      "version": 48,
+      "status": "new",
+      "timestamp": "2023-05-29 10:10:35.693919",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 47,
+      "status": "new",
+      "timestamp": "2023-05-29 09:29:37.367080",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 46,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:29:36.838483",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_46.json"
+    },
+    {
+      "version": 45,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:29:35.459007",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 44,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:25:10.413989",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_44.json"
+    },
+    {
+      "version": 43,
+      "status": "new",
+      "timestamp": "2023-05-29 09:21:56.042833",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 42,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:21:55.539033",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_42.json"
+    },
+    {
+      "version": 41,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:21:54.036891",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 40,
+      "status": "new",
+      "timestamp": "2023-05-29 09:20:30.544893",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 39,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:20:29.839301",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_39.json"
+    },
+    {
+      "version": 38,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:20:29.128621",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 37,
+      "status": "new",
+      "timestamp": "2023-05-29 09:12:42.672079",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 36,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:12:41.760514",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_36.json"
+    },
+    {
+      "version": 35,
+      "status": "ready",
+      "timestamp": "2023-05-29 09:12:41.108436",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 34,
+      "status": "new",
+      "timestamp": "2023-05-29 09:11:20.433267",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 33,
+      "status": "new",
+      "timestamp": "2023-05-29 09:11:20.047053",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_33.json"
+    },
+    {
+      "version": 32,
+      "status": "new",
+      "timestamp": "2023-05-29 09:11:19.271791",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 31,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-29 09:08:03.877177",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 30,
+      "status": "Meta_file_status.READY",
+      "timestamp": "2023-05-29 09:08:03.189625",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_30.json"
+    },
+    {
+      "version": 29,
+      "status": "Meta_file_status.READY",
+      "timestamp": "2023-05-29 09:08:02.588429",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 28,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-29 08:53:00.110709",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 27,
+      "status": "Meta_file_status.READY",
+      "timestamp": "2023-05-29 08:52:58.904808",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-29/deployment_27.json"
+    },
+    {
+      "version": 26,
+      "status": "Meta_file_status.READY",
+      "timestamp": "2023-05-29 08:52:56.588269",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 25,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:13:30.139708",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 24,
+      "status": "Meta_file_status.READY",
+      "timestamp": "2023-05-28 10:13:29.730929",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-28/deployment_24.json"
+    },
+    {
+      "version": 23,
+      "status": "Meta_file_status.READY",
+      "timestamp": "2023-05-28 10:13:29.152958",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 22,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:11:22.724319",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 21,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:11:22.474317",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-28/deployment_21.json"
+    },
+    {
+      "version": 20,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:11:21.984052",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 19,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:10:10.695422",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 18,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:10:10.444818",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-28/deployment_18.json"
+    },
+    {
+      "version": 17,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:10:10.043184",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 16,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:08:59.559496",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 15,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:08:59.301858",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-28/deployment_15.json"
+    },
+    {
+      "version": 14,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:08:58.852763",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 13,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:07:35.389861",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 12,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:07:35.108216",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-28/deployment_12.json"
+    },
+    {
+      "version": 11,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 10:07:34.593473",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 10,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 09:24:52.480055",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 9,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 09:24:52.000116",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-28/deployment_9.json"
+    },
+    {
+      "version": 8,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 09:24:51.334939",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 7,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 09:23:57.956229",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 6,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 09:21:20.033284",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 5,
+      "status": "Meta_file_status.READY",
+      "timestamp": "2023-05-28 09:21:19.310650",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-28/deployment_5.json"
+    },
+    {
+      "version": 4,
+      "status": "Meta_file_status.READY",
+      "timestamp": "2023-05-28 09:21:18.507725",
+      "meta_file": "unit-tests/output/test_action_file_case_2.json"
+    },
+    {
+      "version": 3,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 09:19:54.313786",
+      "meta_file": "unit-tests/output/test_meta_file_case_1.json"
+    },
+    {
+      "version": 2,
+      "status": "Meta_file_status.NEW",
+      "timestamp": "2023-05-28 09:19:53.722284",
+      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/meta/2023-05-28/deployment_2.json"
+    },
+    {
+      "version": 1,
+      "status": "ready",
+      "timestamp": "2023-05-30 10:14:35.652507",
+      "meta_file": "unit-tests/output/test_action_file_case_1.json"
+    }
+  ]
+}

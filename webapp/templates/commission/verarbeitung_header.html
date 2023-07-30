@@ -1,0 +1,52 @@
+{% extends 'base2.html' %}
+
+{% block title %}
+Pickliste
+{% endblock %}
+
+{% block content %}
+
+<style>
+
+    .active {
+        /* filter: invert(10%); */
+        border: 5px solid;
+        border-color: black !important;
+    }
+
+    .btn-box1 {
+        background-color: #90caf9;
+        border-color: #5d99c6;
+    }
+    .btn-box2 {
+        background-color: #a5d6a7;
+        border-color: #75a478;
+    }
+    .btn-box3 {
+        background-color: #e6ee9c;
+        border-color: #b3bc6d;
+    }
+    .btn-box4 {
+        background-color: #bcaaa4;
+        border-color: #8c7b75;
+    }
+
+</style>
+
+
+    <input name="current_box" id="current_box" type="hidden" value="{{ current_box }}" />
+    <table>
+        <tr>
+            {% for box in box_numbers %} <!-- {{ loop.index }} -->
+                <td><button type="button" id="box_{{ box }}" class="boxes btn btn-box{{ loop.index }}" onClick="choose_box(event, '{{ box }}');">
+                        {{ box }}<br>
+                        {% if box in box_det %}{{ box_det[box]['scaned'] }} / {{ box_det[box]['finished'] }}{% endif %}
+                    </button></td>
+            {% endfor %}
+        </tr>
+    </table>
+    {% block content2 %}
+    {% endblock %}
+<script type="text/javascript">
+</script>
+{% endblock %}

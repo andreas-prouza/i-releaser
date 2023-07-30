@@ -88,9 +88,9 @@ class Meta_File:
       self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
 
-      dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
-
-      self.write_meta_file(False)
+      if not imported_from_dict:
+        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
+        self.write_meta_file(False)
 
 
 

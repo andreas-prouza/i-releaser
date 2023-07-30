@@ -1,9 +1,9 @@
-C_LOCAL_BASE_DIR = '/home/andreas/projekte/deployment'
+C_LOCAL_BASE_DIR = '/home/andreas/projekt/ibm-i-deployment'
 
-C_DEPLOY_VERSION = 'etc/deploy_version_{project}.json'
-C_WORKFLOW = 'etc/workflow.json'
-C_OBJECT_COMMANDS = 'etc/object_commands.json'
-C_STAGE_COMMANDS = 'etc/stage_commands.json'
+C_DEPLOY_VERSION = f'{C_LOCAL_BASE_DIR}/etc/deploy_version_{{project}}.json'
+C_WORKFLOW = f'{C_LOCAL_BASE_DIR}/etc/workflow.json'
+C_OBJECT_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/object_commands.json'
+C_STAGE_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/stage_commands.json'
 
 C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta"
 C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}"

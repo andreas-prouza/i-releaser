@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+{{ fontawesome_html() }}
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %}</title>
+    <script
+            src="https://code.jquery.com/jquery-3.3.1.js"
+            integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+            crossorigin="anonymous"></script>
+    <link href="{% static 'assets/bootstrap/css/bootstrap.css' %}" rel="stylesheet">
+    <script src="{% static 'assets/bootstrap/js/bootstrap.bundle.js' %}"></script>
+
+    <link href="{% static 'assets/jquery/jquery-ui.css' %}" rel="stylesheet">
+    <script src="{% static 'assets/jquery/jquery-ui.js' %}"></script>
+
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
+
+    {% fontawesome_5_static %}
+
+    <script src="{% static 'AdminLTE/js/adminlte.min.js' %}"></script>
+    <!--link rel="stylesheet" href="{% static 'AdminLTE/css/adminlte.min.css' %}"-->
+    <link rel="stylesheet" href="{% static 'AdminLTE/css/adminlte.css' %}">
+
+
+
+
+
+</head>
+<body class="skin-blue sidebar-mini sidebar-collapse">
+
+
+
+<div class="wrapper">
+
+    <!-- Main Header -->
+    <header class="main-header">
+
+        <!-- Logo -->
+        <a href="" class="logo">
+            <!-- mini logo for sidebar mini 50x50 pixels -->
+            <span class="logo-mini"><b>WH</b></span>
+            <!-- logo for regular state and mobile devices -->
+            <span class="logo-lg"><b>Warehouse</b></span>
+        </a>
+
+        <!-- Header Navbar -->
+        <nav class="navbar navbar-static-top" role="navigation">
+            <a href="#" class="sidebar-toggle" data-toggle="push-menu" role="button">
+                <span class="sr-only">Toggle navigation</span>
+            </a>
+        </nav>
+    </header><!-- Left side column. contains the logo and sidebar -->
+
+    <!-- Left side column. contains the logo and sidebar -->
+    <aside class="main-sidebar">
+        <!-- sidebar: style can be found in sidebar.less -->
+        <section class="sidebar">
+            <ul class="sidebar-menu" data-widget="tree">
+                <li class="header">MAIN NAVIGATION</li>
+                <li class="active treeview menu-open">
+                    <a href="#">
+                        <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+                        <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+            </span>
+                    </a>
+                    <ul class="treeview-menu">
+                        <li><a href="index.html"><i class="fa fa-circle-o"></i> Dashboard v1</a></li>
+                        <li class="active"><a href="index2.html"><i class="fa fa-circle-o"></i> Dashboard v2</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </section>
+    </aside>
+
+    <div class="content-wrapper">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function(){});
+
+
+    (function(d) {
+
+stylizePreElements = function() {
+  var preElements = document.getElementsByTagName("pre");
+  for (i = 0; i < preElements.length; ++i) {
+    var preElement = preElements[i];
+    preElement.className += "prettyprint";
+  }
+};
+
+injectPrettifyScript = function() {
+  var scriptElement = document.createElement('script');
+  scriptElement.setAttribute("src", "https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js");
+  document.head.appendChild(scriptElement);
+};
+
+stylizePreElements();
+injectPrettifyScript();
+
+})(document)
+</script>
+
+<script type="text/javascript">
+        $(document).ready(function () {
+            if (screen.width <= 1600) {
+                $('[data-toggle="push-menu"]').pushMenu('toggle')
+            }
+        });
+</script>
+
+</body>
+</html>

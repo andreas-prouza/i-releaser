@@ -24,9 +24,7 @@ class Deploy_Version:
                           ]
                         }
 
-      if os.path.isfile(version_file):
-        with open(version_file, "r") as file:
-            versions_config = json.load(file)
+      versions_config = Deploy_Version.get_deployments(version_file)
 
       version = versions_config['versions']['last_deploy_version'] + 1
       versions_config['versions']['last_deploy_version'] = version
@@ -46,6 +44,13 @@ class Deploy_Version:
           json.dump(versions_config, file, default=str, indent=2)
 
       return version
+
+
+
+    def get_deployments(version_file):
+      if os.path.isfile(version_file):
+        with open(version_file, "r") as file:
+            return json.load(file)
 
 
 

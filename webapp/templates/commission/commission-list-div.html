@@ -1,0 +1,144 @@
+{% extends 'base2.html' %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+
+    <input type="hidden" name="koknrs" id="koknrs" value="">
+
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="box">
+                <nav aria-label="Page navigation example">
+                    <ul class="pagination">
+    
+                        <button style="margin-left:3.5em;display:none" type="submit"
+                            onclick="$('#action').val('start_commission')"
+                            class="btn btn-outline-success btn-rounded waves-effect" id="btnStartKom">
+                            <i class="fas fa-cogs pr-2" aria-hidden="true"></i>Kommissionierung starten</button>
+                        {% if in_process | length > 0 %}
+                            <button style="margin-left:3.5em;" type="submit"
+                                onclick="$('#action').val('process_commission')"
+                                class="btn btn-outline-warning btn-rounded waves-effect">
+                                <i class="fas fa-cogs pr-2" aria-hidden="true"></i>Kommissionierung forsetzen</button>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            <!-- /.box -->
+        </div>
+    </div>
+    
+    
+    <div class="box box-info">
+        {% if error_text is not none %}
+        <div class="headline text-danger">{{error_text}}</div>
+        {% endif %}
+        <!-- /.box-header -->
+        <table id="DataTable" class="table table-striped table-bordered" style="width:100%">
+            <thead>
+                <tr>
+                    <!--- <th>Auswahl</th> -->
+                    {% for key, value in rows[0].items() %}
+                    <th>{{ key }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr id={{ row.KONUM }}>
+                    {% for key, value in row.items() %}
+                    <td style="white-space: nowrap;">{{ value }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <i class="fas fa-home"></i>
+
+<script type="text/javascript">
+    var enabledSettings = []
+    var wsResponse = 
+    {
+        "Artikel":[
+                {"ArtikelNr":1, "Bez":"Text1", "EAN":12345, "Verfuegbar":100, "Lagerort":"L01", 
+                "Scheine":[{"4701":{"Menge":15}}, {"4702":{"Menge":25}}]
+                },
+                {"ArtikelNr":2, "Bez":"Text2", "EAN":23456, "Verfuegbar":200, "Lagerort":"L02", 
+                "Scheine":[{"4703":{"Menge":15}}, {"4704":{"Menge":25}}]
+                }               
+        ]
+    }
+    Array.prototype.remove = function () {
+        var what, a = arguments, L = a.length, ax;
+        while (L && this.length) {
+            what = a[--L];
+            while ((ax = this.indexOf(what)) !== -1) {
+                this.splice(ax, 1);
+            }
+        }
+        return this;
+    };
+
+    $(document).ready(function () {
+
+        var table = $('#DataTable').DataTable({
+            "language": {
+                "url": "http://cdn.datatables.net/plug-ins/505bef35b56/i18n/German.json"
+            },
+            "order": [[0, "desc"], [1, "desc"]],
+            select: {
+                style: 'multi'
+            }
+        });
+
+        table.on('select', function (e, dt, type, indexes) {
+            if (type === 'row') {
+                if (enabledSettings.length + 1 > 4) {
+                    Swal.fire({
+                        icon: 'error',
+                        text: 'Mehr als 4 Auswahlen nicht erlaubt!'
+                    })
+                    table.rows(indexes).deselect();
+                    //e.selected = false;
+                    return;
+                }
+                //var data = table.rows(indexes).data();
+                var selectedItem = table.rows(indexes).data().toArray()[0][1];
+                enabledSettings.push(selectedItem);
+                // do something with the ID of the selected items
+            }
+            $('#koknrs').val(JSON.stringify(enabledSettings));
+            chkStartKomBtn();
+            console.log(enabledSettings);
+        });
+
+        table.on('deselect', function (e, dt, type, indexes) {
+            if (type === 'row') {
+                // var data = table.rows(indexes).data();
+                var selectedItem = table.rows(indexes).data().toArray()[0][1];
+                enabledSettings.remove(selectedItem);
+            }
+            $('#koknrs').val(JSON.stringify(enabledSettings));
+            chkStartKomBtn();
+            console.log(enabledSettings);
+        });
+
+    });
+
+    function chkStartKomBtn() {
+        if (enabledSettings.length > 0) {
+            $("#btnStartKom").show();
+            console.log('start kommisierung button anzeigen')
+        } else {
+            $("#btnStartKom").hide();
+            console.log('start kommisierung button ausblenden')
+        }
+    }
+</script>
+
+{% endblock %}

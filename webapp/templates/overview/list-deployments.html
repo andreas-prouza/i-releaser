@@ -1,0 +1,34 @@
+{% extends 'base2.html' %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+
+<div class="box box-info">
+    {% if error_text is not none %}
+    <div class="headline text-danger">{{error_text}}</div>
+    {% endif %}
+    <!-- /.box-header -->
+    <table id="DataTable" class="table table-striped table-bordered" style="width:100%">
+        <thead>
+            <tr>
+                <!--- <th>Auswahl</th> -->
+                {% for key, value in deployments[0].items() %}
+                <th>{{ key }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in deployments %}
+            <tr>
+                {% for key, value in row.items() %}
+                <td style="white-space: nowrap;"><a href="show_details/{{ value }}">{{ value }}</a></td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
