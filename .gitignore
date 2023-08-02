@@ -3,4 +3,9 @@
 log
 .pytest_cache
 .venv
+venv
+meta/**
 unit-tests/output
+**/flask_session
+**/*.pid
+etc/deploy_version*.json

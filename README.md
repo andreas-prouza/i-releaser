@@ -1,5 +1,6 @@
 - [IBM i deployment](#ibm-i-deployment)
 - [Get started](#get-started)
+  - [SetUp Python project](#setup-python-project)
   - [Create a new deployment request](#create-a-new-deployment-request)
   - [Run stage](#run-stage)
 - [Concept of this framework](#concept-of-this-framework)
@@ -30,9 +31,17 @@ It's very flexible and open and can be adabtet using existing configuration file
 # Get started
 
 Use the `deployment.py` script to:
+* SetUp Python project
 * Create a new deployment
 * Running a stage of a deployment
 
+## SetUp Python project
+
+```sh
+python -m venv --system-site-packages
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
 ## Create a new deployment request
 

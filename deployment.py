@@ -3,7 +3,7 @@ import datetime
 import json
 import logging
 import argparse
-import sys
+import sys, os
 
 
 #################################################################
@@ -46,15 +46,23 @@ if args.set_path is not None:
 
 #################################################################
 
+original_dir=os.getcwd()
+os.chdir(os.path.realpath(os.path.dirname(__file__)))
+
+#################################################################
+
 from etc import logger_config, constants
 from modules import meta_file, deploy_version
 
 #################################################################
 
 
+
 def create_deployment_request(args):
 
   logging.debug(f"Create new deployment request: {args.workflow=}, {args.object_file_list=}")
+  logging.debug(f"Current dir: {os.getcwd()}")
+  logging.debug(f"{sys.path=}")
 
   mf = meta_file.Meta_File(workflow_name=args.workflow)
   mf.import_objects_from_config_file(args.object_file_list)
@@ -99,3 +107,4 @@ if __name__ == "__main__":
   
   action[args.action](args)
 
+os.chdir(original_dir)

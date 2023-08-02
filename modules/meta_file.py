@@ -418,6 +418,8 @@ class Meta_File:
     
     def import_objects_from_config_file(self, config_file: str):
 
+      logging.debug(f"File: {os.path.abspath(config_file)}")
+
       with open(config_file, "r") as file:
         for line in file:
           tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
