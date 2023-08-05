@@ -15,15 +15,20 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
 
     <title>{% block title %}{% endblock %}</title>
 
+    <script src="{{ url_for('static', filename='AdminLTE/js/adminlte.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='AdminLTE/css/adminlte.min.css') }}">
+
 </head>
 
-<body>
+<body class="sidebar-collapse layout-top-nav">
 
     <div class="wrapper">
         <!-- Sidebar  -->
 
         <!-- Page Content  -->
-        <div id="content">
+        <div class="content-wrapper">
+        <div class="content">
+        <div class="container">
 
             <form name="main" method="post">
                 <input type="hidden" name="action" id="action" value="{{ action }}">
@@ -31,6 +36,7 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
                 {% block content %}
                 {% endblock %}
             </form>
+        </div>
         </div>
 
     </div>

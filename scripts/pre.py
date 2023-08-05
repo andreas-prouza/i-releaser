@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os
+import os, logging
 
 from etc import constants
 from modules import meta_file as mf
@@ -12,4 +12,4 @@ def pre_cmd(meta_file: mf.Meta_File, stage: str, processing_step: str) -> None:
             SELECT((*INCLUDE TEST *PGM) (*INCLUDE TEST *FILE)) 
     """
 
-    print(f"This is a user defined pre function: {meta_file.file_name} in stage '{stage}, processing step {processing_step}'")
+    logging.info(f"This is a user defined pre function: {meta_file.file_name=}, {stage=}, {processing_step=}")

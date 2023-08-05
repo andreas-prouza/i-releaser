@@ -163,8 +163,14 @@
                     {% for cmd in cmds %}
                     <tr>
                         <td>{{ cmd['sequence'] }}</td>
-                        <td>{{ cmd['status'] }}</td>
-                        <td>{{ cmd['check_error'] }}
+                        <td>
+                            <div {% if cmd['status'] == 'finished' %}class="badge badge-success"{% endif %}
+                                {% if cmd['status'] == 'failed' %}class="badge badge-danger"{% endif %}
+                                {% if cmd['status'] == 'new' %}class="badge badge-info"{% endif %}
+                                >
+                            {{ cmd['status'] }}</div>
+                        </td>
+                        <td>
                             <label class="switch">
                                 <input type="checkbox" id="togBtn" {% if cmd['check_error'] %}checked{% endif %} onchange="alert('changed to' + this.checked)">
                                 <div class="slider round">

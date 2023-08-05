@@ -1,8 +1,68 @@
 {
   "versions": {
-    "last_deploy_version": 76
+    "last_deploy_version": 86
   },
   "deployments": [
+    {
+      "version": 86,
+      "status": "in_process",
+      "timestamp": "2023-08-05 08:47:50.239873",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_86.json"
+    },
+    {
+      "version": 85,
+      "status": "in_process",
+      "timestamp": "2023-08-05 08:47:42.331828",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_85.json"
+    },
+    {
+      "version": 84,
+      "status": "in_process",
+      "timestamp": "2023-08-05 08:17:20.748748",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_84.json"
+    },
+    {
+      "version": 83,
+      "status": "in_process",
+      "timestamp": "2023-08-05 08:09:30.439711",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_83.json"
+    },
+    {
+      "version": 82,
+      "status": "in_process",
+      "timestamp": "2023-08-05 08:00:01.089375",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_82.json"
+    },
+    {
+      "version": 81,
+      "status": "in_process",
+      "timestamp": "2023-08-05 07:59:37.664378",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_81.json"
+    },
+    {
+      "version": 80,
+      "status": "in_process",
+      "timestamp": "2023-08-05 07:56:41.531306",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_80.json"
+    },
+    {
+      "version": 79,
+      "status": "in_process",
+      "timestamp": "2023-08-05 07:49:31.622561",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_79.json"
+    },
+    {
+      "version": 78,
+      "status": "in_process",
+      "timestamp": "2023-08-05 07:36:31.342955",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_78.json"
+    },
+    {
+      "version": 77,
+      "status": "in_process",
+      "timestamp": "2023-08-05 07:35:36.136341",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-05/deployment_77.json"
+    },
     {
       "version": 76,
       "status": "new",

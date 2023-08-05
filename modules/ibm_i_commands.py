@@ -123,6 +123,9 @@ class IBM_i_commands:
     sys.stdout = stdout_new
     stderr_orig = sys.stderr
     sys.stderr = stderr_new = StringIO()
+
+    hdl = logging.StreamHandler(stream=stdout_new)
+    logging.getLogger().addHandler(hdl)
     
     try:
       func = getattr(globals()[obj[0]], obj[1])
@@ -139,6 +142,7 @@ class IBM_i_commands:
     
     sys.stdout = stdout_orig
     sys.stderr = stderr_orig
+    logging.getLogger().removeHandler(hdl)
 
     return run_history
 

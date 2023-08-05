@@ -1,14 +1,14 @@
 import logging
 import inspect
 from pathlib import Path
-import os
+import sys, os
 from sys import path
 
 #########################################
 # Logger Configuration
 #########################################
 
-LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
+LOG_FORMAT = '%(asctime)s %(levelname)s %(filename)s (%(lineno)d): %(message)s'
 
 LOG_LEVEL = logging.DEBUG
 
@@ -38,4 +38,8 @@ if LOG_NAME is None:
 if not Path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 
-logging.basicConfig(format=LOG_FORMAT, filename=Path(LOG_DIR, f"{LOG_NAME}.log"), level=LOG_LEVEL)
+file_handler = logging.FileHandler(filename=Path(LOG_DIR, f"{LOG_NAME}.log"))
+#stdout_handler = logging.StreamHandler(stream=sys.stdout)
+handlers = [file_handler]
+
+logging.basicConfig(format=LOG_FORMAT, level=LOG_LEVEL, handlers=handlers)

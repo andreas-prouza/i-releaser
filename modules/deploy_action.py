@@ -50,6 +50,9 @@ class Deploy_Action_List_list(list):
 
 
   def add_action(self, action: type[Deploy_Action]) -> int:
+    
+    logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}")
+
     if type(action) != Deploy_Action:
       raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
 
