@@ -51,7 +51,6 @@ class Deploy_Action_List_list(list):
 
   def add_action(self, action: type[Deploy_Action]) -> int:
     
-    logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}")
 
     if type(action) != Deploy_Action:
       raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
@@ -59,7 +58,11 @@ class Deploy_Action_List_list(list):
     if action.sequence is None:
       action.sequence = self.get_next_sequence()
 
+    logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
+
     self.append(action)
+
+    logging.debug(f"Number of actions: {len(self)}")
 
     return action.sequence
 
@@ -73,6 +76,7 @@ class Deploy_Action_List_list(list):
 
   def add_actions_from_list(self, dict: {}):
 
+    logging.debug('Add actions from list')
     for k, cmds in dict.items():
       for cmd in cmds:
         action = Deploy_Action(dict=cmd)
@@ -92,6 +96,8 @@ class Deploy_Action_List_list(list):
           continue
         list.append(a)
 
+    list.sort(key=lambda x: x.sequence)
+
     return list
 
 
@@ -108,6 +114,14 @@ class Deploy_Action_List_list(list):
       dict[a.stage] = [a.get_dict()]
 
     return dict
+
+
+
+  def set_action_check(self, stage: str, sequence: int, check: bool) -> None:
+
+    for a in self:
+      if a.stage == stage and a.sequence == sequence:
+        a.check_error = check
 
 
 
@@ -188,8 +202,8 @@ class Deploy_Action:
     if self.stage is None:
       raise Exception('No Stage defined')
     
-    if self.stage is None:
-      raise Exception('No Stage defined')
+    if self.processing_step is None:
+      raise Exception('No processing step defined')
     
     self.environment = Command_Type(self.environment)
     self.status = Cmd_Status(self.status)

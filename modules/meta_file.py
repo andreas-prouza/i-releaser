@@ -169,14 +169,25 @@ class Meta_File:
       if processing_step is not None and processing_step not in stage_obj.processing_steps:
         raise Exception(f"Processing step '{processing_step}' is not defined in stage '{stage}'. Defined steps are: {stage_obj.processing_steps}")
 
+      logging.info(f"Run stage {stage}, {processing_step=}")
+
       self.set_status(Meta_file_status.IN_PROCESS)
 
       if processing_step is not None:
-        cmd.run_commands(stage=stage, processing_step=processing_step)
+        try:
+          cmd.run_commands(stage=stage, processing_step=processing_step)
+        except Exception as err:
+          self.set_status(Meta_file_status.FAILED)
+          raise err
+
 
       if processing_step is None:
         for step in stage_obj.processing_steps:
-          cmd.run_commands(stage=stage, processing_step=step)
+          try:
+            cmd.run_commands(stage=stage, processing_step=step)
+          except Exception as err:
+            self.set_status(Meta_file_status.FAILED)
+            raise err
 
       self.set_status(Meta_file_status.READY)
 
@@ -275,6 +286,8 @@ class Meta_File:
 
       list=[]
 
+      list=self.actions.get_actions(processing_step=processing_step, stage=stage)
+
       for a in self.actions:
         if processing_step is None or a.processing_step == processing_step:
           # Consider stage if given
@@ -283,15 +296,42 @@ class Meta_File:
           list.append(a)
       
       list = list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage)
-
+      
       return list
 
+
+
+    def get_next_open_action(self, processing_step: str=None, stage: str=None):
+      for action in self.get_actions(processing_step=processing_step, stage=stage):
+        if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
+          continue
+        return action
+      
 
 
     
     def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
 
-      return self.actions.get_actions_as_dict(processing_step=processing_step, stage=stage)
+      actions = self.actions.get_actions_as_dict(processing_step=processing_step, stage=stage)
+      sorted_action_steps = {}
+
+      for st,ps in actions.items():
+        if st in self.completed_stages.get_all_names():
+          sorted_stage_steps = self.completed_stages.get_stage(st).processing_steps
+
+        if st in self.current_stages.get_all_names():
+          sorted_stage_steps = self.current_stages.get_stage(st).processing_steps
+        
+        for sorted_stage_step in sorted_stage_steps:
+          for p in ps:
+            if p['processing_step'] == sorted_stage_step:
+              if st in sorted_action_steps.keys():
+                sorted_action_steps[st].append(p)
+                continue
+
+              sorted_action_steps[st] = [p]
+      
+      return sorted_action_steps
 
 
 

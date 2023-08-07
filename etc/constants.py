@@ -57,22 +57,22 @@ C_DEFAULT_STEP_2_CMD_MAPPING = [
     "execute": 'save_objects.set_cmd_object_to_savf',
     "check_error": True
   },
-  {
-    "processing_step": C_TRANSFER,
-    "environment": "SCRIPT",
-    "execute": 'transfer.set_cmd_transfer_to_target',
-    "check_error": True
-  },
-  {
-    "processing_step": C_TARGET_PREPARE,
-    "environment": "SCRIPT",
-    "execute": 'target_prepare.set_init_cmds_for_deployment',
-    "check_error": True
-  },
+#  {
+#    "processing_step": C_TRANSFER,
+#    "environment": "SCRIPT",
+#    "execute": 'transfer.set_cmd_transfer_to_target',
+#    "check_error": True
+#  },
+#  {
+#    "processing_step": C_TARGET_PREPARE,
+#    "environment": "SCRIPT",
+#    "execute": 'target_prepare.set_init_cmds_for_deployment',
+#    "check_error": True
+#  },
   {
     "processing_step": C_BACKUP_OLD_OBJ,
     "environment": "PASE",
-    "execute": '',#  'backup.set_cmd_backup_objects_on_target',
+    "execute": 'echo \'Not implemented\'',#  'backup.set_cmd_backup_objects_on_target',
     "check_error": True
   },
   {
@@ -84,7 +84,7 @@ C_DEFAULT_STEP_2_CMD_MAPPING = [
   {
     "processing_step": C_POST,
     "environment": "PASE",
-    "execute": '',
+    "execute": 'echo \'Not implemented\'',
     "check_error": True
   }
 ]

@@ -4,6 +4,7 @@ import subprocess
 import logging
 import json
 import sys
+import time
 
 from io import StringIO
 
@@ -74,20 +75,25 @@ class IBM_i_commands:
       da.Command_Type.SCRIPT: self.run_script_cmd,
     }
 
+    logging.debug(f"Run Commands for {stage=}, {processing_step=}")
+
     all_attributes = self.get_all_attributes(processing_step=processing_step, stage=stage)
 
     self.meta_file.current_stages.get_stage(stage).set_status('in process')
 
-    for action in self.meta_file.get_actions(processing_step=processing_step, stage=stage):
+    action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)
+    while action is not None:
+    #for action in self.meta_file.get_actions(processing_step=processing_step, stage=stage):
 
-      if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
-        logging.info(f"Action {stage=}, {processing_step=}, {action.sequence=} is already finished. Proceed with next.")
-        continue
+      #if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
+        #logging.info(f"Action {stage=}, {processing_step=}, {action.sequence=} is already finished. Proceed with next.")
+      #  continue
 
       cmd = action.cmd.format(**all_attributes)
 
-      print(f"run {cmd}")
+      logging.info(f"run {action.sequence=}, {cmd=}")
       run_history = executions.get(action.environment)(cmd, action)
+      #time.sleep(0.02)
       action.run_history.add_history(run_history)
 
       action.status = run_history.status
@@ -96,6 +102,9 @@ class IBM_i_commands:
         self.meta_file.current_stages.get_stage(stage).set_status(run_history.status)
         self.meta_file.write_meta_file()
         raise Command_Exception(run_history.stderr)
+
+      action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)
+
     
     # should be set on a higher level because of multiple processing_steps to run
     #self.meta_file.current_stages.get_stage(stage).set_status('finished')

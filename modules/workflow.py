@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json
+import json, os
 import logging
 
 from etc import constants
@@ -50,6 +50,7 @@ class Workflow:
 
   def load_workflow_data(self) -> None:
 
+    logging.debug(f"Workflow file: {os.path.abspath(constants.C_WORKFLOW)}")
     with open(constants.C_WORKFLOW, "r") as file:
       workflows_json = json.load(file)
 

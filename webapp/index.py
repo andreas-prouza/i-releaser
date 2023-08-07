@@ -78,6 +78,33 @@ def show_details(version):
     return render_template('overview/show-deployment.html', deployment_json=mf_json, deployment_dict=mf_dict) 
 
 
+@app.route('/run_stage', methods=['POST'])
+def run_stage():
+    data = request.get_json(force=True)
+    logging.debug(f"Run stage {data['stage']} of {data['filename']}")
+    mf = meta_file.Meta_File.load_json_file(data['filename'])
+    mf.set_status(meta_file.Meta_file_status.READY)
+    try:
+        mf.run_current_stage(data['stage'])
+    except:
+        pass
+    logging.debug(data)
+    return data
+
+
+
+@app.route('/set_check_error', methods=['POST'])
+def set_check_error():
+    data = request.get_json(force=True)
+    logging.debug(f"Set check error stage: {data['stage']}, sequence: {data['sequence']}, checked: {data['checked']}, filename: {data['filename']}")
+    mf = meta_file.Meta_File.load_json_file(data['filename'])
+    mf.actions.set_action_check(data['stage'], data['sequence'], data['checked'])
+    mf.write_meta_file()
+    #mf.set_status(meta_file.Meta_file_status.READY)
+    logging.debug(data)
+    return data
+
+
 
 #######################################################
 # Run service
