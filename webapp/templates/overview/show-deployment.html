@@ -337,6 +337,7 @@ async function postData(url = "", data = {}) {
 function runStage(filename, stage) {
     postData("/run_stage", { stage: stage, filename: filename }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
+        location.reload();
     });
 }
 

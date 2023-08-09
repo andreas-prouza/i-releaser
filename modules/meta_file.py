@@ -98,14 +98,22 @@ class Meta_File:
     @validate_arguments
     def set_status(self, status, update_meta_file=True):
 
+      logging.debug(f"Set status to {status}")
+
       if type(status) == str:
         status = Meta_file_status(status)
 
       self.status = status
 
+      logging.debug(f"Update meta file")
+
       if update_meta_file and self.status is not Meta_file_status.NEW:
+        logging.debug(f"Finished 1.0")
         dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
+        logging.debug(f"Finished 1")
         self.write_meta_file()
+
+      logging.debug(f"Finished")
 
 
 
@@ -169,9 +177,9 @@ class Meta_File:
       if processing_step is not None and processing_step not in stage_obj.processing_steps:
         raise Exception(f"Processing step '{processing_step}' is not defined in stage '{stage}'. Defined steps are: {stage_obj.processing_steps}")
 
-      logging.info(f"Run stage {stage}, {processing_step=}")
-
       self.set_status(Meta_file_status.IN_PROCESS)
+
+      logging.info(f"Run stage {stage}, {processing_step=}")
 
       if processing_step is not None:
         try:

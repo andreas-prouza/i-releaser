@@ -8,6 +8,7 @@ from pydantic import validate_arguments
 
 from etc import constants
 from modules import meta_file
+from operator import itemgetter
 
 
 class Deploy_Version:
@@ -59,13 +60,17 @@ class Deploy_Version:
       logging.debug(f"Update meta file status: {version=}, {status=}, {meta_file_name}")
       version_file = constants.C_DEPLOY_VERSION.format(project=project)
 
+      logging.debug(f"Load {version_file}")
+
       with open(version_file, "r") as file:
           versions_config = json.load(file)
 
       deployments = versions_config['deployments']
+      deployments = sorted(deployments, key=itemgetter('version')) 
 
       for d in deployments:
         if d['version'] == version:
+          logging.debug(f"Found {d}")
           d['status'] = status.value
           d['meta_file'] = meta_file_name
           d['timestamp'] = str(datetime.datetime.now())
@@ -73,7 +78,11 @@ class Deploy_Version:
 
         if (status == meta_file.Meta_file_status.IN_PROCESS and 
             meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FINISHED, meta_file.Meta_file_status.FAILED]):
-          raise Exception(f"Because version {d['version']} is still in status {status}, version {version} can't be updated to status {status}")
+          e = Exception(f"Because version {d['version']} is still in status {d['status']}, version {version} can't be updated to status {status}")
+          logging.exception(e)
+          raise e
+
+      logging.debug(f"Write {version_file}")
 
       with open(version_file, 'w') as file:
           json.dump(versions_config, file, default=str, indent=2)
