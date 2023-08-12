@@ -65,17 +65,27 @@ def index():
 def show_details(version):
     logging.debug(f'Show details of {version=}')
     logging.debug(request.form)
+
+    error = ''
+    mf_dict = None
+    mf_json = None
     
     if 'uid' not in session:
         session['uid'] = uuid.uuid4()
-    dv = deploy_version.Deploy_Version.get_deployment('default', version)
-    mf = meta_file.Meta_File.load_json_file(dv['meta_file'])
-    mf_dict = mf.get_all_data_as_dict()
-    mf_json = json.dumps(mf_dict, default=str, indent=4)
-    logging.debug(dv)
-    #logging.debug(mf)
-    logging.debug("Send response")
-    return render_template('overview/show-deployment.html', deployment_json=mf_json, deployment_dict=mf_dict) 
+
+    try:
+        dv = deploy_version.Deploy_Version.get_deployment('default', version)
+        mf = meta_file.Meta_File.load_json_file(dv['meta_file'])
+        mf_dict = mf.get_all_data_as_dict()
+        mf_json = json.dumps(mf_dict, default=str, indent=4)
+        logging.debug(dv)
+        return render_template('overview/show-deployment.html', deployment_json=mf_json, deployment_dict=mf_dict, error=error) 
+
+    except Exception as e:
+        logging.exception(e)
+        error = e
+        return render_template('error.html', error=error) 
+
 
 
 @app.route('/run_stage', methods=['POST'])
@@ -97,9 +107,12 @@ def run_stage():
 def set_check_error():
     data = request.get_json(force=True)
     logging.debug(f"Set check error stage: {data['stage']}, sequence: {data['sequence']}, checked: {data['checked']}, filename: {data['filename']}")
-    mf = meta_file.Meta_File.load_json_file(data['filename'])
-    mf.actions.set_action_check(data['stage'], data['sequence'], data['checked'])
-    mf.write_meta_file()
+    try:
+        mf = meta_file.Meta_File.load_json_file(data['filename'])
+        mf.actions.set_action_check(data['stage'], data['sequence'], data['checked'])
+        mf.write_meta_file()
+    except Exception as e:
+        logging.exception(e)
     #mf.set_status(meta_file.Meta_file_status.READY)
     logging.debug(data)
     return data

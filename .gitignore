@@ -6,6 +6,6 @@ log
 venv
 meta/**
 unit-tests/output
-**/flask_session
+***/flask_session
 **/*.pid
 etc/deploy_version*.json

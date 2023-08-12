@@ -38,8 +38,9 @@ Use the `deployment.py` script to:
 ## SetUp Python project
 
 ```sh
-python -m venv --system-site-packages
-source venv/bin/activate
+python -m venv --system-site-packages .venv
+source .venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
