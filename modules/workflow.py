@@ -84,9 +84,9 @@ class Workflow:
 
   def get_workflow_stage(workflow_name: str, stage_name: str) -> {}:
 
+    logging.debug(f'Get stage for {workflow_name=}, {stage_name=}, {constants.C_WORKFLOW=}')
     with open(constants.C_WORKFLOW, "r") as file:
       workflows_json = json.load(file)
-
 
     for wf in workflows_json:
       if workflow_name == wf['name']:
@@ -95,6 +95,7 @@ class Workflow:
 
         for stage in wf["stages"]:
           if stage['name'] == stage_name:
+            logging.debug(f'Found {stage=}')
             return stage
     
     return None

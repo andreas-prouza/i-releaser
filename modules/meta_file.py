@@ -6,12 +6,13 @@ import logging
 import re
 import os
 import sys
+from io import StringIO
 
 from enum import Enum
 
 from pydantic import validate_arguments
 
-from etc import constants
+from etc import constants, logger_config
 from modules import deploy_action as da
 from modules import deploy_object as do
 from modules import stages as s
@@ -19,6 +20,7 @@ from modules import workflow as wf
 from modules import ibm_i_commands
 from modules import deploy_version as dv
 from modules.cmd_status import Status as Cmd_Status
+from modules import meta_file_history as mfh
 
 
 class Meta_file_status(Enum):
@@ -37,15 +39,23 @@ class Meta_File:
 
 
 #    @validate_arguments
-    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, completed_stages: s.Stage_List_list=s.Stage_List_list(), current_stages: []=["START"], imported_from_dict=False):
+    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, completed_stages: s.Stage_List_list=None, current_stages: []=["START"], imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
 
+      self.file_name = None
+      self.completed_stages = None
+      self.current_stages = None
+      self.status = None
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
+      self.create_date = None
+      self.create_time = None
       self.project = project
       self.file_name = file_name
       self.deploy_version = deploy_version
+      self.run_history = mfh.Meta_File_History_List_list()
+      self.activate_history()
 
 #      if imported_from_dict == False:
       self.set_status(status, False)
@@ -68,6 +78,9 @@ class Meta_File:
         self.project = self.workflow.default_project
 
       self.completed_stages = completed_stages
+      if self.completed_stages is None:
+        self.completed_stages = s.Stage_List_list()
+        
       self.current_stages = s.Stage_List_list(self.workflow.name, current_stages)
       self.deploy_objects = do.Deploy_Object_List()
 
@@ -83,7 +96,7 @@ class Meta_File:
 
       if self.file_name == None:
         self.file_name = constants.C_DEPLOY_META_FILE
-      self.file_name = self.file_name.format(**self.__dict__)
+      self.file_name = os.path.abspath(self.file_name.format(**self.__dict__))
 
       self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
@@ -92,6 +105,16 @@ class Meta_File:
         dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
         self.write_meta_file(False)
 
+
+
+    def activate_history(self):
+      stdout_new = StringIO()
+      history = mfh.Meta_File_History(log=stdout_new)
+      self.run_history.add_history(history)
+
+      hdl = logging.StreamHandler(stream=stdout_new)
+      hdl.setFormatter(logging.root.handlers[0].formatter)
+      logging.getLogger().addHandler(hdl)
 
 
 
@@ -103,16 +126,15 @@ class Meta_File:
       if type(status) == str:
         status = Meta_file_status(status)
 
-      self.status = status
-
       logging.debug(f"Update meta file")
 
       if update_meta_file and self.status is not Meta_file_status.NEW:
         logging.debug(f"Finished 1.0")
-        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
+        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.file_name)
         logging.debug(f"Finished 1")
         self.write_meta_file()
 
+      self.status = status
       logging.debug(f"Finished")
 
 
@@ -362,6 +384,10 @@ class Meta_File:
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
         meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
         meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
+        
+        meta_file.run_history = mfh.Meta_File_History_List_list()
+        meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
+
         #meta_file.write_meta_file()
 
         return meta_file
@@ -370,7 +396,7 @@ class Meta_File:
 
 
 
-    
+    # Load meta file based on its version number
     def load_version(project:str, version: int) -> Meta_File:
 
       deployment = dv.Deploy_Version.get_deployment(project, version)
@@ -400,6 +426,7 @@ class Meta_File:
                             }
       dict['deploy_cmds'] = self.get_actions_as_dict()
       dict['objects'] = self.deploy_objects.get_objectjs_as_dict()
+      dict['run_history'] = self.run_history.get_list()
 
       return dict
 

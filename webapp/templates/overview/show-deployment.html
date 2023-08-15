@@ -1,4 +1,4 @@
-{% extends 'base2.html' %}
+{% extends 'base.html' %}
 
 {% block title %}
 {% endblock %}
@@ -261,6 +261,25 @@ input:checked + .slider:before {
         </tr>
         {% endfor %}
     </table>
+
+
+    <hr>
+    
+    <br/>
+
+    <h3>Deployment history</h3>
+    <table class="table table-striped table-bordered">
+        <thead>
+            <th>Timestamp</th><th>Log</th>
+        </thead>
+        {% for history in deployment_dict['run_history'] %}
+        <tr>
+            <td>{{ history['create_time'] }}</td>
+            <td><pre>{{ history['log'] |replace("'", "\"")|e }}</pre></td>
+        </tr>
+        {% endfor %}
+    </table>
+
 
     <hr>
     

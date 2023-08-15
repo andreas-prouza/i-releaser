@@ -41,7 +41,7 @@ class Run_History_List_list(list):
 
     def add_history(self, history: type[Run_History]=None) -> None:
       if type(history) != Run_History:
-        raise Exception(f"Parameter type {type(action)} does not match Run_History")
+        raise Exception(f"Parameter type {type(history)} does not match Run_History")
 
       self.append(history)
 

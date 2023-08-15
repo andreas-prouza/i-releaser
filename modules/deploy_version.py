@@ -17,15 +17,17 @@ class Deploy_Version:
 
       version_file = constants.C_DEPLOY_VERSION.format(project=project)
 
-      versions_config = {
-                          "versions": {
-                            "last_deploy_version": 0
-                          },
-                          "deployments": [
-                          ]
-                        }
-
       versions_config = Deploy_Version.get_deployments(version_file)
+
+      if versions_config == None:
+        versions_config = {
+                            "versions": {
+                              "last_deploy_version": 0
+                            },
+                            "deployments": [
+                            ]
+                          }
+
 
       version = versions_config['versions']['last_deploy_version'] + 1
       versions_config['versions']['last_deploy_version'] = version
@@ -49,9 +51,13 @@ class Deploy_Version:
 
 
     def get_deployments(version_file):
+
+      logging.debug(os.path.abspath(version_file))
       if os.path.isfile(version_file):
         with open(version_file, "r") as file:
             return json.load(file)
+        
+      return None
 
 
 

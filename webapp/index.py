@@ -3,12 +3,14 @@
 #######################################################
 
 # Configuration modules
-import sys, json
-sys.path.insert(0, f"{sys.path[0]}/..")
+import sys, json, os
+base_dir = os.path.realpath(os.path.dirname(__file__)+"/..")
+sys.path.append(base_dir)
+
 
 import logging
 import uuid
-from etc import flask_config, logger_config
+from etc import flask_config, logger_config, constants
 
 # Flask module
 from flask import Flask, request, session, render_template
@@ -16,6 +18,10 @@ from flask_cors import CORS
 from flask_session import Session
 from flask_minify import minify
 #from flask_fontawesome import FontAwesome
+
+
+
+logging.debug(sys.path)
 
 # Custom modules
 from modules import deploy_version, meta_file
@@ -53,11 +59,12 @@ def index():
         session['uid'] = uuid.uuid4()
     logging.debug(sys.path)
     logging.debug('Call index.html')
-    dv = deploy_version.Deploy_Version.get_deployments('../etc/deploy_version_default.json')
-    dv = dv['deployments']
+    project = 'default'
+    dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
     logging.debug(dv)
+    dv = dv['deployments']
     logging.debug("Send response")
-    return render_template('overview/list-deployments.html', deployments=dv) 
+    return render_template('overview/list-deployments.html', project=project, deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv) 
 
 
 

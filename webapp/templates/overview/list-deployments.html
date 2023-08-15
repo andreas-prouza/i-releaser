@@ -1,4 +1,4 @@
-{% extends 'base2.html' %}
+{% extends 'base.html' %}
 
 {% block title %}
 {% endblock %}
@@ -6,6 +6,9 @@
 {% block content %}
 
 <div class="box box-info">
+    <h2>List deployments from Project: <b>{{ project }}</b></h2>
+    <pre>{{ deploy_version_file }}</pre>
+
     {% if error_text is not none %}
     <div class="headline text-danger">{{error_text}}</div>
     {% endif %}
@@ -23,7 +26,7 @@
             {% for row in deployments %}
             <tr>
                 {% for key, value in row.items() %}
-                <td style="white-space: nowrap;"><a href="show_details/{{ value }}">{{ value }}</a></td>
+                <td style="white-space: nowrap;"><a href="show_details/{{ row['version'] }}">{{ value }}</a></td>
                 {% endfor %}
             </tr>
             {% endfor %}
