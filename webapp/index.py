@@ -16,7 +16,7 @@ from etc import flask_config, logger_config, constants
 from flask import Flask, request, session, render_template
 from flask_cors import CORS
 from flask_session import Session
-from flask_minify import minify
+#from flask_minify import minify
 #from flask_fontawesome import FontAwesome
 
 
@@ -55,7 +55,7 @@ project = 'test'
 #     request.values.get('parameter')
 #######################################################
 
-@app.route('/', methods=['GET', 'POST'])
+ #@app.route('/', methods=['GET', 'POST'])
 def index():
     if 'uid' not in session:
         session['uid'] = uuid.uuid4()
@@ -69,7 +69,7 @@ def index():
 
 
 
-@app.route('/workflows', methods=['GET', 'POST'])
+ #@app.route('/workflows', methods=['GET', 'POST'])
 def show_workflows():
     if 'uid' not in session:
         session['uid'] = uuid.uuid4()
@@ -83,7 +83,7 @@ def show_workflows():
 
 
 
-@app.route('/show_details/<int:version>', methods=['GET', 'POST'])
+ #@app.route('/show_details/<int:version>', methods=['GET', 'POST'])
 def show_details(version):
     logging.debug(f'Show details of {version=}')
     logging.debug(request.form)
@@ -110,14 +110,14 @@ def show_details(version):
 
 
 
-@app.route('/run_stage', methods=['POST'])
+ #@app.route('/run_stage', methods=['POST'])
 def run_stage():
     data = request.get_json(force=True)
     error='[]'
     logging.debug(f"Run stage {data['stage']} of {data['filename']}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
-    
+
     try:
         mf.set_status(meta_file.Meta_file_status.READY)
         mf.run_current_stage(data['stage'])
@@ -130,7 +130,7 @@ def run_stage():
 
 
 
-@app.route('/cancel_deployment', methods=['POST'])
+ #@app.route('/cancel_deployment', methods=['POST'])
 def cancel_deployment():
     data = request.get_json(force=True)
     logging.debug(f"Cancel Deployment: {data['filename']}")
@@ -140,7 +140,7 @@ def cancel_deployment():
     
 
 
-@app.route('/set_check_error', methods=['POST'])
+ #@app.route('/set_check_error', methods=['POST'])
 def set_check_error():
     data = request.get_json(force=True)
     logging.debug(f"Set check error stage: {data['stage']}, sequence: {data['sequence']}, checked: {data['checked']}, filename: {data['filename']}")

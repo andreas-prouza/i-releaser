@@ -10,7 +10,7 @@ from io import StringIO
 
 from enum import Enum
 
-from pydantic import validate_arguments
+# from pydantic import validate_arguments
 
 from etc import constants, logger_config
 from modules import deploy_action as da
@@ -39,7 +39,7 @@ class Meta_file_status(Enum):
 class Meta_File:
 
 
-#    @validate_arguments
+    #@validate_arguments
     def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, completed_stages: s.Stage_List_list=None, current_stages: []=["START"], imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
@@ -127,7 +127,7 @@ class Meta_File:
 
 
 
-    @validate_arguments
+     #@validate_arguments
     def set_status(self, status, update_meta_file=True):
 
       logging.debug(f"Set status to {status}")
@@ -152,7 +152,7 @@ class Meta_File:
 
 
 
-    @validate_arguments
+     #@validate_arguments
     def set_next_stage(self, from_stage: str):
 
       if from_stage not in self.current_stages.get_all_names():
@@ -189,7 +189,7 @@ class Meta_File:
 
 
 
-    @validate_arguments
+     #@validate_arguments
     def run_current_stage(self, stage: str, processing_step: str=None) -> None:
       """Run given stage
 
@@ -249,7 +249,7 @@ class Meta_File:
 
 
 
-    @validate_arguments
+     #@validate_arguments
     def check_stage_finish(self, stage: str) -> None:
 
       for action in self.actions.get_actions(stage=stage):
@@ -266,7 +266,7 @@ class Meta_File:
 
 
 
-    @validate_arguments
+     #@validate_arguments
     def check_deployment_finish(self) -> None:
 
       if len(self.current_stages) == 0:
@@ -275,13 +275,13 @@ class Meta_File:
 
 
 
-    @validate_arguments
+     #@validate_arguments
     def set_deploy_main_lib(self, library: str):
       self.main_deploy_lib = library.lower()
 
 
 
-    @validate_arguments
+     #@validate_arguments
     def set_deploy_backup_lib(self, library: str):
       self.backup_deploy_lib = library.lower()
 

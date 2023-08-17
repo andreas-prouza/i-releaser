@@ -3,7 +3,7 @@ import json
 import datetime
 import logging
 
-from pydantic import validate_arguments
+# from pydantic import validate_arguments
 
 from etc import constants
 from modules import workflow as wf
@@ -237,7 +237,7 @@ class Stage_List_list(list):
 
 
 
-    @validate_arguments
+    #@validate_arguments
     def get_stage(self, name: str) -> Stage:
 
       for s in self:

@@ -4,7 +4,7 @@ import datetime
 import json
 import logging
 
-from pydantic import validate_arguments
+# from pydantic import validate_arguments
 
 from etc import constants
 from modules import meta_file
@@ -95,7 +95,7 @@ class Deploy_Version:
 
 
 
-    @validate_arguments
+    #@validate_arguments
     def get_deployment(project:str, version : int):
 
       logging.debug(f"Get deployment {version=}, {project=}") 
