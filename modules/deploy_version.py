@@ -83,7 +83,7 @@ class Deploy_Version:
           break
 
         if (status == meta_file.Meta_file_status.IN_PROCESS and 
-            meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FINISHED, meta_file.Meta_file_status.FAILED]):
+            meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FINISHED, meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.CANCELED]):
           e = Exception(f"Because version {d['version']} is still in status '{d['status']}', version {version} can't be updated to status '{status.value}'")
           logging.exception(e)
           raise e
