@@ -1,6 +1,6 @@
 class Config(object):
     """ Global configuration """
-    PORT = "5000"
+    PORT = "2005"
     DEBUG = False
     TESTING = False
 
@@ -16,8 +16,9 @@ class DevelopmentConfig(Config):
     """ Additional configuration for development system """
     def __init__(self) -> None:
         print('Development configuration')
-    PORT = "5001"
+    PORT = "2005"
     DEBUG = True
+    HOST = "0.0.0.0"
 
 
 class TestingConfig(Config):
