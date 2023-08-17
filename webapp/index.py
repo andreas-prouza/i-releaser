@@ -140,6 +140,18 @@ def cancel_deployment():
     
 
 
+@app.route('/create_deployment/<wf_name>/<commit>', methods=['GET'])
+def create_deployment(wf_name, commit):
+    logging.debug(f"Create Deployment: {wf_name=}, {commit=}")
+
+    mf = meta_file.Meta_File(workflow_name=wf_name)
+    mf.commit = commit
+    mf.set_status(meta_file.Meta_file_status.READY)
+
+    return 'OK'
+    
+
+
 @app.route('/set_check_error', methods=['POST'])
 def set_check_error():
     data = request.get_json(force=True)
