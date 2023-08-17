@@ -9,3 +9,5 @@ unit-tests/output
 ***/flask_session
 **/*.pid
 etc/deploy_version*.json
+**/logs/**
+**/build/**

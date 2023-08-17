@@ -25,6 +25,7 @@ logging.debug(sys.path)
 
 # Custom modules
 from modules import deploy_version, meta_file
+from modules import workflow
 
 #######################################################
 # Start Flask framework
@@ -45,6 +46,7 @@ Session(app)
 #######################################################
 app.config.from_object(flask_config.DevelopmentConfig())
 
+project = 'test'
 
 #######################################################
 # Set routes
@@ -59,12 +61,25 @@ def index():
         session['uid'] = uuid.uuid4()
     logging.debug(sys.path)
     logging.debug('Call index.html')
-    project = 'default'
     dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
     logging.debug(dv)
     dv = dv['deployments']
     logging.debug("Send response")
-    return render_template('overview/list-deployments.html', project=project, deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv) 
+    return render_template('overview/list-deployments.html', project=project, projects=workflow.Workflow.get_all_projects(), deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv) 
+
+
+
+@app.route('/workflows', methods=['GET', 'POST'])
+def show_workflows():
+    if 'uid' not in session:
+        session['uid'] = uuid.uuid4()
+    logging.debug('Call workflows')
+
+    wf = workflow.Workflow.get_all_workflow_json()
+    wf_json = json.dumps(wf, default=str, indent=4)
+
+    logging.debug("Send response")
+    return render_template('overview/workflows.html', workflow_json=wf_json, projects=workflow.Workflow.get_all_projects()) 
 
 
 
@@ -81,7 +96,7 @@ def show_details(version):
         session['uid'] = uuid.uuid4()
 
     try:
-        dv = deploy_version.Deploy_Version.get_deployment('default', version)
+        dv = deploy_version.Deploy_Version.get_deployment(project, version)
         mf = meta_file.Meta_File.load_json_file(dv['meta_file'])
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
@@ -98,16 +113,31 @@ def show_details(version):
 @app.route('/run_stage', methods=['POST'])
 def run_stage():
     data = request.get_json(force=True)
+    error='[]'
     logging.debug(f"Run stage {data['stage']} of {data['filename']}")
-    mf = meta_file.Meta_File.load_json_file(data['filename'])
-    mf.set_status(meta_file.Meta_file_status.READY)
-    try:
-        mf.run_current_stage(data['stage'])
-    except:
-        pass
-    logging.debug(data)
-    return data
 
+    mf = meta_file.Meta_File.load_json_file(data['filename'])
+    
+    try:
+        mf.set_status(meta_file.Meta_file_status.READY)
+        mf.run_current_stage(data['stage'])
+    except Exception as e:
+        logging.exception(e)
+        error=json.dumps(e, default=str, indent=4)
+
+    logging.debug(error)
+    return error
+
+
+
+@app.route('/cancel_deployment', methods=['POST'])
+def cancel_deployment():
+    data = request.get_json(force=True)
+    logging.debug(f"Cancel Deployment: {data['filename']}")
+
+    mf = meta_file.Meta_File.load_json_file(data['filename'])
+    mf.cancel_deployment()
+    
 
 
 @app.route('/set_check_error', methods=['POST'])
@@ -123,6 +153,8 @@ def set_check_error():
     #mf.set_status(meta_file.Meta_file_status.READY)
     logging.debug(data)
     return data
+
+
 
 
 

@@ -20,6 +20,7 @@ class Stage:
     self.description = None
     self.host = None
     self.base_dir = None
+    self.build_dir = None
     self.next_stages = Stage_List_list()
     self.clear_files = None
     self.lib_replacement_necessary = None
@@ -98,6 +99,7 @@ class Stage:
       'description' : self.description,
       'host' : self.host,
       'base_dir' : self.base_dir,
+      'build_dir' : self.build_dir,
       'next_stages' : self.next_stages.get_all_names(),
       'clear_files' : self.clear_files,
       'processing_steps' : self.processing_steps,
@@ -135,7 +137,7 @@ class Stage:
   def validate(stage_dict: {}):
 
     for key in stage_dict.keys():
-      if key not in ['name', 'description', 'host', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'lib_mapping', 'status', 'create_time', 'update_time']:
+      if key not in ['name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'lib_mapping', 'status', 'create_time', 'update_time']:
         raise Exception(f"Attribute {key} is invalid for a stage!")
     
     stage = Stage()
@@ -149,8 +151,8 @@ class Stage:
   def __eq__(self, other):
     print('equals 2 stages')
  #   other.next_stages !!! ist das Problem
-    if (self.description, self.host, self.base_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time) != \
-       (other.description, other.host, other.base_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time):
+    if (self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time) != \
+       (other.description, other.host, other.base_dir, self.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time):
       return False
 
     return True

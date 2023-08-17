@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+
+<div class="box box-info">
+
+    <form>
+        <input type=button onClick="location.href='/'" value='Back to overview'>
+    </form>
+    <br/>
+    <br/>
+
+    <!-- /.box-header -->
+
+    <h3>Raw JSON file</h3>
+
+    <pre class="prettyprint lang-json">
+        {{ workflow_json }}
+    </pre>
+</div>
+
+
+<script type="text/javascript">
+
+    (function(d) {
+
+    stylizePreElements = function() {
+    var preElements = document.getElementsByTagName("pre");
+    for (i = 0; i < preElements.length; ++i) {
+        var preElement = preElements[i];
+        preElement.className += "prettyprint";
+    }
+    };
+
+    injectPrettifyScript = function() {
+    // https://github.com/googlearchive/code-prettify
+    var scriptElement = document.createElement('script');
+    scriptElement.setAttribute("src", "https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js");
+    document.head.appendChild(scriptElement);
+    };
+
+    stylizePreElements();
+    injectPrettifyScript();
+
+    })(document)
+
+</script>
+
+{% endblock %}

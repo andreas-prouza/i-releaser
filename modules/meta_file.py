@@ -30,6 +30,7 @@ class Meta_file_status(Enum):
   IN_PROCESS = 'in_process'
   FAILED = 'failed'
   FINISHED = 'finished'
+  CANCELED = 'canceled'
   
 
 
@@ -51,6 +52,8 @@ class Meta_File:
       self.main_deploy_lib = None
       self.create_date = None
       self.create_time = None
+      self.commit = None
+      self.release_branch = None
       self.project = project
       self.file_name = file_name
       self.deploy_version = deploy_version
@@ -108,9 +111,15 @@ class Meta_File:
 
 
     def activate_history(self):
+      logging.debug(f"Aktivate history log for {self.file_name}")
+      logging.debug(f"0. Number of histories: {len(self.run_history)}")
+
       stdout_new = StringIO()
       history = mfh.Meta_File_History(log=stdout_new)
       self.run_history.add_history(history)
+
+      logging.debug(f"1. Number of histories: {len(self.run_history)}")
+
 
       hdl = logging.StreamHandler(stream=stdout_new)
       hdl.setFormatter(logging.root.handlers[0].formatter)
@@ -126,12 +135,16 @@ class Meta_File:
       if type(status) == str:
         status = Meta_file_status(status)
 
-      logging.debug(f"Update meta file")
+      logging.debug(f"Update meta file: {update_meta_file}")
 
-      if update_meta_file and self.status is not Meta_file_status.NEW:
+      if self.status == Meta_file_status.CANCELED:
+        raise Exception("Deployment has been canceled already. It's not possible to change the status!")
+
+      if update_meta_file and status is not Meta_file_status.NEW:
         logging.debug(f"Finished 1.0")
         dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.file_name)
         logging.debug(f"Finished 1")
+        self.status = status
         self.write_meta_file()
 
       self.status = status
@@ -197,9 +210,18 @@ class Meta_File:
       stage_obj = self.current_stages.get_stage(stage)
       
       if processing_step is not None and processing_step not in stage_obj.processing_steps:
-        raise Exception(f"Processing step '{processing_step}' is not defined in stage '{stage}'. Defined steps are: {stage_obj.processing_steps}")
+        e = Exception(f"Processing step '{processing_step}' is not defined in stage '{stage}'. Defined steps are: {stage_obj.processing_steps}")
+        logging.exception(e)
+        self.write_meta_file()
+        raise e
 
-      self.set_status(Meta_file_status.IN_PROCESS)
+      try:
+        self.set_status(Meta_file_status.IN_PROCESS)
+      except Exception as err:
+        logging.error(err)
+        self.write_meta_file()
+        raise err
+      
 
       logging.info(f"Run stage {stage}, {processing_step=}")
 
@@ -380,12 +402,14 @@ class Meta_File:
                               current_stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['current_stages']),
                               imported_from_dict=True
                              )
+        meta_file.commit=meta_file_json['general']['commit']
+        meta_file.release_branch=meta_file_json['general']['release_branch']
+
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
         meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
         meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
         
-        meta_file.run_history = mfh.Meta_File_History_List_list()
         meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
 
         #meta_file.write_meta_file()
@@ -394,6 +418,12 @@ class Meta_File:
       
       raise Exception(f"Meta file {file_name} does not exist")
 
+
+
+    def cancel_deployment(self):
+      self.set_status(Meta_file_status.CANCELED)
+      logging.info('Deployment has been canceled!')
+      self.write_meta_file()
 
 
     # Load meta file based on its version number
@@ -415,11 +445,13 @@ class Meta_File:
                          'project':         self.project,
                          'deploy_version':  self.deploy_version,
                          'file_name':       self.file_name,
+                         'commit':          self.commit,
+                         'release_branch':  self.release_branch,
                          'create_time':     self.create_time,
                          'update_time':     self.update_time,
                          'status':          self.status.value,
                          'completed_stages':  self.completed_stages.get_dict(),
-                         'current_stages':  self.current_stages.get_dict()
+                         'current_stages':  self.current_stages.get_dict(),
                         }
       dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
                              'backup_lib':  self.backup_deploy_lib,
@@ -427,6 +459,7 @@ class Meta_File:
       dict['deploy_cmds'] = self.get_actions_as_dict()
       dict['objects'] = self.deploy_objects.get_objectjs_as_dict()
       dict['run_history'] = self.run_history.get_list()
+      logging.debug(f"Number of histories: {len(self.run_history)}")
 
       return dict
 
@@ -438,8 +471,8 @@ class Meta_File:
       result = s.deploy_objects == o.deploy_objects
       result = s.current_stages == o.current_stages
 
-      if (s.status, s.project, s.deploy_version, s.update_time, s.create_time, s.file_name, s.current_stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
-         (o.status, o.project, o.deploy_version, o.update_time, o.create_time, o.file_name, o.current_stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
+      if (s.status, s.project, s.deploy_version, s.update_time, s.create_time, s.file_name, s.commit, s.release_branch, s.current_stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
+         (o.status, o.project, o.deploy_version, o.update_time, o.create_time, o.file_name, s.commit, s.release_branch, o.current_stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
         return True
       return False
 

@@ -12,6 +12,8 @@
     {% if error_text is not none %}
     <div class="headline text-danger">{{error_text}}</div>
     {% endif %}
+
+    {{ projects }}
     <!-- /.box-header -->
     <table id="DataTable" class="table table-striped table-bordered" style="width:100%">
         <thead>
@@ -26,7 +28,20 @@
             {% for row in deployments %}
             <tr>
                 {% for key, value in row.items() %}
-                <td style="white-space: nowrap;"><a href="show_details/{{ row['version'] }}">{{ value }}</a></td>
+                <td style="white-space: nowrap;"><a href="show_details/{{ row['version'] }}">
+                    {% if key == 'status' %}
+                        <div 
+                        {% if value == 'finished' %}class="badge badge-success"{% endif %}
+                        {% if value == 'failed' %}class="badge badge-danger"{% endif %}
+                        {% if value == 'canceled' %}class="badge badge-danger"{% endif %}
+                        {% if value == 'new' %}class="badge badge-info"{% endif %}
+                        {% if value == 'ready' %}class="badge badge-primary"{% endif %}
+                        >{{ value }} </div>
+                    {% else %}
+                        {{ value }}
+                    {% endif %}
+                    </a>
+                </td>
                 {% endfor %}
             </tr>
             {% endfor %}

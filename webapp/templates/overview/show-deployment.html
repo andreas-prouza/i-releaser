@@ -97,7 +97,19 @@ input:checked + .slider:before {
     <div>
         <h2>Projekt: {{ deployment_dict['general']['project'] }} | Version: {{ deployment_dict['general']['deploy_version'] }} </h2>
         <br/>
-        <h3>Status: {{ deployment_dict['general']['status'] }} </h3>
+        <h3>Status: 
+            <div 
+            {% if deployment_dict['general']['status'] == 'finished' %}class="badge badge-success"{% endif %}
+            {% if deployment_dict['general']['status'] == 'canceled' %}class="badge badge-danger"{% endif %}
+            {% if deployment_dict['general']['status'] == 'failed' %}class="badge badge-danger"{% endif %}
+            {% if deployment_dict['general']['status'] == 'ready' %}class="badge badge-info"{% endif %}
+            {% if deployment_dict['general']['status'] == 'new' %}class="badge badge-primary"{% endif %}
+            >{{ deployment_dict['general']['status'] }} </div>
+            {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new'] %}
+            <img class="run" src="{{ url_for('static', filename='assets/img/cancel.png') }}" 
+            onclick="cancel_deployment('{{ deployment_dict['general']['file_name'] }}')">
+            {% endif %}
+        </h3>
     </div>
     <table class="table table-striped table-bordered">
         <tr>
@@ -268,14 +280,14 @@ input:checked + .slider:before {
     <br/>
 
     <h3>Deployment history</h3>
-    <table class="table table-striped table-bordered">
+    <table class="table table-striped table-bordered w-auto">
         <thead>
             <th>Timestamp</th><th>Log</th>
         </thead>
         {% for history in deployment_dict['run_history'] %}
         <tr>
             <td>{{ history['create_time'] }}</td>
-            <td><pre>{{ history['log'] |replace("'", "\"")|e }}</pre></td>
+            <td><img src="{{ url_for('static', filename='assets/img/log.png') }}" onclick="showLog('info', '{{ history['log']|replace("'", "\"")|replace("\r\n", "<br/>")|replace("\n", "<br/>")|e }}')"></td>
         </tr>
         {% endfor %}
     </table>
@@ -356,7 +368,22 @@ async function postData(url = "", data = {}) {
 function runStage(filename, stage) {
     postData("/run_stage", { stage: stage, filename: filename }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
-        location.reload();
+        if (data.length > 0) {
+            Swal.fire({
+            icon: 'error',
+            title: 'Error during RUN',
+            html: '<pre class="logs">'+data+'</pre>',
+            width: 'auto',
+            customClass: {
+                popup: 'logs'
+            }
+            }).then((result) => {
+                location.reload();
+            });
+        }
+        else {
+            location.reload();
+        }
     });
 }
 
@@ -364,6 +391,50 @@ function set_check_error(filename, stage, sequence, checked) {
     postData("/set_check_error", { stage: stage, filename: filename, sequence: sequence, checked: checked }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
     });
+}
+
+function cancel_deployment(filename) {
+
+    const swalWithBootstrapButtons = Swal.mixin({
+    customClass: {
+        confirmButton: 'btn btn-success',
+        cancelButton: 'btn btn-danger'
+    },
+    buttonsStyling: false
+    })
+
+    swalWithBootstrapButtons.fire({
+    title: 'Are you sure?',
+    text: "You are going to cancel the deployment forever!",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, cancel',
+    cancelButtonText: 'No, ups!',
+    reverseButtons: true
+    }).then((result) => {
+    if (result.isConfirmed) {
+        postData("/cancel_deployment", { filename: filename }).then((data) => {
+            console.log(data); // JSON data parsed by `data.json()` call
+        });
+        swalWithBootstrapButtons.fire(
+        'Canceled!',
+        'This deployment has been canceled.',
+        'success'
+        ).then((result) => {
+                location.reload();
+        });
+    } else if (
+        /* Read more about handling dismissals below */
+        result.dismiss === Swal.DismissReason.cancel
+    ) {
+        swalWithBootstrapButtons.fire(
+        'Canceled',
+        'Your cancelation has been canceled :-)',
+        'error'
+        )
+    }
+    })
+    
 }
 
 </script>

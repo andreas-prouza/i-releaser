@@ -1,13 +1,37 @@
 {
   "versions": {
-    "last_deploy_version": 1
+    "last_deploy_version": 5
   },
   "deployments": [
     {
+      "version": 5,
+      "status": "ready",
+      "timestamp": "2023-08-16 18:24:35.683592",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-16/deployment_5.json"
+    },
+    {
+      "version": 4,
+      "status": "canceled",
+      "timestamp": "2023-08-16 20:39:15.163857",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-16/deployment_4.json"
+    },
+    {
+      "version": 3,
+      "status": "canceled",
+      "timestamp": "2023-08-16 18:24:46.049939",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-16/deployment_3.json"
+    },
+    {
+      "version": 2,
+      "status": "canceled",
+      "timestamp": "2023-08-16 18:19:44.703936",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-16/deployment_2.json"
+    },
+    {
       "version": 1,
-      "status": "failed",
-      "timestamp": "2023-08-14 10:51:36.940197",
-      "meta_file": "/home/andreas/projekt/ibm-i-deployment-unit-tests/unit-tests/output/test_meta_file_case_1.json"
+      "status": "canceled",
+      "timestamp": "2023-08-16 18:18:36.125905",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/unit-tests/output/test_action_file_case_1.json"
     }
   ]
 }

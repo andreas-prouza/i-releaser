@@ -30,6 +30,9 @@ class Workflow:
     self.name = name
     self.object_commands = []
     self.default_project = None
+    self.step_2_script_mapping = None
+
+    logging.debug(f"{name=}, {dict=}")
 
     if len(dict) > 0:
 
@@ -68,10 +71,34 @@ class Workflow:
 
 
 
-  def get_workflow_steps_mapping(self) -> {}:
+  def get_all_projects() -> []:
+    
+    projects=[]
+
     with open(constants.C_WORKFLOW, "r") as file:
       workflows_json = json.load(file)
 
+    for wf in workflows_json:
+      if wf['default_project'] not in projects:
+        projects.append(wf['default_project'])
+
+    return projects
+
+
+  def get_all_workflow_json():
+    
+    with open(constants.C_WORKFLOW, "r") as file:
+      workflows_json = json.load(file)
+
+    return workflows_json
+
+
+
+
+
+  def get_workflow_steps_mapping(self) -> {}:
+    with open(constants.C_WORKFLOW, "r") as file:
+      workflows_json = json.load(file)
 
     for wf in workflows_json:
       if self.name == wf['name']:
