@@ -57,7 +57,7 @@ def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -
   build_dir = meta_file.current_stages.get_stage(stage).build_dir
   new_release = meta_file.release_branch
 
-  set_git_repo(build_dir)
+  reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
 
   meta_file.import_objects_from_config_file(f"{build_dir}/build/{constants.C_GNU_MAKE_OBJECT_LIST}")
