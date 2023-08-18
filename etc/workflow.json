@@ -110,8 +110,8 @@
       },
       {
         "processing_step": "run_build",
-        "environment": "PASE",
-        "execute": "/home/PROUZAT1/ibm-i-build-test/build/compile.sh",
+        "environment": "SCRIPT",
+        "execute": "build.run_build",
         "check_error": true
       }
     ],
@@ -131,7 +131,7 @@
         "host": "localhost",
         "base_dir": "/home/prouza/dev",
         "build_dir": "/home/PROUZAT1/ibm-i-build-test",
-        "processing_steps": ["pre", "prepare_build", "run_build", "post"],
+        "processing_steps": ["pre", "run_build", "post"],
         "clear_files": true
       },
       {
