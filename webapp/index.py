@@ -13,7 +13,7 @@ import uuid
 from etc import flask_config, logger_config, constants
 
 # Flask module
-from flask import Flask, request, session, render_template
+from flask import Flask, request, session, render_template, jsonify
 from flask_cors import CORS
 from flask_session import Session
 #from flask_minify import minify
@@ -45,6 +45,8 @@ Session(app)
 # Set Flask configuration
 #######################################################
 app.config.from_object(flask_config.DevelopmentConfig())
+
+logging.debug(app.config)
 
 project = 'test'
 
@@ -148,7 +150,9 @@ def create_deployment(wf_name, commit):
     mf.commit = commit
     mf.set_status(meta_file.Meta_file_status.READY)
 
-    return 'OK'
+    mf_json = json.dumps(mf.get_all_data_as_dict(), default=str, indent=4)
+
+    return jsonify(mf_json)
     
 
 
@@ -175,4 +179,4 @@ def set_check_error():
 #######################################################
 
 if __name__ == '__main__':
-    app.run(port=app.config["PORT"])
+    app.run(port=app.config["PORT"],host=app.config['HOST'])

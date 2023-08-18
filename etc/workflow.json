@@ -93,6 +93,54 @@
     ]
   },
   {
+    "name": "academy_test_build",
+    "default_project": "test",
+    "step_2_script_mapping": [
+      {
+        "processing_step": "pre",
+        "environment": "SCRIPT",
+        "execute": "pre.pre_cmd",
+        "check_error": true
+      },
+      {
+        "processing_step": "prepare_build",
+        "environment": "SCRIPT",
+        "execute": "build.prepare_build",
+        "check_error": true
+      },
+      {
+        "processing_step": "run_build",
+        "environment": "PASE",
+        "execute": "/home/PROUZAT1/ibm-i-build-test/build/compile.sh",
+        "check_error": true
+      }
+    ],
+    "stages" : [
+      {
+        "name": "START",
+        "next_stages": ["UAT"],
+        "host": "localhost",
+        "base_dir": "/home/prouza/dev",
+        "build_dir": "/home/PROUZAT1/ibm-i-build-test",
+        "processing_steps": ["pre", "post"],
+        "clear_files": true
+      },
+      {
+        "name": "UAT",
+        "next_stages": ["END"],
+        "host": "localhost",
+        "base_dir": "/home/prouza/dev",
+        "build_dir": "/home/PROUZAT1/ibm-i-build-test",
+        "processing_steps": ["pre", "prepare_build", "run_build", "post"],
+        "clear_files": true
+      },
+      {
+        "name": "END",
+        "description": "Finished"
+      }
+    ]
+  },
+  {
     "name": "test",
     "default_project": "test",
     "step_2_script_mapping": [

@@ -16,44 +16,49 @@ from modules import meta_file as mf
 def prepare_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
 
   build_dir = meta_file.current_stages.get_stage(stage).build_dir
-  new_release = constants.C_GIT_BRANCH_RELEASE.replace('{deploy_version}', str(meta_file.deploy_version))
+  new_release = meta_file.release_branch
 
-  original_dir=os.getcwd()
-  os.chdir(build_dir)
 
-  run_sys_cmd(['git', 'checkout', constants.C_GIT_BRANCH_PRODUCTION])
-  run_sys_cmd(['git', 'pull'])
+  logging.debug(f"Change current directory to {build_dir}")
+  logging.debug(sys.executable)
+
+  run_sys_cmd(['echo', '$PATH'], build_dir)
+  run_sys_cmd(['git', 'branch', '-a'], build_dir)
+  run_sys_cmd(['git', 'checkout', constants.C_GIT_BRANCH_PRODUCTION], build_dir)
+  run_sys_cmd(['git', 'pull'], build_dir)
 
   try:
-    run_sys_cmd(['git', 'show-ref', '--verify', f"refs/heads/{new_release}"])
-    run_sys_cmd(['git', 'checkout', new_release])
+    run_sys_cmd(['git', 'show-ref', '--verify', f"refs/heads/{new_release}"], build_dir)
+    run_sys_cmd(['git', 'checkout', new_release], build_dir)
   except:
-    run_sys_cmd(['git', 'checkout', '-b', new_release, meta_file.commit])
+    run_sys_cmd(['git', 'checkout', '-b', new_release, meta_file.commit], build_dir)
+    run_sys_cmd(['git', 'push', '--set-upstream', 'origin', new_release], build_dir)
   
-  new_release_commit=run_sys_cmd(['git', 'show-ref', '--verify', f"refs/heads/{new_release}"]).split(" ", 1)[0]
+  new_release_commit=run_sys_cmd(['git', 'show-ref', '--verify', f"refs/heads/{new_release}"], build_dir).split(" ", 1)[0]
 
 
   logging.debug(f"{new_release_commit=}, {meta_file.commit=}")
   if new_release_commit != meta_file.commit:
     raise Exception(f"Commit of release branch {new_release} ({new_release_commit}) does not match with commit of deployment ({meta_file.commit})")
 
-  run_sys_cmd(['make/scripts/cleanup.sh', 'debug'])
-  run_sys_cmd(['make/scripts/reset.sh', 'debug'])
-  run_sys_cmd(['make/scripts/create_build_script.sh', 'create-object-list'])
-  run_sys_cmd(['make/scripts/create_build_script.sh', 'default'])
+  run_sys_cmd(['make/scripts/cleanup.sh', 'debug'], build_dir)
+  run_sys_cmd(['make/scripts/reset.sh', 'debug'], build_dir)
+  run_sys_cmd(['make/scripts/create_build_script.sh', 'create-object-list'], build_dir)
+  run_sys_cmd(['make/scripts/create_build_script.sh', 'default'], build_dir)
 
 
 
 
-def run_sys_cmd(cmd):
+def run_sys_cmd(cmd, cwd):
 
   print(cmd)
-  s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+  s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=False, check=False, executable='/bin/bash')
   stdout = s.stdout.decode(constants.C_CONVERT_FROM)
   stderr = s.stderr.decode(constants.C_CONVERT_FROM)
   print(stdout)
 
   if s.returncode != 0:
+    logging.error(f"Return code: {s.returncode}")
     raise Exception(stderr)
 
   return stdout

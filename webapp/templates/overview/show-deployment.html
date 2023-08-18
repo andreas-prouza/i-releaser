@@ -105,7 +105,7 @@ input:checked + .slider:before {
             {% if deployment_dict['general']['status'] == 'ready' %}class="badge badge-info"{% endif %}
             {% if deployment_dict['general']['status'] == 'new' %}class="badge badge-primary"{% endif %}
             >{{ deployment_dict['general']['status'] }} </div>
-            {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new'] %}
+            {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new', 'in_process'] %}
             <img class="run" src="{{ url_for('static', filename='assets/img/cancel.png') }}" 
             onclick="cancel_deployment('{{ deployment_dict['general']['file_name'] }}')">
             {% endif %}

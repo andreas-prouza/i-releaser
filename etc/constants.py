@@ -26,7 +26,7 @@ C_CONVERT_TO = 'utf-8'
 # GIT Settings
 #---------------------------------------------------------
 C_GIT_BRANCH_PRODUCTION = 'main'
-C_GIT_BRANCH_RELEASE = 'production-{deploy_version}'
+C_GIT_BRANCH_RELEASE = '{project}-{deploy_version}'
 #---------------------------------------------------------
 
 
