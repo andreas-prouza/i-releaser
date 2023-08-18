@@ -41,7 +41,6 @@ def prepare_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> N
   
   new_release_commit=run_sys_cmd(['git', 'show-ref', '--verify', f"refs/heads/{new_release}"], build_dir).split(" ", 1)[0]
 
-
   logging.debug(f"{new_release_commit=}, {meta_file.commit=}")
   if new_release_commit != meta_file.commit:
     raise Exception(f"Commit of release branch {new_release} ({new_release_commit}) does not match with commit of deployment ({meta_file.commit})")
@@ -58,9 +57,7 @@ def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -
   build_dir = meta_file.current_stages.get_stage(stage).build_dir
   new_release = meta_file.release_branch
 
-  run_sys_cmd(['git', 'reset', '--hard', 'HEAD'], build_dir)
-  run_sys_cmd(['git', 'clean', '-fd'], build_dir)
-  run_sys_cmd(['git', 'pull'], build_dir)
+  set_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
 
   meta_file.import_objects_from_config_file(f"{build_dir}/build/{constants.C_GNU_MAKE_OBJECT_LIST}")
@@ -72,9 +69,7 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   build_dir = meta_file.current_stages.get_stage(stage).build_dir
   new_release = meta_file.release_branch
 
-  run_sys_cmd(['git', 'reset', '--hard', 'HEAD'], build_dir)
-  run_sys_cmd(['git', 'clean', '-fd'], build_dir)
-  run_sys_cmd(['git', 'pull'], build_dir)
+  reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
   run_sys_cmd(['build/compile.sh'], build_dir)
   run_sys_cmd(['git', 'add', '.'], build_dir)
@@ -87,12 +82,18 @@ def merge_results(meta_file: mf.Meta_File, stage: str, processing_step:str) -> N
   build_dir = meta_file.current_stages.get_stage(stage).build_dir
   new_release = meta_file.release_branch
 
-  run_sys_cmd(['git', 'reset', '--hard', 'HEAD'], build_dir)
-  run_sys_cmd(['git', 'clean', '-fd'], build_dir)
-  run_sys_cmd(['git', 'pull'], build_dir)
+  reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', constants.C_GIT_BRANCH_PRODUCTION], build_dir)
   run_sys_cmd(['git', 'merge', new_release], build_dir)
   run_sys_cmd(['git', 'push'], build_dir)
+
+
+
+def reset_git_repo(build_dir):
+  run_sys_cmd(['git', 'reset', '--hard', 'HEAD'], build_dir)
+  run_sys_cmd(['git', 'clean', '-fd'], build_dir)
+  run_sys_cmd(['git', 'checkout', constants.C_GIT_BRANCH_PRODUCTION], build_dir)
+  run_sys_cmd(['git', 'pull'], build_dir)
 
 
 
