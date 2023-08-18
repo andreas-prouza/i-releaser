@@ -83,6 +83,18 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   
 
 
+def merge_results(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+  build_dir = meta_file.current_stages.get_stage(stage).build_dir
+  new_release = meta_file.release_branch
+
+  run_sys_cmd(['git', 'reset', '--hard', 'HEAD'], build_dir)
+  run_sys_cmd(['git', 'clean', '-fd'], build_dir)
+  run_sys_cmd(['git', 'pull'], build_dir)
+  run_sys_cmd(['git', 'checkout', constants.C_GIT_BRANCH_PRODUCTION], build_dir)
+  run_sys_cmd(['git', 'merge', new_release], build_dir)
+  run_sys_cmd(['git', 'push'], build_dir)
+
+
 
 def run_sys_cmd(cmd, cwd):
 

@@ -115,6 +115,12 @@
         "check_error": true
       },
       {
+        "processing_step": "merge_results",
+        "environment": "SCRIPT",
+        "execute": "build.merge_results",
+        "check_error": true
+      },
+      {
         "processing_step": "load_object_list",
         "environment": "SCRIPT",
         "execute": "build.load_object_list",
@@ -137,7 +143,7 @@
         "host": "localhost",
         "base_dir": "/home/prouza/dev",
         "build_dir": "/home/PROUZAT1/ibm-i-build-test",
-        "processing_steps": ["pre", "run_build",  "post"],
+        "processing_steps": ["pre", "run_build", "merge_results", "post"],
         "clear_files": true
       },
       {
