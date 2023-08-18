@@ -71,10 +71,22 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
 
   reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
-  run_sys_cmd(['build/compile.sh'], build_dir)
+  
+  error = None
+  try:
+    run_sys_cmd(['build/compile.sh'], build_dir)
+  except Exception as e:
+    error = e
+    logging.exception(e)
+
+  run_sys_cmd(['ls', '-la', 'build/prouzalib2'], build_dir)
+  run_sys_cmd(['git', 'status'], build_dir)
   run_sys_cmd(['git', 'add', '.'], build_dir)
   run_sys_cmd(['git', 'commit', '-m', '"Build successfully"'], build_dir)
   run_sys_cmd(['git', 'push'], build_dir)
+
+  if error is not None:
+    raise error
   
 
 
@@ -103,7 +115,9 @@ def run_sys_cmd(cmd, cwd):
   s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=False, check=False) # executable='/bin/bash'
   stdout = s.stdout.decode(constants.C_CONVERT_FROM)
   stderr = s.stderr.decode(constants.C_CONVERT_FROM)
-  print(stdout)
+  print(f"{stdout=}")
+  print(f"{stderr=}")
+  print(f"{s.returncode=}")
 
   if s.returncode != 0:
     logging.error(f"Return code: {s.returncode}")
