@@ -63,7 +63,7 @@ def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -
   run_sys_cmd(['git', 'pull'], build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
 
-  meta_file.import_objects_from_config_file(f"{build_dir}/{constants.C_GNU_MAKE_OBJECT_LIST}")
+  meta_file.import_objects_from_config_file(f"{build_dir}/build/{constants.C_GNU_MAKE_OBJECT_LIST}")
   meta_file.write_meta_file()
 
 
