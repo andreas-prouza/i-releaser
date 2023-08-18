@@ -59,7 +59,7 @@ def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -
 
   reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
-  run_sys_cmd(['git', 'pull'], build_dir)
+  run_sys_cmd(['git', 'reset', '--hard', f'origin/{new_release}'], build_dir)
 
   meta_file.import_objects_from_config_file(f"{build_dir}/build/{constants.C_GNU_MAKE_OBJECT_LIST}")
   meta_file.write_meta_file()
@@ -69,10 +69,11 @@ def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -
 def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   build_dir = meta_file.current_stages.get_stage(stage).build_dir
   new_release = meta_file.release_branch
+  commit_msg='Build successfully'
 
   reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
-  run_sys_cmd(['git', 'pull'], build_dir)
+  run_sys_cmd(['git', 'reset', '--hard', f'origin/{new_release}'], build_dir)
   
   error = None
   try:
@@ -80,11 +81,12 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   except Exception as e:
     error = e
     logging.exception(e)
+    commit_msg='Build failed'
 
   run_sys_cmd(['ls', '-la', 'build/prouzalib2'], build_dir)
   run_sys_cmd(['git', 'status'], build_dir)
-  run_sys_cmd(['git', 'add', '.'], build_dir)
-  run_sys_cmd(['git', 'commit', '-m', '"Build successfully"'], build_dir)
+  run_sys_cmd(['git', 'add', '-A'], build_dir)  
+  run_sys_cmd(['git', 'commit', '-m', f'"{commit_msg}"'], build_dir)
   run_sys_cmd(['git', 'push'], build_dir)
 
   if error is not None:
