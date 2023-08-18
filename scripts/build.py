@@ -59,6 +59,7 @@ def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -
 
   reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
+  run_sys_cmd(['git', 'pull'], build_dir)
 
   meta_file.import_objects_from_config_file(f"{build_dir}/build/{constants.C_GNU_MAKE_OBJECT_LIST}")
   meta_file.write_meta_file()
@@ -71,6 +72,7 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
 
   reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
+  run_sys_cmd(['git', 'pull'], build_dir)
   
   error = None
   try:
