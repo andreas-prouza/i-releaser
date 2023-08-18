@@ -53,24 +53,41 @@ def prepare_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> N
 
 
 
+def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+
+  build_dir = meta_file.current_stages.get_stage(stage).build_dir
+  new_release = meta_file.release_branch
+
+  run_sys_cmd(['git', 'reset', '--hard', 'HEAD'], build_dir)
+  run_sys_cmd(['git', 'clean', '-fd'], build_dir)
+  run_sys_cmd(['git', 'pull'], build_dir)
+  run_sys_cmd(['git', 'checkout', new_release], build_dir)
+
+  meta_file.import_objects_from_config_file(f"{build_dir}/{constants.C_GNU_MAKE_OBJECT_LIST}")
+  meta_file.write_meta_file()
+
+
 
 def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   build_dir = meta_file.current_stages.get_stage(stage).build_dir
   new_release = meta_file.release_branch
 
-  run_sys_cmd(['git', 'restore', '.'], build_dir)
+  run_sys_cmd(['git', 'reset', '--hard', 'HEAD'], build_dir)
+  run_sys_cmd(['git', 'clean', '-fd'], build_dir)
+  run_sys_cmd(['git', 'pull'], build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
   run_sys_cmd(['build/compile.sh'], build_dir)
   run_sys_cmd(['git', 'add', '.'], build_dir)
   run_sys_cmd(['git', 'commit', '-m', '"Build successfully"'], build_dir)
-
+  run_sys_cmd(['git', 'push'], build_dir)
+  
 
 
 
 def run_sys_cmd(cmd, cwd):
 
   print(cmd)
-  s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=False, check=False, executable='/bin/bash')
+  s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=False, check=False) # executable='/bin/bash'
   stdout = s.stdout.decode(constants.C_CONVERT_FROM)
   stderr = s.stderr.decode(constants.C_CONVERT_FROM)
   print(stdout)

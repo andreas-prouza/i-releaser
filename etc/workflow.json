@@ -113,6 +113,12 @@
         "environment": "SCRIPT",
         "execute": "build.run_build",
         "check_error": true
+      },
+      {
+        "processing_step": "load_object_list",
+        "environment": "SCRIPT",
+        "execute": "build.load_object_list",
+        "check_error": true
       }
     ],
     "stages" : [
@@ -122,7 +128,7 @@
         "host": "localhost",
         "base_dir": "/home/prouza/dev",
         "build_dir": "/home/PROUZAT1/ibm-i-build-test",
-        "processing_steps": ["pre", "post"],
+        "processing_steps": ["pre", "load_object_list", "post"],
         "clear_files": true
       },
       {
@@ -131,7 +137,7 @@
         "host": "localhost",
         "base_dir": "/home/prouza/dev",
         "build_dir": "/home/PROUZAT1/ibm-i-build-test",
-        "processing_steps": ["pre", "run_build", "post"],
+        "processing_steps": ["pre", "run_build",  "post"],
         "clear_files": true
       },
       {
