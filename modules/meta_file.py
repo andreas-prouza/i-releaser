@@ -97,7 +97,7 @@ class Meta_File:
       if deploy_version == None:
         self.deploy_version = dv.Deploy_Version.get_next_deploy_version(project=self.project, status=self.status)
 
-      self.release_branch = constants.C_GIT_BRANCH_RELEASE.replace('{deploy_version}', str(meta_file.deploy_version)).replace('{project}', self.project)
+      self.release_branch = constants.C_GIT_BRANCH_RELEASE.replace('{deploy_version}', str(self.deploy_version)).replace('{project}', self.project)
 
       if self.file_name == None:
         self.file_name = constants.C_DEPLOY_META_FILE
