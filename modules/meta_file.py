@@ -532,6 +532,7 @@ class Meta_File:
 
       with open(config_file, "r") as file:
         for line in file:
+          logging.debug(f"Import object: {line}")
           tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
           prod_obj = re.split(r"/|\.", tmp[1])
           target_obj = tmp[2].split('/')
