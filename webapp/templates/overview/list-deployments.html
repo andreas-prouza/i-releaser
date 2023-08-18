@@ -28,7 +28,7 @@
             {% for row in deployments %}
             <tr>
                 {% for key, value in row.items() %}
-                <td style="white-space: nowrap;"><a href="show_details/{{ row['version'] }}">
+                <td style="white-space: nowrap;"><a href="show_details/{{ project }}/{{ row['version'] }}">
                     {% if key == 'status' %}
                         <div 
                         {% if value == 'finished' %}class="badge badge-success"{% endif %}

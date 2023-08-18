@@ -85,9 +85,9 @@ def show_workflows():
 
 
 
-@app.route('/show_details/<int:version>', methods=['GET', 'POST'])
-def show_details(version):
-    logging.debug(f'Show details of {version=}')
+@app.route('/show_details/<project>/<int:version>', methods=['GET', 'POST'])
+def show_details(project, version):
+    logging.debug(f'Show details of {project=}, {version=}')
     logging.debug(request.form)
 
     error = ''
@@ -150,9 +150,7 @@ def create_deployment(wf_name, commit):
     mf.commit = commit
     mf.set_status(meta_file.Meta_file_status.READY)
 
-    mf_json = json.dumps(mf.get_all_data_as_dict(), default=str, indent=4)
-
-    return jsonify(mf_json)
+    return jsonify(mf.get_all_data_as_dict())
     
 
 
