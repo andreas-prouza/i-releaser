@@ -13,6 +13,11 @@ from modules import meta_file as mf
 
 
 
+#################################################################
+# !!!Deprecated!!!
+#    Will be prepared by the client
+#    This is due to performance problems on IBM i
+#################################################################
 def prepare_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
 
   build_dir = meta_file.current_stages.get_stage(stage).build_dir
@@ -45,6 +50,19 @@ def prepare_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> N
   run_sys_cmd(['make/scripts/reset.sh', 'debug'], build_dir)
   run_sys_cmd(['make/scripts/create_build_script.sh', 'create-object-list'], build_dir)
   run_sys_cmd(['make/scripts/create_build_script.sh', 'default'], build_dir)
+
+
+
+
+def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+  build_dir = meta_file.current_stages.get_stage(stage).build_dir
+  new_release = meta_file.release_branch
+
+  run_sys_cmd(['git', 'restore', '.'], build_dir)
+  run_sys_cmd(['git', 'checkout', new_release], build_dir)
+  run_sys_cmd(['build/compile.sh'], build_dir)
+  run_sys_cmd(['git', 'add', '.'], build_dir)
+  run_sys_cmd(['git', 'commit', '-m', '"Build successfully"'], build_dir)
 
 
 
