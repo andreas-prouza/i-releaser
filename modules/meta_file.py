@@ -534,8 +534,8 @@ class Meta_File:
         for line in file:
           logging.debug(f"Import object: {line}")
           tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
-          prod_obj = re.split(r"/|\.", tmp[1])
-          target_obj = tmp[2].split('/')
+          prod_obj = re.split(r"/|\.", tmp[2])
+          target_obj = tmp[3].split('/')
           obj = do.Deploy_Object(lib=target_obj[0], prod_lib=prod_obj[0], name=prod_obj[1], type=prod_obj[3], attribute=prod_obj[2])
           self.add_deploy_object(obj)
       
