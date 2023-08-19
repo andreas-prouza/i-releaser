@@ -77,7 +77,7 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   
   error = None
   try:
-    run_sys_cmd(['build/compile.sh'], build_dir)
+    run_sys_cmd(['tmp/compile.sh'], build_dir)
   except Exception as e:
     error = e
     logging.exception(e)
