@@ -12,8 +12,8 @@ def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage: str, proce
             SELECT((*INCLUDE TEST *PGM) (*INCLUDE TEST *FILE)) 
     """
     actions = meta_file.actions
-    clear_files = meta_file.current_stages.get_stage(stage).clear_files
-    current_stage = meta_file.current_stages.get_stage(stage)
+    clear_files = meta_file.stages.get_stage(stage).clear_files
+    current_stage = meta_file.stages.get_stage(stage)
     deployment_dir = f"{current_stage.base_dir}/{os.path.basename(os.path.dirname(meta_file.file_name))}"
 
     for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
@@ -45,5 +45,5 @@ def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage: str, proce
             SELECT({includes}) RSTLIB({restore_to_lib})", 
             environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage)
 
-    meta_file.current_stages.get_stage(stage).set_status('prepare')
+    meta_file.stages.get_stage(stage).set_status('prepare')
     meta_file.write_meta_file()

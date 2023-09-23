@@ -15,9 +15,9 @@
   "emeraldwalk.runonsave": {
     "commands": [
         {
-            "match": ".*$",
+            "match": ".*[^(json)]$",
             "isAsync": true,
-            "cmd": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__'} --delete \"${workspaceFolder}/\" academy:~/ibm-i-deployment/ \nfi"
+            "cmd": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__','*.json','log/*'} \"${workspaceFolder}/\" academy-test:~/ibm-i-deployment/ \nfi"
         }
     ]
 },

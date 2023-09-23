@@ -15,7 +15,7 @@ def set_cmd_transfer_to_target(meta_file: mf.Meta_File, stage: str, processing_s
         scp -rp /dir/deployment1 target_server:~/also-a-dir
     """
 
-    current_stage = meta_file.current_stages.get_stage(stage)
+    current_stage = meta_file.stages.get_stage(stage)
     actions = meta_file.actions
     deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
 

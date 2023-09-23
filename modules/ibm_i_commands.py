@@ -38,7 +38,7 @@ class IBM_i_commands:
     """
 
     #get all processing steps for given stage
-    do_steps = self.meta_file.current_stages.get_stage(stage).processing_steps
+    do_steps = self.meta_file.stages.get_stage(stage).processing_steps
     actions = self.meta_file.actions
 
     wf_steps = self.meta_file.workflow.get_workflow_steps_mapping()
@@ -79,7 +79,7 @@ class IBM_i_commands:
 
     all_attributes = self.get_all_attributes(processing_step=processing_step, stage=stage)
 
-    self.meta_file.current_stages.get_stage(stage).set_status('in process')
+    self.meta_file.stages.get_stage(stage).set_status('in process')
 
     action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)
     while action is not None:
@@ -99,7 +99,7 @@ class IBM_i_commands:
       action.status = run_history.status
 
       if run_history.status == Cmd_Status.FAILED and action.check_error:
-        self.meta_file.current_stages.get_stage(stage).set_status(run_history.status)
+        self.meta_file.stages.get_stage(stage).set_status(run_history.status)
         self.meta_file.write_meta_file()
         raise Command_Exception(run_history.stderr)
 

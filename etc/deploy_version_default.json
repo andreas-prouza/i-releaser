@@ -1,49 +1,13 @@
 {
   "versions": {
-    "last_deploy_version": 7
+    "last_deploy_version": 1
   },
   "deployments": [
     {
-      "version": 7,
-      "status": "ready",
-      "timestamp": "2023-08-17 16:51:53.946669",
-      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-17/deployment_7.json"
-    },
-    {
-      "version": 6,
-      "status": "ready",
-      "timestamp": "2023-08-17 16:51:26.814937",
-      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-17/deployment_6.json"
-    },
-    {
-      "version": 5,
-      "status": "ready",
-      "timestamp": "2023-08-16 18:24:35.683592",
-      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-16/deployment_5.json"
-    },
-    {
-      "version": 4,
-      "status": "canceled",
-      "timestamp": "2023-08-16 20:39:15.163857",
-      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-16/deployment_4.json"
-    },
-    {
-      "version": 3,
-      "status": "canceled",
-      "timestamp": "2023-08-16 18:24:46.049939",
-      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-16/deployment_3.json"
-    },
-    {
-      "version": 2,
-      "status": "canceled",
-      "timestamp": "2023-08-16 18:19:44.703936",
-      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/ibm-i-deployment/meta/2023-08-16/deployment_2.json"
-    },
-    {
       "version": 1,
-      "status": "canceled",
-      "timestamp": "2023-08-16 18:18:36.125905",
-      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/unit-tests/output/test_action_file_case_1.json"
+      "status": "ready",
+      "timestamp": "2023-09-22 09:05:36.841848",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/unit-tests/output/test_meta_file_case_1.json"
     }
   ]
 }

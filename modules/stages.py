@@ -194,6 +194,14 @@ class Stage_List_list(list):
         super().insert(index, self._validate_item(item))
 
     def append(self, item):
+
+        # if stage already exist, just reopen it
+        for stage in self:
+          if item.name == stage.name:
+            logging.info(f"Stage {item.name} already exist with status '{stage.status}'. Status will be set to 'new'.")
+            item.status = Cmd_Status.NEW
+            return
+
         super().append(self._validate_item(item))
 
     def extend(self, other):
@@ -246,6 +254,30 @@ class Stage_List_list(list):
 
       raise Exception(f"Stage {name} not found in list {self.get_all_names()}")
       return None
+
+
+    #@validate_arguments
+    def get_stage_list_by_status(self, status: Cmd_Status) -> []:
+
+      stages = Stage_List_list()
+
+      for s in self:
+        if s.status == status:
+          stages.append(s)
+
+      return stages
+
+
+
+    def get_open_stages(self) -> []:
+
+      stages = Stage_List_list()
+
+      for s in self:
+        if s.status != Cmd_Status.FINISHED:
+          stages.append(s)
+
+      return stages
 
 
 

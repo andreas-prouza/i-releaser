@@ -40,13 +40,12 @@ class Meta_File:
 
 
     #@validate_arguments
-    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, completed_stages: s.Stage_List_list=None, current_stages: []=["START"], imported_from_dict=False):
+    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, stages: s.Stage_List_list=None, imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
 
       self.file_name = None
-      self.completed_stages = None
-      self.current_stages = None
+      self.stages = None
       self.status = None
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
@@ -80,11 +79,10 @@ class Meta_File:
       if self.project is None:
         self.project = self.workflow.default_project
 
-      self.completed_stages = completed_stages
-      if self.completed_stages is None:
-        self.completed_stages = s.Stage_List_list()
+      self.stages = stages
+      if self.stages is None:
+        self.stages = s.Stage_List_list(self.workflow.name, ["START"])
         
-      self.current_stages = s.Stage_List_list(self.workflow.name, current_stages)
       self.deploy_objects = do.Deploy_Object_List()
 
       self.actions = da.Deploy_Action_List_list()
@@ -157,10 +155,10 @@ class Meta_File:
      #@validate_arguments
     def set_next_stage(self, from_stage: str):
 
-      if from_stage not in self.current_stages.get_all_names():
-        raise Exception(f"Stage {from_stage} ist not in the list of current stages: {self.current_stages.get_all_names()}")
+      if from_stage not in self.stages.get_all_names():
+        raise Exception(f"Stage {from_stage} ist not in the list of current stages: {self.stages.get_all_names()}")
 
-      from_stage_obj = self.current_stages.get_stage(from_stage)
+      from_stage_obj = self.stages.get_stage(from_stage)
       next_stages = from_stage_obj.get_next_stages_name()
 
       commands = ibm_i_commands.IBM_i_commands(self)
@@ -168,15 +166,15 @@ class Meta_File:
       # 1. Remove the from_stage from current stages
       # 2. Add next stages to current stages
       # 3. Set global stages commands
-      self.completed_stages.append(from_stage_obj)
-      self.current_stages.remove_stage(from_stage)
+      #self.completed_stages.append(from_stage_obj)
+      #self.current_stages.remove_stage(from_stage)
 
       for next_stage in next_stages:
 
-        self.current_stages.append(s.Stage.get_stage(self.workflow.name, next_stage))
+        self.stages.append(s.Stage.get_stage(self.workflow.name, next_stage))
         commands.set_cmds(next_stage)
       
-      if self.current_stages == []:
+      if self.stages.get_open_stages() == []:
         self.set_status(Meta_file_status.FINISHED)
 
       self.write_meta_file()
@@ -185,7 +183,7 @@ class Meta_File:
 
     def run_current_stages(self) -> None:
 
-      names = self.current_stages.get_all_names()
+      names = self.stages.get_open_stages().get_all_names()
       for name in names:
         self.run_current_stage(name)
 
@@ -209,7 +207,7 @@ class Meta_File:
       
       cmd = ibm_i_commands.IBM_i_commands(self)
 
-      stage_obj = self.current_stages.get_stage(stage)
+      stage_obj = self.stages.get_open_stages().get_stage(stage)
       
       if processing_step is not None and processing_step not in stage_obj.processing_steps:
         e = Exception(f"Processing step '{processing_step}' is not defined in stage '{stage}'. Defined steps are: {stage_obj.processing_steps}")
@@ -259,7 +257,7 @@ class Meta_File:
           # if stage is not completed, don't set the FINISHED status.
           return
 
-      stage_obj = self.current_stages.get_stage(stage)
+      stage_obj = self.stages.get_stage(stage)
       stage_obj.status = Cmd_Status.FINISHED
 
       logging.info(f"Stage {stage} has been finished. Setting next stage(s)")
@@ -271,7 +269,7 @@ class Meta_File:
      #@validate_arguments
     def check_deployment_finish(self) -> None:
 
-      if len(self.current_stages) == 0:
+      if len(self.stages.get_open_stages()) == 0:
         logging.info(f"Deployment {self.file_name} has been finished.")
         self.set_status(Meta_file_status.FINISHED)
 
@@ -342,12 +340,12 @@ class Meta_File:
 
       list=self.actions.get_actions(processing_step=processing_step, stage=stage)
 
-      for a in self.actions:
-        if processing_step is None or a.processing_step == processing_step:
+      #for a in self.actions:
+      #  if processing_step is None or a.processing_step == processing_step:
           # Consider stage if given
-          if stage is not None and a.stage is not None and stage != a.stage:
-            continue
-          list.append(a)
+      #    if stage is not None and a.stage is not None and stage != a.stage:
+      #      continue
+      #    list.append(a)
       
       list = list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage)
       
@@ -370,11 +368,8 @@ class Meta_File:
       sorted_action_steps = {}
 
       for st,ps in actions.items():
-        if st in self.completed_stages.get_all_names():
-          sorted_stage_steps = self.completed_stages.get_stage(st).processing_steps
-
-        if st in self.current_stages.get_all_names():
-          sorted_stage_steps = self.current_stages.get_stage(st).processing_steps
+        if st in self.stages.get_all_names():
+          sorted_stage_steps = self.stages.get_stage(st).processing_steps
         
         for sorted_stage_step in sorted_stage_steps:
           for p in ps:
@@ -400,8 +395,7 @@ class Meta_File:
                               file_name=f"{meta_file_json['general']['file_name']}",
                               create_time=meta_file_json['general']['create_time'],
                               update_time=meta_file_json['general']['update_time'],
-                              completed_stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['completed_stages']),
-                              current_stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['current_stages']),
+                              stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['stages']),
                               imported_from_dict=True
                              )
         meta_file.commit=meta_file_json['general']['commit']
@@ -452,8 +446,7 @@ class Meta_File:
                          'create_time':     self.create_time,
                          'update_time':     self.update_time,
                          'status':          self.status.value,
-                         'completed_stages':  self.completed_stages.get_dict(),
-                         'current_stages':  self.current_stages.get_dict(),
+                         'stages':  self.stages.get_dict(),
                         }
       dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
                              'backup_lib':  self.backup_deploy_lib,
@@ -471,10 +464,10 @@ class Meta_File:
       s=self
       result = s.actions == o.actions
       result = s.deploy_objects == o.deploy_objects
-      result = s.current_stages == o.current_stages
+      result = s.stages == o.stages
 
-      if (s.status, s.project, s.deploy_version, s.update_time, s.create_time, s.file_name, s.commit, s.release_branch, s.current_stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
-         (o.status, o.project, o.deploy_version, o.update_time, o.create_time, o.file_name, s.commit, s.release_branch, o.current_stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
+      if (s.status, s.project, s.deploy_version, s.update_time, s.create_time, s.file_name, s.commit, s.release_branch, s.stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
+         (o.status, o.project, o.deploy_version, o.update_time, o.create_time, o.file_name, s.commit, s.release_branch, o.stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
         return True
       return False
 
@@ -555,7 +548,7 @@ class Meta_File:
       with open(file, "r") as file:
         obj_cmds = json.load(file)
 
-      for stage in self.current_stages.get_all_names():
+      for stage in self.stages.get_open_stages().get_all_names():
         for oc in obj_cmds:
           self.deploy_objects.add_object_action_from_dict(dict=oc, stage=stage)
       

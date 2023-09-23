@@ -1,4 +1,5 @@
 coverage
+pyodbc>=0.5.1
 #pydantic
 
 gunicorn >= 20.0.4

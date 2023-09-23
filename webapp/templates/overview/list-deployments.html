@@ -19,9 +19,11 @@
         <thead>
             <tr>
                 <!--- <th>Auswahl</th> -->
-                {% for key, value in deployments[0].items() %}
-                <th>{{ key }}</th>
-                {% endfor %}
+                {% if deployments|length > 0 %}
+                    {% for key, value in deployments[0].items() %}
+                    <th>{{ key }}</th>
+                    {% endfor %}
+                {% endif %}
             </tr>
         </thead>
         <tbody>

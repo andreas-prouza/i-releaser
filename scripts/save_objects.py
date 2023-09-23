@@ -53,7 +53,7 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
                  )
     """
     actions = meta_file.actions
-    clear_files = meta_file.current_stages.get_stage(stage).clear_files
+    clear_files = meta_file.stages.get_stage(stage).clear_files
     deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
 
     for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():

@@ -85,6 +85,11 @@ input:checked + .slider:before {
 
 </style>
 
+<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+<script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+<script src="http://flowchart.js.org/flowchart-latest.js"></script>
+
 <div class="box box-info">
 
     <form>
@@ -95,7 +100,7 @@ input:checked + .slider:before {
 
     <!-- /.box-header -->
     <div>
-        <h2>Projekt: {{ deployment_dict['general']['project'] }} | Version: {{ deployment_dict['general']['deploy_version'] }} </h2>
+        <h2>Projekt:x {{ deployment_dict['general']['project'] }} | Version: {{ deployment_dict['general']['deploy_version'] }} </h2>
         <br/>
         <h3>Status: 
             <div 
@@ -126,18 +131,24 @@ input:checked + .slider:before {
 
     <hr>
 
+    <!-- https://github.com/adrai/flowchart.js   https://flowchart.js.org -->
+                <div id="canvas"></div>
+
 
     <br/>
     
-    <h3>Completed stages</h3>
+    <h3>Stages</h3>
     <table class="table table-striped table-bordered">
         <thead>
             <th>Name</th><th>Status</th><th>Last update</th>
         </thead>
-        {% for stage in deployment_dict['general']['completed_stages'] %}
+        {% for stage in deployment_dict['general']['stages'] %}
         <tr>
             <td>{{ stage['name'] }}</td>
-            <td><div {% if stage['status'] == 'finished' %}class="badge badge-success"{% endif %}
+            <td>
+                {% if stage['status'] == 'new' %}<img class="run" src="{{ url_for('static', filename='assets/img/run-green.png') }}" onclick="runStage('{{ deployment_dict['general']['file_name'] }}', '{{ stage['name'] }}')">{% endif %}
+                {% if stage['status'] == 'failed' %}<img class="run" src="{{ url_for('static', filename='assets/img/run-red.png') }}" onclick="runStage('{{ deployment_dict['general']['file_name'] }}', '{{ stage['name'] }}')">{% endif %}
+                <div {% if stage['status'] == 'finished' %}class="badge badge-success"{% endif %}
                     {% if stage['status'] == 'failed' %}class="badge badge-danger"{% endif %}
                     {% if stage['status'] == 'new' %}class="badge badge-info"{% endif %}
                     >
@@ -152,33 +163,6 @@ input:checked + .slider:before {
     
     <hr>
     
-    <br/>
-
-    <h3>Current stages</h3>
-    <table class="table table-striped table-bordered">
-        <thead>
-            <th>Name</th><th>Status</th><th>Last update</th>
-        </thead>
-        {% for stage in deployment_dict['general']['current_stages'] %}
-        <tr>
-            <td>{{ stage['name'] }}</td>
-            <td>
-                {% if stage['status'] == 'new' %}<img class="run" src="{{ url_for('static', filename='assets/img/run-green.png') }}" onclick="runStage('{{ deployment_dict['general']['file_name'] }}', '{{ stage['name'] }}')">{% endif %}
-                {% if stage['status'] == 'failed' %}<img class="run" src="{{ url_for('static', filename='assets/img/run-red.png') }}" onclick="runStage('{{ deployment_dict['general']['file_name'] }}', '{{ stage['name'] }}')">{% endif %}
-                <div {% if stage['status'] == 'finished' %}class="badge badge-success"{% endif %}
-                                {% if stage['status'] == 'failed' %}class="badge badge-danger"{% endif %}
-                                {% if stage['status'] == 'new' %}class="badge badge-info"{% endif %}
-                                >
-                            {{ stage['status'] }}
-                </div>
-            </td>
-            <td>{{ stage['update_time'] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-
-
-    <hr>
     
     <br/>
 
@@ -311,25 +295,88 @@ input:checked + .slider:before {
 
     (function(d) {
 
-stylizePreElements = function() {
-  var preElements = document.getElementsByTagName("pre");
-  for (i = 0; i < preElements.length; ++i) {
-    var preElement = preElements[i];
-    preElement.className += "prettyprint";
-  }
-};
+        stylizePreElements = function() {
+        var preElements = document.getElementsByTagName("pre");
+        for (i = 0; i < preElements.length; ++i) {
+            var preElement = preElements[i];
+            preElement.className += "prettyprint";
+        }
+        };
 
-injectPrettifyScript = function() {
-  // https://github.com/googlearchive/code-prettify
-  var scriptElement = document.createElement('script');
-  scriptElement.setAttribute("src", "https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js");
-  document.head.appendChild(scriptElement);
-};
+        injectPrettifyScript = function() {
+        // https://github.com/googlearchive/code-prettify
+        var scriptElement = document.createElement('script');
+        scriptElement.setAttribute("src", "https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js");
+        document.head.appendChild(scriptElement);
+        };
 
-stylizePreElements();
-injectPrettifyScript();
+        stylizePreElements();
+        injectPrettifyScript();
 
-})(document)
+    })(document)
+
+
+    window.onload = function () {
+        var btn = document.getElementById("run"),
+            chart;
+
+        var code = '{{ flow |safe|replace("\n", "\\n")}}';
+            //code = cd.value;
+
+            if (chart) {
+              chart.clean();
+            }
+
+            chart = flowchart.parse(code);
+            chart.drawSVG('canvas', {
+              // 'x': 30,
+              // 'y': 50,
+              'line-width': 3,
+              'maxWidth': 10,//ensures the flowcharts fits within a certian width
+              'line-length': 20,
+              'text-margin': 10,
+              'font-size': 14,
+              'font': 'normal',
+              'font-family': 'Helvetica',
+              'font-weight': 'normal',
+              'font-color': 'black',
+              'line-color': 'black',
+              'element-color': 'black',
+              'fill': 'white',
+              'yes-text': 'yes',
+              'no-text': 'no',
+              'arrow-end': 'block',
+              'scale': 1,
+              'symbols': {
+                'start': {
+                  'font-color': 'red',
+                  'element-color': 'green',
+                  'fill': 'yellow'
+                },
+                'end':{
+                  'class': 'end-element'
+                }
+              },
+              'flowstate' : {
+                'stage_finished' : { 'fill' : '#28a745', 'font-size' : 14,  'font-color': 'white', 'font-weight' : 'bold'},
+                'stage_current' : {'fill' : 'yellow', 'font-color' : 'red', 'font-weight' : 'bold'},
+                'stage_new' : { 'fill' : '#17a2b8', 'font-size' : 14, 'font-color': 'white', 'font-weight' : 'bold'},
+                'step_finished' : {'fill' : '#28a745', 'font-size' : 11, 'font-color': 'white'},
+                'step_new' : {'fill' : '#17a2b8', 'font-size' : 11, 'font-color': 'white'},
+              }
+            });
+
+            $('[id^=sub1]').click(function(){
+              alert('info here');
+            });
+        
+    };
+
+    function myFunction(event, node) {
+      console.log("You just clicked this node:", node);
+    }
+    
+
 
 
 function showLog(type, text) {

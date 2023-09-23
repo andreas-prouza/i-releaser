@@ -31,6 +31,7 @@ class Workflow:
     self.object_commands = []
     self.default_project = None
     self.step_2_script_mapping = None
+    self.stages = None
 
     logging.debug(f"{name=}, {dict=}")
 
@@ -66,6 +67,8 @@ class Workflow:
           self.step_2_script_mapping = wf["step_2_script_mapping"]
         if 'default_project' in wf:
           self.default_project = wf["default_project"]
+
+        self.stages = wf['stages']
 
         return
 
@@ -126,6 +129,7 @@ class Workflow:
             return stage
     
     return None
+
 
 
   def validate_workflow(workflow_dict: {}) -> None:

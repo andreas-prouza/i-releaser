@@ -9,7 +9,7 @@ from scripts import save_objects, target_prepare, transfer, backup_old_objects, 
 
 def generate_commands(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
 
-  processing_steps = meta_file.current_stages.get_stage(stage).processing_steps
+  processing_steps = meta_file.stages.get_stage(stage).processing_steps
 
   steps_cmd = {
     'prepare-save': [
