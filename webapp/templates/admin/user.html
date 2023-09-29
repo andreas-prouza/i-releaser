@@ -41,25 +41,21 @@ const swalWithBootstrapButtons = Swal.mixin({
 
 function renew_key() {
     swalWithBootstrapButtons.fire({
-        title: 'Submit your new password',
-        input: 'text',
-        inputAttributes: {
-            autocapitalize: 'off'
-        },
+        title: 'Generate new token',
         showCancelButton: true,
         showLoaderOnConfirm: true,
         allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {
             if (result.isConfirmed) {
-                postData("/api/set_user_key", { key: result.value }).then((data) => {
+                postData("/api/set_user_key", { }).then((data) => {
                     console.log(data); // JSON data parsed by `data.json()` call
-                });
-                swalWithBootstrapButtons.fire(
-                'Added!',
-                'Your key has been added successfully.',
-                'success'
-                ).then((result) => {
-                        location.reload();
+                    swalWithBootstrapButtons.fire(
+                    'Token successfully generated!',
+                    'Your token:<br/><br/>' + data['token'],
+                    'success'
+                    ).then((result) => {
+                            location.reload();
+                    });
                 });
             }
     })

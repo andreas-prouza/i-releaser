@@ -190,6 +190,7 @@ def show_user():
         keys = json.load(f)
     
     user_key = keys.get(session['current_user'], None)
+    user_key = "*" * (len(user_key) - 6) + user_key[-6:]
 
     return render_template('admin/user.html', sidebar=get_sidebar_data(), user_key=user_key) 
 
@@ -198,11 +199,10 @@ def show_user():
 
 @app.route('/api/set_user_key', methods=['POST'])
 def set_user_key():
-    key = request.get_json(force=True)
     logging.debug(f"Set new key for user {session['current_user']}")
 
-    app_login.set_new_user_key(key['key'])
-    return jsonify(key)
+    app_login.set_new_user_key()
+    return jsonify({"token": app_login.set_new_user_key()})
     
 
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
-import logging
+import logging, string, random
 from flask import session
 import hashlib, json
 
@@ -21,10 +21,11 @@ def connect(user, password):
   connection_string = f"driver={driver};system={host};uid={user};pwd={password}"
   logging.debug(f"Try to login; {user=}, {driver=}, {host=}")
 
+  user = user.lower()
   
   try:
 
-    if user.lower() not in [x.lower() for x in global_cfg.C_ALLOWED_USERS]:
+    if user not in [x.lower() for x in global_cfg.C_ALLOWED_USERS]:
       e = Exception(f"User '{user}' has no permission.")
       raise e
 
@@ -47,11 +48,16 @@ def connect(user, password):
 def get_user_keys():
   with open(web_constants.C_KEYS_FILE) as f:
     keys = json.load(f)
+    keys = dict((key,"*" * (len(value) - 6) + value[-6:]) for key,value in keys.items())
     return keys
   return {}
 
 
-def set_new_user_key(key):
+
+def set_new_user_key():
+
+  letters = string.ascii_letters
+  key = ''.join(random.choice(letters) for i in range(10)) 
 
   hash_obj = hashlib.sha256(bytes(key, 'utf-8'))
 
@@ -62,6 +68,9 @@ def set_new_user_key(key):
 
   with open(web_constants.C_KEYS_FILE, 'w') as file:
     json.dump(keys, file, default=str, indent=2)
+  
+  return hash_obj.hexdigest()
+
 
 
 def drop_user_key():
