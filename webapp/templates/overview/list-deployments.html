@@ -3,52 +3,82 @@
 {% block title %}
 {% endblock %}
 
+{% block css %}
+
+
+  <!-- Include the Bootstrap Table CSS for the table -->
+  <link href="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css">
+
+{% endblock %}
+
+
+
 {% block content %}
 
-<div class="box box-info">
-    <h2>List deployments from Project: <b>{{ project }}</b></h2>
-    <pre>{{ deploy_version_file }}</pre>
+  <h1>Project: <code>{{ project }}</code></h1>
 
-    {% if error_text is not none %}
-    <div class="headline text-danger">{{error_text}}</div>
-    {% endif %}
-
-    {{ projects }}
-    <!-- /.box-header -->
-    <table id="DataTable" class="table table-striped table-bordered" style="width:100%">
-        <thead>
-            <tr>
-                <!--- <th>Auswahl</th> -->
-                {% if deployments|length > 0 %}
-                    {% for key, value in deployments[0].items() %}
-                    <th>{{ key }}</th>
-                    {% endfor %}
+  <!-- /.box-header -->
+  <table id="deployments"
+  class="table w-auto"
+  data-toggle="table" 
+  data-filter-control="true"
+  data-show-search-clear-button="true" 
+  data-show-columns="true"
+  data-pagination="true" 
+  data-page-list="[5, 10, 20, 50, 100, all]"
+  data-page-size="5"
+  data-pagination-h-align="left"
+  data-pagination-detail-h-align="left"
+  data-buttons-align="left"
+  data-search-align="left">
+      <thead>
+          <tr>
+              <!--- <th>Auswahl</th> -->
+              {% if deployments|length > 0 %}
+                  {% for key, value in deployments[0].items() %}
+                    <th data-field="{{ key }}" data-sortable="true" data-filter-control={% if key == 'status' %}"select"{% else %}"input"{% endif %}  data-filter-control-container="#filter">{{ key }}</th>
+                  {% endfor %}
+              {% endif %}
+          </tr>
+      </thead>
+      <tbody>
+        {% for row in deployments %}
+        <tr>
+            {% for key, value in row.items() %}
+            <td style="white-space: nowrap;"><a href="show_details/{{ project }}/{{ row['version'] }}">
+                {% if key == 'status' %}
+                    <button type="button" class="btn 
+                        {% if value == 'finished' %}btn-success{% endif %}
+                        {% if value == 'failed' %}btn-danger{% endif %}
+                        {% if value == 'canceled' %}btn-danger{% endif %}
+                        {% if value == 'new' %}btn-info{% endif %}
+                        {% if value == 'ready' %}btn-primary{% endif %}
+                    ">{{ value }} </button>
+                {% else %}
+                    {{ value }}
                 {% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in deployments %}
-            <tr>
-                {% for key, value in row.items() %}
-                <td style="white-space: nowrap;"><a href="show_details/{{ project }}/{{ row['version'] }}">
-                    {% if key == 'status' %}
-                        <div 
-                        {% if value == 'finished' %}class="badge badge-success"{% endif %}
-                        {% if value == 'failed' %}class="badge badge-danger"{% endif %}
-                        {% if value == 'canceled' %}class="badge badge-danger"{% endif %}
-                        {% if value == 'new' %}class="badge badge-info"{% endif %}
-                        {% if value == 'ready' %}class="badge badge-primary"{% endif %}
-                        >{{ value }} </div>
-                    {% else %}
-                        {{ value }}
-                    {% endif %}
-                    </a>
-                </td>
-                {% endfor %}
-            </tr>
+                </a>
+            </td>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
+        </tr>
+        {% endfor %}
+    </tbody>
+  </table>
 
+{% endblock %}
+
+
+{% block scripts %}
+
+  <!-- http://js-grid.com/getting-started/ -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+  <script src="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.min.js"></script>
+  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
+  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/extensions/resizable/bootstrap-table-resizable.min.js"></script>
+  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+
+  <script>
+
+  </script>
 {% endblock %}

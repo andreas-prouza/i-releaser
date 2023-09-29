@@ -6,11 +6,11 @@
 import sys, json, os
 base_dir = os.path.realpath(os.path.dirname(__file__)+"/..")
 sys.path.append(base_dir)
-
+from pathlib import Path
 
 import logging
 import uuid
-from etc import flask_config, logger_config, constants
+from etc import flask_config, logger_config, constants, global_cfg, web_constants
 
 # Flask module
 from flask import Flask, request, session, render_template, jsonify, redirect, url_for
@@ -50,7 +50,6 @@ app.config.from_object(flask_config.DevelopmentConfig())
 
 logging.debug(app.config)
 
-project = 'test'
 
 #######################################################
 # Set routes
@@ -99,16 +98,76 @@ def check_session():
     #return login()
 
 
+def get_sidebar_data():
+    x ={}
+
+    x['projects'] = workflow.Workflow.get_all_projects()
+    x['current_user'] = session.get('current_user', None).upper()
+    x['logs'] = os.listdir('log/')
+    x['active']=request.args.get('sidebar_active','deployments')
+    logging.debug(f"Sidebar: {x}")
+
+    return x
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     
     logging.debug(sys.path)
     logging.debug('Call index.html')
+    
+    
+    project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
+
     dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
     logging.debug(dv)
     dv = dv['deployments']
     logging.debug("Send response")
-    return render_template('overview/list-deployments.html', project=project, projects=workflow.Workflow.get_all_projects(), deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv) 
+    
+    #current_user=session['current_user'], 
+    return render_template('overview/list-deployments.html', project=project, sidebar=get_sidebar_data(), deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv) 
+
+
+
+@app.route('/api/list_deployments/<project>', methods=['GET', 'POST'])
+def list_deployments(project):
+    dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
+    logging.debug(dv)
+    dv = dv['deployments']
+    return jsonify(dv)
+
+
+
+@app.route('/project/<project>', methods=['GET', 'POST'])
+def select_project(project):
+
+    available_projects = workflow.Workflow.get_all_projects()
+    if (project not in available_projects):
+        logging.error(f"Project '{project}' is not in list of {available_projects}.")
+        project = available_projects[0]
+
+    session['current_project'] = project
+
+    return redirect('/')
+
+
+
+@app.route('/log/<log>', defaults={'number_of_lines':100}, methods=['GET'])
+@app.route('/log/<log>/<int:number_of_lines>', methods=['GET', 'POST'])
+def show_log(log, number_of_lines):
+
+    logging.debug(f"Read log file {log=}")
+
+    data = []
+    with open(f"log/{log}") as file:
+        data = file.readlines()[-number_of_lines:]
+        logging.debug(f"reverse data")
+        data = list(reversed(data))
+
+    logging.debug("Send response")
+    return render_template('admin/log.html', sidebar=get_sidebar_data(), logfile=log, content=data, number_of_lines=number_of_lines) 
+
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -118,7 +177,43 @@ def login():
         return redirect('/')
 
     logging.debug(f"{session.get('error_text', None)=}")
-    return render_template('login.html', error_text=session.get('error_text', None)) 
+    return render_template('login.html', sidebar=None, error_text=session.get('error_text', None)) 
+
+
+
+@app.route('/user', methods=['GET', 'POST'])
+def show_user():
+
+    keys=[]
+    user_key={}
+    with open(web_constants.C_KEYS_FILE) as f:
+        keys = json.load(f)
+    
+    user_key = keys.get(session['current_user'], None)
+
+    return render_template('admin/user.html', sidebar=get_sidebar_data(), user_key=user_key) 
+
+
+
+
+@app.route('/api/set_user_key', methods=['POST'])
+def set_user_key():
+    key = request.get_json(force=True)
+    logging.debug(f"Set new key for user {session['current_user']}")
+
+    app_login.set_new_user_key(key['key'])
+    return jsonify(key)
+    
+
+
+@app.route('/api/drop_key', methods=['POST'])
+def drop_user_key():
+    logging.debug(f"Drop key for user {session['current_user']}")
+
+    app_login.drop_user_key()
+    return jsonify({})
+    
+
 
 
 @app.route('/logout', methods=['GET', 'POST'])
@@ -140,7 +235,23 @@ def show_workflows():
     wf_json = json.dumps(wf, default=str, indent=4)
 
     logging.debug("Send response")
-    return render_template('overview/workflows.html', workflow_json=wf_json, projects=workflow.Workflow.get_all_projects()) 
+    return render_template('admin/workflows.html', sidebar=get_sidebar_data(), workflow_json=wf_json, projects=workflow.Workflow.get_all_projects()) 
+
+
+@app.route('/settings', methods=['GET', 'POST'])
+def show_settings():
+
+    logging.debug('Call settings')
+
+    logging.debug("Send response")
+    return render_template('admin/settings.html', 
+        sidebar=get_sidebar_data(), 
+        allowed_users=global_cfg.C_ALLOWED_USERS, 
+        default_project=global_cfg.C_DEFAULT_PROJECT, 
+        port=app.config["PORT"], 
+        path=Path(os.path.dirname(__file__)),
+        keys=app_login.get_user_keys()
+        )
 
 
 
@@ -160,12 +271,12 @@ def show_details(project, version):
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
         logging.debug(dv)
-        return render_template('overview/show-deployment.html', deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow=flow) 
+        return render_template('overview/show-deployment.html', sidebar=get_sidebar_data(), deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow=flow) 
 
     except Exception as e:
         logging.exception(e)
         error = e
-        return render_template('error.html', error=error) 
+        return render_template('error.html', sidebar=get_sidebar_data(), error=error) 
 
 
 
@@ -189,7 +300,7 @@ def run_stage():
 
 
 
-@app.route('/cancel_deployment', methods=['POST'])
+@app.route('/api/cancel_deployment', methods=['POST'])
 def cancel_deployment():
     data = request.get_json(force=True)
     logging.debug(f"Cancel Deployment: {data['filename']}")
@@ -199,7 +310,7 @@ def cancel_deployment():
     
 
 
-@app.route('/create_deployment/<wf_name>/<commit>', methods=['GET'])
+@app.route('/api/create_deployment/<wf_name>/<commit>', methods=['GET'])
 def create_deployment(wf_name, commit):
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}")
 

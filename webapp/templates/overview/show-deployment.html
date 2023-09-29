@@ -100,16 +100,17 @@ input:checked + .slider:before {
 
     <!-- /.box-header -->
     <div>
-        <h2>Projekt:x {{ deployment_dict['general']['project'] }} | Version: {{ deployment_dict['general']['deploy_version'] }} </h2>
+        <h2>Projekt: <code>{{ deployment_dict['general']['project'] }} </code>&nbsp;&nbsp;&nbsp;&nbsp;
+            Version: <code>{{ deployment_dict['general']['deploy_version'] }} </code></h2>
         <br/>
         <h3>Status: 
-            <div 
-            {% if deployment_dict['general']['status'] == 'finished' %}class="badge badge-success"{% endif %}
-            {% if deployment_dict['general']['status'] == 'canceled' %}class="badge badge-danger"{% endif %}
-            {% if deployment_dict['general']['status'] == 'failed' %}class="badge badge-danger"{% endif %}
-            {% if deployment_dict['general']['status'] == 'ready' %}class="badge badge-info"{% endif %}
-            {% if deployment_dict['general']['status'] == 'new' %}class="badge badge-primary"{% endif %}
-            >{{ deployment_dict['general']['status'] }} </div>
+            <button type="button" class="btn 
+            {% if deployment_dict['general']['status'] == 'finished' %}btn-success{% endif %}
+            {% if deployment_dict['general']['status'] == 'canceled' %}btn-danger{% endif %}
+            {% if deployment_dict['general']['status'] == 'failed' %}btn-danger{% endif %}
+            {% if deployment_dict['general']['status'] == 'ready' %}btn-info{% endif %}
+            {% if deployment_dict['general']['status'] == 'new' %}btn-primary{% endif %}
+            ">{{ deployment_dict['general']['status'] }} </button>
             {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new', 'in_process'] %}
             <img class="run" src="{{ url_for('static', filename='assets/img/cancel.png') }}" 
             onclick="cancel_deployment('{{ deployment_dict['general']['file_name'] }}')">
@@ -148,12 +149,13 @@ input:checked + .slider:before {
             <td>
                 {% if stage['status'] == 'new' %}<img class="run" src="{{ url_for('static', filename='assets/img/run-green.png') }}" onclick="runStage('{{ deployment_dict['general']['file_name'] }}', '{{ stage['name'] }}')">{% endif %}
                 {% if stage['status'] == 'failed' %}<img class="run" src="{{ url_for('static', filename='assets/img/run-red.png') }}" onclick="runStage('{{ deployment_dict['general']['file_name'] }}', '{{ stage['name'] }}')">{% endif %}
-                <div {% if stage['status'] == 'finished' %}class="badge badge-success"{% endif %}
-                    {% if stage['status'] == 'failed' %}class="badge badge-danger"{% endif %}
-                    {% if stage['status'] == 'new' %}class="badge badge-info"{% endif %}
-                    >
+                <button type="button" class="btn 
+                    {% if stage['status'] == 'finished' %}btn-success{% endif %}
+                    {% if stage['status'] == 'failed' %}btn-danger{% endif %}
+                    {% if stage['status'] == 'new' %}btn-info{% endif %}
+                    ">
                     {{ stage['status'] }}
-                </div>
+                </button>
             </td>
             <td>{{ stage['update_time'] }}</td>
         </tr>
@@ -188,11 +190,12 @@ input:checked + .slider:before {
                         <td>{{ cmd['processing_step'] }}</td>
                         <td>{{ cmd['environment'] }}</td>
                         <td>
-                            <div {% if cmd['status'] == 'finished' %}class="badge badge-success"{% endif %}
-                                {% if cmd['status'] == 'failed' %}class="badge badge-danger"{% endif %}
-                                {% if cmd['status'] == 'new' %}class="badge badge-info"{% endif %}
-                                >
-                            {{ cmd['status'] }}</div>
+                            <button type="button" class="btn  
+                                {% if cmd['status'] == 'finished' %}btn-success{% endif %}
+                                {% if cmd['status'] == 'failed' %}btn-danger{% endif %}
+                                {% if cmd['status'] == 'new' %}btn-info{% endif %}
+                            ">
+                            {{ cmd['status'] }}</button>
                         </td>
                         <td>
                             <label class="switch">
@@ -214,12 +217,13 @@ input:checked + .slider:before {
                                 <tr>
                                     <td>{{ history['create_time'] }}</td>
                                     <td>
-                                        <div {% if history['status'] == 'finished' %}class="badge badge-success"{% endif %}
-                                            {% if history['status'] == 'failed' %}class="badge badge-danger"{% endif %}
-                                            {% if history['status'] == 'new' %}class="badge badge-info"{% endif %}
-                                            >
+                                        <button type="button" class="btn  
+                                            {% if history['status'] == 'finished' %}btn-success{% endif %}
+                                            {% if history['status'] == 'failed' %}btn-danger{% endif %}
+                                            {% if history['status'] == 'new' %}btn-info{% endif %}
+                                        ">
                                             {{ history['status'] }}
-                                        </div>
+                                       </button>
                                     </td>
                                     <td>{% if history['stdout'] != '' %}<img src="{{ url_for('static', filename='assets/img/log.png') }}" onclick="showLog('info', '{{ history['stdout']|replace("'", "\"")|replace("\r\n", "<br/>")|replace("\n", "<br/>")|e }}')">&nbsp;{% endif %}
                                         {% if history['stderr'] != '' %}<img src="{{ url_for('static', filename='assets/img/error-log.png') }}" onclick="showLog('error', '{{ history['stderr']|replace("'", "\"")|replace("\r\n", "<br/>")|replace("\n", "<br/>")|e }}')">{% endif %}</td>
@@ -290,6 +294,7 @@ input:checked + .slider:before {
 
 
 <script src="{{ url_for('static', filename='assets/js/sweetalert2.all.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/js/web.deploy.js') }}"></script>
 
 <script type="text/javascript">
 
@@ -391,24 +396,6 @@ function showLog(type, text) {
 });
 }
 
-
-async function postData(url = "", data = {}) {
-  // Default options are marked with *
-  const response = await fetch(url, {
-    method: "POST", // *GET, POST, PUT, DELETE, etc.
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    credentials: "same-origin", // include, *same-origin, omit
-    headers: {
-      "Content-Type": "application/json",
-      // 'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    redirect: "follow", // manual, *follow, error
-    referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-    body: JSON.stringify(data), // body data type must match "Content-Type" header
-  });
-  return response.json(); // parses JSON response into native JavaScript objects
-}
 
 
 

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% endblock %}
+
+{% block content %}
+
+<div class="box box-info">
+
+    <form>
+        <input type=button onClick="location.href='/'" value='Back to overview'>
+    </form>
+    <br/>
+    <br/>
+
+    <!-- /.box-header -->
+
+    <h3>Settings</h3>
+
+    <table class="table table-striped table-bordered">
+        <tr>
+            <th>Allowed users</th><td>{% for user in allowed_users %}{{ user }}&nbsp;&nbsp;{% endfor %}</td>
+        </tr>
+        <tr><th>Default project</th><td>{{ default_project }}</td></tr>
+        <tr><th>Web port</th><td>{{ port }}</td></tr>
+        <tr><th>Web path</th><td>{{ path }}</td></tr>
+        <tr><th>User keys</th><td>
+            <table class="table table-striped table-bordered">
+                <tr><th>User</th><th>Key</th></tr>
+                {% for user,key in keys.items() %}
+                    <tr>
+                        <td><code>{{ user }}</code></td><td><code>{{ key }}</code></td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </td></tr>
+    </table>
+
+</div>
+
+
+
+{% endblock %}

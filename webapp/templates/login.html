@@ -71,14 +71,17 @@
 <div class="box box-info">
     <h1>Login</b></h1>
 
+    <div class="imgcontainer">
+      <img src="{{ url_for('static', filename='assets/img/logo.png') }}" class="logo" alt="logo">
+    </div>
+
     {% if error_text is not none %}
-    <div class="headline text-danger">{{error_text}}</div>
+    <div class="alert alert-danger alert-dismissible">
+      <h5><i class="icon fas fa-ban"></i>{{error_text}}</h5>
+    </div>
     {% endif %}
 
     <form action="/login" method="post">
-      <div class="imgcontainer">
-        <img src="{{ url_for('static', filename='assets/img/logo.png') }}" class="logo" alt="logo">
-      </div>
     
       <div class="container">
         <label for="user"><b>Username</b></label>

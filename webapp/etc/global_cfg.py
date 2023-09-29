@@ -1,0 +1,6 @@
+C_ALLOWED_USERS = [
+  'PROUZA'
+]
+
+C_DEFAULT_PROJECT = 'test'
+
