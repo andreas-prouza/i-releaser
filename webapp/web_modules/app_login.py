@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging, string, random
 from flask import session
 import hashlib, json
+import datetime
 
 from modules import meta_file, stages
 from modules.cmd_status import Status as Cmd_Status
@@ -48,7 +49,6 @@ def connect(user, password):
 def get_user_keys():
   with open(web_constants.C_KEYS_FILE) as f:
     keys = json.load(f)
-    keys = dict((key,"*" * (len(value) - 6) + value[-6:]) for key,value in keys.items())
     return keys
   return {}
 
@@ -62,7 +62,7 @@ def set_new_user_key():
   hash_obj = hashlib.sha256(bytes(key, 'utf-8'))
 
   keys=get_user_keys()
-  keys[session['current_user']]=hash_obj.hexdigest()
+  keys[session['current_user']]={'key': hash_obj.hexdigest(), 'date': str(datetime.datetime.now())}
 
   logging.debug(f"{keys=}")
 
@@ -71,6 +71,26 @@ def set_new_user_key():
   
   return hash_obj.hexdigest()
 
+
+def mask_key(key):
+  return "*" * (len(key) - 6) + key[-6:]
+
+
+
+def is_key_valid(auth_token):
+
+  keys=get_user_keys()
+
+  for user,key in keys.items():
+    if key['key'] == auth_token:
+      if user not in [x.lower() for x in global_cfg.C_ALLOWED_USERS]:
+        e = Exception(f"User '{user}' has no permission.")
+        raise e
+      return user
+  
+  logging.warning(f"Could not find token '{auth_token}'")
+
+  return None
 
 
 def drop_user_key():

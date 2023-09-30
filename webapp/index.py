@@ -78,6 +78,14 @@ def check_session():
 
     if 'is_logged_in' in session and '__invalid__' not in session:
         return
+    
+    auth_token = request.args.get('auth-token', None)
+    logging.debug(auth_token)
+    if auth_token is not None:
+        logging.debug(f"Check auth-token ({app_login.mask_key(auth_token)})")
+        if app_login.is_key_valid(auth_token):
+            return
+        return jsonify({'Error': 'auth-key is not permitted'})
 
     logging.debug("Not logged in")
     # Not logged in
@@ -184,13 +192,10 @@ def login():
 @app.route('/user', methods=['GET', 'POST'])
 def show_user():
 
-    keys=[]
-    user_key={}
-    with open(web_constants.C_KEYS_FILE) as f:
-        keys = json.load(f)
-    
-    user_key = keys.get(session['current_user'], None)
-    user_key = "*" * (len(user_key) - 6) + user_key[-6:]
+    user_keys=app_login.get_user_keys()
+    user_key = user_keys.get(session['current_user'], None)
+    if user_key is not None:
+        user_key['key'] = app_login.mask_key(user_key['key'])
 
     return render_template('admin/user.html', sidebar=get_sidebar_data(), user_key=user_key) 
 
@@ -242,6 +247,9 @@ def show_workflows():
 def show_settings():
 
     logging.debug('Call settings')
+    keys=app_login.get_user_keys()
+    for user, key in keys.items():
+        key['key']=app_login.mask_key(key['key'])
 
     logging.debug("Send response")
     return render_template('admin/settings.html', 
@@ -250,7 +258,7 @@ def show_settings():
         default_project=global_cfg.C_DEFAULT_PROJECT, 
         port=app.config["PORT"], 
         path=Path(os.path.dirname(__file__)),
-        keys=app_login.get_user_keys()
+        keys=keys
         )
 
 

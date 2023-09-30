@@ -26,10 +26,10 @@
         <tr><th>Web path</th><td>{{ path }}</td></tr>
         <tr><th>User keys</th><td>
             <table class="table table-striped table-bordered">
-                <tr><th>User</th><th>Key</th></tr>
+                <tr><th>User</th><th>Creation date</th><th>Key</th></tr>
                 {% for user,key in keys.items() %}
                     <tr>
-                        <td><code>{{ user }}</code></td><td><code>{{ key }}</code></td>
+                        <td><code>{{ user }}</code></td><td><code>{{ key['date'] }}</code></td><td><code>{{ key['key'] }}</code></td>
                     </tr>
                 {% endfor %}
             </table>

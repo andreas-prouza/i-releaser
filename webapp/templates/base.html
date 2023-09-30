@@ -62,7 +62,7 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
                                 {% for project in sidebar['projects'] %}
                                 <li class="w-100">
                                     <a href="/project/{{ project }}?sidebar_active=project_{{ project }}" class="nav-link px-20 text-white {% if sidebar['active'] == 'project-'+project %} active{% endif %}"> <span
-                                            class="d-none d-sm-inline">{{ project }}</span></a>
+                                            class="d-sm-inline">{{ project }}</span></a>
                                 </li>
                                 {% endfor %}
                             </ul>
@@ -96,7 +96,7 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
                                 {% for log in sidebar['logs'] %}
                                 <li class="w-100">
                                     <a href="/log/{{ log }}?sidebar_active=log-{{log}}" class="nav-link px-20 text-white {% if sidebar['active'] == 'log-'+log %} active{% endif %}"> <span
-                                            class="d-none d-sm-inline">{{ log }}</span></a>
+                                            class="d-sm-inline">{{ log }}</span></a>
                                 </li>
                                 {% endfor %}
                             </ul>
