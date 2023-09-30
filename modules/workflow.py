@@ -98,7 +98,6 @@ class Workflow:
 
 
 
-
   def get_workflow_steps_mapping(self) -> {}:
     with open(constants.C_WORKFLOW, "r") as file:
       workflows_json = json.load(file)

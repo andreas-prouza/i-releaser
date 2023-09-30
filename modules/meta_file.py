@@ -105,7 +105,7 @@ class Meta_File:
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
 
       if not imported_from_dict:
-        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name)
+        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name, self.commit)
         self.write_meta_file(False)
 
 
@@ -142,7 +142,7 @@ class Meta_File:
 
       if update_meta_file and status is not Meta_file_status.NEW:
         logging.debug(f"Finished 1.0")
-        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.file_name)
+        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.file_name, self.commit)
         logging.debug(f"Finished 1")
         self.status = status
         self.write_meta_file()

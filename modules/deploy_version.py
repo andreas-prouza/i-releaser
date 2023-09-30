@@ -61,9 +61,9 @@ class Deploy_Version:
 
 
 
-    def update_deploy_status(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str):
+    def update_deploy_status(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str, commit : str):
 
-      logging.debug(f"Update meta file status: {version=}, {status=}, {meta_file_name}")
+      logging.debug(f"Update meta file status: {version=}, {status=}, {meta_file_name}, {commit}")
       version_file = constants.C_DEPLOY_VERSION.format(project=project)
 
       logging.debug(f"Load {version_file}")
@@ -79,6 +79,7 @@ class Deploy_Version:
           logging.debug(f"Found {d}")
           d['status'] = status.value
           d['meta_file'] = meta_file_name
+          d['commit'] = commit
           d['timestamp'] = str(datetime.datetime.now())
           break
 
@@ -101,13 +102,7 @@ class Deploy_Version:
       logging.debug(f"Get deployment {version=}, {project=}") 
       logging.debug(f"{constants.C_DEPLOY_VERSION=}") 
       version_file = constants.C_DEPLOY_VERSION.format(project=project)
-      logging.debug(f"{os.path.abspath(version_file)}")
-
-      with open(version_file, "r") as file:
-          versions_config = json.load(file)
-
-      deployments = versions_config['deployments']
-
+      deployments = Deploy_Version.get_deployments(version_file)['deployments']
 
       for d in reversed(deployments):
         if d['version'] == version:
@@ -116,4 +111,19 @@ class Deploy_Version:
       err = Exception(f"Couldn't find deployment version {version}: {project=}") 
       logging.error(err)
       raise Exception(f"Couldn't find deployment version {version}: {project=}") 
+
+
+
+    def get_deployment_by_commit(project:str, commit : str):
+
+      logging.debug(f"Get deployment {commit=}, {project=}") 
+      version_file = constants.C_DEPLOY_VERSION.format(project=project)
+      deployments = Deploy_Version.get_deployments(version_file)['deployments']
+
+      for d in reversed(deployments):
+        if d.get('commit', None) is not None and d['commit'] == commit:
+          return d
+
+      logging.info(f"Couldn't find deployment with commit {commit}: {project=}")
+      return None
 

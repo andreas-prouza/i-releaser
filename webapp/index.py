@@ -13,7 +13,7 @@ import uuid
 from etc import flask_config, logger_config, constants, global_cfg, web_constants
 
 # Flask module
-from flask import Flask, request, session, render_template, jsonify, redirect, url_for
+from flask import Flask, request, session, render_template, jsonify, redirect, url_for, Response
 from flask_cors import CORS
 from flask_session import Session
 #from flask_minify import minify
@@ -85,7 +85,7 @@ def check_session():
         logging.debug(f"Check auth-token ({app_login.mask_key(auth_token)})")
         if app_login.is_key_valid(auth_token):
             return
-        return jsonify({'Error': 'auth-key is not permitted'})
+        return Response(json.dumps({'Error': 'Your authentication-token is not permitted'}), status=401, mimetype='application/json')
 
     logging.debug("Not logged in")
     # Not logged in
@@ -321,6 +321,12 @@ def cancel_deployment():
 @app.route('/api/create_deployment/<wf_name>/<commit>', methods=['GET'])
 def create_deployment(wf_name, commit):
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}")
+
+    wf = workflow.Workflow(wf_name)
+    existing_version = deploy_version.Deploy_Version.get_deployment_by_commit(project=wf.default_project, commit=commit)
+
+    if existing_version is not None:
+        return Response(json.dumps({'Error': f'Given commit is already used in deployment version {existing_version["version"]}'}), status=401, mimetype='application/json') 
 
     mf = meta_file.Meta_File(workflow_name=wf_name)
     mf.commit = commit
