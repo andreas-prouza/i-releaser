@@ -4,6 +4,7 @@ import logging
 
 from modules import deploy_action as da
 from etc import constants
+from modules.cmd_status import Status as Cmd_Status
 
 
 
@@ -108,7 +109,7 @@ class Deploy_Object_List(list):
   def get_obj_list_by_lib(self, lib) -> [Deploy_Object]:
     objs = []
     for o in self:
-      if o.lib == lib:
+      if o.prod_lib == lib:
         objs.append(o)
     return objs
 
@@ -125,8 +126,9 @@ class Deploy_Object_List(list):
 
   def get_object(self, obj_lib: str, obj_name: str, obj_type: str) -> Deploy_Object:
     for o in self:
-      if o.lib == obj_lib and o.type == obj_type and o.name == obj_name:
+      if o.prod_lib == obj_lib and o.type == obj_type and o.name == obj_name:
         return o
+    logging.warning(f"No object found for {obj_lib=}, {obj_name=}, {obj_type=}")
     return None
 
 
@@ -226,7 +228,7 @@ class Deploy_Object:
 
   def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict={}):
 
-    self.deploy_status = 'in preperation'
+    self.deploy_status = Cmd_Status.NEW
     self.actions = da.Deploy_Action_List_list()
 
     if len(dict) > 0:
@@ -236,6 +238,7 @@ class Deploy_Object:
       self.name = dict['obj_name'].lower()
       self.type = dict['obj_type'].lower()
       self.attribute = dict['obj_attribute'].lower()
+      self.deploy_status = Cmd_Status(dict['deploy_status'])
 
       if len(dict['actions']) > 0:
         for key_stages in dict['actions'].keys():
@@ -261,7 +264,7 @@ class Deploy_Object:
       'obj_name' : self.name,
       'obj_type' : self.type,
       'obj_attribute' : self.attribute,
-      'deploy_status' : self.deploy_status,
+      'deploy_status' : self.deploy_status.value,
       'actions' : self.actions.get_actions_as_dict()
     }
 

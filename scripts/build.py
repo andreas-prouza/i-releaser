@@ -10,6 +10,7 @@ from etc import logger_config
 
 from etc import constants
 from modules import meta_file as mf
+from modules.cmd_status import Status as Cmd_Status
 
 
 
@@ -61,7 +62,7 @@ def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
   run_sys_cmd(['git', 'reset', '--hard', f'origin/{new_release}'], build_dir)
 
-  meta_file.import_objects_from_config_file(f"{build_dir}/tmp/{constants.C_GNU_MAKE_OBJECT_LIST}")
+  meta_file.import_objects_from_config_file(f"{build_dir}/{constants.C_GNU_MAKE_OBJECT_LIST}")
   meta_file.write_meta_file()
 
 
@@ -70,6 +71,8 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   build_dir = meta_file.stages.get_stage(stage).build_dir
   new_release = meta_file.release_branch
   commit_msg='Build successfully'
+
+  run_sys_cmd(['pwd'], build_dir)
 
   reset_git_repo(build_dir)
   run_sys_cmd(['git', 'checkout', new_release], build_dir)
@@ -83,7 +86,11 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
     logging.exception(e)
     commit_msg='Build failed'
 
-  run_sys_cmd(['ls', '-la', 'build/prouzalib2'], build_dir)
+  update_compiled_object_status(meta_file, stage)
+
+  # List all changed objects
+  run_sys_cmd(['find build/* -type f -daystart -mtime -1 | xargs ls -la'], build_dir, True)
+
   run_sys_cmd(['git', 'status'], build_dir)
   run_sys_cmd(['git', 'add', '-A'], build_dir)  
   run_sys_cmd(['git', 'commit', '-m', f'"{commit_msg}"'], build_dir)
@@ -92,6 +99,38 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   if error is not None:
     raise error
   
+
+
+def update_compiled_object_status(meta_file: mf.Meta_File, stage: str):
+
+  build_dir = meta_file.stages.get_stage(stage).build_dir
+
+  with open(f"{build_dir}/{constants.C_COMPILED_OBJECT_LIST}", "r") as file:
+
+    for compiled in file:
+
+      if compiled == '':
+        continue
+
+      logging.debug(f"Import object: {compiled}")
+      tmp = compiled.lower().rstrip('\r\n').rstrip('\n').split('|')
+      obj=tmp[0]
+      crt_date=tmp[1]
+      prod_lib = obj.split("/")[0]
+      prod_obj = obj.split("/")[1].split('.')
+
+      if len(prod_obj) < 3:
+        logging.warning(f"Object has less than 3 attributes. Will be skipped. {prod_obj=}")
+        continue
+
+      do = meta_file.deploy_objects.get_object(obj_lib=prod_lib, obj_name=prod_obj[0], obj_type=prod_obj[2])
+      do.deploy_status = Cmd_Status.FINISHED
+      
+      logging.debug(f"{do.get_dict()}")
+
+  meta_file.write_meta_file()
+
+
 
 
 def merge_results(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
@@ -113,10 +152,13 @@ def reset_git_repo(build_dir):
 
 
 
-def run_sys_cmd(cmd, cwd):
+def run_sys_cmd(cmd, cwd, shell_direct=False):
 
   print(cmd)
-  s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=False, check=False) # executable='/bin/bash'
+  if shell_direct:
+    s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=True, check=False) # executable='/bin/bash'
+  else:
+    s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=False, check=False) # executable='/bin/bash'
   stdout = s.stdout.decode(constants.C_CONVERT_FROM)
   stderr = s.stderr.decode(constants.C_CONVERT_FROM)
   print(f"{stdout=}")

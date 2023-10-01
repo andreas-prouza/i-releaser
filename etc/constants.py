@@ -12,7 +12,8 @@ C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}"
 C_DEPLOY_META_FILE = f'{C_DEPLOY_DIR}/deployment_{{deploy_version}}.json'
 
 #C_GNU_MAKE_OBJECT_LIST = 'objects.txt'
-C_GNU_MAKE_OBJECT_LIST = 'prod_obj.txt'
+C_GNU_MAKE_OBJECT_LIST = 'tmp/prod_obj.txt'
+C_COMPILED_OBJECT_LIST = 'tmp/compiled.txt'
 
 
 # iconv will be used for convertion

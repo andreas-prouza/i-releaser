@@ -134,7 +134,7 @@ input:checked + .slider:before {
 
     <!-- https://github.com/adrai/flowchart.js   https://flowchart.js.org -->
                 <div id="canvas"></div>
-
+        <pre>{{  flow  }}</pre>
 
     <br/>
     
@@ -247,17 +247,22 @@ input:checked + .slider:before {
     <br/>
 
     <h3>Objects to deploy</h3>
-    <table class="table table-striped table-bordered">
+    <table class="table table-striped table-bordered w-auto">
         <thead>
-            <th>Production Lib</th><th>Name</th><th>Type</th><th>Attribute</th><th>Status</th>
+            <th>Prod Lib</th><th>Target Lib</th><th>Name</th><th>Type</th><th>Attribute</th><th>Status</th>
         </thead>
         {% for object in deployment_dict['objects'] %}
         <tr>
             <td>{{ object['obj_prod_lib'] }}</td>
+            <td>{{ object['obj_lib'] }}</td>
             <td>{{ object['obj_name'] }}</td>
             <td>{{ object['obj_type'] }}</td>
             <td>{{ object['obj_attribute'] }}</td>
-            <td>{{ object['obj_status'] }}</td>
+            <td><button type="button" class="btn  
+                {% if object['deploy_status'] == 'finished' %}btn-success{% endif %}
+                {% if object['deploy_status'] == 'failed' %}btn-danger{% endif %}
+                {% if object['deploy_status'] == 'new' %}btn-info{% endif %}
+                ">{{ object['deploy_status'] }}</td>
         </tr>
         {% endfor %}
     </table>
@@ -287,9 +292,11 @@ input:checked + .slider:before {
 
     <h3>Raw JSON file</h3>
 
-    <pre class="prettyprint lang-js">
-        {{ deployment_json }}
-    </pre>
+    <div>
+        <pre class="overflow-auto w-auto prettyprint lang-js">
+            {{ deployment_json }}
+        </pre>
+    </div>
 </div>
 
 
@@ -365,9 +372,11 @@ input:checked + .slider:before {
               'flowstate' : {
                 'stage_finished' : { 'fill' : '#28a745', 'font-size' : 14,  'font-color': 'white', 'font-weight' : 'bold'},
                 'stage_current' : {'fill' : 'yellow', 'font-color' : 'red', 'font-weight' : 'bold'},
+                'stage_failed' : {'fill' : '#dc3545', 'font-color' : 'white', 'font-weight' : 'bold'},
                 'stage_new' : { 'fill' : '#17a2b8', 'font-size' : 14, 'font-color': 'white', 'font-weight' : 'bold'},
                 'step_finished' : {'fill' : '#28a745', 'font-size' : 11, 'font-color': 'white'},
                 'step_new' : {'fill' : '#17a2b8', 'font-size' : 11, 'font-color': 'white'},
+                'step_failed' : {'fill' : '#dc3545', 'font-size' : 11, 'font-color' : 'white', 'font-weight' : 'bold'},
               }
             });
 
@@ -447,7 +456,7 @@ function cancel_deployment(filename) {
     reverseButtons: true
     }).then((result) => {
     if (result.isConfirmed) {
-        postData("/cancel_deployment", { filename: filename }).then((data) => {
+        postData("/api/cancel_deployment", { filename: filename }).then((data) => {
             console.log(data); // JSON data parsed by `data.json()` call
         });
         swalWithBootstrapButtons.fire(
