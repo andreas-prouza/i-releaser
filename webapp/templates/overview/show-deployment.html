@@ -87,6 +87,25 @@ input:checked + .slider:before {
     margin-top: 1rem;
 }
 
+.flow_step {
+    margin: 40px;
+}
+
+.flow_parent {
+    position: relative; 
+}
+
+#flowchart {
+    z-index: -1;
+}
+
+.flow_child {
+    display: inline-block;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
 </style>
 
 <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
@@ -132,24 +151,16 @@ input:checked + .slider:before {
 
 
     <hr>
-
-       {{  flow|safe  }}
-
-    <table>
-      <tr><td><button id="Start" class="button btn btn-success">Start</button></td></tr>
-      <tr><td></td><td><button id="button2" class="button btn btn-danger">Button 2</button></td></tr>
-      <tr><td></td><td></td><td><button id="button3" class="button btn btn-info">Button 3</button></td></tr>
-      <tr><td></td><td></td><td></td><td><button id="End" class="button">End</button></td></tr>
-    </table>
-  
+    
+    <!--canvas id="flowchart" style="position: absolute; top: 0; left: 0; "></canvas-->
+    <div id="flow_parent" class="flow_parent">
+        <canvas id="flowchart" class="flow_child border"></canvas>
+        {{  flow_html|safe  }}
+    </div>
 
     <hr>
 
-    <!-- https://github.com/adrai/flowchart.js   https://flowchart.js.org -->
-        <div id="canvas"></div>
-        <pre>{{  flow  }}</pre>
-
-    <br/>
+    <!--pre>{{  flow_html  }}</pre-->
     
     <h3>Stages</h3>
     <table class="table table-striped table-bordered">
@@ -339,8 +350,30 @@ input:checked + .slider:before {
         stylizePreElements();
         injectPrettifyScript();
 
-    })(document)
+        print_flow_connections();
 
+        addEventListener("resize", (event) => {
+            print_flow_connections();
+        });
+        
+    })(document)
+    
+function print_flow_connections() {
+    //canvas.width= window.innerWidth;
+    //canvas.height = window.innerHeight;
+    let flow_parent = document.getElementById("flow_parent");
+    let flow_html_container = document.getElementById("flow_html_container").getBoundingClientRect();
+    flow_parent.style.height=flow_html_container.height;
+    
+    let canvas = document.getElementById("flowchart");
+    canvas.height=flow_html_container.height;
+    canvas.width=window.innerWidth;
+
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    {{ flow_javascript | safe}}
+}
 
 
 function showLog(type, text) {

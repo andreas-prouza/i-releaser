@@ -58,6 +58,12 @@ logging.debug(app.config)
 #     request.values.get('parameter')
 #######################################################
 
+@app.after_request
+def add_header(response):
+    if 'Cache-Control' not in response.headers:
+        response.cache_control.max_age = 0
+    return response
+
 
 @app.before_request
 def check_session():
@@ -279,7 +285,7 @@ def show_details(project, version):
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
         logging.debug(dv)
-        return render_template('overview/show-deployment.html', sidebar=get_sidebar_data(), deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow=flow) 
+        return render_template('overview/show-deployment.html', sidebar=get_sidebar_data(), deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script']) 
 
     except Exception as e:
         logging.exception(e)

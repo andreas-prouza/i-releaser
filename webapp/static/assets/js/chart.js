@@ -24,33 +24,13 @@ function canvas_arrow(context, fromx, fromy, tox, toy) {
 
 // https://codepen.io/jacobvarner/pen/eYOPVdK 
 
-(function(d) {
-  
-  //document.getElementById('myCanvas').width= window.innerWidth;
-  //document.getElementById('myCanvas').height = window.innerHeight;
-  //document.getElementById('myCanvas').style.height = '500px';
-  
-
-  let Start = document.getElementById("Start");
-  let button2 = document.getElementById("button2");
-  let button3 = document.getElementById("button3");
-  let End = document.getElementById("End");
-
-  connectItems(Start, button2, "right", "top");
-  connectItems(Start, button3, "bottom", "left");
-  connectItems(Start, End, "right", "top");
-  connectItems(button2, End, "bottom", "left");
-  connectItems(button3, End, "bottom", "left");
-})(document);
-
-
 
 
 function connectItems(item1, item2, startPosition, endPosition) {
   let canvas = document.getElementById("flowchart");
   let ctx = canvas.getContext("2d");
   const width = 2;
-  const color = 'gray';
+  const color = 'grey';
   const head_len = 16;
   const head_angle = Math.PI / 6;
   let angle = 0;
@@ -60,6 +40,7 @@ function connectItems(item1, item2, startPosition, endPosition) {
   ctx.lineJoin = 'red';
   ctx.lineWidth = width;
 
+  canvas_pos = canvas.getBoundingClientRect();
   item1 = item1.getBoundingClientRect();
   item2 = item2.getBoundingClientRect();
   console.log("connecting ", item1, " to ", item2);
@@ -86,6 +67,8 @@ function connectItems(item1, item2, startPosition, endPosition) {
     default:
       // invalid input
   }
+  startX = startX - canvas_pos.left;
+  startY = startY - canvas_pos.top;
   
   switch (endPosition) {
     case "top":
@@ -112,13 +95,12 @@ function connectItems(item1, item2, startPosition, endPosition) {
       // invalid input
   }
   
+  endX = endX - canvas_pos.left;
+  endY = endY - canvas_pos.top;
+  
   ctx.moveTo(startX, startY);
   if (startPosition === "bottom" || startPosition === "top") {
     ctx.lineTo(startX, endY);
-    //ctx.lineTo(tox, toy);
-    //ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
-    //ctx.moveTo(tox, toy);
-    //ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
   } else {
     ctx.lineTo(endX, startY);
   }
@@ -128,10 +110,15 @@ function connectItems(item1, item2, startPosition, endPosition) {
   // triangle
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.lineTo(endX, endY);
+  ctx.moveTo(endX, endY);
   ctx.lineTo(endX - head_len * Math.cos(angle - head_angle), endY - head_len * Math.sin(angle - head_angle));
   ctx.lineTo(endX - head_len * Math.cos(angle + head_angle), endY - head_len * Math.sin(angle + head_angle));
   ctx.closePath();
   ctx.fill();
-  ctx.restore();
+  //ctx.restore();
+
+
+  //ctx.moveTo(0, 0);
+  //ctx.lineTo(850, 1450);
+  //ctx.stroke();
 }

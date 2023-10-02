@@ -1,72 +1,101 @@
 from __future__ import annotations
 import logging
-from modules import meta_file, stages
+from modules import meta_file, stages, deploy_action
 from modules.cmd_status import Status as Cmd_Status
 
-div_container=f'\n<div class="container text-left">\n'
-div_container_end=f'</div>\n\n'
+div_container=f'\n<div id="flow_html_container" class=" container text-center">\n'
+div_container_end=f'</div><!-- container end -->\n\n'
 
-div_row=f'\n<div class="row border">\n'
-div_row_end=f'</div>\n'
+div_row=f'\n<div class="row row-cols-auto">\n'
+div_row_end=f'</div><!-- row end -->\n'
 
-div_column=f'\n<div class="col border">\n'
-div_column_end=f'</div>\n'
+div_column=f'\n<div class="col">\n'
+div_column_end=f'</div><!-- col end -->\n'
 
-global_i = 0
+btn_class_list = {
+  'None': 'btn-secondary',
+  Cmd_Status.NEW.value: 'btn-info',
+  Cmd_Status.FAILED.value: 'btn-danger',
+  Cmd_Status.FINISHED.value: 'btn-success',
+  Cmd_Status.IN_PREPERATION.value: 'btn-dark',
+  }
+
+flow_stages=[]
+flow_connection=[]
 
 
+def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
-def generate_button(mf: meta_file.Meta_File, stage : stages.Stage):
+  global btn_class_list
 
-  btn_class_list = {
-    'None': 'btn-secondary',
-    Cmd_Status.NEW.value: 'btn-info',
-    Cmd_Status.FAILED.value: 'btn-danger',
-    Cmd_Status.FINISHED.value: 'btn-success',
-    Cmd_Status.IN_PREPERATION.value: 'btn-dark',
-    }
   btn_class = btn_class_list['None']
-  logging.debug(f"{stage}")
+  logging.debug(f"{stage=}")
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
-  return f'<button id="flow_{stage.name}" class="btn {btn_class}">{stage.name}</button>'
+  return f'<button id="flow_{stage.name}" class="btn {btn_class} flow_step">{stage.name}</button>'
+
+
+def generate_action_button(action : deploy_action.Deploy_Action):
+
+  global btn_class_list
+  
+  btn_class = btn_class_list['None']
+  logging.debug(f"{action=}")
+  btn_class=f' {btn_class_list.get(action.get_dict().get("status", "None"),"None")}'
+  return f'<button class="btn {btn_class}">{action.status}</button>'
+
+
+
+def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  html='<table class="table table-striped table-bordered">'
+
+  for action in mf.actions.get_actions(stage=stage.name):
+    html+=f'<tr><td>{action.processing_step}</td><td>{generate_action_button(action)}</td></tr>'
+
+  html+='</table>'
+  return html
 
 
 
 def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  global global_i
-  global_i+=1
-  local_i = global_i
+  global flow_stages
+  global flow_connection
+  
+  logging.debug(f"{stage.get_dict()=}")
+
+  flow_stages.append(f"flow_{stage.name}")
 
   next_stages = stage.get_next_stages()
-
-  next_col=''
   sub_row=''
 
   i=0
   for ns in next_stages:
     i+=1
-    
-    logging.debug(f"{local_i=}: ({i}) {ns.get_dict()=}")
-    # Only first child is in serial
-    if i==1:
-      next_col=get_flow_stage(mf, ns)
-      logging.debug(f"{local_i=}: ({i}) after call 1 {ns.get_dict()=}")
-      logging.debug(f"{local_i=}: ({i}) {next_col=}")
-      continue
 
-    # All other childs in parallel
-    sub_row+=div_row
-    sub_row+=get_flow_stage(mf, ns)
+    direction_from='right'
+    if i>1:
+      direction_from='bottom'
+    flow_connection.append({'from': f"flow_{stage.name}", 'to': f"flow_{ns.name}", 'direction_from': direction_from, 'direction_to': 'left'})
+    
+    # Every stage will only be printed once
+    if f"flow_{ns.name}" in flow_stages:
+      continue
+    
+    # All next stages in a new Row
+    sub_row+=div_row    
+    sub_row+=get_flow_stage(mf, mf.stages.get_stage(ns.name))
     sub_row+=div_row_end
 
+  # This stage
   html=div_column
-  html+= generate_button(mf, stage)
+  html+= generate_stage_button(mf, stage)
+  html+= generate_steps(mf, stage)
+  html+=div_column_end
+  # Next stages
+  html+=div_column
   html+=sub_row
   html+=div_column_end
-  html+= next_col
-
-  logging.debug(f"{local_i=}: 2: {html=}")
 
   return html
 
@@ -74,20 +103,37 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
 
 def get_flowchar_html(mf: meta_file.Meta_File):
 
-  wf_steps = 'start=>start: Start'
-  wf_flow = ''
-  previous_step = ''
-  default_step_direction=0
-  stage_parallel_i=0
-
+  global flow_stages
+  global flow_connection
+  flow_connection=[]
+  flow_stages=[]
   mf.workflow.load_workflow_data()
 
   html=div_container
   html+=div_row
-
-  html+= get_flow_stage(mf, mf.stages.get_stage('START'))
+  html+=get_flow_stage(mf, mf.stages.get_stage('START'))
+  html+=div_row_end
+  html+=div_container_end
   
-  return html+div_row_end+div_container_end
+  java_script=''
+  for fs in flow_stages:
+    java_script+=f'\n  let {fs} = document.getElementById("{fs}");'
+
+  for fc in flow_connection:
+    java_script+=f'\n  connectItems({fc["from"]}, {fc["to"]}, "{fc["direction_from"]}", "{fc["direction_to"]}");'
+
+  #let Start = document.getElementById("Start");
+  #let button2 = document.getElementById("button2");
+  #let button3 = document.getElementById("button3");
+  #let End = document.getElementById("End");
+
+  #connectItems(Start, button2, "right", "top");
+  #connectItems(Start, button3, "bottom", "left");
+  #connectItems(Start, End, "right", "top");
+  #connectItems(button2, End, "bottom", "left");
+  #connectItems(button3, End, "bottom", "left");
+
+  return {'html': html, 'java_script': java_script}
 
 
 
