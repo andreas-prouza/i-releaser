@@ -83,12 +83,13 @@ input:checked + .slider:before {
     cursor: pointer;
 }
 
+.row+.row, .grid+.grid {
+    margin-top: 1rem;
+}
+
 </style>
 
-<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-
 <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
-<script src="http://flowchart.js.org/flowchart-latest.js"></script>
 
 <div class="box box-info">
 
@@ -132,8 +133,20 @@ input:checked + .slider:before {
 
     <hr>
 
+       {{  flow|safe  }}
+
+    <table>
+      <tr><td><button id="Start" class="button btn btn-success">Start</button></td></tr>
+      <tr><td></td><td><button id="button2" class="button btn btn-danger">Button 2</button></td></tr>
+      <tr><td></td><td></td><td><button id="button3" class="button btn btn-info">Button 3</button></td></tr>
+      <tr><td></td><td></td><td></td><td><button id="End" class="button">End</button></td></tr>
+    </table>
+  
+
+    <hr>
+
     <!-- https://github.com/adrai/flowchart.js   https://flowchart.js.org -->
-                <div id="canvas"></div>
+        <div id="canvas"></div>
         <pre>{{  flow  }}</pre>
 
     <br/>
@@ -292,7 +305,7 @@ input:checked + .slider:before {
 
     <h3>Raw JSON file</h3>
 
-    <div>
+    <div style="width: 700px;">
         <pre class="overflow-auto w-auto prettyprint lang-js">
             {{ deployment_json }}
         </pre>
@@ -302,6 +315,7 @@ input:checked + .slider:before {
 
 <script src="{{ url_for('static', filename='assets/js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ url_for('static', filename='assets/js/web.deploy.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/js/chart.js') }}"></script>
 
 <script type="text/javascript">
 
@@ -328,70 +342,6 @@ input:checked + .slider:before {
     })(document)
 
 
-    window.onload = function () {
-        var btn = document.getElementById("run"),
-            chart;
-
-        var code = '{{ flow |safe|replace("\n", "\\n")}}';
-            //code = cd.value;
-
-            if (chart) {
-              chart.clean();
-            }
-
-            chart = flowchart.parse(code);
-            chart.drawSVG('canvas', {
-              // 'x': 30,
-              // 'y': 50,
-              'line-width': 3,
-              'maxWidth': 10,//ensures the flowcharts fits within a certian width
-              'line-length': 20,
-              'text-margin': 10,
-              'font-size': 14,
-              'font': 'normal',
-              'font-family': 'Helvetica',
-              'font-weight': 'normal',
-              'font-color': 'black',
-              'line-color': 'black',
-              'element-color': 'black',
-              'fill': 'white',
-              'yes-text': 'yes',
-              'no-text': 'no',
-              'arrow-end': 'block',
-              'scale': 1,
-              'symbols': {
-                'start': {
-                  'font-color': 'red',
-                  'element-color': 'green',
-                  'fill': 'yellow'
-                },
-                'end':{
-                  'class': 'end-element'
-                }
-              },
-              'flowstate' : {
-                'stage_finished' : { 'fill' : '#28a745', 'font-size' : 14,  'font-color': 'white', 'font-weight' : 'bold'},
-                'stage_current' : {'fill' : 'yellow', 'font-color' : 'red', 'font-weight' : 'bold'},
-                'stage_failed' : {'fill' : '#dc3545', 'font-color' : 'white', 'font-weight' : 'bold'},
-                'stage_new' : { 'fill' : '#17a2b8', 'font-size' : 14, 'font-color': 'white', 'font-weight' : 'bold'},
-                'step_finished' : {'fill' : '#28a745', 'font-size' : 11, 'font-color': 'white'},
-                'step_new' : {'fill' : '#17a2b8', 'font-size' : 11, 'font-color': 'white'},
-                'step_failed' : {'fill' : '#dc3545', 'font-size' : 11, 'font-color' : 'white', 'font-weight' : 'bold'},
-              }
-            });
-
-            $('[id^=sub1]').click(function(){
-              alert('info here');
-            });
-        
-    };
-
-    function myFunction(event, node) {
-      console.log("You just clicked this node:", node);
-    }
-    
-
-
 
 function showLog(type, text) {
     Swal.fire({
@@ -404,7 +354,6 @@ function showLog(type, text) {
   }
 });
 }
-
 
 
 

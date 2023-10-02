@@ -275,7 +275,7 @@ def show_details(project, version):
     try:
         dv = deploy_version.Deploy_Version.get_deployment(project, version)
         mf = meta_file.Meta_File.load_json_file(dv['meta_file'])
-        flow = flowchart.get_flowchart_text(mf)
+        flow = flowchart.get_flowchar_html(mf)
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
         logging.debug(dv)

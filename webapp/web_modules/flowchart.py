@@ -3,6 +3,94 @@ import logging
 from modules import meta_file, stages
 from modules.cmd_status import Status as Cmd_Status
 
+div_container=f'\n<div class="container text-left">\n'
+div_container_end=f'</div>\n\n'
+
+div_row=f'\n<div class="row border">\n'
+div_row_end=f'</div>\n'
+
+div_column=f'\n<div class="col border">\n'
+div_column_end=f'</div>\n'
+
+global_i = 0
+
+
+
+def generate_button(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  btn_class_list = {
+    'None': 'btn-secondary',
+    Cmd_Status.NEW.value: 'btn-info',
+    Cmd_Status.FAILED.value: 'btn-danger',
+    Cmd_Status.FINISHED.value: 'btn-success',
+    Cmd_Status.IN_PREPERATION.value: 'btn-dark',
+    }
+  btn_class = btn_class_list['None']
+  logging.debug(f"{stage}")
+  btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
+  return f'<button id="flow_{stage.name}" class="btn {btn_class}">{stage.name}</button>'
+
+
+
+def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  global global_i
+  global_i+=1
+  local_i = global_i
+
+  next_stages = stage.get_next_stages()
+
+  next_col=''
+  sub_row=''
+
+  i=0
+  for ns in next_stages:
+    i+=1
+    
+    logging.debug(f"{local_i=}: ({i}) {ns.get_dict()=}")
+    # Only first child is in serial
+    if i==1:
+      next_col=get_flow_stage(mf, ns)
+      logging.debug(f"{local_i=}: ({i}) after call 1 {ns.get_dict()=}")
+      logging.debug(f"{local_i=}: ({i}) {next_col=}")
+      continue
+
+    # All other childs in parallel
+    sub_row+=div_row
+    sub_row+=get_flow_stage(mf, ns)
+    sub_row+=div_row_end
+
+  html=div_column
+  html+= generate_button(mf, stage)
+  html+=sub_row
+  html+=div_column_end
+  html+= next_col
+
+  logging.debug(f"{local_i=}: 2: {html=}")
+
+  return html
+
+
+
+def get_flowchar_html(mf: meta_file.Meta_File):
+
+  wf_steps = 'start=>start: Start'
+  wf_flow = ''
+  previous_step = ''
+  default_step_direction=0
+  stage_parallel_i=0
+
+  mf.workflow.load_workflow_data()
+
+  html=div_container
+  html+=div_row
+
+  html+= get_flow_stage(mf, mf.stages.get_stage('START'))
+  
+  return html+div_row_end+div_container_end
+
+
+
 
 # root=>start: Root
 # e=>end: End
