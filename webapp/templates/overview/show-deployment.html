@@ -88,7 +88,8 @@ input:checked + .slider:before {
 }
 
 .flow_step {
-    margin: 40px;
+    margin-right: 40px;
+    margin-bottom: 10px;
 }
 
 .flow_parent {
@@ -291,6 +292,7 @@ input:checked + .slider:before {
         {% endfor %}
     </table>
 
+    <details on></details>
 
     <hr>
     
@@ -352,9 +354,25 @@ input:checked + .slider:before {
 
         print_flow_connections();
 
+        //let flow_html_container = document.getElementById("flow_html_container");
+        //flow_html_container.addEventListener("", print_flow_connections());
+
+        //const observer = new MutationObserver(print_flow_connections);
+        //observer.observe(flow_html_container, { attributes: true, childList: true, characterData: true });
+
+        //new ResizeObserver(print_flow_connections).observe(flow_html_container);
+
+        const details_list = document.getElementsByClassName("details_step");
+        for (const el of details_list) {
+            el.addEventListener("toggle",function() {
+                print_flow_connections()
+            })
+        }
+
         addEventListener("resize", (event) => {
             print_flow_connections();
         });
+
         
     })(document)
     

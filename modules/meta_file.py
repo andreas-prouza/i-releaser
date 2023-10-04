@@ -81,6 +81,7 @@ class Meta_File:
 
       self.stages = stages
       if self.stages is None:
+        #!!!!!!!!!!!!!!!! Open task: load all stages from workflow, not only the starting one !!!!!!!
         self.stages = s.Stage_List_list(self.workflow.name, ["START"])
         
       self.deploy_objects = do.Deploy_Object_List()
@@ -386,8 +387,11 @@ class Meta_File:
 
     def load_json_file(file_name: str) -> Meta_File:
 
+      logging.debug(f"Load meta file {file_name}")
+
       with open (file_name, "r") as file:
         meta_file_json=json.load(file)
+        
         meta_file = Meta_File(workflow=wf.Workflow(dict=meta_file_json['general']['workflow']),
                               project=meta_file_json['general']['project'],
                               deploy_version=meta_file_json['general']['deploy_version'],

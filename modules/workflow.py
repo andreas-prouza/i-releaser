@@ -127,6 +127,7 @@ class Workflow:
             logging.debug(f'Found {stage=}')
             return stage
     
+    logging.warning(f"No stage found in workflows!")
     return None
 
 

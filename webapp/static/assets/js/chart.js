@@ -23,17 +23,22 @@ function canvas_arrow(context, fromx, fromy, tox, toy) {
 */
 
 // https://codepen.io/jacobvarner/pen/eYOPVdK 
-
+var flow_button_fokus='';
 
 
 function connectItems(item1, item2, startPosition, endPosition) {
   let canvas = document.getElementById("flowchart");
   let ctx = canvas.getContext("2d");
-  const width = 2;
-  const color = 'grey';
+  var width = 2;
+  var color = 'grey';
   const head_len = 16;
   const head_angle = Math.PI / 6;
   let angle = 0;
+
+  if (item1.id == flow_button_fokus || item2.id == flow_button_fokus) {
+    color = 'red';
+    width = 4;
+  }
 
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
@@ -97,7 +102,8 @@ function connectItems(item1, item2, startPosition, endPosition) {
   
   endX = endX - canvas_pos.left;
   endY = endY - canvas_pos.top;
-  
+
+  ctx.beginPath();
   ctx.moveTo(startX, startY);
   if (startPosition === "bottom" || startPosition === "top") {
     ctx.lineTo(startX, endY);
@@ -108,16 +114,14 @@ function connectItems(item1, item2, startPosition, endPosition) {
   ctx.stroke();
   
   // triangle
-  ctx.fillStyle = color;
   ctx.beginPath();
+  //ctx.fillStyle = color;
   ctx.moveTo(endX, endY);
   ctx.lineTo(endX - head_len * Math.cos(angle - head_angle), endY - head_len * Math.sin(angle - head_angle));
   ctx.lineTo(endX - head_len * Math.cos(angle + head_angle), endY - head_len * Math.sin(angle + head_angle));
   ctx.closePath();
   ctx.fill();
-  //ctx.restore();
-
-
+  
   //ctx.moveTo(0, 0);
   //ctx.lineTo(850, 1450);
   //ctx.stroke();

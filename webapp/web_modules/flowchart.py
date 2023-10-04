@@ -3,13 +3,13 @@ import logging
 from modules import meta_file, stages, deploy_action
 from modules.cmd_status import Status as Cmd_Status
 
-div_container=f'\n<div id="flow_html_container" class=" container text-center">\n'
+div_container=f'\n<div id="flow_html_container" onClick="print_flow_connections()" class=" container text-center">\n'
 div_container_end=f'</div><!-- container end -->\n\n'
 
 div_row=f'\n<div class="row row-cols-auto">\n'
 div_row_end=f'</div><!-- row end -->\n'
 
-div_column=f'\n<div class="col">\n'
+div_column=f'\n<div class="col flow_step">\n'
 div_column_end=f'</div><!-- col end -->\n'
 
 btn_class_list = {
@@ -31,7 +31,7 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
   btn_class = btn_class_list['None']
   logging.debug(f"{stage=}")
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
-  return f'<button id="flow_{stage.name}" class="btn {btn_class} flow_step">{stage.name}</button>'
+  return f'<button type="button" id="flow_{stage.name}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
 
 
 def generate_action_button(action : deploy_action.Deploy_Action):
@@ -41,18 +41,25 @@ def generate_action_button(action : deploy_action.Deploy_Action):
   btn_class = btn_class_list['None']
   logging.debug(f"{action=}")
   btn_class=f' {btn_class_list.get(action.get_dict().get("status", "None"),"None")}'
-  return f'<button class="btn {btn_class}">{action.status}</button>'
+  return f'<button class="btn btn-sm {btn_class}">{action.status.value}</button>'
 
 
 
 def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  html='<table class="table table-striped table-bordered">'
+  actions = mf.actions.get_actions(stage=stage.name)
+  
+  multi='s'
+  if len(actions) == 1:
+    multi=''
 
-  for action in mf.actions.get_actions(stage=stage.name):
+  html=f'<details class="details_step"><summary>{len(actions)} step{multi}</summary>'
+  html+='<table class="table table-striped table-bordered">'
+
+  for action in actions:
     html+=f'<tr><td>{action.processing_step}</td><td>{generate_action_button(action)}</td></tr>'
 
-  html+='</table>'
+  html+='</table></details>'
   return html
 
 
@@ -83,7 +90,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
       continue
     
     # All next stages in a new Row
-    sub_row+=div_row    
+    sub_row+=div_row
     sub_row+=get_flow_stage(mf, mf.stages.get_stage(ns.name))
     sub_row+=div_row_end
 
@@ -107,7 +114,9 @@ def get_flowchar_html(mf: meta_file.Meta_File):
   global flow_connection
   flow_connection=[]
   flow_stages=[]
-  mf.workflow.load_workflow_data()
+  #mf.workflow.load_workflow_data()
+
+  logging.debug(f"{mf.stages.get_all_names()}")
 
   html=div_container
   html+=div_row
