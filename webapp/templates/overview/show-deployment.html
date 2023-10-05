@@ -96,6 +96,10 @@ input:checked + .slider:before {
     position: relative; 
 }
 
+.flow_container {
+    width: max-content;
+}
+
 #flowchart {
     z-index: -1;
 }
@@ -163,111 +167,6 @@ input:checked + .slider:before {
 
     <!--pre>{{  flow_html  }}</pre-->
     
-    <h3>Stages</h3>
-    <table class="table table-striped table-bordered">
-        <thead>
-            <th>Name</th><th>Status</th><th>Last update</th>
-        </thead>
-        {% for stage in deployment_dict['general']['stages'] %}
-        <tr>
-            <td>{{ stage['name'] }}</td>
-            <td>
-                {% if stage['status'] == 'new' %}<img class="run" src="{{ url_for('static', filename='assets/img/run-green.png') }}" onclick="runStage('{{ deployment_dict['general']['file_name'] }}', '{{ stage['name'] }}')">{% endif %}
-                {% if stage['status'] == 'failed' %}<img class="run" src="{{ url_for('static', filename='assets/img/run-red.png') }}" onclick="runStage('{{ deployment_dict['general']['file_name'] }}', '{{ stage['name'] }}')">{% endif %}
-                <button type="button" class="btn 
-                    {% if stage['status'] == 'finished' %}btn-success{% endif %}
-                    {% if stage['status'] == 'failed' %}btn-danger{% endif %}
-                    {% if stage['status'] == 'new' %}btn-info{% endif %}
-                    ">
-                    {{ stage['status'] }}
-                </button>
-            </td>
-            <td>{{ stage['update_time'] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    
-    <hr>
-    
-    
-    <br/>
-
-    <h3>Deployment actions</h3>
-    <table>
-        {% for stage, cmds in deployment_dict['deploy_cmds'].items() %}
-        <tr>
-            <td><details>
-                <summary>{{ stage }}</summary>
-                <table class="table table-striped table-bordered">
-                    <thead>
-                        <th>Sequence</th>
-                        <th>Step</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Check error</th>
-                        <th>Command</th>
-                        <th>Logs</th>
-                    </thead>
-                    {% for cmd in cmds %}
-                    <tr>
-                        <td>{{ cmd['sequence'] }}</td>
-                        <td>{{ cmd['processing_step'] }}</td>
-                        <td>{{ cmd['environment'] }}</td>
-                        <td>
-                            <button type="button" class="btn  
-                                {% if cmd['status'] == 'finished' %}btn-success{% endif %}
-                                {% if cmd['status'] == 'failed' %}btn-danger{% endif %}
-                                {% if cmd['status'] == 'new' %}btn-info{% endif %}
-                            ">
-                            {{ cmd['status'] }}</button>
-                        </td>
-                        <td>
-                            <label class="switch">
-                                <input type="checkbox" {% if cmd['check_error'] %}checked{% endif %} onchange="set_check_error('{{ deployment_dict['general']['file_name'] }}', '{{ stage }}', {{ cmd['sequence'] }}, this.checked)">
-                                <span class="slider round"></span>
-                            </label>
-                        </td>
-                        <td>{% if cmd['cmd'] != '' %}
-                                {% if cmd['cmd']|length > 30 %}
-                                    <details><summary>{{ cmd['cmd'][:30] }} ...</summary><pre>{{ cmd['cmd'] }}</pre></details>
-                                {% else %}
-                                    {{ cmd['cmd'] }}
-                                {% endif %}
-                            {% endif %}
-                        </td>
-                        <td>
-                            <table class="table table-striped table-bordered">
-                            {% for history in cmd['run_history'] %}
-                                <tr>
-                                    <td>{{ history['create_time'] }}</td>
-                                    <td>
-                                        <button type="button" class="btn  
-                                            {% if history['status'] == 'finished' %}btn-success{% endif %}
-                                            {% if history['status'] == 'failed' %}btn-danger{% endif %}
-                                            {% if history['status'] == 'new' %}btn-info{% endif %}
-                                        ">
-                                            {{ history['status'] }}
-                                       </button>
-                                    </td>
-                                    <td>{% if history['stdout'] != '' %}<img src="{{ url_for('static', filename='assets/img/log.png') }}" onclick="showLog('info', '{{ history['stdout']|replace("'", "\"")|replace("\r\n", "<br/>")|replace("\n", "<br/>")|e }}')">&nbsp;{% endif %}
-                                        {% if history['stderr'] != '' %}<img src="{{ url_for('static', filename='assets/img/error-log.png') }}" onclick="showLog('error', '{{ history['stderr']|replace("'", "\"")|replace("\r\n", "<br/>")|replace("\n", "<br/>")|e }}')">{% endif %}</td>
-                                </tr>
-                            {% endfor %}
-                            </table>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </table>
-              </details>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-
-
-    <hr>
-
     
     <br/>
 
@@ -332,6 +231,7 @@ input:checked + .slider:before {
 
 <script type="text/javascript">
 
+    
     (function(d) {
 
         stylizePreElements = function() {
@@ -375,10 +275,9 @@ input:checked + .slider:before {
 
         
     })(document)
-    
+
 function print_flow_connections() {
-    //canvas.width= window.innerWidth;
-    //canvas.height = window.innerHeight;
+
     let flow_parent = document.getElementById("flow_parent");
     let flow_html_container = document.getElementById("flow_html_container").getBoundingClientRect();
     flow_parent.style.height=flow_html_container.height;
@@ -386,7 +285,7 @@ function print_flow_connections() {
     let canvas = document.getElementById("flowchart");
     canvas.height=flow_html_container.height;
     canvas.width=window.innerWidth;
-
+    
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -394,16 +293,45 @@ function print_flow_connections() {
 }
 
 
-function showLog(type, text) {
+
+var last_show_stage_step_html = '';
+
+
+
+function show_stage_steps(stage, html) {
+
+    last_show_stage_step_html = html;
     Swal.fire({
-  icon: type,
-  title: 'Log',
-  html: '<pre class="logs">'+text+'</pre>',
-  width: 'auto',
-  customClass: {
-    popup: 'logs'
-  }
-});
+        title: 'Steps for ' + stage, 
+        width: 'auto', 
+        html: html
+    })
+}
+
+
+
+function showLog(type, file_name, stage, sequence, run_history_element) {
+    let html = '';
+
+    postData("/api/get_action_log", { stage: stage, filename: file_name, sequence: sequence, run_history_element: run_history_element }).then((data) => {
+        console.log(data); // JSON data parsed by `data.json()` call
+        html = data['stdout'];
+        if (type == 'error'){
+            html = data['stderr'];
+        }
+        html = html.replaceAll('\\n', '<br/>');
+        Swal.fire({
+            icon: type,
+            title: 'Log',
+            html: '<pre class="logs">'+html+'</pre>',
+            width: 'auto',
+            customClass: {
+                popup: 'logs'
+            }
+        }).then((result) => {
+            show_stage_steps(stage, last_show_stage_step_html);
+        });
+    });
 }
 
 

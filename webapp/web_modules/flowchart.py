@@ -2,14 +2,16 @@ from __future__ import annotations
 import logging
 from modules import meta_file, stages, deploy_action
 from modules.cmd_status import Status as Cmd_Status
+from flask import render_template
 
-div_container=f'\n<div id="flow_html_container" onClick="print_flow_connections()" class=" container text-center">\n'
+
+div_container=f'\n<div id="flow_html_container" onClick="print_flow_connections()" class="flow_container">\n'
 div_container_end=f'</div><!-- container end -->\n\n'
 
 div_row=f'\n<div class="row row-cols-auto">\n'
 div_row_end=f'</div><!-- row end -->\n'
 
-div_column=f'\n<div class="col flow_step">\n'
+div_column=f'\n<div class="col flow_step text-center">\n'
 div_column_end=f'</div><!-- col end -->\n'
 
 btn_class_list = {
@@ -24,6 +26,7 @@ flow_stages=[]
 flow_connection=[]
 
 
+
 def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
   global btn_class_list
@@ -32,6 +35,7 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
   logging.debug(f"{stage=}")
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
   return f'<button type="button" id="flow_{stage.name}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
+
 
 
 def generate_action_button(action : deploy_action.Deploy_Action):
@@ -47,19 +51,27 @@ def generate_action_button(action : deploy_action.Deploy_Action):
 
 def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  actions = mf.actions.get_actions(stage=stage.name)
+  actions = mf.actions.get_actions_as_dict(stage=stage.name)
   
   multi='s'
   if len(actions) == 1:
     multi=''
 
-  html=f'<details class="details_step"><summary>{len(actions)} step{multi}</summary>'
-  html+='<table class="table table-striped table-bordered">'
+  if len(actions) == 0:
+    return ''
 
-  for action in actions:
-    html+=f'<tr><td>{action.processing_step}</td><td>{generate_action_button(action)}</td></tr>'
+  html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.name, cmds=actions[stage.name])
+  html_actions = render_template('overview/details/quotes.html', html=html_actions)
+  
+  html_actions=html_actions.replace('\n', '')
+  html_actions=html_actions.replace('\r\n', '')
+  html_actions=html_actions.replace('&quot;', '\\&quot;')
+  html_actions=html_actions.replace('&#39;', '\\&#39;')
 
-  html+='</table></details>'
+  logging.debug(f"xx{html_actions=}")
+
+  html = render_template('overview/details/stage-actions.html', html=html_actions, stage=stage.name, summary=f"{len(actions)} step{multi}")
+
   return html
 
 

@@ -314,6 +314,25 @@ def run_stage():
 
 
 
+
+@app.route('/api/get_action_log', methods=['POST'])
+def get_action_log():
+    data = request.get_json(force=True)
+    logging.debug(f"Get logs from: {data['filename']=}, {data['stage']=}, {data['sequence']=}, {data['run_history_element']=}")
+
+    mf = meta_file.Meta_File.load_json_file(data['filename'])
+
+    for action in mf.get_actions(stage=data['stage']):
+        logging.debug(f"Action logs: {action}")
+        if action.sequence != data['sequence']:
+            continue
+        if len(action.run_history) > data['run_history_element']:
+            return jsonify(action.run_history[data['run_history_element']].get_dict())
+
+    return jsonify({})
+    
+
+
 @app.route('/api/cancel_deployment', methods=['POST'])
 def cancel_deployment():
     data = request.get_json(force=True)
