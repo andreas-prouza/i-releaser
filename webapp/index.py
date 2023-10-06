@@ -377,6 +377,23 @@ def set_check_error():
 
 
 
+@app.route('/api/get_stage_steps_html', methods=['POST'])
+def get_stage_steps_html():
+    
+    data = request.get_json(force=True)
+    logging.debug(f"Get html for stage steps: {data['stage']}, filename: {data['filename']}")
+
+    try:
+        mf = meta_file.Meta_File.load_json_file(data['filename'])
+        html = flowchart.generate_stage_steps_html(mf, mf.stages.get_stage(data['stage']))
+        return jsonify({'html': html})
+    except Exception as e:
+        logging.exception(e)
+        return jsonify({'error': str(e)})
+
+
+
+
 
 
 #######################################################

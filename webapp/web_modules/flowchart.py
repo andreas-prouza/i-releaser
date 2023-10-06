@@ -58,8 +58,7 @@ def generate_action_button(action : deploy_action.Deploy_Action):
   return f'<button class="btn btn-sm {btn_class}">{action.status.value}</button>'
 
 
-
-def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
+def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
 
   actions = mf.actions.get_actions_as_dict(stage=stage.name)
   
@@ -71,7 +70,7 @@ def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
     return ''
 
   html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.name, cmds=actions[stage.name])
-  html_actions = render_template('overview/details/quotes.html', html=html_actions)
+  #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
   html_actions=html_actions.replace('\n', '')
   html_actions=html_actions.replace('\r\n', '')
@@ -80,7 +79,13 @@ def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
 
   logging.debug(f"{html_actions=}")
 
-  html = render_template('overview/details/stage-actions.html', html=html_actions, stage=stage.name, summary=f"{len(actions)} step{multi}")
+  return html_actions
+
+
+
+def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  html = render_template('overview/details/stage-actions.html', file_name=mf.file_name, stage=stage.name)
 
   return html
 
@@ -122,7 +127,8 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
   if stage.name in mf.stages.get_runable_stages().get_all_names():
     html+= generate_run_button(mf, stage)
 
-  html+= generate_steps(mf, stage)
+  if len(stage.processing_steps) > 0:
+    html+= generate_steps(mf, stage)
   html+=div_column_end
   # Next stages
   html+=div_column

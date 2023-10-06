@@ -292,18 +292,26 @@ function print_flow_connections() {
 
 
 
-var last_show_stage_step_html = '';
+var last_show_stage = '';
+var current_meta_file = '';
 
 
 
-function show_stage_steps(stage, html) {
+function show_stage_steps(file_name, stage) {
 
-    last_show_stage_step_html = html;
-    Swal.fire({
-        title: 'Steps for ' + stage, 
-        width: 'auto', 
-        html: html
-    })
+    last_show_stage = stage;
+    current_meta_file = file_name;
+
+    postData("/api/get_stage_steps_html", { stage: stage, filename: file_name }).then((data) => {
+        console.log(data); 
+        html = data['html'];
+        
+        Swal.fire({
+            title: 'Steps for ' + stage,
+            html: html,
+            width: 'auto',
+        });
+    });
 }
 
 
@@ -327,7 +335,7 @@ function showLog(type, file_name, stage, sequence, run_history_element) {
                 popup: 'logs'
             }
         }).then((result) => {
-            show_stage_steps(stage, last_show_stage_step_html);
+            show_stage_steps(current_meta_file, last_show_stage);
         });
     });
 }

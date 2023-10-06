@@ -32,10 +32,10 @@
         {% if cmd['cmd']|length > 30 %}
         <details>
           <summary>{{ cmd['cmd'][:30] }} ...</summary>
-          <pre>{{ cmd['cmd'] }}</pre>
+          <pre>{{ cmd['cmd']|safe }}</pre>
         </details>
         {% else %}
-        {{ cmd['cmd'] }}
+        {{ cmd['cmd']|safe }}
         {% endif %}
         {% endif %}
       </td>
