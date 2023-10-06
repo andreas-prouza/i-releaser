@@ -78,7 +78,7 @@ def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
   html_actions=html_actions.replace('&quot;', '\\&quot;')
   html_actions=html_actions.replace('&#39;', '\\&#39;')
 
-  logging.debug(f"xx{html_actions=}")
+  logging.debug(f"{html_actions=}")
 
   html = render_template('overview/details/stage-actions.html', html=html_actions, stage=stage.name, summary=f"{len(actions)} step{multi}")
 
@@ -119,7 +119,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
   # This stage
   html=div_column
   html+= generate_stage_button(mf, stage)
-  if stage.status in [Cmd_Status.FAILED, Cmd_Status.NEW]:
+  if stage.name in mf.stages.get_runable_stages().get_all_names():
     html+= generate_run_button(mf, stage)
 
   html+= generate_steps(mf, stage)
