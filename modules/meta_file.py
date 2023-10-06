@@ -209,6 +209,7 @@ class Meta_File:
       cmd = ibm_i_commands.IBM_i_commands(self)
 
       runable_stages = self.stages.get_runable_stages()
+      logging.debug(f"All runable stages: {runable_stages}")
 
       if stage not in runable_stages.get_all_names():
         e = Exception(f"Stage '{stage}' is currently not allowed to run!")

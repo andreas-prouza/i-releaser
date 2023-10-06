@@ -409,7 +409,7 @@ function runStage(filename, stage) {
 
 
 function set_check_error(filename, stage, sequence, checked) {
-    postData("/set_check_error", { stage: stage, filename: filename, sequence: sequence, checked: checked }).then((data) => {
+    postData("/api/set_check_error", { stage: stage, filename: filename, sequence: sequence, checked: checked }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
     });
 }

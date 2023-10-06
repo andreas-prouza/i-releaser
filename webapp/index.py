@@ -361,7 +361,7 @@ def create_deployment(wf_name, commit):
     
 
 
-@app.route('/set_check_error', methods=['POST'])
+@app.route('/api/set_check_error', methods=['POST'])
 def set_check_error():
     data = request.get_json(force=True)
     logging.debug(f"Set check error stage: {data['stage']}, sequence: {data['sequence']}, checked: {data['checked']}, filename: {data['filename']}")

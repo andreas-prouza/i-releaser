@@ -267,6 +267,9 @@ class Stage_List_list(list):
     #@validate_arguments
     def get_stage(self, name: str) -> Stage:
 
+      if type(name) != str:
+        raise Exception(f"Parameter is not a string: {name}")
+
       for s in self:
         if s.name == name:
           return s
@@ -300,18 +303,22 @@ class Stage_List_list(list):
 
 
 
-    def get_runable_stages(self, start_stage='START') -> []:
+    def get_runable_stages(self, start_stage='START'):
 
       stages = Stage_List_list()
+
+      logging.debug(f"Start with {start_stage=}")
 
       stage = self.get_stage(start_stage)
       if stage.status != Cmd_Status.FINISHED:
         stages.append(stage)
+        logging.debug(f"Return open stage list 1 {stages=}")
         return stages
 
       for next_stage in stage.next_stages:
-        stages = stages + get_runable_stages(next_stage)
+        stages.extend(self.get_runable_stages(next_stage.name))
 
+      logging.debug(f"Return open stage list 2 {stages.get_dict()=}")
       return stages
 
 
