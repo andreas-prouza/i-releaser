@@ -294,10 +294,10 @@ def show_details(project, version):
 
 
 
-@app.route('/run_stage', methods=['POST'])
+@app.route('/api/run_stage', methods=['POST'])
 def run_stage():
     data = request.get_json(force=True)
-    error='[]'
+    result={'status': 'success'}
     logging.debug(f"Run stage {data['stage']} of {data['filename']}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
@@ -307,10 +307,10 @@ def run_stage():
         mf.run_current_stage(data['stage'])
     except Exception as e:
         logging.exception(e)
-        error=json.dumps(e, default=str, indent=4)
+        result['status'] = 'error'
+        result['error'] = str(e)
 
-    logging.debug(error)
-    return error
+    return jsonify(result)
 
 
 

@@ -38,6 +38,16 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
 
 
+def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  global btn_class_list
+
+  btn_class = btn_class_list['None']
+  logging.debug(f"{stage=}")
+  return f'<br/><img class="run" src="/static/assets/img/run-green.png" onclick="runStage(\'{mf.file_name}\', \'{stage.name}\')">'
+
+
+
 def generate_action_button(action : deploy_action.Deploy_Action):
 
   global btn_class_list
@@ -109,6 +119,9 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
   # This stage
   html=div_column
   html+= generate_stage_button(mf, stage)
+  if stage.status in [Cmd_Status.FAILED, Cmd_Status.NEW]:
+    html+= generate_run_button(mf, stage)
+
   html+= generate_steps(mf, stage)
   html+=div_column_end
   # Next stages

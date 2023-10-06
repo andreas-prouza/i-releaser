@@ -191,8 +191,6 @@ input:checked + .slider:before {
         {% endfor %}
     </table>
 
-    <details on></details>
-
     <hr>
     
     <br/>
@@ -337,7 +335,58 @@ function showLog(type, file_name, stage, sequence, run_history_element) {
 
 
 function runStage(filename, stage) {
-    postData("/run_stage", { stage: stage, filename: filename }).then((data) => {
+
+    Swal.fire({
+        icon: 'question',
+        title: 'Run stage ' + stage + '?',
+        showCancelButton: true,
+        showLoaderOnConfirm: true,
+        preConfirm: (login) => {
+            return postData("/api/run_stage", { stage: stage, filename: filename })
+            .then(response => {
+                console.log(response);
+                return response;
+                if (response.status == 'error') {
+                    throw new Error(response.error)
+                }
+                if (response.status == 'success') {
+                    return;
+                }
+                throw new Error('Unknown error occured: ' + response)
+            })
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        console.log("Ergebnis:");
+        console.log(result);
+        if (result.isConfirmed) {
+
+            if (result.value.status == 'success') {
+                Swal.fire({
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Run completed',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(()=>{
+                    location.reload();
+                })
+                return;
+            }
+            else {
+                Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: result.value.error
+                    }).then(()=>{
+                        location.reload();
+                    })
+            }
+        }
+    })
+}
+/*
+    postData("/api/run_stage", { stage: stage, filename: filename }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         if (data.length > 0) {
             Swal.fire({
@@ -356,7 +405,8 @@ function runStage(filename, stage) {
             location.reload();
         }
     });
-}
+    */
+
 
 function set_check_error(filename, stage, sequence, checked) {
     postData("/set_check_error", { stage: stage, filename: filename, sequence: sequence, checked: checked }).then((data) => {

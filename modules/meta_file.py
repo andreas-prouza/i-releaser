@@ -82,7 +82,7 @@ class Meta_File:
       self.stages = stages
       if self.stages is None:
         #!!!!!!!!!!!!!!!! Open task: load all stages from workflow, not only the starting one !!!!!!!
-        self.stages = s.Stage_List_list(self.workflow.name, ["START"])
+        self.stages = s.Stage_List_list(self.workflow.name)
         
       self.deploy_objects = do.Deploy_Object_List()
 
@@ -184,7 +184,7 @@ class Meta_File:
 
     def run_current_stages(self) -> None:
 
-      names = self.stages.get_open_stages().get_all_names()
+      names = self.stages.get_runable_stages().get_all_names()
       for name in names:
         self.run_current_stage(name)
 
@@ -208,13 +208,22 @@ class Meta_File:
       
       cmd = ibm_i_commands.IBM_i_commands(self)
 
-      stage_obj = self.stages.get_open_stages().get_stage(stage)
+      runable_stages = self.stages.get_runable_stages()
+
+      if stage not in runable_stages.get_all_names():
+        e = Exception(f"Stage '{stage}' is currently not allowed to run!")
+        logging.exception(e)
+        raise e
+
+      stage_obj = runable_stages.get_stage(stage)
       
       if processing_step is not None and processing_step not in stage_obj.processing_steps:
         e = Exception(f"Processing step '{processing_step}' is not defined in stage '{stage}'. Defined steps are: {stage_obj.processing_steps}")
         logging.exception(e)
         self.write_meta_file()
         raise e
+
+
 
       try:
         self.set_status(Meta_file_status.IN_PROCESS)

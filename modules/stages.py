@@ -167,8 +167,10 @@ class Stage_List_list(list):
 
       # This is only not to change the original parameter
       iterable2 = []
-      if (iterable is not None and workflow is None) or (iterable is None and workflow is not None):
-        raise Exception(f'Missing parameter to get the list data: {iterable=}, {workflow=}')
+      stage_list = []
+
+      #if (iterable is not None and workflow is None) or (iterable is None and workflow is not None):
+      #  raise Exception(f'Missing parameter to get the list data: {iterable=}, {workflow=}')
 
       if iterable is not None and len(iterable) > 0 and workflow is not None:
         for i, s in enumerate(iterable):
@@ -177,7 +179,24 @@ class Stage_List_list(list):
              iterable2[i] = Stage.get_stage(workflow, s)
           if type(s) == dict:
              iterable2[i] = Stage.get_stage_from_dict(workflow, s)
+          stage_list.append(iterable2[i].name)
              
+
+      if workflow is not None and iterable is None:
+
+        workflow = wf.Workflow(workflow)
+
+        for stage in  workflow.stages:
+          
+          if stage['name'] in stage_list:
+            continue
+
+          logging.debug(f"Got stage from workflow: {stage=}")
+          additional_stage = Stage.get_stage(workflow.name, stage['name'])
+          iterable2.append(additional_stage)
+          stage_list.append(additional_stage.name)
+
+      if len(iterable2) > 0:
         super().__init__(iterable2)
         return
 
@@ -276,6 +295,22 @@ class Stage_List_list(list):
       for s in self:
         if s.status != Cmd_Status.FINISHED:
           stages.append(s)
+
+      return stages
+
+
+
+    def get_runable_stages(self, start_stage='START') -> []:
+
+      stages = Stage_List_list()
+
+      stage = self.get_stage(start_stage)
+      if stage.status != Cmd_Status.FINISHED:
+        stages.append(stage)
+        return stages
+
+      for next_stage in stage.next_stages:
+        stages = stages + get_runable_stages(next_stage)
 
       return stages
 
