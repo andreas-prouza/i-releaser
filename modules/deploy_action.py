@@ -6,7 +6,7 @@ from enum import Enum
 from etc import constants
 from modules import meta_file, stages as st, run_history as rh
 from modules.cmd_status import Status as Cmd_Status
-
+#import traceback
 
 
 
@@ -50,7 +50,8 @@ class Deploy_Action_List_list(list):
 
 
   def add_action(self, action: type[Deploy_Action]) -> int:
-    
+
+    #logging.error(traceback.format_stack())
 
     if type(action) != Deploy_Action:
       raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
@@ -69,6 +70,7 @@ class Deploy_Action_List_list(list):
 
 
   def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True) -> int:
+    logging.debug(f'Add action for cmd: {cmd=}, {environment=}, {processing_step=}')
     return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step, 
     stage=stage, check_error=check_error))
 

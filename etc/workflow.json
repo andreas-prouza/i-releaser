@@ -400,5 +400,63 @@
         "description": "Finished"
       }
     ]
+  },
+  {
+    "name": "test_wf",
+    "default_project": "test",
+    "step_2_script_mapping": [
+      {
+        "processing_step": "pre",
+        "environment": "PASE",
+        "execute": "echo 'Pre script'",
+        "check_error": true
+      },
+      {
+        "processing_step": "echo1",
+        "environment": "PASE",
+        "execute": "echo 'start Sleep for 10 seconds'; sleep 10; echo 'Sleep end'",
+        "check_error": true
+      },
+      {
+        "processing_step": "sleep",
+        "environment": "PASE",
+        "execute": "sleep 10",
+        "check_error": true
+      }
+    ],
+    "stages" : [
+      {
+        "name": "START",
+        "next_stages": ["STAGE 2.1", "STAGE 2.2"],
+        "host": "localhost",
+        "processing_steps": ["pre", "post"],
+        "clear_files": true
+      },
+      {
+        "name": "STAGE 2.1",
+        "next_stages": ["STAGE 3"],
+        "host": "localhost",
+        "processing_steps": ["pre", "sleep", "echo1", "sleep", "post"],
+        "clear_files": true
+      },
+      {
+        "name": "STAGE 2.2",
+        "next_stages": ["STAGE 3"],
+        "host": "localhost",
+        "processing_steps": ["pre", "sleep", "post"],
+        "clear_files": true
+      },
+      {
+        "name": "STAGE 3",
+        "next_stages": ["END"],
+        "host": "localhost",
+        "processing_steps": ["pre", "post"],
+        "clear_files": true
+      },
+      {
+        "name": "END",
+        "description": "Finished"
+      }
+    ]
   }
 ]

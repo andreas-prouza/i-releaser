@@ -3,6 +3,7 @@ import logging
 from modules import meta_file, stages, deploy_action
 from modules.cmd_status import Status as Cmd_Status
 from flask import render_template
+import base64
 
 
 div_container=f'\n<div id="flow_html_container" onClick="print_flow_connections()" class="flow_container">\n'
@@ -27,6 +28,12 @@ flow_connection=[]
 
 
 
+def get_stage_as_html_id(stage:str) -> str:
+  return f"flow_{base64.b64encode(stage.encode()).decode('ascii').replace('=', '')}"
+
+
+
+
 def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
   global btn_class_list
@@ -34,7 +41,7 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
   btn_class = btn_class_list['None']
   logging.debug(f"{stage=}")
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
-  return f'<button type="button" id="flow_{stage.name}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
+  return f'<button type="button" id="{get_stage_as_html_id(stage.name)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
 
 
 
@@ -98,7 +105,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
   
   logging.debug(f"{stage.get_dict()=}")
 
-  flow_stages.append(f"flow_{stage.name}")
+  flow_stages.append(get_stage_as_html_id(stage.name))
 
   next_stages = stage.get_next_stages()
   sub_row=''
@@ -110,10 +117,10 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
     direction_from='right'
     if i>1:
       direction_from='bottom'
-    flow_connection.append({'from': f"flow_{stage.name}", 'to': f"flow_{ns.name}", 'direction_from': direction_from, 'direction_to': 'left'})
+    flow_connection.append({'from': f"{get_stage_as_html_id(stage.name)}", 'to': f"{get_stage_as_html_id(ns.name)}", 'direction_from': direction_from, 'direction_to': 'left'})
     
     # Every stage will only be printed once
-    if f"flow_{ns.name}" in flow_stages:
+    if f"{get_stage_as_html_id(ns.name)}" in flow_stages:
       continue
     
     # All next stages in a new Row

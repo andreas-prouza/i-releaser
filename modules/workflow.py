@@ -71,6 +71,8 @@ class Workflow:
         self.stages = wf['stages']
 
         return
+    
+    raise Exception(f"No workflow found with name '{self.name}'")
 
 
 

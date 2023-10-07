@@ -346,18 +346,27 @@ def cancel_deployment():
 @app.route('/api/create_deployment/<wf_name>/<commit>', methods=['GET'])
 def create_deployment(wf_name, commit):
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}")
+    result={}
 
-    wf = workflow.Workflow(wf_name)
-    existing_version = deploy_version.Deploy_Version.get_deployment_by_commit(project=wf.default_project, commit=commit)
+    try:
+        wf = workflow.Workflow(wf_name)
+        logging.debug(f"Workflow: {wf}")
+        existing_version = deploy_version.Deploy_Version.get_deployment_by_commit(project=wf.default_project, commit=commit)
 
-    if existing_version is not None:
-        return Response(json.dumps({'Error': f'Given commit is already used in deployment version {existing_version["version"]}'}), status=401, mimetype='application/json') 
+        if existing_version is not None:
+            return Response(json.dumps({'Error': f'Given commit is already used in deployment version {existing_version["version"]}'}), status=401, mimetype='application/json') 
 
-    mf = meta_file.Meta_File(workflow_name=wf_name)
-    mf.commit = commit
-    mf.set_status(meta_file.Meta_file_status.READY)
+        mf = meta_file.Meta_File(workflow_name=wf_name)
+        mf.commit = commit
+        mf.set_status(meta_file.Meta_file_status.READY)
+        result={'status': 'success', 'meta_file': mf.get_all_data_as_dict()}
 
-    return jsonify(mf.get_all_data_as_dict())
+    except Exception as e:
+        logging.exception(e)
+        result={'status': 'error', 'error': str(e)}
+
+
+    return jsonify(result)
     
 
 

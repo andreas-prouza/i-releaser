@@ -89,9 +89,12 @@ class Meta_File:
       self.actions = da.Deploy_Action_List_list()
 
       # Set global stages commands for current stages
+      logging.debug(f"Set global stages commands for current stages")
       if not imported_from_dict:
         commands = ibm_i_commands.IBM_i_commands(self)
-        commands.set_cmds('START')
+        for stage in self.stages:
+          logging.debug(f"Set commands for stage '{stage}'")
+          commands.set_cmds(stage.name)
 
       if deploy_version == None:
         self.deploy_version = dv.Deploy_Version.get_next_deploy_version(project=self.project, status=self.status)
