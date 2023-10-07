@@ -46,8 +46,9 @@
         {% for row in deployments %}
         <tr>
             {% for key, value in row.items() %}
-            <td style="white-space: nowrap;"><a href="show_details/{{ project }}/{{ row['version'] }}">
+            <td style="white-space: nowrap;">
                 {% if key == 'status' %}
+                    <a href="show_details/{{ project }}/{{ row['version'] }}">
                     <button type="button" class="btn 
                         {% if value == 'finished' %}btn-success{% endif %}
                         {% if value == 'failed' %}btn-danger{% endif %}
@@ -55,10 +56,10 @@
                         {% if value == 'new' %}btn-info{% endif %}
                         {% if value == 'ready' %}btn-primary{% endif %}
                     ">{{ value }} </button>
+                  </a>
                 {% else %}
                     {{ value }}
                 {% endif %}
-                </a>
             </td>
             {% endfor %}
         </tr>
