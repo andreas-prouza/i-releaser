@@ -8,7 +8,7 @@ import logging
 from etc import constants
 from modules import workflow as wf
 from modules.cmd_status import Status as Cmd_Status
-
+from modules import deploy_action as da
 
 
 class Stage:
@@ -26,6 +26,7 @@ class Stage:
     self.lib_replacement_necessary = None
     self.lib_mapping = []
     self.processing_steps = []
+    self.actions = da.Deploy_Action_List_list()
     self.status = Cmd_Status.NEW
     self.create_time = str(datetime.datetime.now())
 #    self.create_time = '2023-03-04 14:31:30.404775'
@@ -33,7 +34,9 @@ class Stage:
 
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
-      raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
+      e = Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
+      logging.exception(e)
+      raise e
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
       
@@ -72,7 +75,9 @@ class Stage:
     if stage is not None:
       return Stage.get_stage_from_dict(workflow_name, stage)
 
-    raise Exception(f"No stage found with '{workflow_name=}' & '{stage_name=}' in '{constants.C_WORKFLOW}'")
+    e = Exception(f"No stage found with '{workflow_name=}' & '{stage_name=}' in '{constants.C_WORKFLOW}'")
+    logging.exception(e)
+    raise e
 
 
 
@@ -103,6 +108,7 @@ class Stage:
       'next_stages' : self.next_stages.get_all_names(),
       'clear_files' : self.clear_files,
       'processing_steps' : self.processing_steps,
+      'actions' : self.actions.get_actions_as_dict(),
       'lib_replacement_necessary' : self.lib_replacement_necessary,
       'lib_mapping' : self.lib_mapping,
       'status' : self.status.value,
@@ -138,13 +144,17 @@ class Stage:
 
     for key in stage_dict.keys():
       if key not in ['name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'lib_mapping', 'status', 'create_time', 'update_time']:
-        raise Exception(f"Attribute {key} is invalid for a stage!")
+        e = Exception(f"Attribute {key} is invalid for a stage!")
+        logging.exception(e)
+        raise e
     
     stage = Stage()
 
     if len(list(set(stage_dict.keys()) - set(stage.__dict__.keys()))) > 0:
-      raise Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
+      e = Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
         Unknown attribute(s) are: {list(set(stage_dict.keys()) - set(stage.__dict__.keys()))}")
+      logging.exception(e)
+      raise e
 
 
 

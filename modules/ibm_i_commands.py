@@ -40,6 +40,7 @@ class IBM_i_commands:
     #get all processing steps for given stage
     do_steps = self.meta_file.stages.get_stage(stage).processing_steps
     actions = self.meta_file.actions
+    actions = self.meta_file.stages.get_stage(stage).actions
 
     wf_steps = self.meta_file.workflow.get_workflow_steps_mapping()
 
