@@ -4,7 +4,7 @@ import logging
 from enum import Enum
 
 from etc import constants
-from modules import meta_file, stages as st, run_history as rh
+from modules import meta_file, stages, run_history as rh, workflow
 from modules.cmd_status import Status as Cmd_Status
 #import traceback
 
@@ -46,6 +46,7 @@ class Deploy_Action_List_list(list):
       list.append(a.get_dict())
 
     return list
+
 
 
 
@@ -188,6 +189,9 @@ class Deploy_Action:
     self.check_error = check_error
 
     self.processing_step = processing_step
+
+    if type(stage) != str:
+      raise Exception("Stage is not a string!")
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
       raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")

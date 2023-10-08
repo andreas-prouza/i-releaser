@@ -82,19 +82,19 @@ class Meta_File:
       self.stages = stages
       if self.stages is None:
         #!!!!!!!!!!!!!!!! Open task: load all stages from workflow, not only the starting one !!!!!!!
-        self.stages = s.Stage_List_list(self.workflow.name)
+        self.stages = s.Stage_List_list(self.workflow)
         
       self.deploy_objects = do.Deploy_Object_List()
 
       self.actions = da.Deploy_Action_List_list()
 
       # Set global stages commands for current stages
-      logging.debug(f"Set global stages commands for current stages")
-      if not imported_from_dict:
-        commands = ibm_i_commands.IBM_i_commands(self)
-        for stage in self.stages:
-          logging.debug(f"Set commands for stage '{stage}'")
-          commands.set_cmds(stage.name)
+      #logging.debug(f"Set global stages commands for current stages")
+      #if not imported_from_dict:
+      #  commands = ibm_i_commands.IBM_i_commands(self)
+      #  for stage in self.stages:
+      #    logging.debug(f"Set commands for stage '{stage}'")
+      #    commands.set_cmds(stage.name)
 
       if deploy_version == None:
         self.deploy_version = dv.Deploy_Version.get_next_deploy_version(project=self.project, status=self.status)
@@ -412,7 +412,7 @@ class Meta_File:
                               file_name=f"{meta_file_json['general']['file_name']}",
                               create_time=meta_file_json['general']['create_time'],
                               update_time=meta_file_json['general']['update_time'],
-                              stages=s.Stage_List_list(meta_file_json['general']['workflow']['name'], meta_file_json['general']['stages']),
+                              stages=s.Stage_List_list(workflow=None,iterable=meta_file_json['general']['stages']),
                               imported_from_dict=True
                              )
         meta_file.commit=meta_file_json['general']['commit']

@@ -8,7 +8,7 @@ import logging
 from etc import constants
 from modules import workflow as wf
 from modules.cmd_status import Status as Cmd_Status
-from modules import deploy_action as da
+from modules import deploy_action as da, workflow
 
 
 class Stage:
@@ -55,7 +55,31 @@ class Stage:
 
 
 
-  def get_stage(workflow_name:str, stage_name: str) -> Stage:
+  def set_processing_steps(self, workflow: workflow.Workflow):
+    """Set all commands which are allowed for this stage
+
+    Args:
+        stage (str): Name of stage
+    """
+
+    #get all processing steps for given stage
+    do_steps = self.processing_steps
+
+    wf_steps = workflow.get_workflow_steps_mapping()
+
+    all_steps = {x['processing_step']:x for x in constants.C_DEFAULT_STEP_2_CMD_MAPPING + wf_steps}.values()
+
+    for step in do_steps:
+
+      for all_step in all_steps:
+        if step == all_step['processing_step']:
+          self.actions.add_action_cmd(cmd=all_step['execute'], environment=all_step['environment'], 
+                processing_step=all_step['processing_step'], stage=self.name, check_error=all_step['check_error'])
+          break
+
+
+
+  def get_stage(workflow:workflow.Workflow, stage_name: str) -> Stage:
     """Retrieves stage from workflow
         This is also a check if the wanted stage exist in the workflow config
 
@@ -64,24 +88,26 @@ class Stage:
         name (str): Name of stage
 
     Raises:
-        Exception: If give stage does not exist in workflow cofig
+        Exception: If given stage does not exist in workflow cofig
 
     Returns:
         Stage: Stage object
     """
     
-    stage = wf.Workflow.get_workflow_stage(workflow_name, stage_name)
+    stage = workflow.get_stage(stage_name)
     
     if stage is not None:
-      return Stage.get_stage_from_dict(workflow_name, stage)
+      stage = Stage.get_stage_from_dict(workflow, stage)
+      stage.set_processing_steps(workflow)
+      return stage
 
-    e = Exception(f"No stage found with '{workflow_name=}' & '{stage_name=}' in '{constants.C_WORKFLOW}'")
+    e = Exception(f"No stage found with '{workflow.name=}' & '{stage_name=}' in '{constants.C_WORKFLOW}'")
     logging.exception(e)
     raise e
 
 
 
-  def get_stage_from_dict(workflow:str, dict: {}={}):
+  def get_stage_from_dict(wf:workflow.Workflow, dict: {}={}):
 
     stage = Stage()
 
@@ -92,7 +118,7 @@ class Stage:
 
     stage.set_status(stage.status, False)
     
-    stage.next_stages = Stage_List_list(workflow, stage.next_stages)
+    stage.next_stages = Stage_List_list(wf, stage.next_stages)
 
     return stage
 
@@ -173,7 +199,7 @@ class Stage:
 
 class Stage_List_list(list):
 
-    def __init__(self, workflow:str=None, iterable=None):
+    def __init__(self, workflow:workflow.Workflow=None, iterable=None):
 
       # This is only not to change the original parameter
       iterable2 = []
@@ -194,15 +220,13 @@ class Stage_List_list(list):
 
       if workflow is not None and iterable is None:
 
-        workflow = wf.Workflow(workflow)
-
         for stage in  workflow.stages:
           
           if stage['name'] in stage_list:
             continue
 
           logging.debug(f"Got stage from workflow: {stage=}")
-          additional_stage = Stage.get_stage(workflow.name, stage['name'])
+          additional_stage = Stage.get_stage(workflow, stage['name'])
           iterable2.append(additional_stage)
           stage_list.append(additional_stage.name)
 

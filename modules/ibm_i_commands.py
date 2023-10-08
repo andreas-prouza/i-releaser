@@ -29,7 +29,7 @@ class IBM_i_commands:
     self.meta_file = meta_file
 
 
-
+  @DeprecationWarning
   def set_cmds(self, stage: str):
     """Set all commands which are allowed for this stage
 

@@ -3,7 +3,7 @@ import json, os
 import logging
 
 from etc import constants
-from modules import stages
+from modules import stages, deploy_action
 
 
 
@@ -99,6 +99,13 @@ class Workflow:
 
 
 
+  def get_stage(self, stage_name:str) -> {}:
+    for stage in self.stages:
+      if stage['name'] == stage_name:
+        logging.debug(f'Found stage in workflow: {stage=}')
+        return stage
+
+
 
   def get_workflow_steps_mapping(self) -> {}:
     with open(constants.C_WORKFLOW, "r") as file:
@@ -111,26 +118,6 @@ class Workflow:
     
     return constants.C_DEFAULT_STEP_2_CMD_MAPPING
 
-
-
-  def get_workflow_stage(workflow_name: str, stage_name: str) -> {}:
-
-    logging.debug(f'Get stage for {workflow_name=}, {stage_name=}, {constants.C_WORKFLOW=}')
-    with open(constants.C_WORKFLOW, "r") as file:
-      workflows_json = json.load(file)
-
-    for wf in workflows_json:
-      if workflow_name == wf['name']:
-
-        Workflow.validate_workflow(wf)
-
-        for stage in wf["stages"]:
-          if stage['name'] == stage_name:
-            logging.debug(f'Found {stage=}')
-            return stage
-    
-    logging.warning(f"No stage found in workflows!")
-    return None
 
 
 
