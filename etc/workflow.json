@@ -402,7 +402,7 @@
     ]
   },
   {
-    "name": " ",
+    "name": "test_wf",
     "default_project": "test",
     "step_2_script_mapping": [
       {
@@ -414,13 +414,13 @@
       {
         "processing_step": "echo1",
         "environment": "PASE",
-        "execute": "echo 'start Sleep for 10 seconds'; sleep 10; echo 'Sleep end'",
+        "execute": "echo 'start Sleep for 1 seconds'; sleep 1; echo 'Sleep end'",
         "check_error": true
       },
       {
         "processing_step": "sleep",
         "environment": "PASE",
-        "execute": "sleep 10",
+        "execute": "sleep 2",
         "check_error": true
       }
     ],

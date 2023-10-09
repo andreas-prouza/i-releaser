@@ -39,7 +39,7 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
   global btn_class_list
 
   btn_class = btn_class_list['None']
-  logging.debug(f"{stage=}")
+  logging.debug(f"{stage.name}: {stage.get_dict().get('status')=}")
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
   return f'<button type="button" id="{get_stage_as_html_id(stage.name)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
 
@@ -67,16 +67,19 @@ def generate_action_button(action : deploy_action.Deploy_Action):
 
 def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  actions = mf.actions.get_actions_as_dict(stage=stage.name)
+  logging.debug(f"Generate HTML for stage {stage.name}")
+
+  actions = stage.actions.get_actions_as_dict()
   
   multi='s'
   if len(actions) == 1:
     multi=''
 
   if len(actions) == 0:
+    logging.warning('No actions found')
     return ''
 
-  html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.name, cmds=actions[stage.name])
+  html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.name, cmds=actions)
   #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
   html_actions=html_actions.replace('\n', '')

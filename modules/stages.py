@@ -73,7 +73,7 @@ class Stage:
 
       for all_step in all_steps:
         if step == all_step['processing_step']:
-          self.actions.add_action_cmd(cmd=all_step['execute'], environment=all_step['environment'], 
+          self.actions.add_action_cmd(cmd=all_step['execute'], environment=da.Command_Type(all_step['environment']), 
                 processing_step=all_step['processing_step'], stage=self.name, check_error=all_step['check_error'])
           break
 
@@ -117,7 +117,7 @@ class Stage:
       setattr(stage, k, v)
 
     stage.set_status(stage.status, False)
-    
+    stage.actions = da.Deploy_Action_List_list(stage.actions)
     stage.next_stages = Stage_List_list(wf, stage.next_stages)
 
     return stage
@@ -169,7 +169,7 @@ class Stage:
   def validate(stage_dict: {}):
 
     for key in stage_dict.keys():
-      if key not in ['name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'lib_mapping', 'status', 'create_time', 'update_time']:
+      if key not in ['name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
         e = Exception(f"Attribute {key} is invalid for a stage!")
         logging.exception(e)
         raise e
@@ -187,8 +187,8 @@ class Stage:
   def __eq__(self, other):
     print('equals 2 stages')
  #   other.next_stages !!! ist das Problem
-    if (self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time) != \
-       (other.description, other.host, other.base_dir, self.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time):
+    if (self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions) != \
+       (other.description, other.host, other.base_dir, self.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions):
       return False
 
     return True

@@ -11,8 +11,25 @@ from modules.cmd_status import Status as Cmd_Status
 
 
 class Deploy_Action_List_list(list):
-  def __init__(self):
-      super().__init__()
+
+
+  def __init__(self, iterable=None):
+
+    iterable2 = []
+
+    if iterable is not None:
+      for i, a in enumerate(iterable):
+        iterable2.append(a)
+        if type(a) == dict:
+          iterable2[i] = Deploy_Action.get_action_from_dict(a)
+
+    if len(iterable2) > 0:
+      super().__init__(iterable2)
+      return
+    super().__init__()
+
+
+
 
   def __setitem__(self, index, item):
       super().__setitem__(index, self._validate_number(item))
@@ -107,14 +124,10 @@ class Deploy_Action_List_list(list):
 
   def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> []:
 
-    dict={}
+    dict=[]
 
     for a in self.get_actions(processing_step, stage):
-      if a.stage in dict.keys():
-        dict[a.stage].append(a.get_dict())
-        continue
-
-      dict[a.stage] = [a.get_dict()]
+      dict.append(a.get_dict())
 
     return dict
 
@@ -178,7 +191,7 @@ class Deploy_Action:
 
   def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=Cmd_Status.NEW,  
     environment: Command_Type=Command_Type.QSYS, stage: str=None, processing_step: str=None, 
-    check_error: bool=True, dict: {}={}):
+    check_error: bool=True, dict: {}=None):
 
     self.sequence = sequence
     self.environment = environment
@@ -190,20 +203,27 @@ class Deploy_Action:
 
     self.processing_step = processing_step
 
-    if type(stage) != str:
+    if self.environment is not None and type(self.environment) != Command_Type:
+      raise Exception(f"Environment has type {type(self.environment)} instead of Command_Type")
+
+    if stage is not None and type(stage) != str:
       raise Exception("Stage is not a string!")
 
-    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
+    if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
       raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
 
-    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+    if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
       
       for k, v in dict.items():
 
         setattr(self, k, v)
-        if k=="run_history":
-          self.run_history = rh.Run_History_List_list()
-          self.run_history.add_historys_from_list(v)
+
+      self.validate()
+
+
+
+
+  def validate(self):
 
     if self.stage is None:
       raise Exception('No Stage defined')
@@ -216,6 +236,25 @@ class Deploy_Action:
 
     if self.cmd is None:
       raise Exception('Command is not allowed to be None')
+
+    if type(self.run_history) != rh.Run_History_List_list:
+      run_history_list = self.run_history
+      self.run_history = rh.Run_History_List_list()
+      self.run_history.add_historys_from_list(run_history_list)
+
+
+
+
+  def get_action_from_dict(dict: {}={}):
+
+    action = Deploy_Action()
+
+    for k, v in dict.items():
+      setattr(action, k, v)
+
+    action.validate()
+
+    return action
 
 
 

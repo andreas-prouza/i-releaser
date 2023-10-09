@@ -5,9 +5,10 @@
   "deployments": [
     {
       "version": 1,
-      "status": "ready",
-      "timestamp": "2023-09-22 09:05:36.841848",
-      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/unit-tests/output/test_meta_file_case_1.json"
+      "status": "new",
+      "timestamp": "2023-10-09 10:00:05.955056",
+      "meta_file": "/home/andreas/projekte/opensource/ibm-i-deployment-unit-tests/unit-tests/output/test_meta_file_case_1.json",
+      "commit": null
     }
   ]
 }

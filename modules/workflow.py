@@ -45,6 +45,9 @@ class Workflow:
       if 'default_project' in dict:
         self.default_project = dict['default_project']
 
+      if 'stages' in dict:
+        self.stages = dict['stages']
+
       return
 
     self.load_workflow_data()

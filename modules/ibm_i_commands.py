@@ -23,7 +23,10 @@ class Command_Exception(Exception):
 
 
 
+
+
 class IBM_i_commands:
+
 
   def __init__(self, meta_file: meta_file.Meta_File):
     self.meta_file = meta_file
@@ -35,6 +38,8 @@ class IBM_i_commands:
 
     Args:
         stage (str): Name of stage
+
+    Deprecated: This job will be done in Stage-Class
     """
 
     #get all processing steps for given stage
@@ -50,16 +55,16 @@ class IBM_i_commands:
 
       for all_step in all_steps:
         if step == all_step['processing_step']:
-          actions.add_action_cmd(cmd=all_step['execute'], environment=all_step['environment'], 
+          actions.add_action_cmd(cmd=all_step['execute'], environment=da.Command_Type(all_step['environment']), 
                 processing_step=all_step['processing_step'], stage=stage, check_error=all_step['check_error'])
           break
 
 
 
-  def get_all_attributes(self, processing_step: str=None, stage: str=None) -> {}:
+  def get_all_attributes(self, action:da.Deploy_Action) -> {}:
     dict = {
-      'processing_step': processing_step,
-      'stage': s.Stage.get_stage(self.meta_file.workflow.name, stage).get_dict()
+      'processing_step': action.processing_step,
+      'stage': action.stage
     }
 
     dict['meta_file'] = self.meta_file.get_all_data_as_dict()
@@ -68,43 +73,22 @@ class IBM_i_commands:
 
 
 
-  def run_commands(self, stage: str=None, processing_step: str=None) -> None:
-
-    executions = {
-      da.Command_Type.QSYS: self.run_qsys_cmd,
-      da.Command_Type.PASE: self.run_pase_cmd,
-      da.Command_Type.SCRIPT: self.run_script_cmd,
-    }
+  def run_commands(self, stage: s.Stage, processing_step: str=None) -> None:
 
     logging.debug(f"Run Commands for {stage=}, {processing_step=}")
 
-    all_attributes = self.get_all_attributes(processing_step=processing_step, stage=stage)
+    stage.set_status('in process')
 
-    self.meta_file.stages.get_stage(stage).set_status('in process')
+    #action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)
 
-    action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)
-    while action is not None:
-    #for action in self.meta_file.get_actions(processing_step=processing_step, stage=stage):
+    # Execute all from stage
+    for action in stage.actions.get_actions(processing_step=processing_step):
+      self.execute_action(action)
 
-      #if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
-        #logging.info(f"Action {stage=}, {processing_step=}, {action.sequence=} is already finished. Proceed with next.")
-      #  continue
-
-      cmd = action.cmd.format(**all_attributes)
-
-      logging.info(f"run {action.sequence=}, {cmd=}")
-      run_history = executions.get(action.environment)(cmd, action)
-      #time.sleep(0.02)
-      action.run_history.add_history(run_history)
-
-      action.status = run_history.status
-
-      if run_history.status == Cmd_Status.FAILED and action.check_error:
-        self.meta_file.stages.get_stage(stage).set_status(run_history.status)
-        self.meta_file.write_meta_file()
-        raise Command_Exception(run_history.stderr)
-
-      action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)
+    # Execute all from object
+    object_commands = self.meta_file.deploy_objects.get_actions(processing_step=processing_step, stage=stage)
+    for action in object_commands:
+      self.execute_action(action)
 
     
     # should be set on a higher level because of multiple processing_steps to run
@@ -112,6 +96,36 @@ class IBM_i_commands:
     self.meta_file.write_meta_file()
 
     #iconv -f IBM-1252 -t utf-8 './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' > './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp && mv './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' 
+
+
+
+  def execute_action(self, action: da.Deploy_Action):
+
+    executions = {
+      da.Command_Type.QSYS: self.run_qsys_cmd,
+      da.Command_Type.PASE: self.run_pase_cmd,
+      da.Command_Type.SCRIPT: self.run_script_cmd,
+    }
+
+    all_attributes = self.get_all_attributes(action)
+
+    cmd = action.cmd.format(**all_attributes)
+
+    logging.info(f"run {action.sequence=}, {cmd=}")
+    run_history = executions.get(action.environment)(cmd, action)
+    #time.sleep(0.02)
+    action.run_history.add_history(run_history)
+
+    action.status = run_history.status
+
+    if run_history.status == Cmd_Status.FAILED and action.check_error:
+      self.meta_file.stages.get_stage(stage).set_status(run_history.status)
+      self.meta_file.write_meta_file()
+      raise Command_Exception(run_history.stderr)
+      
+    self.meta_file.write_meta_file()
+
+
 
 
 

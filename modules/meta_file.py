@@ -173,10 +173,11 @@ class Meta_File:
       #self.completed_stages.append(from_stage_obj)
       #self.current_stages.remove_stage(from_stage)
 
-      for next_stage in next_stages:
+      # Not needed, sine all stages exist from the beginning
+      # for next_stage in next_stages:
 
-        self.stages.append(s.Stage.get_stage(self.workflow.name, next_stage))
-        commands.set_cmds(next_stage)
+        #self.stages.append(s.Stage.get_stage(self.workflow, next_stage))
+        #commands.set_cmds(next_stage)
       
       if self.stages.get_open_stages() == []:
         self.set_status(Meta_file_status.FINISHED)
@@ -211,7 +212,7 @@ class Meta_File:
       
       cmd = ibm_i_commands.IBM_i_commands(self)
 
-      runable_stages = self.stages.get_runable_stages()
+      runable_stages = self.stages.get_runable_stages(stage)
       logging.debug(f"All runable stages: {runable_stages}")
 
       if stage not in runable_stages.get_all_names():
@@ -227,8 +228,6 @@ class Meta_File:
         self.write_meta_file()
         raise e
 
-
-
       try:
         self.set_status(Meta_file_status.IN_PROCESS)
       except Exception as err:
@@ -236,24 +235,13 @@ class Meta_File:
         self.write_meta_file()
         raise err
       
-
       logging.info(f"Run stage {stage}, {processing_step=}")
 
-      if processing_step is not None:
-        try:
-          cmd.run_commands(stage=stage, processing_step=processing_step)
-        except Exception as err:
-          self.set_status(Meta_file_status.FAILED)
-          raise err
-
-
-      if processing_step is None:
-        for step in stage_obj.processing_steps:
-          try:
-            cmd.run_commands(stage=stage, processing_step=step)
-          except Exception as err:
-            self.set_status(Meta_file_status.FAILED)
-            raise err
+      try:
+        cmd.run_commands(stage=stage_obj, processing_step=processing_step)
+      except Exception as err:
+        self.set_status(Meta_file_status.FAILED)
+        raise err
 
       self.set_status(Meta_file_status.READY)
 
@@ -352,7 +340,10 @@ class Meta_File:
 
       list=[]
 
-      list=self.actions.get_actions(processing_step=processing_step, stage=stage)
+      if stage is None:
+        raise Exception(f"Stage is None")
+
+      list=self.stages.get_stage(stage).actions.get_actions(processing_step=processing_step)
 
       #for a in self.actions:
       #  if processing_step is None or a.processing_step == processing_step:
@@ -375,7 +366,7 @@ class Meta_File:
       
 
 
-    
+    @DeprecationWarning
     def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
 
       actions = self.actions.get_actions_as_dict(processing_step=processing_step, stage=stage)
@@ -405,14 +396,15 @@ class Meta_File:
       with open (file_name, "r") as file:
         meta_file_json=json.load(file)
         
-        meta_file = Meta_File(workflow=wf.Workflow(dict=meta_file_json['general']['workflow']),
+        workflow = wf.Workflow(name=meta_file_json['general']['workflow']['name'])
+        meta_file = Meta_File(workflow=workflow,
                               project=meta_file_json['general']['project'],
                               deploy_version=meta_file_json['general']['deploy_version'],
                               status=meta_file_json['general']['status'],
                               file_name=f"{meta_file_json['general']['file_name']}",
                               create_time=meta_file_json['general']['create_time'],
                               update_time=meta_file_json['general']['update_time'],
-                              stages=s.Stage_List_list(workflow=None,iterable=meta_file_json['general']['stages']),
+                              stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['stages']),
                               imported_from_dict=True
                              )
         meta_file.commit=meta_file_json['general']['commit']
@@ -421,7 +413,7 @@ class Meta_File:
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
         meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
-        meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
+        #meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
         
         meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
 
@@ -468,7 +460,7 @@ class Meta_File:
       dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
                              'backup_lib':  self.backup_deploy_lib,
                             }
-      dict['deploy_cmds'] = self.get_actions_as_dict()
+      #dict['deploy_cmds'] = self.get_actions_as_dict()
       dict['objects'] = self.deploy_objects.get_objectjs_as_dict()
       dict['run_history'] = self.run_history.get_list()
       logging.debug(f"Number of histories: {len(self.run_history)}")

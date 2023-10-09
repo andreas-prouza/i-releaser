@@ -2,21 +2,11 @@ import logging, sys
 from io import StringIO
 
 from etc import logger_config, constants
+from modules import deploy_action
+from modules.cmd_status import Status
 
-logging.info('Test Start')
+actions = deploy_action.Deploy_Action_List_list()
+actions.add_action(deploy_action.Deploy_Action('test', 0, Status.NEW, deploy_action.Command_Type.PASE, 'STARTX', 'pre'))
 
-#stdout_orig = sys.stdout
-#stdout_new = StringIO()
-#sys.stdout = stdout_new
-#stderr_orig = sys.stderr
-#sys.stderr = stderr_new = StringIO()
-hdl = logging.StreamHandler(stream=sys.stdout)
-logging.getLogger().addHandler(hdl)
+print(actions.get_actions_as_dict())
 
-logging.info(logging._handlerList)
-
-logging.info('Test Mitte')
-
-logging.getLogger().removeHandler(hdl)
-
-logging.info('Test Ende')

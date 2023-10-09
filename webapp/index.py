@@ -69,11 +69,11 @@ def add_header(response):
 def check_session():
 
     logging.debug(request.path)
-    logging.debug(session)
+    #logging.debug(session)
     session.pop('error_text', None)
 
     if '/static' == request.path[:len('/static')] or '/favicon.ico' == request.path:
-        logging.debug("No need to check session. Only media!")
+        #logging.debug("No need to check session. Only media!")
         return
 
     if request.path == '/logout':
@@ -86,14 +86,14 @@ def check_session():
         return
     
     auth_token = request.args.get('auth-token', None)
-    logging.debug(auth_token)
+    #logging.debug(auth_token)
     if auth_token is not None:
-        logging.debug(f"Check auth-token ({app_login.mask_key(auth_token)})")
+        #logging.debug(f"Check auth-token ({app_login.mask_key(auth_token)})")
         if app_login.is_key_valid(auth_token):
             return
         return Response(json.dumps({'Error': 'Your authentication-token is not permitted'}), status=401, mimetype='application/json')
 
-    logging.debug("Not logged in")
+    #logging.debug("Not logged in")
     # Not logged in
     user = None
     password = None
@@ -102,7 +102,7 @@ def check_session():
     if 'password' in request.form:
         password = request.form['password']
 
-    logging.debug(f"{user=}")
+    #logging.debug(f"{user=}")
     if user is not None and password is not None:
         if app_login.connect(user, password):
             return
@@ -318,6 +318,7 @@ def run_stage():
 @app.route('/api/get_action_log', methods=['POST'])
 def get_action_log():
     data = request.get_json(force=True)
+    logging.debug(f"Get logs from: {data=}")
     logging.debug(f"Get logs from: {data['filename']=}, {data['stage']=}, {data['sequence']=}, {data['run_history_element']=}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
