@@ -185,7 +185,7 @@ class Stage:
 
 
   def __eq__(self, other):
-    print('equals 2 stages')
+    logging.debug('equals 2 stages')
  #   other.next_stages !!! ist das Problem
     if (self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions) != \
        (other.description, other.host, other.base_dir, self.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions):
