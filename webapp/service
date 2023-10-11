@@ -33,7 +33,7 @@ start() {
         #source $SCRIPT_DIR/../.venv/bin/activate
         echo "Start service"
         mkdir -p $SCRIPT_DIR/log
-        nohup $SCRIPT_DIR/../.venv/bin/python $SCRIPT_DIR/../.venv/bin/gunicorn -p $PID --log-file $LOG_FILE --log-level $LOG_LEVEL --workers $PROCESS_COUNT --bind :2005 wsgi:app &
+        nohup $SCRIPT_DIR/../.venv/bin/python $SCRIPT_DIR/../.venv/bin/gunicorn -p $PID --log-file $LOG_FILE --log-level $LOG_LEVEL --workers $PROCESS_COUNT --bind :2005 wsgi:app >/dev/null 2>&1 &
     fi
     
     sleep 1
