@@ -86,7 +86,7 @@ class IBM_i_commands:
       self.execute_action(action)
 
     # Execute all from object
-    object_commands = self.meta_file.deploy_objects.get_actions(processing_step=processing_step, stage=stage)
+    object_commands = self.meta_file.deploy_objects.get_actions(processing_step=processing_step, stage=stage.name)
     for action in object_commands:
       self.execute_action(action)
 

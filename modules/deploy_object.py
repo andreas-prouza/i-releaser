@@ -176,6 +176,9 @@ class Deploy_Object_List(list):
 
   def get_actions(self, processing_step: str=None, stage: str=None):
 
+    if type(stage) != str:
+      raise Exception(f"Stage is not a string")
+      
     list=[]
 
     for do in self:
@@ -241,9 +244,8 @@ class Deploy_Object:
       self.deploy_status = Cmd_Status(dict['deploy_status'])
 
       if len(dict['actions']) > 0:
-        for key_stages in dict['actions'].keys():
-          for cmd in dict['actions'][key_stages]:
-            self.actions.add_action(da.Deploy_Action(dict=cmd))
+        for action in dict['actions']:
+          self.actions.add_action(da.Deploy_Action(dict=action))
       return
 
     self.prod_lib = prod_lib.lower()
