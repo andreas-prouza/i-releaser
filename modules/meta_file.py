@@ -195,7 +195,7 @@ class Meta_File:
 
 
      #@validate_arguments
-    def run_current_stage(self, stage: str, processing_step: str=None) -> None:
+    def run_current_stage(self, stage: str, processing_step: str=None, continue_run=False) -> None:
       """Run given stage
 
       Args:
@@ -238,8 +238,9 @@ class Meta_File:
       logging.info(f"Run stage {stage}, {processing_step=}")
 
       try:
-        cmd.run_commands(stage=stage_obj, processing_step=processing_step)
+        cmd.run_commands(stage=stage_obj, processing_step=processing_step, continue_run=continue_run)
       except Exception as err:
+        logging.exception(err)
         self.set_status(Meta_file_status.FAILED)
         raise err
 

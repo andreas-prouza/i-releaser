@@ -218,7 +218,7 @@ input:checked + .slider:before {
 
     <div style="width: 700px;">
         <pre class="overflow-auto w-auto prettyprint lang-js">
-            {{ deployment_json }}
+            {# deployment_json #}
         </pre>
     </div>
 </div>
@@ -343,26 +343,25 @@ function showLog(type, file_name, stage, sequence, run_history_element) {
 
 
 
-function runStage(filename, stage) {
+async function runStage(filename, stage) {
 
     Swal.fire({
         icon: 'question',
         title: 'Run stage ' + stage + '?',
+        input: 'radio',
+        inputOptions: {
+            'continue': 'Continue',
+            'run_all': 'Run all'
+            },
+        inputValue: 'continue',
         showCancelButton: true,
         showLoaderOnConfirm: true,
-        preConfirm: (login) => {
-            return postData("/api/run_stage", { stage: stage, filename: filename })
+        preConfirm: (option) => {
+            return postData("/api/run_stage", { stage: stage, filename: filename, option: option})
             .then(response => {
                 console.log(response);
                 return response;
-                if (response.status == 'error') {
-                    throw new Error(response.error)
-                }
-                if (response.status == 'success') {
-                    return;
-                }
-                throw new Error('Unknown error occured: ' + response)
-            })
+            });
         },
         allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {

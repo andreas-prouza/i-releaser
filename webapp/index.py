@@ -299,13 +299,18 @@ def show_details(project, version):
 def run_stage():
     data = request.get_json(force=True)
     result={'status': 'success'}
-    logging.debug(f"Run stage {data['stage']} of {data['filename']}")
+    logging.debug(f"Run stage {data['stage']} of {data['filename']} with option {data['option']}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
 
     try:
         mf.set_status(meta_file.Meta_file_status.READY)
-        mf.run_current_stage(data['stage'])
+
+        continue_run = True;
+        if data['option'] == 'run_all':
+            continue_run = False
+
+        mf.run_current_stage(data['stage'], continue_run=continue_run)
     except Exception as e:
         logging.exception(e)
         result['status'] = 'error'
@@ -412,4 +417,5 @@ def get_stage_steps_html():
 #######################################################
 
 if __name__ == '__main__':
+    logging.info("Run WebApp from MAIN")
     app.run(port=app.config["PORT"],host=app.config['HOST'])

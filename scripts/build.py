@@ -93,7 +93,7 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
 
   run_sys_cmd(['git', 'status'], build_dir)
   run_sys_cmd(['git', 'add', '-A'], build_dir)  
-  run_sys_cmd(['git', 'commit', '-m', f'"{commit_msg}"'], build_dir)
+  run_sys_cmd([f'git diff-index --quiet HEAD || git commit -m "{commit_msg}"'], build_dir, True)
   run_sys_cmd(['git', 'push'], build_dir)
 
   if error is not None:
@@ -155,10 +155,15 @@ def reset_git_repo(build_dir):
 def run_sys_cmd(cmd, cwd, shell_direct=False):
 
   print(cmd)
-  if shell_direct:
-    s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=True, check=False) # executable='/bin/bash'
-  else:
-    s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=False, check=False) # executable='/bin/bash'
+  logging.debug(f"{cmd=}")
+
+  try:
+    s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=shell_direct, check=False) # executable='/bin/bash'
+  except Exception as e:
+    logging.error("Error on execute")
+    logging.exception(e)
+    raise e
+
   stdout = s.stdout.decode(constants.C_CONVERT_FROM)
   stderr = s.stderr.decode(constants.C_CONVERT_FROM)
   print(f"{stdout=}")
@@ -167,7 +172,9 @@ def run_sys_cmd(cmd, cwd, shell_direct=False):
 
   if s.returncode != 0:
     logging.error(f"Return code: {s.returncode}")
-    raise Exception(stderr)
+    logging.error(f"{stdout=}")
+    logging.error(f"{stderr=}")
+    raise Exception(f"{stderr=}; {stdout=}")
 
   return stdout
 

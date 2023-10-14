@@ -73,9 +73,9 @@ class IBM_i_commands:
 
 
 
-  def run_commands(self, stage: s.Stage, processing_step: str=None) -> None:
+  def run_commands(self, stage: s.Stage, processing_step: str=None, continue_run=False) -> None:
 
-    logging.debug(f"Run Commands for {stage=}, {processing_step=}")
+    logging.debug(f"Run Commands for {stage.name=}, {processing_step=}")
 
     stage.set_status('in process')
 
@@ -83,12 +83,12 @@ class IBM_i_commands:
 
     # Execute all from stage
     for action in stage.actions.get_actions(processing_step=processing_step):
-      self.execute_action(action)
+      self.execute_action(stage, action, continue_run)
 
     # Execute all from object
     object_commands = self.meta_file.deploy_objects.get_actions(processing_step=processing_step, stage=stage.name)
     for action in object_commands:
-      self.execute_action(action)
+      self.execute_action(stage, action, continue_run)
 
     
     # should be set on a higher level because of multiple processing_steps to run
@@ -99,13 +99,16 @@ class IBM_i_commands:
 
 
 
-  def execute_action(self, action: da.Deploy_Action):
+  def execute_action(self, stage: s.Stage, action: da.Deploy_Action, continue_run=False):
 
     executions = {
       da.Command_Type.QSYS: self.run_qsys_cmd,
       da.Command_Type.PASE: self.run_pase_cmd,
       da.Command_Type.SCRIPT: self.run_script_cmd,
     }
+
+    if continue_run and action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and not action.check_error):
+      return
 
     all_attributes = self.get_all_attributes(action)
 
@@ -119,7 +122,7 @@ class IBM_i_commands:
     action.status = run_history.status
 
     if run_history.status == Cmd_Status.FAILED and action.check_error:
-      self.meta_file.stages.get_stage(stage).set_status(run_history.status)
+      stage.set_status(run_history.status)
       self.meta_file.write_meta_file()
       raise Command_Exception(run_history.stderr)
       
@@ -157,7 +160,7 @@ class IBM_i_commands:
       run_history.status = Cmd_Status.FINISHED
 
     except Exception as e:
-      print(repr(e), file=sys.stderr)
+      print(str(e), file=sys.stderr)
       logging.exception(e)
       run_history.status = Cmd_Status.FAILED
 
