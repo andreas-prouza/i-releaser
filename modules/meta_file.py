@@ -156,6 +156,25 @@ class Meta_File:
 
 
 
+    def set_action_check(self, stage: str, sequence: int, check: bool, current_user: str) -> None:
+
+      stage = self.stages.get_stage(stage)
+      
+      if stage.status == Cmd_Status.FINISHED:
+        raise Exception('Not possible to change a finished stage')
+
+      for a in stage.actions:
+
+        if a.stage == stage.name and a.sequence == sequence:
+
+          if a.status == Cmd_Status.FINISHED:
+            raise Exception('Not possible to change a finished step')
+
+          stage.processing_users.append({'user': current_user, 'timestamp' : str(datetime.datetime.now()), 'action' : s.Actions.SET_CHECK_ERROR})
+          a.check_error = check
+
+
+
      #@validate_arguments
     def set_next_stage(self, from_stage: str):
 
@@ -195,7 +214,7 @@ class Meta_File:
 
 
      #@validate_arguments
-    def run_current_stage(self, stage: str, processing_step: str=None, continue_run=False) -> None:
+    def run_current_stage(self, stage: str, processing_step: str=None, continue_run=False, current_user=None) -> None:
       """Run given stage
 
       Args:
@@ -210,7 +229,7 @@ class Meta_File:
       if self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
       
-      cmd = ibm_i_commands.IBM_i_commands(self)
+      cmd = ibm_i_commands.IBM_i_commands(self, current_user)
 
       runable_stages = self.stages.get_runable_stages(stage)
       logging.debug(f"All runable stages: {runable_stages}")

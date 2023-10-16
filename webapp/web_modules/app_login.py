@@ -86,6 +86,7 @@ def is_key_valid(auth_token):
       if user not in [x.lower() for x in global_cfg.C_ALLOWED_USERS]:
         e = Exception(f"User '{user}' has no permission.")
         raise e
+      session['current_user'] = user
       return user
   
   logging.warning(f"Could not find token '{auth_token}'")

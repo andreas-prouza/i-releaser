@@ -69,6 +69,14 @@ input:checked + .slider:before {
     padding-right: 10px;
 }
 
+.sweet_container {
+    text-align: left!Important;
+}
+
+.stage_info th {
+    text-align: left;
+}
+
 .logs pre {
     overflow-x: auto;
     white-space: pre-wrap;
@@ -79,12 +87,23 @@ input:checked + .slider:before {
     text-align: left;
 }
 
+.json pre {
+    text-align: left;
+}
+
 .run {
     cursor: pointer;
 }
 
-.row+.row, .grid+.grid {
+.stage_row+.stage_row, .grid+.grid {
     margin-top: 1rem;
+}
+
+.stage_row :nth-child(odd){
+  background-color:lightgray;
+}
+.stage_row :nth-child(even){
+  background-color:white;
 }
 
 .flow_step {
@@ -110,6 +129,13 @@ input:checked + .slider:before {
     left: 0;
     top: 0;
 }
+
+pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
+.string { color: green; }
+.number { color: darkorange; }
+.boolean { color: blue; }
+.null { color: magenta; }
+.key { color: #2196F3; }
 
 </style>
 
@@ -151,12 +177,21 @@ input:checked + .slider:before {
             <th>Last update</th><td> {{ deployment_dict['general']['update_time'] }}</td>
         </tr>
         <tr>
-            <th>File name</th><td>{{ deployment_dict['general']['file_name'] }}</td>
+            <th>File name</th>
+            <td>
+                <button type="button" class="btn btn-link" onclick="show_json('{{ deployment_dict['general']['file_name'] }}')">{{ deployment_dict['general']['file_name'] }}</button>
+            </td>
         </tr>
     </table>
 
 
     <hr>
+
+    <div class="progress">
+        <div class="progress-bar" role="progressbar" aria-label="Basic example" style="width: {{ progress }}%" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+    
+    <br/>
     
     <!--canvas id="flowchart" style="position: absolute; top: 0; left: 0; "></canvas-->
     <div id="flow_parent" class="flow_parent">
@@ -187,7 +222,7 @@ input:checked + .slider:before {
                 {% if object['deploy_status'] == 'finished' %}btn-success{% endif %}
                 {% if object['deploy_status'] == 'failed' %}btn-danger{% endif %}
                 {% if object['deploy_status'] == 'new' %}btn-info{% endif %}
-                ">{{ object['deploy_status'] }}</td>
+                ">{{ object['deploy_status'] }}</button></td>
         </tr>
         {% endfor %}
     </table>
@@ -204,7 +239,8 @@ input:checked + .slider:before {
         {% for history in deployment_dict['run_history'] %}
         <tr>
             <td>{{ history['create_time'] }}</td>
-            <td><img src="{{ url_for('static', filename='assets/img/log.png') }}" onclick="showLog('info', '{{ history['log']|replace("'", "\"")|replace("\r\n", "<br/>")|replace("\n", "<br/>")|e }}')"></td>
+            <td><img src="{{ url_for('static', filename='assets/img/log.png') }}" 
+                onclick="showLog('info', '{{ file_name }}', null, null, {{loop.index-1}})"></td>
         </tr>
         {% endfor %}
     </table>
@@ -227,6 +263,7 @@ input:checked + .slider:before {
 <script src="{{ url_for('static', filename='assets/js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ url_for('static', filename='assets/js/web.deploy.js') }}"></script>
 <script src="{{ url_for('static', filename='assets/js/chart.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/js/json.js') }}"></script>
 
 <script type="text/javascript">
 
@@ -311,6 +348,10 @@ function show_stage_steps(file_name, stage) {
             title: 'Steps for ' + stage,
             html: html,
             width: 'auto',
+            customClass: {
+                htmlContainer: 'sweet_container',
+                table: 'table',
+            }
         });
     });
 }
@@ -337,6 +378,27 @@ function showLog(type, file_name, stage, sequence, run_history_element) {
             }
         }).then((result) => {
             show_stage_steps(current_meta_file, last_show_stage);
+        });
+    });
+}
+
+
+
+function show_json(file_name) {
+    
+    postData("/api/get_meta_file_json", { filename: file_name }).then((data) => {
+        console.log(data); // JSON data parsed by `data.json()` call
+        data = JSON.stringify(data, null, 2);
+        data = syntaxHighlight(data);
+        //data = data.replaceAll('\\n', '<br/>');
+        Swal.fire({
+            icon: 'info',
+            title: 'Meta file',
+            html: '<pre class="logs">'+ data +'</pre>',
+            width: 'auto',
+            customClass: {
+                popup: 'json'
+            }
         });
     });
 }

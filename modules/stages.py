@@ -11,6 +11,17 @@ from modules.cmd_status import Status as Cmd_Status
 from modules import deploy_action as da, workflow
 
 
+from enum import Enum
+
+
+class Actions(Enum):
+
+  RUN_STAGE = 'run_stage'
+  SET_CHECK_ERROR = 'set_check_error'
+  
+
+
+
 class Stage:
 
 
@@ -31,6 +42,7 @@ class Stage:
     self.create_time = str(datetime.datetime.now())
 #    self.create_time = '2023-03-04 14:31:30.404775'
     self.update_time = None
+    self.processing_users = []
 
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
@@ -134,12 +146,13 @@ class Stage:
       'next_stages' : self.next_stages.get_all_names(),
       'clear_files' : self.clear_files,
       'processing_steps' : self.processing_steps,
-      'actions' : self.actions.get_actions_as_dict(),
       'lib_replacement_necessary' : self.lib_replacement_necessary,
       'lib_mapping' : self.lib_mapping,
       'status' : self.status.value,
       'create_time' : self.create_time,
       'update_time' : self.update_time,
+      'processing_users' : self.processing_users,
+      'actions' : self.actions.get_actions_as_dict(),
     }
 
 
@@ -169,7 +182,7 @@ class Stage:
   def validate(stage_dict: {}):
 
     for key in stage_dict.keys():
-      if key not in ['name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
+      if key not in ['name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
         e = Exception(f"Attribute {key} is invalid for a stage!")
         logging.exception(e)
         raise e
@@ -187,8 +200,8 @@ class Stage:
   def __eq__(self, other):
     logging.debug('equals 2 stages')
  #   other.next_stages !!! ist das Problem
-    if (self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions) != \
-       (other.description, other.host, other.base_dir, self.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions):
+    if (self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions) != \
+       (other.description, other.host, other.base_dir, self.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions):
       return False
 
     return True

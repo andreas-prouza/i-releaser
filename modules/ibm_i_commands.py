@@ -4,7 +4,7 @@ import subprocess
 import logging
 import json
 import sys
-import time
+import time, datetime
 
 from io import StringIO
 
@@ -28,8 +28,9 @@ class Command_Exception(Exception):
 class IBM_i_commands:
 
 
-  def __init__(self, meta_file: meta_file.Meta_File):
+  def __init__(self, meta_file: meta_file.Meta_File, current_user):
     self.meta_file = meta_file
+    self.current_user = current_user
 
 
   @DeprecationWarning
@@ -77,6 +78,7 @@ class IBM_i_commands:
 
     logging.debug(f"Run Commands for {stage.name=}, {processing_step=}")
 
+    stage.processing_users.append({'user': self.current_user, 'timestamp' : str(datetime.datetime.now()), 'action' : s.Actions.RUN_STAGE})
     stage.set_status('in process')
 
     #action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)

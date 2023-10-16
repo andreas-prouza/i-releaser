@@ -285,8 +285,10 @@ def show_details(project, version):
         flow = flowchart.get_flowchar_html(mf)
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
+        progress = (len(mf.stages) - len(mf.stages.get_open_stages())) / len(mf.stages)
+        progress = progress * 100
         logging.debug(dv)
-        return render_template('overview/show-deployment.html', sidebar=get_sidebar_data(), deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script']) 
+        return render_template('overview/show-deployment.html', sidebar=get_sidebar_data(), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script']) 
 
     except Exception as e:
         logging.exception(e)
@@ -310,7 +312,7 @@ def run_stage():
         if data['option'] == 'run_all':
             continue_run = False
 
-        mf.run_current_stage(data['stage'], continue_run=continue_run)
+        mf.run_current_stage(data['stage'], continue_run=continue_run, current_user=session.get('current_user', None).upper())
     except Exception as e:
         logging.exception(e)
         result['status'] = 'error'
@@ -318,6 +320,27 @@ def run_stage():
 
     return jsonify(result)
 
+
+
+
+@app.route('/api/get_meta_file_json', methods=['POST'])
+def get_meta_file_json():
+    data = request.get_json(force=True)
+    logging.debug(f"Get logs from: {data=}")
+
+    if 'filename' not in data.keys():
+        return Response(json.dumps({'error': "Key 'filename' not in request"}), status=401, mimetype='application/json') 
+
+    logging.debug(f"Get logs from: {data['filename']=}")
+
+    meta_file = {}
+    with open (data['filename'], "r") as file:
+        meta_file_json=json.load(file)
+
+    #mf_json = json.dumps(meta_file_json, default=str, indent=4)
+
+    return jsonify(meta_file_json)
+    
 
 
 
@@ -381,15 +404,20 @@ def create_deployment(wf_name, commit):
 def set_check_error():
     data = request.get_json(force=True)
     logging.debug(f"Set check error stage: {data['stage']}, sequence: {data['sequence']}, checked: {data['checked']}, filename: {data['filename']}")
+    result={}
+
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
-        mf.actions.set_action_check(data['stage'], data['sequence'], data['checked'])
+        mf.set_action_check(data['stage'], data['sequence'], data['checked'], session['current_user'])
         mf.write_meta_file()
     except Exception as e:
         logging.exception(e)
+        result={'status': 'error', 'error': str(e)}
+
     #mf.set_status(meta_file.Meta_file_status.READY)
-    logging.debug(data)
-    return data
+    logging.debug(f"{result=}")
+
+    return jsonify(result)
 
 
 

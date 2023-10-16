@@ -79,7 +79,7 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
     logging.warning('No actions found')
     return ''
 
-  html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.name, cmds=actions)
+  html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.get_dict(), cmds=actions)
   #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
   html_actions=html_actions.replace('\n', '')
