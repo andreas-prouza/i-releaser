@@ -549,6 +549,10 @@ class Meta_File:
 
     
     def import_objects_from_config_file(self, config_file: str):
+      '''
+      {constant:prod_obj} | {qualified object on production system} | {object to be saved}
+      prod_obj|prouzalib/testlog_test.rpgle.pgm|PROUZA2/testlog_test
+      '''
 
       logging.debug(f"File: {os.path.abspath(config_file)}")
 
