@@ -1,3 +1,6 @@
+C_ALLOWED_USERS = [
+  'PROUZA',
+  'PROUZAT1'
+]
 
 C_DEFAULT_PROJECT = 'test'
-
