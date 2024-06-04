@@ -307,12 +307,13 @@ def run_stage():
 
     try:
         mf.set_status(meta_file.Meta_file_status.READY)
+        mf.current_user = current_user=session.get('current_user', None).upper()
 
         continue_run = True;
         if data['option'] == 'run_all':
             continue_run = False
 
-        mf.run_current_stage(data['stage'], continue_run=continue_run, current_user=session.get('current_user', None).upper())
+        mf.run_current_stage(data['stage'], continue_run=continue_run)
     except Exception as e:
         logging.exception(e)
         result['status'] = 'error'
@@ -373,9 +374,10 @@ def cancel_deployment():
     
 
 
-@app.route('/api/create_deployment/<wf_name>/<commit>', methods=['GET'])
-def create_deployment(wf_name, commit):
-    logging.debug(f"Create Deployment: {wf_name=}, {commit=}")
+@app.route('/api/create_deployment/<wf_name>/<commit>/<obj_list>', methods=['GET'])
+@app.route('/api/create_deployment/<wf_name>/<commit>', defaults={'obj_list':None}, methods=['GET'])
+def create_deployment(wf_name, commit, obj_list):
+    logging.debug(f"Create Deployment: {wf_name=}, {commit=}, {obj_list=}")
     result={}
 
     try:
@@ -383,10 +385,12 @@ def create_deployment(wf_name, commit):
         logging.debug(f"Workflow: {wf}")
         existing_version = deploy_version.Deploy_Version.get_deployment_by_commit(project=wf.default_project, commit=commit)
 
-        if existing_version is not None:
+        logging.debug(f"{existing_version=}, {existing_version['status']=}, {meta_file.Meta_file_status.CANCELED=}")
+
+        if existing_version is not None and meta_file.Meta_file_status(existing_version['status']) != meta_file.Meta_file_status.CANCELED:
             return Response(json.dumps({'Error': f'Given commit is already used in deployment version {existing_version["version"]}'}), status=401, mimetype='application/json') 
 
-        mf = meta_file.Meta_File(workflow_name=wf_name)
+        mf = meta_file.Meta_File(workflow_name=wf_name, object_list=obj_list)
         mf.commit = commit
         mf.set_status(meta_file.Meta_file_status.READY)
         result={'status': 'success', 'meta_file': mf.get_all_data_as_dict()}

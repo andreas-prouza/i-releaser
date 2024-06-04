@@ -27,6 +27,20 @@ This framework is used to organize the staging and deployment in projects.
 It's very flexible and open and can be adabtet using existing configuration files.
 
 
+# General process
+
+1. You call WebAPIs of this service to ...
+   * create a new deployment request
+   * run stages
+2. A list of all objects to deploy needs to be provided
+   * In ```constants.py``` ```C_OBJECT_LIST = 'build-output/object-list.txt'```
+3. In ```etc/workflow.json``` you have to define the environment and process of your deployment like ...
+   * ```build_dir```  
+     Project directory
+   * ```base_dir```  
+     Directory for save files
+   * ```host```
+
 
 # Get started
 

@@ -40,12 +40,14 @@ class Meta_File:
 
 
     #@validate_arguments
-    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, stages: s.Stage_List_list=None, imported_from_dict=False):
+    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, object_list=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, deploy_version : int=None, stages: s.Stage_List_list=None, imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
 
       self.file_name = None
       self.stages = None
+      self.current_running_stage = None
+      self.current_user = None
       self.status = None
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
@@ -56,6 +58,7 @@ class Meta_File:
       self.project = project
       self.file_name = file_name
       self.deploy_version = deploy_version
+      self.object_list = object_list
       self.run_history = mfh.Meta_File_History_List_list()
       self.activate_history()
 
@@ -66,6 +69,9 @@ class Meta_File:
         
       self.update_time = update_time
       self.create_time = create_time
+
+      if self.object_list == None:
+        self.object_list = constants.C_OBJECT_LIST
 
       if self.create_time == None:
         self.create_time = str(datetime.datetime.now())
@@ -214,7 +220,7 @@ class Meta_File:
 
 
      #@validate_arguments
-    def run_current_stage(self, stage: str, processing_step: str=None, continue_run=False, current_user=None) -> None:
+    def run_current_stage(self, stage: str, processing_step: str=None, continue_run=False) -> None:
       """Run given stage
 
       Args:
@@ -229,7 +235,7 @@ class Meta_File:
       if self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
       
-      cmd = ibm_i_commands.IBM_i_commands(self, current_user)
+      cmd = ibm_i_commands.IBM_i_commands(self)
 
       runable_stages = self.stages.get_runable_stages(stage)
       logging.debug(f"All runable stages: {runable_stages}")
@@ -255,6 +261,8 @@ class Meta_File:
         raise err
       
       logging.info(f"Run stage {stage}, {processing_step=}")
+
+      self.current_running_stage = stage_obj
 
       try:
         cmd.run_commands(stage=stage_obj, processing_step=processing_step, continue_run=continue_run)
@@ -429,6 +437,7 @@ class Meta_File:
                              )
         meta_file.commit=meta_file_json['general']['commit']
         meta_file.release_branch=meta_file_json['general']['release_branch']
+        meta_file.object_list=meta_file_json['general']['object_list']
 
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
@@ -475,6 +484,7 @@ class Meta_File:
                          'create_time':     self.create_time,
                          'update_time':     self.update_time,
                          'status':          self.status.value,
+                         'object_list':     self.object_list,
                          'stages':  self.stages.get_dict(),
                         }
       dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
@@ -495,8 +505,8 @@ class Meta_File:
       result = s.deploy_objects == o.deploy_objects
       result = s.stages == o.stages
 
-      if (s.status, s.project, s.deploy_version, s.update_time, s.create_time, s.file_name, s.commit, s.release_branch, s.stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
-         (o.status, o.project, o.deploy_version, o.update_time, o.create_time, o.file_name, s.commit, s.release_branch, o.stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
+      if (s.status, s.project, s.deploy_version, s.update_time, s.create_time, s.file_name, s.object_list, s.commit, s.release_branch, s.stages, s.deploy_objects, s.backup_deploy_lib, s.main_deploy_lib, s.actions) == \
+         (o.status, o.project, o.deploy_version, o.update_time, o.create_time, o.file_name, o.object_list, s.commit, s.release_branch, o.stages, o.deploy_objects, o.backup_deploy_lib, o.main_deploy_lib, o.actions):
         return True
       return False
 
@@ -548,20 +558,24 @@ class Meta_File:
 
 
     
-    def import_objects_from_config_file(self, config_file: str):
+    def import_objects_from_config_file(self):
       '''
       {constant:prod_obj} | {qualified object on production system} | {object to be saved}
       prod_obj|prouzalib/testlog_test.rpgle.pgm|PROUZA2/testlog_test
       '''
 
-      logging.debug(f"File: {os.path.abspath(config_file)}")
+      file_path = os.path.join(self.current_running_stage.build_dir, self.object_list)
 
-      with open(config_file, "r") as file:
+      logging.debug(f"{self.current_running_stage=}")
+      logging.debug(f"Abs. file: {os.path.abspath(file_path)}")
+      logging.debug(f"File: {file_path}")
+
+      with open(file_path, "r") as file:
         for line in file:
           logging.debug(f"Import object: {line}")
           tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
-          prod_obj = re.split(r"/|\.", tmp[2])
-          target_obj = tmp[3].split('/')
+          prod_obj = re.split(r"/|\.", tmp[1])
+          target_obj = tmp[2].split('/')
           logging.debug(f"{tmp=}")
           logging.debug(f"{prod_obj=}")
           logging.debug(f"{target_obj=}")
@@ -570,10 +584,10 @@ class Meta_File:
       
       self.load_actions_from_json(constants.C_OBJECT_COMMANDS)
 
-      config_file_name = os.path.basename(config_file)
-      path = os.path.dirname(os.path.realpath(self.file_name))
+      #config_file_name = os.path.basename(self.object_list)
+      #path = os.path.dirname(os.path.realpath(self.file_name))
 
-      os.rename(config_file, f"{path}/{self.deploy_version}_{config_file_name}")
+      #os.rename(self.object_list, f"{path}/{self.deploy_version}_{config_file_name}")
 
 
 

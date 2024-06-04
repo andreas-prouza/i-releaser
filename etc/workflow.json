@@ -133,7 +133,7 @@
         "next_stages": ["UAT"],
         "host": "localhost",
         "base_dir": "/home/prouza/dev",
-        "build_dir": "/home/PROUZAT1/ibm-i-build-test",
+        "build_dir": "/home/PROUZAT1/ibm-i-build-obi",
         "processing_steps": ["pre", "load_object_list", "post"],
         "clear_files": true
       },
@@ -142,7 +142,7 @@
         "next_stages": ["END"],
         "host": "localhost",
         "base_dir": "/home/prouza/dev",
-        "build_dir": "/home/PROUZAT1/ibm-i-build-test",
+        "build_dir": "/home/PROUZAT1/ibm-i-build-obi",
         "processing_steps": ["pre", "run_build", "merge_results", "post"],
         "clear_files": true
       },

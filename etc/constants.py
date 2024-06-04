@@ -11,9 +11,12 @@ C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta"
 C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}"
 C_DEPLOY_META_FILE = f'{C_DEPLOY_DIR}/deployment_{{deploy_version}}.json'
 
-#C_GNU_MAKE_OBJECT_LIST = 'objects.txt'
-C_GNU_MAKE_OBJECT_LIST = 'tmp/prod_obj.txt'
-C_COMPILED_OBJECT_LIST = 'tmp/compiled.txt'
+#C_OBJECT_LIST = 'objects.txt'
+C_OBJECT_LIST = 'build-output/object-list.txt'
+
+# The old build script, wrote each object into the following file, when compile has been finished
+#   E.g.: echo "build/prouzalib/testsqlerr.sqlrpgle.pgm.obj|"`date` >> ./tmp/compiled.txt
+C_COMPILED_OBJECT_LIST = 'build-output/compiled.txt'
 
 
 # iconv will be used for convertion
