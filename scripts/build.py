@@ -147,6 +147,22 @@ def merge_results(meta_file: mf.Meta_File, stage: str, processing_step:str) -> N
 
 
 
+
+def clean_current_commit(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+
+  stage_obj = meta_file.stages.get_stage(stage)
+  meta_file.current_running_stage = stage_obj
+  
+  build_dir = stage_obj.build_dir
+  new_release = meta_file.release_branch
+
+  reset_git_repo(build_dir)
+  run_sys_cmd(['git', 'checkout', new_release], build_dir)
+  run_sys_cmd(['git', 'reset', '--hard', f'origin/{new_release}'], build_dir)
+
+
+
+
 def reset_git_repo(build_dir):
   run_sys_cmd(['git', 'reset', '--hard', 'HEAD'], build_dir)
   run_sys_cmd(['git', 'clean', '-fd'], build_dir)

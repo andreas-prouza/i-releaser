@@ -185,7 +185,7 @@ class IBM_i_commands:
 
 
   def run_pase_cmd(self, cmd: str, action: da.Deploy_Action) -> Run_History:
-      s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
+      s=subprocess.run(cmd, stdout=subprocess.PIPE, cwd=self.meta_file.current_running_stage.build_dir, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
       stdout = s.stdout
       stderr = s.stderr
 

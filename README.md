@@ -29,6 +29,7 @@ It's very flexible and open and can be adabtet using existing configuration file
 
 # General process
 
+## The setup
 1. You call WebAPIs of this service to ...
    * create a new deployment request
    * run stages
@@ -40,6 +41,30 @@ It's very flexible and open and can be adabtet using existing configuration file
    * ```base_dir```  
      Directory for save files
    * ```host```
+
+
+## The concept
+
+1. Create new deployment request  
+   You will get a version number
+2. Create new release branch (containing the version number)
+   * Provide these information to the deployment tool:
+     * Workflow (where the processing environment is defined)
+     * Commit tag (which will be used for deployment)
+   * The deployment tool should build all from a "production" project folder in the IFS, which will be only used for builds for production.
+   * This branch will also contain a object-list.  
+     This is used by the deployment tool to handle them for further process. (Save, restore, backup ...)
+3. Run steps of the workflow
+   * Import of the object-list
+   * run build
+
+## Interesting to know
+
+* The tool checks if the same commit is already in use in an existing deployment.  
+  To use the same commit multiple times is not possible
+* It's not possible to run multiple deployments in parallel.  
+  You first have to finish all previous open deployments.  
+  You can cancel them, if you don't need them anymore.
 
 
 # Get started
