@@ -94,14 +94,27 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
   # List all changed objects
   run_sys_cmd(['find build/* -type f -daystart -mtime -1 | xargs ls -la'], build_dir, True)
 
+  git_save_changes(meta_file, stage, processing_step)
+
+  if error is not None:
+    raise error
+
+
+
+
+def git_save_changes(meta_file: mf.Meta_File, stage: str, processing_step:str):
+
+  commit_msg='Save deployment changes'
+
+  build_dir = meta_file.stages.get_stage(stage).build_dir
+
   run_sys_cmd(['git', 'status'], build_dir)
   run_sys_cmd(['git', 'add', '-A'], build_dir)  
   run_sys_cmd([f'git diff-index --quiet HEAD || git commit -m "{commit_msg}"'], build_dir, True)
   run_sys_cmd(['git', 'push'], build_dir)
 
-  if error is not None:
-    raise error
-  
+
+
 
 
 def update_compiled_object_status(meta_file: mf.Meta_File, stage: str):
