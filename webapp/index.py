@@ -353,6 +353,9 @@ def get_action_log():
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
 
+    if data['stage'] is None:
+        return jsonify({"stdout" : mf.run_history.get_list()[data['run_history_element']]['log']})
+
     for action in mf.get_actions(stage=data['stage']):
         logging.debug(f"Action logs: {action}")
         if action.sequence != data['sequence']:
