@@ -117,7 +117,10 @@ class Workflow:
     for wf in workflows_json:
       if self.name == wf['name']:
         Workflow.validate_workflow(wf)
-        return wf["step_2_script_mapping"]
+        logging.debug(f'len {len(constants.C_DEFAULT_STEP_2_CMD_MAPPING)=}, {len(wf["step_2_script_mapping"])=}')
+        merged_list = [(d1 | d2) for d1, d2 in zip(constants.C_DEFAULT_STEP_2_CMD_MAPPING, wf["step_2_script_mapping"])]
+        logging.debug(f"{merged_list=}")
+        return merged_list
     
     return constants.C_DEFAULT_STEP_2_CMD_MAPPING
 

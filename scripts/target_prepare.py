@@ -17,7 +17,8 @@ def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage: str, processing
         stage (str): Run for this stage
     """
 
-    actions = meta_file.actions
+    stage_obj = meta_file.stages.get_stage(stage)
+    actions = stage_obj.actions
 
     actions.add_action_cmd(
         f"CRTLIB {meta_file.backup_deploy_lib}",

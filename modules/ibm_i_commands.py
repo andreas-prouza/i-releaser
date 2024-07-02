@@ -49,7 +49,7 @@ class IBM_i_commands:
 
     wf_steps = self.meta_file.workflow.get_workflow_steps_mapping()
 
-    all_steps = {x['processing_step']:x for x in constants.C_DEFAULT_STEP_2_CMD_MAPPING + wf_steps}.values()
+    all_steps = {x['processing_step']:x for x in wf_steps}.values()
 
     for step in do_steps:
 

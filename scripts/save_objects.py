@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os
+import os, logging
 
 from etc import constants
 from modules import meta_file as mf
@@ -16,7 +16,8 @@ def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str, processing_step:
 
     # meta_file = mf.Meta_File.load_json_file(meta_file_name)
 
-    actions = meta_file.actions
+    stage_obj = meta_file.stages.get_stage(stage)
+    actions = stage_obj.actions
 
     actions.add_action_cmd(
         f"CRTLIB {meta_file.main_deploy_lib}",
@@ -52,8 +53,10 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
                   (*INCLUDE TEST *FILE)
                  )
     """
-    actions = meta_file.actions
-    clear_files = meta_file.stages.get_stage(stage).clear_files
+    stage_obj = meta_file.stages.get_stage(stage)
+    actions = stage_obj.actions
+
+    clear_files = stage_obj.clear_files
     deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
 
     for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
@@ -93,4 +96,6 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
             processing_step=processing_step,
             stage=stage,
         )
+
+    logging.debug(f"Number of actions generated: {len(meta_file.actions)}")
 

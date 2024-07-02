@@ -12,10 +12,11 @@ def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage: str, proces
     """
      Save production objects bevore deployment
     """
-    actions = meta_file.actions
+    stage_obj = meta_file.stages.get_stage(stage)
+    actions = stage_obj.actions
+
     includes = ''
-    clear_files = meta_file.stages.get_stage(stage).clear_files
-    current_stage = meta_file.stages.get_stage(stage)
+    clear_files = stage_obj.clear_files
 
     for lib in meta_file.deploy_objects.get_lib_list_from_prod():
 
@@ -26,5 +27,5 @@ def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage: str, proces
             SELECT({includes}) DTACPR(*HIGH)", 
             environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage)
 
-    meta_file.stages.get_stage(stage).set_status(Cmd_Status.PREPARE)
+    stage_obj.set_status(Cmd_Status.PREPARE)
     meta_file.write_meta_file()

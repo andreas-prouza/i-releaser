@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os
+import os, logging
 
 from etc import constants
 from modules import meta_file as mf
@@ -36,10 +36,12 @@ def generate_commands(meta_file: mf.Meta_File, stage: str, processing_step:str) 
 
     # Check if step from steps_cmd is in processing_step list of given stage
     if step not in processing_steps:
+      logging.info(f"Step {step} not in list of steps")
       continue
 
     # Execute the commands of this step
     for cmd in steps_cmd[step]:
+      logging.info(f"Execute cmd {cmd} of step {step} (stage {stage})")
       cmd(meta_file, stage, step)
 
 

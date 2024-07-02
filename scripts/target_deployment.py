@@ -11,10 +11,11 @@ def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage: str, proce
      RSTLIB SAVLIB(PROUZALIB) DEV(*SAVF) SAVF(QGPL/PROUZASAVF) RSTLIB(RSTLIB)
             SELECT((*INCLUDE TEST *PGM) (*INCLUDE TEST *FILE)) 
     """
-    actions = meta_file.actions
-    clear_files = meta_file.stages.get_stage(stage).clear_files
-    current_stage = meta_file.stages.get_stage(stage)
-    deployment_dir = f"{current_stage.base_dir}/{os.path.basename(os.path.dirname(meta_file.file_name))}"
+    stage_obj = meta_file.stages.get_stage(stage)
+    actions = stage_obj.actions
+
+    clear_files = stage_obj.clear_files
+    deployment_dir = f"{stage_obj.base_dir}/{os.path.basename(os.path.dirname(meta_file.file_name))}"
 
     for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
 
@@ -32,9 +33,9 @@ def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage: str, proce
 
       # Restore all objects
       restore_to_lib = lib['prod_lib']
-      if current_stage.lib_replacement_necessary:
-        if lib['prod_lib'] in current_stage.lib_mapping.keys():
-          restore_to_lib = current_stage.lib_mapping[lib['lib']]
+      if stage_obj.lib_replacement_necessary:
+        if lib['prod_lib'] in stage_obj.lib_mapping.keys():
+          restore_to_lib = stage_obj.lib_mapping[lib['lib']]
 
       includes = ''
       
