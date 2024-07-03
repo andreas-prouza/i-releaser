@@ -24,8 +24,11 @@ class Actions(Enum):
 
 class Stage:
 
+  # Static id counter for each stage to be unique
+  id=0
 
   def __init__(self, dict: {}={}):
+    self.id = None
     self.workflow = None
     self.name = None
     self.description = None
@@ -55,6 +58,10 @@ class Stage:
       for k, v in dict.items():
         setattr(self, k, v)
 
+    if self.id is None:
+      Stage.id += 1
+      self.id = Stage.id
+
 
   def set_status(self, status, update_time=True):
 
@@ -68,7 +75,7 @@ class Stage:
 
 
   def set_processing_steps(self, workflow: workflow.Workflow):
-    """Set all commands which are allowed for this stage
+    """Set all actions which are allowed for this stage
 
     Args:
         stage (str): Name of stage
@@ -91,7 +98,7 @@ class Stage:
 
 
 
-  def get_stage(workflow:workflow.Workflow, stage_name: str) -> Stage:
+  def get_stage_from_workflow(workflow:workflow.Workflow, stage_name: str) -> Stage:
     """Retrieves stage from workflow
         This is also a check if the wanted stage exist in the workflow config
 
@@ -138,6 +145,7 @@ class Stage:
 
   def get_dict(self) -> {}:
     return {
+      'id' : self.id,
       'name' : self.name,
       'description' : self.description,
       'host' : self.host,
@@ -182,7 +190,7 @@ class Stage:
   def validate(stage_dict: {}):
 
     for key in stage_dict.keys():
-      if key not in ['name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
+      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
         e = Exception(f"Attribute {key} is invalid for a stage!")
         logging.exception(e)
         raise e
@@ -200,11 +208,14 @@ class Stage:
   def __eq__(self, other):
     logging.debug('equals 2 stages')
  #   other.next_stages !!! ist das Problem
-    if (self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions) != \
-       (other.description, other.host, other.base_dir, self.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions):
-      return False
+    if (self.id, self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions) == \
+       (self.id, other.description, other.host, other.base_dir, self.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions):
+      return True
 
-    return True
+    logging.warn(f"{self.id} - {self.description} - {self.host} - {self.base_dir} - {self.build_dir} - {self.next_stages.get_all_names()} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions}")
+    logging.warn(f"{other.id} - {other.description} - {other.host} - {other.base_dir} - {other.build_dir} - {other.next_stages.get_all_names()} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions}")
+
+    return False
 
 
 
@@ -213,6 +224,18 @@ class Stage:
 class Stage_List_list(list):
 
     def __init__(self, workflow:workflow.Workflow=None, iterable=None):
+      """Generates a list of stages for a workflow
+
+      Args:
+          workflow (workflow.Workflow, optional): If given, get stages based on workflow stages dict
+          iterable (list, optional): List can contains 2 types:
+
+              * str
+                Stage object will be retrieved from workflow based on stage name
+
+              * dict
+                Stage object will be generated based on existing dict
+      """
 
       # This is only not to change the original parameter
       iterable2 = []
@@ -225,7 +248,7 @@ class Stage_List_list(list):
         for i, s in enumerate(iterable):
           iterable2.append(s)
           if type(s) == str:
-             iterable2[i] = Stage.get_stage(workflow, s)
+             iterable2[i] = Stage.get_stage_from_workflow(workflow, s)
           if type(s) == dict:
              iterable2[i] = Stage.get_stage_from_dict(workflow, s)
           stage_list.append(iterable2[i].name)
@@ -239,7 +262,7 @@ class Stage_List_list(list):
             continue
 
           logging.debug(f"Got stage from workflow: {stage=}")
-          additional_stage = Stage.get_stage(workflow, stage['name'])
+          additional_stage = Stage.get_stage_from_workflow(workflow, stage['name'])
           iterable2.append(additional_stage)
           stage_list.append(additional_stage.name)
 
@@ -263,10 +286,8 @@ class Stage_List_list(list):
 
         # if stage already exist, just reopen it
         for stage in self:
-          if item.name == stage.name:
-            logging.info(f"Stage {item.name} already exist with status '{stage.status}'. Status will be set to 'new'.")
-            item.status = Cmd_Status.NEW
-            return
+          if item.id == stage.id:
+            raise Exception(f"Stage {item.name} (id {item.id}) already exist")
 
         super().append(self._validate_item(item))
 
@@ -300,6 +321,15 @@ class Stage_List_list(list):
       return list
 
 
+    def get_all_ids(self) ->[]:
+      list = []
+
+      for s in self:
+        list.append(s.id)
+
+      return list
+
+
 
     def get_dict(self) -> {}:
       list = []
@@ -311,21 +341,32 @@ class Stage_List_list(list):
 
 
 
-    #@validate_arguments
-    def get_stage(self, name: str) -> Stage:
+    def get_stage(self, id: int) -> Stage:
 
-      if type(name) != str:
-        raise Exception(f"Parameter is not a string: {name}")
+      if type(id) != int:
+        raise Exception(f"Parameter is not a number: {id}")
 
       for s in self:
-        if s.name == name:
+        if s.id == id:
           return s
 
-      raise Exception(f"Stage {name} not found in list {self.get_all_names()}")
+      raise Exception(f"Stage id {id} not found in list {self.get_all_ids()}")
       return None
 
 
-    #@validate_arguments
+
+    def get_stages_by_name(self, stage_name: str) -> []:
+
+      stages = Stage_List_list()
+
+      for s in self:
+        if s.name == stage_name:
+          stages.append(s)
+
+      return stages
+
+
+
     def get_stage_list_by_status(self, status: Cmd_Status) -> []:
 
       stages = Stage_List_list()
@@ -338,42 +379,12 @@ class Stage_List_list(list):
 
 
 
-    def get_open_stages(self) -> []:
-
-      stages = Stage_List_list()
-
-      for s in self:
-        if s.status != Cmd_Status.FINISHED:
-          stages.append(s)
-
-      return stages
 
 
-
-    def get_runable_stages(self, start_stage='START'):
-
-      stages = Stage_List_list()
-
-      logging.debug(f"Start with {start_stage=}")
-
-      stage = self.get_stage(start_stage)
-      if stage.status != Cmd_Status.FINISHED:
-        stages.append(stage)
-        logging.debug(f"Return open stage list 1 {stages=}")
-        return stages
-
-      for next_stage in stage.next_stages:
-        stages.extend(self.get_runable_stages(next_stage.name))
-
-      logging.debug(f"Return open stage list 2 {stages.get_dict()=}")
-      return stages
-
-
-
-    def remove_stage(self, name: str) -> None:
+    def remove_stage(self, id: int) -> None:
 
       for i, o in enumerate(self):
-        if o.name == name:
+        if o.id == id:
           del self[i]
           return
 

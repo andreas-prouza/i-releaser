@@ -173,7 +173,6 @@ class Deploy_Object_List(list):
         obj.actions.add_action(action)
 
 
-
   def get_actions(self, processing_step: str=None, stage: str=None):
 
     if type(stage) != str:
@@ -245,7 +244,8 @@ class Deploy_Object:
 
       if len(dict['actions']) > 0:
         for action in dict['actions']:
-          self.actions.add_action(da.Deploy_Action(dict=action))
+          self.actions.add_actions_from_dict(action)
+          #self.actions.add_action(da.Deploy_Action(dict=action))
       return
 
     self.prod_lib = prod_lib.lower()
@@ -272,6 +272,11 @@ class Deploy_Object:
 
 
   def __eq__(self, o):
-    if (self.lib, self.prod_lib, self.name, self.type, self.attribute, self.deploy_status, self.actions) == (o.lib, o.prod_lib, o.name, o.type, o.attribute, o.deploy_status, o.actions):
+    if (self.lib, self.prod_lib, self.name, self.type, self.attribute, self.deploy_status, self.actions) == \
+       (o.lib, o.prod_lib, o.name, o.type, o.attribute, o.deploy_status, o.actions):
       return True
+
+    logging.warn(f"{self.lib} - {self.prod_lib} - {self.name} - {self.type} - {self.attribute} - {self.deploy_status} - {self.actions}")
+    logging.warn(f"{o.lib} - {o.prod_lib} - {o.name} - {o.type} - {o.attribute} - {o.deploy_status} - {o.actions}")
+
     return False

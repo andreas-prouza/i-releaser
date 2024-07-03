@@ -134,7 +134,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
   # This stage
   html=div_column
   html+= generate_stage_button(mf, stage)
-  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.name in mf.stages.get_runable_stages().get_all_names():
+  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.name in mf.open_stages.get_all_names():
     html+= generate_run_button(mf, stage)
 
   if len(stage.processing_steps) > 0:

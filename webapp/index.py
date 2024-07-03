@@ -285,7 +285,7 @@ def show_details(project, version):
         flow = flowchart.get_flowchar_html(mf)
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
-        progress = (len(mf.stages) - len(mf.stages.get_open_stages())) / len(mf.stages)
+        progress = (len(mf.workflow.stages) - len(mf.open_stages)) / len(mf.workflow.stages)
         progress = progress * 100
         logging.debug(dv)
         return render_template('overview/show-deployment.html', sidebar=get_sidebar_data(), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script']) 
@@ -410,12 +410,12 @@ def create_deployment(wf_name, commit, obj_list):
 @app.route('/api/set_check_error', methods=['POST'])
 def set_check_error():
     data = request.get_json(force=True)
-    logging.debug(f"Set check error stage: {data['stage']}, sequence: {data['sequence']}, checked: {data['checked']}, filename: {data['filename']}")
+    logging.debug(f"Set check error stage: {data['stage_id']}, sequence: {data['sequence']}, checked: {data['checked']}, filename: {data['filename']}")
     result={}
 
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
-        mf.set_action_check(data['stage'], data['sequence'], data['checked'], session['current_user'])
+        mf.set_action_check(data['stage_id'], data['sequence'], data['checked'], session['current_user'])
         mf.write_meta_file()
     except Exception as e:
         logging.exception(e)

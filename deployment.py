@@ -83,7 +83,7 @@ def run_stage(args):
   mf = meta_file.Meta_File.load_version(args.project, args.deploy_version)
   mf.run_current_stage(args.stage)
 
-  logging.debug(f"Stage {args.stage} successfully completed. Current stages now: {mf.stages.get_runable_stages()}")
+  logging.debug(f"Stage {args.stage} successfully completed. Current stages now: {mf.open_stages}")
 
   if args.info_output is not None:
     save_info(mf)

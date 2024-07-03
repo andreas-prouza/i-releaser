@@ -56,8 +56,8 @@ class Deploy_Checks:
 
   def is_stage_open(self, meta_file_obj:meta_file.Meta_File, stage:str):
     
-    if stage in meta_file_obj.stages.get_open_stages().get_all_names():
+    if stage in meta_file_obj.open_stages.get_all_names():
        return True
     
-#    for next_stage in meta_file_obj.current_stages:
+#    for next_stage in meta_file_obj.open_stages:
 #       next_stage.next_stages[]

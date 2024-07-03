@@ -1,14 +1,46 @@
 import logging, sys
-from io import StringIO
+#from io import StringIO
 
 from etc import logger_config, constants
-#from modules import deploy_action, workflow
-#from modules.cmd_status import Status
+from modules import deploy_action, workflow, meta_file
+from modules.cmd_status import Status
+
+
+mf = meta_file.Meta_File()
+mf.open_stages.get_stages_by_name('START')[0].actions
+mf.open_stages.get_stage(6).actions
 
 #actions = deploy_action.Deploy_Action_List_list()
 #actions.add_action(deploy_action.Deploy_Action('test', 0, Status.NEW, deploy_action.Command_Type.PASE, 'STARTX', 'pre'))
 
 #print(actions.get_actions_as_dict())
+
+
+class Test:
+    id = 0
+
+    def __init__(self, id=None):
+      self.id = id
+      if self.id is None:
+        Test.id =+ 1
+        self.id = Test.id
+
+    def printVal(self, id=None):
+      print(f"{Test.id=} {id=}")
+
+
+t0 = Test(2)
+t0.printVal(111)
+t1 = Test()
+t1.printVal(222)
+t2 = Test(3)
+t3 = Test()
+t2.printVal(333)
+t3.printVal()
+
+
+exit
+
 
 step_2_script_mapping = [
       {
@@ -67,7 +99,7 @@ step_2_script_mapping = [
       }
     ]
 
-constants.C_DEFAULT_STEP_2_CMD_MAPPING
+#constants.C_DEFAULT_STEP_2_CMD_MAPPING
 
-merged_list = [(d1 | d2) for d1, d2 in zip(constants.C_DEFAULT_STEP_2_CMD_MAPPING, wf["step_2_script_mapping"])]
-logging.debug(f"{merged_list=}")
+#merged_list = [(d1 | d2) for d1, d2 in zip(constants.C_DEFAULT_STEP_2_CMD_MAPPING, wf["step_2_script_mapping"])]
+#logging.debug(f"{merged_list=}")

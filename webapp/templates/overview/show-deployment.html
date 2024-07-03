@@ -489,8 +489,8 @@ async function runStage(filename, stage) {
     */
 
 
-function set_check_error(filename, stage, sequence, checked) {
-    postData("/api/set_check_error", { stage: stage, filename: filename, sequence: sequence, checked: checked }).then((data) => {
+function set_check_error(filename, stage_id, sequence, checked) {
+    postData("/api/set_check_error", { stage: stage_id, filename: filename, sequence: sequence, checked: checked }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
     });
 }

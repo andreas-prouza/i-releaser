@@ -74,8 +74,8 @@ class Deploy_Action_List_list(list):
     if type(action) != Deploy_Action:
       raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
 
-    if action.sequence is None:
-      action.sequence = self.get_next_sequence()
+    action.status = Cmd_Status.NEW
+    action.sequence = self.get_next_sequence()
 
     logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
 
@@ -94,13 +94,20 @@ class Deploy_Action_List_list(list):
 
 
 
-  def add_actions_from_list(self, dict: {}):
+  def add_actions_from_dict(self, dict: {}):
 
     logging.debug('Add actions from list')
-    for k, cmds in dict.items():
-      for cmd in cmds:
-        action = Deploy_Action(dict=cmd)
-        self.add_action(action)
+    action = Deploy_Action(dict=dict)
+    self.add_action(action)
+
+
+
+  def get_action_by_id(self, id: int) -> Deploy_Action:
+    for a in self:
+      if a.id == id:
+        return a
+
+    raise Exception(f"Action id {id} not found in list {self.get_actions_as_dict()}")
 
 
 
@@ -133,11 +140,14 @@ class Deploy_Action_List_list(list):
 
 
 
-  def set_action_check(self, stage: str, sequence: int, check: bool) -> None:
+  def set_action_check(self, action_id: int, check: bool) -> None:
 
-    for a in self:
-      if a.stage == stage and a.sequence == sequence:
-        a.check_error = check
+    action = self.get_action_by_id(action_id)
+
+    if action.status == Cmd_Status.FINISHED:
+      raise Exception('Not possible to change a finished step')
+
+    action.check_error = check
 
 
 
@@ -187,12 +197,14 @@ class Deploy_Action:
     When run the command, it must be checked for errors
   """
 
+  id = 0
 
 
   def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=Cmd_Status.NEW,  
     environment: Command_Type=Command_Type.QSYS, stage: str=None, processing_step: str=None, 
-    check_error: bool=True, dict: {}=None):
+    check_error: bool=True, dict: {}=None, id: int=None):
 
+    self.id = id
     self.sequence = sequence
     self.environment = environment
     self.cmd = cmd
@@ -220,7 +232,13 @@ class Deploy_Action:
 
       self.validate()
 
+    if self.id is None:
+      self.id = Deploy_Action.get_next_id()
 
+
+  def get_next_id():
+    Deploy_Action.id += 1
+    return Deploy_Action.id
 
 
   def validate(self):
@@ -252,6 +270,9 @@ class Deploy_Action:
     for k, v in dict.items():
       setattr(action, k, v)
 
+    if action.id == None:
+      action.id = Deploy_Action.get_next_id()
+
     action.validate()
 
     return action
@@ -261,6 +282,7 @@ class Deploy_Action:
 
   def get_dict(self) -> {}:
     return {
+      'id': self.id,
       'sequence': self.sequence, 
       'cmd': self.cmd,
       'status': self.status.value,
@@ -275,6 +297,10 @@ class Deploy_Action:
 
 
   def __eq__(self, o):
-    if (self.sequence, self.environment, self.cmd, self.stage, self.status, self.run_history, self.check_error, self.processing_step) == (o.sequence, o.environment, o.cmd, o.stage, o.status, o.run_history, o.check_error, o.processing_step):
+    if (self.id, self.sequence, self.environment, self.cmd, self.stage, self.status, self.run_history, self.check_error, self.processing_step) == \
+       (o.id, o.sequence, o.environment, o.cmd, o.stage, o.status, o.run_history, o.check_error, o.processing_step):
       return True
+
+    logging.warn(f"{self.id} - {self.sequence} - {self.environment} - {self.cmd} - {self.stage} - {self.status} - {self.run_history} - {self.check_error} - {self.processing_step}")
+    logging.warn(f"{o.id} - {o.sequence} - {o.environment} - {o.cmd} - {o.stage} - {o.status} - {o.run_history} - {o.check_error} - {o.processing_step}")
     return False

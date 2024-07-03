@@ -77,7 +77,7 @@ class IBM_i_commands:
 
     logging.debug(f"Run Commands for {stage.name=}, {processing_step=}")
 
-    stage.processing_users.append({'user': self.meta_file.current_user, 'timestamp' : str(datetime.datetime.now()), 'action' : s.Actions.RUN_STAGE})
+    stage.processing_users.append({'user': self.meta_file.current_user, 'timestamp' : str(datetime.datetime.now()), 'action' : s.Actions.RUN_STAGE.value})
     stage.set_status('in process')
 
     #action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)
@@ -87,13 +87,12 @@ class IBM_i_commands:
       self.execute_action(stage, action, continue_run)
 
     # Execute all from object
-    object_commands = self.meta_file.deploy_objects.get_actions(processing_step=processing_step, stage=stage.name)
-    for action in object_commands:
-      self.execute_action(stage, action, continue_run)
-
+    #object_commands = self.meta_file.deploy_objects.get_actions(processing_step=processing_step, stage=stage.name)
+    #for action in object_commands:
+    #  self.execute_action(stage, action, continue_run)
     
     # should be set on a higher level because of multiple processing_steps to run
-    #self.meta_file.current_stages.get_stage(stage).set_status('finished')
+    #self.meta_file.open_stages.get_stage(stage).set_status('finished')
     self.meta_file.write_meta_file()
 
     #iconv -f IBM-1252 -t utf-8 './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' > './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp && mv './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' 

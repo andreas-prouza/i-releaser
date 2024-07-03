@@ -103,6 +103,14 @@ class Workflow:
 
 
   def get_stage(self, stage_name:str) -> {}:
+    """
+    Retrieves stage dict from workflow.json
+
+    Args:
+        stage_name (str): Name of stage
+    Returns:
+        stage (dict): Stage as dictionary
+    """
     for stage in self.stages:
       if stage['name'] == stage_name:
         logging.debug(f'Found stage in workflow: {stage=}')
@@ -110,7 +118,14 @@ class Workflow:
 
 
 
-  def get_workflow_steps_mapping(self) -> {}:
+  def get_workflow_steps_mapping(self) -> []:
+    """
+    Get steps mapping list of the current workflow + the global constants definition
+
+    Returns:
+        mapping_lsit (list): List of mappings
+    """
+
     with open(constants.C_WORKFLOW, "r") as file:
       workflows_json = json.load(file)
 
@@ -163,7 +178,8 @@ class Workflow:
       'name': self.name,
       'step_2_script_mapping': self.step_2_script_mapping,
       'object_commands': self.object_commands,
-      'default_project': self.default_project
+      'default_project': self.default_project,
+      'stages': self.stages
     }
 
 
