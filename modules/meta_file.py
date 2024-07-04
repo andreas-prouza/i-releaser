@@ -187,6 +187,8 @@ class Meta_File:
       for next_stage in next_stages:
         next_stage_object = s.Stage.get_stage_from_workflow(self.workflow, next_stage)
         
+        from_stage.next_stage_ids.append(next_stage_object.id)
+        next_stage_object.from_stage_id = from_stage.id
         self.open_stages.append(next_stage_object)
         self.copy_object_actions_2_open_stages(next_stage_object.id)
       
@@ -196,6 +198,23 @@ class Meta_File:
       self.write_meta_file()
 
       
+
+
+    def get_next_stages(self, from_stage: s.Stage):
+
+      next_stages = s.Stage_List_list()
+
+      for next_id in from_stage.next_stage_ids:
+        next_stages.append(self.get_stage_by_id(next_id))
+
+      logging.debug(f"Next stages for {from_stage.name}: {next_stages.get_all_ids}")
+      if len(next_stages) > 0:
+        return next_stages
+
+      logging.debug(f"Next stages 2 for {from_stage.name}: {from_stage}")
+      return from_stage.next_stages
+
+
 
 
     def run_current_stages(self) -> None:
@@ -345,6 +364,30 @@ class Meta_File:
 
 
 
+    def get_stage_by_id(self, stage_id: int) -> s.Stage:
+
+      if type(stage_id) == str:
+        stage_id = int(stage_id)
+
+      if stage_id in self.open_stages.get_all_ids():
+        return self.open_stages.get_stage(stage_id)
+
+      if stage_id in self.processed_stages.get_all_ids():
+        return self.processed_stages.get_stage(stage_id)
+      
+      logging.error(f'No stage found with id {stage_id}. Existing: {self.open_stages.get_all_ids()=}, {self.processed_stages.get_all_ids()=}')
+
+
+
+    def get_stages_by_name(self, stage: str) -> s.Stage:
+
+      if stage in self.open_stages.get_all_names():
+        return self.open_stages.get_stages_by_name(stage)
+
+      if stage in self.processed_stages.get_all_names():
+        return self.processed_stages.get_stages_by_name(stage)
+
+
     
     def get_actions(self, processing_step: str=None, stage_id: int=None) -> []:
 
@@ -353,7 +396,7 @@ class Meta_File:
       if stage_id is None:
         raise Exception(f"Stage id is None")
 
-      stage_obj = self.open_stages.get_stage(stage_id)
+      stage_obj = self.get_stage_by_id(stage_id)
 
       list=stage_obj.actions.get_actions(processing_step=processing_step)
       

@@ -29,7 +29,8 @@ flow_connection=[]
 
 
 def get_stage_as_html_id(stage:str) -> str:
-  return f"flow_{base64.b64encode(stage.encode()).decode('ascii').replace('=', '')}"
+  #return f"flow_{base64.b64encode(stage.encode()).decode('ascii').replace('=', '')}"
+  return f"flow_{stage}"
 
 
 
@@ -41,7 +42,7 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
   btn_class = btn_class_list['None']
   logging.debug(f"{stage.name}: {stage.get_dict().get('status')=}")
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
-  return f'<button type="button" id="{get_stage_as_html_id(stage.name)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
+  return f'<button type="button" id="{get_stage_as_html_id(stage.id)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
 
 
 
@@ -51,7 +52,7 @@ def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
   btn_class = btn_class_list['None']
   logging.debug(f"{stage=}")
-  return f'<br/><img class="run" src="/static/assets/img/run-green.png" onclick="runStage(\'{mf.file_name}\', \'{stage.name}\')">'
+  return f'<br/><img class="run" src="/static/assets/img/run-green.png" onclick="runStage(\'{mf.file_name}\', \'{stage.id}\', \'{stage.name}\')">'
 
 
 
@@ -95,7 +96,8 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
 
 def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  html = render_template('overview/details/stage-actions.html', file_name=mf.file_name, stage=stage.name)
+  logging.debug(f"Generate stage-action: {mf.file_name}, {stage.id=}, {stage.name=}")
+  html = render_template('overview/details/stage-actions.html', file_name=mf.file_name, stage_id=stage.id, stage_name=stage.name)
 
   return html
 
@@ -108,9 +110,9 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
   
   logging.debug(f"{stage.get_dict()=}")
 
-  flow_stages.append(get_stage_as_html_id(stage.name))
+  flow_stages.append(get_stage_as_html_id(stage.id))
 
-  next_stages = stage.get_next_stages()
+  next_stages = mf.get_next_stages(stage)
   sub_row=''
 
   i=0
@@ -120,22 +122,21 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
     direction_from='right'
     if i>1:
       direction_from='bottom'
-    flow_connection.append({'from': f"{get_stage_as_html_id(stage.name)}", 'to': f"{get_stage_as_html_id(ns.name)}", 'direction_from': direction_from, 'direction_to': 'left'})
+    flow_connection.append({'from': f"{get_stage_as_html_id(stage.id)}", 'to': f"{get_stage_as_html_id(ns.id)}", 'direction_from': direction_from, 'direction_to': 'left'})
     
     # Every stage will only be printed once
     if f"{get_stage_as_html_id(ns.name)}" in flow_stages:
       continue
     
     # All next stages in a new Row
-xxxxx
     sub_row+=div_row
-    sub_row+=get_flow_stage(mf, mf.stages.get_stage(ns.name))
+    sub_row+=get_flow_stage(mf, ns)
     sub_row+=div_row_end
 
   # This stage
   html=div_column
   html+= generate_stage_button(mf, stage)
-  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.name in mf.open_stages.get_all_names():
+  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.name in mf.open_stages.get_all_names(): #??????? stage.name??
     html+= generate_run_button(mf, stage)
 
   if len(stage.processing_steps) > 0:
@@ -158,11 +159,10 @@ def get_flowchar_html(mf: meta_file.Meta_File):
   flow_stages=[]
   #mf.workflow.load_workflow_data()
 
-  logging.debug(f"{mf.stages.get_all_names()}")
 
   html=div_container
   html+=div_row
-  html+=get_flow_stage(mf, mf.stages.get_stage('START'))
+  html+=get_flow_stage(mf, mf.get_stages_by_name('START')[0])
   html+=div_row_end
   html+=div_container_end
   

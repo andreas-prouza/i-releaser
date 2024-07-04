@@ -301,7 +301,7 @@ def show_details(project, version):
 def run_stage():
     data = request.get_json(force=True)
     result={'status': 'success'}
-    logging.debug(f"Run stage {data['stage']} of {data['filename']} with option {data['option']}")
+    logging.debug(f"Run stage-id {data['stage_id']} of {data['filename']} with option {data['option']}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
 
@@ -313,7 +313,7 @@ def run_stage():
         if data['option'] == 'run_all':
             continue_run = False
 
-        mf.run_current_stage(data['stage'], continue_run=continue_run)
+        mf.run_current_stage(int(data['stage_id']), continue_run=continue_run)
     except Exception as e:
         logging.exception(e, stack_info=True)
         result['status'] = 'error'
@@ -349,16 +349,16 @@ def get_meta_file_json():
 def get_action_log():
     data = request.get_json(force=True)
     logging.debug(f"Get logs from: {data=}")
-    logging.debug(f"Get logs from: {data['filename']=}, {data['stage']=}, {data['sequence']=}, {data['run_history_element']=}")
+    logging.debug(f"Get logs from: {data['filename']=}, {data['stage_id']=}, {data['action_id']=}, {data['run_history_element']=}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
 
-    if data['stage'] is None:
+    if data['stage_id'] is None:
         return jsonify({"stdout" : mf.run_history.get_list()[data['run_history_element']]['log']})
 
-    for action in mf.get_actions(stage=data['stage']):
+    for action in mf.get_actions(stage_id=int(data['stage_id'])):
         logging.debug(f"Action logs: {action}")
-        if action.sequence != data['sequence']:
+        if action.id != int(data['action_id']):
             continue
         if len(action.run_history) > data['run_history_element']:
             return jsonify(action.run_history[data['run_history_element']].get_dict())
@@ -410,12 +410,12 @@ def create_deployment(wf_name, commit, obj_list):
 @app.route('/api/set_check_error', methods=['POST'])
 def set_check_error():
     data = request.get_json(force=True)
-    logging.debug(f"Set check error stage: {data['stage_id']}, sequence: {data['sequence']}, checked: {data['checked']}, filename: {data['filename']}")
+    logging.debug(f"Set check error stage: {data['stage_id']}, action_id: {data['action_id']}, checked: {data['checked']}, filename: {data['filename']}")
     result={}
 
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
-        mf.set_action_check(data['stage_id'], data['sequence'], data['checked'], session['current_user'])
+        mf.set_action_check(int(data['stage_id']), int(data['action_id']), data['checked'], session['current_user'])
         mf.write_meta_file()
     except Exception as e:
         logging.exception(e, stack_info=True)
@@ -432,11 +432,11 @@ def set_check_error():
 def get_stage_steps_html():
     
     data = request.get_json(force=True)
-    logging.debug(f"Get html for stage steps: {data['stage']}, filename: {data['filename']}")
-xxxxxx
+    logging.debug(f"Get html for stage steps: {data['stage_id']}, filename: {data['filename']}")
+
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
-        html = flowchart.generate_stage_steps_html(mf, mf.stages.get_stage(data['stage']))
+        html = flowchart.generate_stage_steps_html(mf, mf.get_stage_by_id(int(data['stage_id'])))
         return jsonify({'html': html})
     except Exception as e:
         logging.exception(e, stack_info=True)

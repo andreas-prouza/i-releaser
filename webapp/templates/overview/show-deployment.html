@@ -335,17 +335,17 @@ var current_meta_file = '';
 
 
 
-function show_stage_steps(file_name, stage) {
+function show_stage_steps(file_name, stage_id, stage_name) {
 
-    last_show_stage = stage;
+    last_show_stage_id = stage_id;
     current_meta_file = file_name;
 
-    postData("/api/get_stage_steps_html", { stage: stage, filename: file_name }).then((data) => {
+    postData("/api/get_stage_steps_html", { stage_id: stage_id, filename: file_name }).then((data) => {
         console.log(data); 
         html = data['html'];
         
         Swal.fire({
-            title: 'Steps for ' + stage,
+            title: `Steps for ${stage_name} (${stage_id})`,
             html: html,
             width: 'auto',
             customClass: {
@@ -358,10 +358,10 @@ function show_stage_steps(file_name, stage) {
 
 
 
-function showLog(type, file_name, stage, sequence, run_history_element) {
+function showLog(type, file_name, stage_id, action_id, run_history_element) {
     let html = '';
 
-    postData("/api/get_action_log", { stage: stage, filename: file_name, sequence: sequence, run_history_element: run_history_element }).then((data) => {
+    postData("/api/get_action_log", { stage_id: stage_id, filename: file_name, action_id: action_id, run_history_element: run_history_element }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         html = data['stdout'];
         if (type == 'error'){
@@ -386,8 +386,8 @@ function showLog(type, file_name, stage, sequence, run_history_element) {
                 popup: 'logs'
             }
         }).then((result) => {
-            if (stage != null && last_show_stage != '') {
-                show_stage_steps(current_meta_file, last_show_stage);
+            if (stage_id != null && last_show_stage_id != '') {
+                show_stage_steps(current_meta_file, last_show_stage_id);
             }
         });
     });
@@ -416,11 +416,11 @@ function show_json(file_name) {
 
 
 
-async function runStage(filename, stage) {
+async function runStage(filename, stage_id, stage_name) {
 
     Swal.fire({
         icon: 'question',
-        title: 'Run stage ' + stage + '?',
+        title: `Run stage ${stage_name} (${stage_id})?`,
         input: 'radio',
         inputOptions: {
             'continue': 'Continue',
@@ -430,7 +430,7 @@ async function runStage(filename, stage) {
         showCancelButton: true,
         showLoaderOnConfirm: true,
         preConfirm: (option) => {
-            return postData("/api/run_stage", { stage: stage, filename: filename, option: option})
+            return postData("/api/run_stage", { stage_id: stage_id, filename: filename, option: option})
             .then(response => {
                 console.log(response);
                 return response;
@@ -489,8 +489,8 @@ async function runStage(filename, stage) {
     */
 
 
-function set_check_error(filename, stage_id, sequence, checked) {
-    postData("/api/set_check_error", { stage: stage_id, filename: filename, sequence: sequence, checked: checked }).then((data) => {
+function set_check_error(filename, stage_id, action_id, checked) {
+    postData("/api/set_check_error", { stage_id: stage_id, filename: filename, action_id: action_id, checked: checked }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
     });
 }

@@ -6,17 +6,6 @@ from modules import deploy_action, workflow, meta_file, deploy_version
 from modules.cmd_status import Status
 
 
-mf = meta_file.Meta_File()
-mf.open_stages.get_stages_by_name('START')[0].actions
-mf.open_stages.get_stage(6).actions
-
-deploy_version.Deploy_Version.get_deployment_by_commit('commit-test-1')
-
-#actions = deploy_action.Deploy_Action_List_list()
-#actions.add_action(deploy_action.Deploy_Action('test', 0, Status.NEW, deploy_action.Command_Type.PASE, 'STARTX', 'pre'))
-
-#print(actions.get_actions_as_dict())
-
 
 class Test:
     id = 0
@@ -30,6 +19,10 @@ class Test:
     def printVal(self, id=None):
       print(f"{Test.id=} {id=}")
 
+a='3'
+
+if int(a) == 3:
+  print('OK')
 
 t0 = Test(2)
 t0.printVal(111)

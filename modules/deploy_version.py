@@ -77,7 +77,8 @@ class Deploy_Version:
         if d['version'] == version:
           continue
 
-        if commit is not None and commit == d['commit']:
+        if (meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.CANCELED] and
+            commit is not None and commit == d['commit']):
           e = DeploymentExistException(f"Commit {commit} already exist in deployment {d}")
           logging.exception(e, stack_info=True)
           raise e
