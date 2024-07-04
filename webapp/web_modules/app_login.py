@@ -41,7 +41,7 @@ def connect(user, password):
   except Exception as e:
     logging.debug(f"Login failed for user {user}")
     session['error_text'] = str(e)
-    logging.exception(e)
+    logging.exception(e, stack_info=True)
 
   return False
 

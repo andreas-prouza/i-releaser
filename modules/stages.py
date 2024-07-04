@@ -50,7 +50,7 @@ class Stage:
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
       e = Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
-      logging.exception(e)
+      logging.exception(e, stack_info=True)
       raise e
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
@@ -121,7 +121,7 @@ class Stage:
       return stage
 
     e = Exception(f"No stage found with '{workflow.name=}' & '{stage_name=}' in '{constants.C_WORKFLOW}'")
-    logging.exception(e)
+    logging.exception(e, stack_info=True)
     raise e
 
 
@@ -192,7 +192,7 @@ class Stage:
     for key in stage_dict.keys():
       if key not in ['id', 'name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
         e = Exception(f"Attribute {key} is invalid for a stage!")
-        logging.exception(e)
+        logging.exception(e, stack_info=True)
         raise e
     
     stage = Stage()
@@ -200,7 +200,7 @@ class Stage:
     if len(list(set(stage_dict.keys()) - set(stage.__dict__.keys()))) > 0:
       e = Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
         Unknown attribute(s) are: {list(set(stage_dict.keys()) - set(stage.__dict__.keys()))}")
-      logging.exception(e)
+      logging.exception(e, stack_info=True)
       raise e
 
 
@@ -342,6 +342,9 @@ class Stage_List_list(list):
 
 
     def get_stage(self, id: int) -> Stage:
+
+      if type(id) == str:
+        id = int(id)
 
       if type(id) != int:
         raise Exception(f"Parameter is not a number: {id}")

@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.realpath(os.path.dirname(__file__) + '/..'))
 from etc import logger_config
 
 from etc import constants
-from modules import meta_file as mf
+from modules import meta_file as mf, stages as s
 from modules.cmd_status import Status as Cmd_Status
 
 
@@ -19,9 +19,9 @@ from modules.cmd_status import Status as Cmd_Status
 #    Will be prepared by the client
 #    This is due to performance problems on IBM i
 #################################################################
-def prepare_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+def prepare_build(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
 
-  build_dir = meta_file.stages.get_stage(stage).build_dir
+  build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
 
 
@@ -53,9 +53,8 @@ def prepare_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> N
 
 
 
-def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+def load_object_list(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
 
-  stage_obj = meta_file.stages.get_stage(stage)
   meta_file.current_running_stage = stage_obj
   
   build_dir = stage_obj.build_dir
@@ -70,8 +69,8 @@ def load_object_list(meta_file: mf.Meta_File, stage: str, processing_step:str) -
 
 
 
-def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
-  build_dir = meta_file.stages.get_stage(stage).build_dir
+def run_build(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
+  build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
   commit_msg='Build successfully'
 
@@ -86,15 +85,15 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
     run_sys_cmd(['tmp/compile.sh'], build_dir)
   except Exception as e:
     error = e
-    logging.exception(e)
+    logging.exception(e, stack_info=True)
     commit_msg='Build failed'
 
-  update_compiled_object_status(meta_file, stage)
+  update_compiled_object_status(meta_file, stage_obj)
 
   # List all changed objects
   run_sys_cmd(['find build/* -type f -daystart -mtime -1 | xargs ls -la'], build_dir, True)
 
-  git_save_changes(meta_file, stage, processing_step)
+  git_save_changes(meta_file, stage_obj, processing_step)
 
   if error is not None:
     raise error
@@ -102,11 +101,11 @@ def run_build(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
 
 
 
-def git_save_changes(meta_file: mf.Meta_File, stage: str, processing_step:str):
+def git_save_changes(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str):
 
   commit_msg='Save deployment changes'
 
-  build_dir = meta_file.stages.get_stage(stage).build_dir
+  build_dir = stage_obj.build_dir
 
   run_sys_cmd(['git', 'status'], build_dir)
   run_sys_cmd(['git', 'add', '-A'], build_dir)  
@@ -117,9 +116,9 @@ def git_save_changes(meta_file: mf.Meta_File, stage: str, processing_step:str):
 
 
 
-def update_compiled_object_status(meta_file: mf.Meta_File, stage: str):
+def update_compiled_object_status(meta_file: mf.Meta_File, stage_obj: s.Stage):
 
-  build_dir = meta_file.stages.get_stage(stage).build_dir
+  build_dir = stage_obj.build_dir
 
   with open(f"{build_dir}/{constants.C_COMPILED_OBJECT_LIST}", "r") as file:
 
@@ -149,8 +148,8 @@ def update_compiled_object_status(meta_file: mf.Meta_File, stage: str):
 
 
 
-def merge_results(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
-  build_dir = meta_file.stages.get_stage(stage).build_dir
+def merge_results(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
+  build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
 
   reset_git_repo(build_dir)
@@ -161,11 +160,8 @@ def merge_results(meta_file: mf.Meta_File, stage: str, processing_step:str) -> N
 
 
 
-def clean_current_commit(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+def clean_current_commit(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
 
-  stage_obj = meta_file.stages.get_stage(stage)
-  meta_file.current_running_stage = stage_obj
-  
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
 
@@ -193,7 +189,7 @@ def run_sys_cmd(cmd, cwd, shell_direct=False):
     s=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, shell=shell_direct, check=False) # executable='/bin/bash'
   except Exception as e:
     logging.error("Error on execute")
-    logging.exception(e)
+    logging.exception(e, stack_info=True)
     raise e
 
   stdout = s.stdout.decode(constants.C_CONVERT_FROM)

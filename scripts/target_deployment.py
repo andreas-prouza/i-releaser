@@ -2,16 +2,15 @@ from __future__ import annotations
 import os
 
 from etc import constants
-from modules import meta_file as mf
+from modules import meta_file as mf, stages as s
 from modules import deploy_action as da
 
 
-def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage: str, processing_step: str) -> None:
+def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step: str) -> None:
     """
      RSTLIB SAVLIB(PROUZALIB) DEV(*SAVF) SAVF(QGPL/PROUZASAVF) RSTLIB(RSTLIB)
             SELECT((*INCLUDE TEST *PGM) (*INCLUDE TEST *FILE)) 
     """
-    stage_obj = meta_file.stages.get_stage(stage)
     actions = stage_obj.actions
 
     clear_files = stage_obj.clear_files
@@ -21,7 +20,7 @@ def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage: str, proce
 
       # Delete old savf
       cmd = f"DLTF FILE({meta_file.main_deploy_lib}/{lib['lib']})"
-      actions.add_action_cmd(cmd=cmd, environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage)
+      actions.add_action_cmd(cmd=cmd, environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage_obj.name)
 
       # Copy savf from IFS to QSYS file system
       savf = f"{meta_file.main_deploy_lib}/{lib['lib']}"
@@ -29,7 +28,7 @@ def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage: str, proce
       savf_ifs = f"{deployment_dir}/{lib['lib']}.file"
 
       cmd = f"CPYFRMSTMF FROMSTMF('{savf_ifs}') TOSTMF('{savf_ifs_qsys}') STMFOPT(*REPLACE)"
-      actions.add_action_cmd(cmd=cmd, environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage)
+      actions.add_action_cmd(cmd=cmd, environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage_obj.name)
 
       # Restore all objects
       restore_to_lib = lib['prod_lib']
@@ -44,7 +43,7 @@ def set_cmd_restore_objects_on_target(meta_file: mf.Meta_File, stage: str, proce
 
       actions.add_action_cmd(f"RSTLIB SAVLIB({lib['lib']}) DEV(*SAVF) SAVF({meta_file.main_deploy_lib}/{lib['lib']}) \
             SELECT({includes}) RSTLIB({restore_to_lib})", 
-            environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage)
+            environment=da.Command_Type.QSYS, processing_step=processing_step, stage=stage_obj.name)
 
-    meta_file.stages.get_stage(stage).set_status('prepare')
+    stage_obj.set_status('prepare')
     meta_file.write_meta_file()

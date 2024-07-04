@@ -32,33 +32,6 @@ class IBM_i_commands:
     self.meta_file = meta_file
 
 
-  @DeprecationWarning
-  def set_cmds(self, stage: str):
-    """Set all commands which are allowed for this stage
-
-    Args:
-        stage (str): Name of stage
-
-    Deprecated: This job will be done in Stage-Class
-    """
-
-    #get all processing steps for given stage
-    do_steps = self.meta_file.stages.get_stage(stage).processing_steps
-    actions = self.meta_file.actions
-    actions = self.meta_file.stages.get_stage(stage).actions
-
-    wf_steps = self.meta_file.workflow.get_workflow_steps_mapping()
-
-    all_steps = {x['processing_step']:x for x in wf_steps}.values()
-
-    for step in do_steps:
-
-      for all_step in all_steps:
-        if step == all_step['processing_step']:
-          actions.add_action_cmd(cmd=all_step['execute'], environment=da.Command_Type(all_step['environment']), 
-                processing_step=all_step['processing_step'], stage=stage, check_error=all_step['check_error'])
-          break
-
 
 
   def get_all_attributes(self, action:da.Deploy_Action) -> {}:
@@ -115,7 +88,7 @@ class IBM_i_commands:
     cmd = action.cmd.format(**all_attributes)
 
     logging.info(f"run {action.sequence=}, {cmd=}")
-    run_history = executions.get(action.environment)(cmd, action)
+    run_history = executions.get(action.environment)(stage, cmd, action)
     #time.sleep(0.02)
     action.run_history.add_history(run_history)
 
@@ -132,7 +105,7 @@ class IBM_i_commands:
 
 
 
-  def run_script_cmd(self, cmd: str, action: da.Deploy_Action) -> Run_History:
+  def run_script_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
     
     #cmd='pre.pre_cmd'
     #pre.pre_cmd('test', 'xxx')
@@ -156,12 +129,13 @@ class IBM_i_commands:
     
     try:
       func = getattr(globals()[obj[0]], obj[1])
-      func(self.meta_file, action.stage, action.processing_step)
+      logging.info(f"Run {func}")
+      func(self.meta_file, stage, action.processing_step)
       run_history.status = Cmd_Status.FINISHED
 
     except Exception as e:
       print(str(e), file=sys.stderr)
-      logging.exception(e)
+      logging.exception(e, stack_info=True)
       run_history.status = Cmd_Status.FAILED
 
     run_history.stdout = stdout_new.getvalue()
@@ -176,15 +150,15 @@ class IBM_i_commands:
     
 
 
-  def run_qsys_cmd(self, cmd: str, action: da.Deploy_Action) -> Run_History:
+  def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
     
     cmd = f'(cl -vS "{cmd}"; cl -v "dspjoblog")'
-    return self.run_pase_cmd(cmd, action)
+    return self.run_pase_cmd(stage, cmd, action)
     
 
 
-  def run_pase_cmd(self, cmd: str, action: da.Deploy_Action) -> Run_History:
-      s=subprocess.run(cmd, stdout=subprocess.PIPE, cwd=self.meta_file.current_running_stage.build_dir, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
+  def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
+      s=subprocess.run(cmd, stdout=subprocess.PIPE, cwd=stage.build_dir, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
       stdout = s.stdout
       stderr = s.stderr
 

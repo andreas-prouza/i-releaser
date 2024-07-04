@@ -2,28 +2,27 @@ from __future__ import annotations
 import os, logging
 
 from etc import constants
-from modules import meta_file as mf
+from modules import meta_file as mf, stages as s
 from modules import deploy_action as da
 
 
-def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+def set_init_cmds_for_save(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
     """Create library & save files to transfer new objects
 
     Args:
         meta_file (str): filename + path of meta-file
-        stage (str): Run for this stage
+        stage_obj (Stage): Run for this stage
     """
 
     # meta_file = mf.Meta_File.load_json_file(meta_file_name)
 
-    stage_obj = meta_file.stages.get_stage(stage)
     actions = stage_obj.actions
 
     actions.add_action_cmd(
         f"CRTLIB {meta_file.main_deploy_lib}",
         environment=da.Command_Type.QSYS,
         processing_step=processing_step,
-        stage=stage,
+        stage=stage_obj.name,
         check_error=False,
     )
 
@@ -33,19 +32,19 @@ def set_init_cmds_for_save(meta_file: mf.Meta_File, stage: str, processing_step:
             f"CRTSAVF {meta_file.main_deploy_lib}/{lib['lib']}",
             environment=da.Command_Type.QSYS,
             processing_step=processing_step,
-            stage=stage,
+            stage=stage_obj.name,
             check_error=False,
         )
         actions.add_action_cmd(
             f"CLRSAVF {meta_file.main_deploy_lib}/{lib['lib']}",
             environment=da.Command_Type.QSYS,
             processing_step=processing_step,
-            stage=stage,
+            stage=stage_obj.name,
         )
 
 
 
-def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step: str) -> None:
+def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step: str) -> None:
     """
     SAVLIB LIB(PROUZALIB) DEV(*SAVF) SAVF(QGPL/PROUZASAVF)
            SELECT(
@@ -53,7 +52,6 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
                   (*INCLUDE TEST *FILE)
                  )
     """
-    stage_obj = meta_file.stages.get_stage(stage)
     actions = stage_obj.actions
 
     clear_files = stage_obj.clear_files
@@ -72,7 +70,7 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
                     f"CLRPFM {obj.lib}/{obj.name}",
                     environment=da.Command_Type.QSYS,
                     processing_step=processing_step,
-                    stage=stage,
+                    stage=stage_obj.name,
                 )
 
         savf = f"{meta_file.main_deploy_lib}/{lib['lib']}"
@@ -86,7 +84,7 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
             SELECT({includes}) DTACPR(*HIGH)",
             environment=da.Command_Type.QSYS,
             processing_step=processing_step,
-            stage=stage,
+            stage=stage_obj.name,
         )
 
         cmd = f"CPYTOSTMF FROMMBR('{savf_ifs_qsys}') TOSTMF('{savf_ifs_target}') STMFOPT(*REPLACE)"
@@ -94,8 +92,8 @@ def set_cmd_object_to_savf(meta_file: mf.Meta_File, stage: str, processing_step:
             cmd=cmd,
             environment=da.Command_Type.QSYS,
             processing_step=processing_step,
-            stage=stage,
+            stage=stage_obj.name,
         )
 
-    logging.debug(f"Number of actions generated: {len(meta_file.actions)}")
+    logging.debug(f"Number of actions generated: {len(stage_obj.actions)}")
 

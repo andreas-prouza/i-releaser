@@ -91,6 +91,11 @@ def run_stage(args):
 
 
 def save_info(mf: meta_file.Meta_File):
+
+  file_dir = os.path.dirname(os.path.realpath(args.info_output))
+  if not os.path.isdir(file_dir):
+      os.makedirs(file_dir)
+
   with open(args.info_output, 'w') as file:
       json.dump(mf.get_all_data_as_dict(), file, default=str, indent=4)
 

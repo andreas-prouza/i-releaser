@@ -10,6 +10,12 @@ from etc import constants
 from modules import meta_file
 from operator import itemgetter
 
+class DeploymentExistException(Exception):
+    pass
+
+class StatusConflictException(Exception):
+    pass
+
 
 class Deploy_Version:
 
@@ -61,15 +67,48 @@ class Deploy_Version:
 
 
 
+
+    def validate_deployment(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str, commit : str):
+
+      versions_config = Deploy_Version.get_deployments(Deploy_Version.get_deployment_file(project=project))
+
+      for d in versions_config['deployments']:
+
+        if d['version'] == version:
+          continue
+
+        if commit is not None and commit == d['commit']:
+          e = DeploymentExistException(f"Commit {commit} already exist in deployment {d}")
+          logging.exception(e, stack_info=True)
+          raise e
+
+        if (d['version'] < version and
+            status == meta_file.Meta_file_status.IN_PROCESS and 
+            meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FINISHED, meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.CANCELED]):
+          e = StatusConflictException(f"Because version {d['version']} is still in status '{d['status']}', version {version} can't be updated to status '{status.value}'")
+          logging.exception(e, stack_info=True)
+          raise e
+
+
+
+
+
+    def get_deployment_file(project:str):
+      return constants.C_DEPLOY_VERSION.format(project=project)
+
+
+
+
     def update_deploy_status(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str, commit : str):
 
       logging.debug(f"Update meta file status: {version=}, {status=}, {meta_file_name}, {commit}")
-      version_file = constants.C_DEPLOY_VERSION.format(project=project)
+      version_file = Deploy_Version.get_deployment_file(project=project)
+
+      Deploy_Version.validate_deployment(project=project, version=version, status=status, meta_file_name=meta_file_name, commit=commit)
 
       logging.debug(f"Load {version_file}")
 
-      with open(version_file, "r") as file:
-          versions_config = json.load(file)
+      versions_config = Deploy_Version.get_deployments(version_file)
 
       deployments = versions_config['deployments']
       deployments = sorted(deployments, key=itemgetter('version')) 
@@ -83,12 +122,6 @@ class Deploy_Version:
           d['timestamp'] = str(datetime.datetime.now())
           break
 
-        if (status == meta_file.Meta_file_status.IN_PROCESS and 
-            meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FINISHED, meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.CANCELED]):
-          e = Exception(f"Because version {d['version']} is still in status '{d['status']}', version {version} can't be updated to status '{status.value}'")
-          logging.exception(e)
-          raise e
-
       logging.debug(f"Write {version_file}")
 
       with open(version_file, 'w') as file:
@@ -99,17 +132,22 @@ class Deploy_Version:
     #@validate_arguments
     def get_deployment(project:str, version : int):
 
+      if type(version) == str:
+        version = int(version)
+        
       logging.debug(f"Get deployment {version=}, {project=}") 
-      logging.debug(f"{constants.C_DEPLOY_VERSION=}") 
       version_file = constants.C_DEPLOY_VERSION.format(project=project)
+      logging.debug(f"{version_file=}") 
       deployments = Deploy_Version.get_deployments(version_file)['deployments']
 
       for d in reversed(deployments):
         if d['version'] == version:
           return d
 
+      logging.error(deployments)
+
       err = Exception(f"Couldn't find deployment version {version}: {project=}") 
-      logging.error(err)
+      logging.exception(err, stack_info=True)
       raise Exception(f"Couldn't find deployment version {version}: {project=}") 
 
 

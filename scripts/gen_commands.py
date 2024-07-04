@@ -2,14 +2,14 @@ from __future__ import annotations
 import os, logging
 
 from etc import constants
-from modules import meta_file as mf
+from modules import meta_file as mf, stages as s
 from modules import deploy_action as da
 from scripts import save_objects, target_prepare, transfer, backup_old_objects, target_deployment
 
 
-def generate_commands(meta_file: mf.Meta_File, stage: str, processing_step:str) -> None:
+def generate_commands(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
 
-  processing_steps = meta_file.stages.get_stage(stage).processing_steps
+  processing_steps = stage_obj.processing_steps
 
   steps_cmd = {
     'prepare-save': [
@@ -41,8 +41,8 @@ def generate_commands(meta_file: mf.Meta_File, stage: str, processing_step:str) 
 
     # Execute the commands of this step
     for cmd in steps_cmd[step]:
-      logging.info(f"Execute cmd {cmd} of step {step} (stage {stage})")
-      cmd(meta_file, stage, step)
+      logging.info(f"Execute cmd {cmd} of step {step} (stage {stage_obj})")
+      cmd(meta_file, stage_obj, step)
 
 
 

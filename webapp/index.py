@@ -291,7 +291,7 @@ def show_details(project, version):
         return render_template('overview/show-deployment.html', sidebar=get_sidebar_data(), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script']) 
 
     except Exception as e:
-        logging.exception(e)
+        logging.exception(e, stack_info=True)
         error = e
         return render_template('error.html', sidebar=get_sidebar_data(), error=error) 
 
@@ -315,7 +315,7 @@ def run_stage():
 
         mf.run_current_stage(data['stage'], continue_run=continue_run)
     except Exception as e:
-        logging.exception(e)
+        logging.exception(e, stack_info=True)
         result['status'] = 'error'
         result['error'] = str(e)
 
@@ -399,7 +399,7 @@ def create_deployment(wf_name, commit, obj_list):
         result={'status': 'success', 'meta_file': mf.get_all_data_as_dict()}
 
     except Exception as e:
-        logging.exception(e)
+        logging.exception(e, stack_info=True)
         result={'status': 'error', 'error': str(e)}
 
 
@@ -418,7 +418,7 @@ def set_check_error():
         mf.set_action_check(data['stage_id'], data['sequence'], data['checked'], session['current_user'])
         mf.write_meta_file()
     except Exception as e:
-        logging.exception(e)
+        logging.exception(e, stack_info=True)
         result={'status': 'error', 'error': str(e)}
 
     #mf.set_status(meta_file.Meta_file_status.READY)
@@ -433,13 +433,13 @@ def get_stage_steps_html():
     
     data = request.get_json(force=True)
     logging.debug(f"Get html for stage steps: {data['stage']}, filename: {data['filename']}")
-
+xxxxxx
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
         html = flowchart.generate_stage_steps_html(mf, mf.stages.get_stage(data['stage']))
         return jsonify({'html': html})
     except Exception as e:
-        logging.exception(e)
+        logging.exception(e, stack_info=True)
         return jsonify({'error': str(e)})
 
 

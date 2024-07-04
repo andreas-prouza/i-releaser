@@ -2,11 +2,11 @@ from __future__ import annotations
 import os
 
 from etc import constants
-from modules import meta_file as mf
+from modules import meta_file as mf, stages as s
 from modules import deploy_action as da
 
 
-def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage: str, processing_step: str) -> None:
+def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step: str) -> None:
     """Prepare deployment on target system
 
       * Create deployment library
@@ -17,14 +17,13 @@ def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage: str, processing
         stage (str): Run for this stage
     """
 
-    stage_obj = meta_file.stages.get_stage(stage)
     actions = stage_obj.actions
 
     actions.add_action_cmd(
         f"CRTLIB {meta_file.backup_deploy_lib}",
         environment=da.Command_Type.QSYS,
         processing_step=processing_step,
-        stage=stage,
+        stage=stage_obj.name,
         check_error=False,
     )
 
@@ -32,7 +31,7 @@ def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage: str, processing
         f"CRTLIB {meta_file.main_deploy_lib}",
         environment=da.Command_Type.QSYS,
         processing_step=processing_step,
-        stage=stage,
+        stage=stage_obj.name,
         check_error=False,
     )
 
@@ -42,14 +41,14 @@ def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage: str, processing
             f"CRTSAVF {meta_file.backup_deploy_lib}/{lib}",
             environment=da.Command_Type.QSYS,
             processing_step=processing_step,
-            stage=stage,
+            stage=stage_obj.name,
             check_error=False,
         )
         actions.add_action_cmd(
             f"CLRSAVF {meta_file.backup_deploy_lib}/{lib}",
             environment=da.Command_Type.QSYS,
             processing_step=processing_step,
-            stage=stage,
+            stage=stage_obj.name,
         )
 
 

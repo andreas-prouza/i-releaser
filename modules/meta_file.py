@@ -227,19 +227,19 @@ class Meta_File:
       
       if runable_stage is None:
         e = Exception(f"Stage id '{stage_id}' is not available to run!")
-        logging.exception(e)
+        logging.exception(e, stack_info=True)
         raise e
   
-      if processing_step is not None and processing_step not in stage_obj.processing_steps:
+      if processing_step is not None and processing_step not in runable_stage.processing_steps:
         e = Exception(f"Processing step '{processing_step}' is not defined in stage '{runable_stage.name}' (id {runable_stage.id}). Defined steps are: {runable_stage.processing_steps}")
-        logging.exception(e)
+        logging.exception(e, stack_info=True)
         self.write_meta_file()
         raise e
 
       try:
         self.set_status(Meta_file_status.IN_PROCESS)
       except Exception as err:
-        logging.error(err)
+        logging.exception(err, stack_info=True)
         self.write_meta_file()
         raise err
       
@@ -250,7 +250,7 @@ class Meta_File:
       try:
         cmd.run_commands(stage=runable_stage, processing_step=processing_step, continue_run=continue_run)
       except Exception as err:
-        logging.exception(err)
+        logging.exception(err, stack_info=True)
         self.set_status(Meta_file_status.FAILED)
         raise err
 
