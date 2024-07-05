@@ -6,7 +6,7 @@ from modules import meta_file as mf, stages as s
 from modules import deploy_action as da
 
 
-def set_cmd_transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step: str) -> None:
+def set_cmd_transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
     """Transfer all SAVFs to the target system
 
     Args:
@@ -22,6 +22,7 @@ def set_cmd_transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, proc
     actions.add_action_cmd(
         cmd=cmd,
         environment=da.Command_Type.PASE,
-        processing_step=processing_step,
+        processing_step=action.processing_step,
         stage=stage_obj.name,
+        add_after=action
     )

@@ -76,7 +76,7 @@ class Stage:
 
 
 
-  def set_processing_steps(self, workflow: workflow.Workflow):
+  def set_processing_steps(self, workflow: wf.Workflow):
     """Set all actions which are allowed for this stage
 
     Args:
@@ -86,7 +86,7 @@ class Stage:
     #get all processing steps for given stage
     do_steps = self.processing_steps
 
-    wf_steps = workflow.get_workflow_steps_mapping()
+    wf_steps = wf.Workflow.get_workflow_steps_mapping(workflow_dict=workflow.get_dict())
     
     all_steps = {x['processing_step']:x for x in wf_steps}.values()
 
@@ -118,8 +118,13 @@ class Stage:
     stage = workflow.get_stage(stage_name)
     
     if stage is not None:
+      
       stage = Stage.get_stage_from_dict(workflow, stage)
       stage.set_processing_steps(workflow)
+      
+      if len(stage.actions) < len(stage.processing_steps):
+        raise Exception(f"{stage_name}: {len(stage.actions)=} is less than {len(stage.processing_steps)=}")
+
       return stage
 
     e = Exception(f"No stage found with '{workflow.name=}' & '{stage_name=}' in '{constants.C_WORKFLOW}'")
@@ -192,19 +197,31 @@ class Stage:
 
   def validate(stage_dict: {}):
 
+    if 'name' not in stage_dict.keys():
+      raise Exception(f"Stage name has to be defined: {stage_dict=}")
+
     for key in stage_dict.keys():
       if key not in ['id', 'name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'next_stage_ids', 'from_stage_id', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
-        e = Exception(f"Attribute {key} is invalid for a stage!")
-        logging.exception(e, stack_info=True)
-        raise e
+        raise Exception(f"Attribute {key} is invalid for stage {stage_dict['name']}!")
     
+    
+    if 'next_stages' in stage_dict.keys() and stage_dict['next_stages'] is not None:
+      if type(stage_dict['next_stages']) != list:
+        raise Exception(f"Key 'next_stages' has to be a list[] in stage {stage_dict=}")
+    
+    if 'processing_steps' in stage_dict.keys() and stage_dict['processing_steps'] is not None:
+      if type(stage_dict['processing_steps']) != list:
+        raise Exception(f"Key 'processing_steps' has to be a list[] in stage {stage_dict=}")
+    
+    if 'clear_files' in stage_dict.keys() and stage_dict['clear_files'] is not None:
+      if type(stage_dict['clear_files']) != bool:
+        raise Exception(f"Key 'clear_files' has to be a bool in stage {stage_dict=}")
+
     stage = Stage()
 
     if len(list(set(stage_dict.keys()) - set(stage.__dict__.keys()))) > 0:
-      e = Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
+      raise Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
         Unknown attribute(s) are: {list(set(stage_dict.keys()) - set(stage.__dict__.keys()))}")
-      logging.exception(e, stack_info=True)
-      raise e
 
 
 

@@ -20,7 +20,7 @@ C_COMPILED_OBJECT_LIST = 'build-output/compiled.txt'
 
 
 # iconv will be used for convertion
-C_CONVERT_OUTPUT = True
+C_CONVERT_OUTPUT = False
 # https://docs.python.org/3/library/codecs.html#standard-encodings
 C_CONVERT_FROM = 'cp1252'
 C_CONVERT_TO = 'utf-8'
@@ -36,15 +36,6 @@ C_GIT_BRANCH_RELEASE = '{project}-{deploy_version}'
 
 C_PHYSICAL_FILE_ATTRIBUTES =  ['sqltable', 'pf']
 
-# Definition of available steps within a stage
-C_PRE = 'pre'
-C_SAVE_INIT = 'save_init'
-C_SAVE = 'save'
-C_TRANSFER = 'transfer'
-C_TARGET_PREPARE = 'target-prepare'
-C_BACKUP_OLD_OBJ = 'backup-old-objects'
-C_PERFORM_DEPLOYMENT = 'perform-deployment'
-C_POST = 'post'
 
 # Mapping for each step
 # Define which python-file & function will be called for each step
@@ -53,49 +44,49 @@ C_POST = 'post'
 #         ==> cmd-string = 'pre.pre_cmd'
 C_DEFAULT_STEP_2_CMD_MAPPING = [
   {
-    "processing_step": C_PRE,
+    "processing_step": 'pre',
     "environment": "SCRIPT",
     "execute": 'pre.pre_cmd',
     "check_error": True
   },
   {
-    "processing_step": C_SAVE_INIT,
+    "processing_step": 'save-prepare',
     "environment": "SCRIPT",
     "execute": 'save_objects.set_init_cmds_for_save',
     "check_error": True
   },
   {
-    "processing_step": C_SAVE,
+    "processing_step": 'save',
     "environment": "SCRIPT",
     "execute": 'save_objects.set_cmd_object_to_savf',
     "check_error": True
   },
-#  {
-#    "processing_step": C_TRANSFER,
-#    "environment": "SCRIPT",
-#    "execute": 'transfer.set_cmd_transfer_to_target',
-#    "check_error": True
-#  },
-#  {
-#    "processing_step": C_TARGET_PREPARE,
-#    "environment": "SCRIPT",
-#    "execute": 'target_prepare.set_init_cmds_for_deployment',
-#    "check_error": True
-#  },
   {
-    "processing_step": C_BACKUP_OLD_OBJ,
-    "environment": "PASE",
-    "execute": 'echo \'Not implemented\'',#  'backup.set_cmd_backup_objects_on_target',
+    "processing_step": 'transfer',
+    "environment": "SCRIPT",
+    "execute": 'transfer.set_cmd_transfer_to_target',
     "check_error": True
   },
   {
-    "processing_step": C_PERFORM_DEPLOYMENT,
+    "processing_step": 'target-prepare',
+    "environment": "SCRIPT",
+    "execute": 'target_prepare.set_init_cmds_for_deployment',
+    "check_error": True
+  },
+  {
+    "processing_step": 'backup-old-objects',
+    "environment": "SCRIPT",
+    "execute": 'backup_old_objects.set_cmd_backup_objects_on_target',
+    "check_error": True
+  },
+  {
+    "processing_step": 'perform-deployment',
     "environment": "SCRIPT",
     "execute": 'target_deployment.set_cmd_restore_objects_on_target',
     "check_error": True
   },
   {
-    "processing_step": C_POST,
+    "processing_step": 'post',
     "environment": "PASE",
     "execute": 'echo \'Not implemented\'',
     "check_error": True

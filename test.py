@@ -19,6 +19,9 @@ class Test:
     def printVal(self, id=None):
       print(f"{Test.id=} {id=}")
 
+
+print(type(True))
+
 a='3'
 
 if int(a) == 3:

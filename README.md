@@ -29,6 +29,19 @@ It's very flexible and open and can be adabtet using existing configuration file
 
 # General process
 
+## Features
+
+* Can run under a profile with user class ```*USER```
+* Individual workflows
+* Parallel workflow steps
+* Detailed tracking of each step and action
+* Separate logs for each task
+* All functions can be accessed via WebAPIs
+* Graphical workflow overview
+
+
+
+
 ## The setup
 1. You call WebAPIs of this service to ...
    * create a new deployment request

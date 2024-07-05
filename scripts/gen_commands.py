@@ -7,6 +7,7 @@ from modules import deploy_action as da
 from scripts import save_objects, target_prepare, transfer, backup_old_objects, target_deployment
 
 
+@DeprecationWarning
 def generate_commands(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
 
   processing_steps = stage_obj.processing_steps

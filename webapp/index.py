@@ -391,7 +391,7 @@ def create_deployment(wf_name, commit, obj_list):
         logging.debug(f"{existing_version=}, {meta_file.Meta_file_status.CANCELED=}")
 
         if existing_version is not None and meta_file.Meta_file_status(existing_version['status']) != meta_file.Meta_file_status.CANCELED:
-            return Response(json.dumps({'Error': f'Given commit is already used in deployment version {existing_version["version"]} with status {existing_version["status"]}'}), status=401, mimetype='application/json') 
+            return Response(json.dumps({'status': 'error', 'error': f"Given commit is already used in deployment version {existing_version['version']} with status '{existing_version['status']}'"}), status=401, mimetype='application/json') 
 
         mf = meta_file.Meta_File(workflow_name=wf_name, object_list=obj_list)
         mf.commit = commit

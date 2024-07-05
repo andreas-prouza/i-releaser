@@ -561,8 +561,8 @@ class Meta_File:
     
     def import_objects_from_config_file(self):
       '''
-      {constant:prod_obj} | {qualified object on production system} | {object to be saved}
-      prod_obj|prouzalib/testlog_test.rpgle.pgm|PROUZA2/testlog_test
+      {constant:prod_obj} | {lib on production system} | {lib on source system} | {object to be saved}
+      prod_obj|prouzalib|prouzadev|testlog_test|prouzalib/qrpglesrc/testlog_test.rpgle.pgm
       '''
 
       file_path = self.object_list
@@ -574,12 +574,17 @@ class Meta_File:
         for line in file:
           logging.debug(f"Import object: {line}")
           tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
-          prod_obj = re.split(r"/|\.", tmp[1])
-          target_obj = tmp[2].split('/')
           logging.debug(f"{tmp=}")
-          logging.debug(f"{prod_obj=}")
+          prod_lib = tmp[1]
+          dev_lib = tmp[2]
+          target_obj = tmp[3]
+          obj_type = tmp[4]
+          obj_attr = tmp[5]
+          logging.debug(f"{prod_lib=}")
+          logging.debug(f"{dev_lib=}")
           logging.debug(f"{target_obj=}")
-          obj = do.Deploy_Object(lib=target_obj[0], prod_lib=prod_obj[0], name=prod_obj[1], type=prod_obj[3], attribute=prod_obj[2])
+
+          obj = do.Deploy_Object(lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr)
           self.add_deploy_object(obj)
       
       self.load_actions_from_json(constants.C_OBJECT_COMMANDS)

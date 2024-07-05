@@ -88,8 +88,6 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
   html_actions=html_actions.replace('&quot;', '\\&quot;')
   html_actions=html_actions.replace('&#39;', '\\&#39;')
 
-  logging.debug(f"{html_actions=}")
-
   return html_actions
 
 
@@ -108,7 +106,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
   global flow_stages
   global flow_connection
   
-  logging.debug(f"{stage.get_dict()=}")
+  logging.debug(f"{stage.name=}")
 
   flow_stages.append(get_stage_as_html_id(stage.id))
 

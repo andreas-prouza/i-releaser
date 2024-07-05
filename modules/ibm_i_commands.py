@@ -53,16 +53,12 @@ class IBM_i_commands:
     stage.processing_users.append({'user': self.meta_file.current_user, 'timestamp' : str(datetime.datetime.now()), 'action' : s.Actions.RUN_STAGE.value})
     stage.set_status('in process')
 
-    #action = self.meta_file.get_next_open_action(processing_step=processing_step, stage=stage)
-
     # Execute all from stage
-    for action in stage.actions.get_actions(processing_step=processing_step):
-      self.execute_action(stage, action, continue_run)
-
-    # Execute all from object
-    #object_commands = self.meta_file.deploy_objects.get_actions(processing_step=processing_step, stage=stage.name)
-    #for action in object_commands:
-    #  self.execute_action(stage, action, continue_run)
+    i=0
+    while i < len(stage.actions.get_actions(processing_step)):
+      actions = stage.actions.get_actions(processing_step)
+      self.execute_action(stage, actions[i], continue_run)
+      i += 1
     
     # should be set on a higher level because of multiple processing_steps to run
     #self.meta_file.open_stages.get_stage(stage).set_status('finished')
@@ -88,7 +84,25 @@ class IBM_i_commands:
     cmd = action.cmd.format(**all_attributes)
 
     logging.info(f"run {action.sequence=}, {cmd=}")
-    run_history = executions.get(action.environment)(stage, cmd, action)
+    
+    original_dir=os.getcwd()
+    
+    try:
+      
+      if stage.build_dir is not None:
+        os.chdir(stage.build_dir)
+
+      run_history = executions.get(action.environment)(stage, cmd, action)
+
+    except Exception as e:
+    
+      logging.exception(e, stack_info=True)
+      run_history = rh.Run_History()
+      run_history.status = Cmd_Status.FAILED
+      run_history.stderr = str(e)
+
+    os.chdir(original_dir)
+
     #time.sleep(0.02)
     action.run_history.add_history(run_history)
 
@@ -105,7 +119,7 @@ class IBM_i_commands:
 
 
 
-  def run_script_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
+  def run_script_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> rh.Run_History:
     
     #cmd='pre.pre_cmd'
     #pre.pre_cmd('test', 'xxx')
@@ -129,8 +143,8 @@ class IBM_i_commands:
     
     try:
       func = getattr(globals()[obj[0]], obj[1])
-      logging.info(f"Run {func}")
-      func(self.meta_file, stage, action.processing_step)
+      logging.info(f"Run {str(func)}")
+      func(self.meta_file, stage, action)
       run_history.status = Cmd_Status.FINISHED
 
     except Exception as e:
@@ -152,7 +166,11 @@ class IBM_i_commands:
 
   def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
     
-    cmd = f'(cl -vS "{cmd}"; cl -v "dspjoblog")'
+    parameter = ''
+    if action.run_in_new_job:
+      parameter = 'S'
+
+    cmd = f'(cl -{parameter}v "{cmd}"; cl -v "dspjoblog")'
     return self.run_pase_cmd(stage, cmd, action)
     
 
@@ -162,9 +180,8 @@ class IBM_i_commands:
       stdout = s.stdout
       stderr = s.stderr
 
-      if constants.C_CONVERT_OUTPUT:
-        stdout = stdout.decode(constants.C_CONVERT_FROM)
-        stderr = stderr.decode(constants.C_CONVERT_FROM)
+      stdout = stdout.decode('utf-8')
+      stderr = stderr.decode('utf-8')
 
       run_history = rh.Run_History()
       

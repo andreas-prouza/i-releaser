@@ -19,7 +19,7 @@ from modules.cmd_status import Status as Cmd_Status
 #    Will be prepared by the client
 #    This is due to performance problems on IBM i
 #################################################################
-def prepare_build(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
+def prepare_build(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
 
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
@@ -53,7 +53,7 @@ def prepare_build(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:s
 
 
 
-def load_object_list(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
+def load_object_list(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
 
   meta_file.current_running_stage = stage_obj
   
@@ -69,7 +69,7 @@ def load_object_list(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_ste
 
 
 
-def run_build(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
+def run_build(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
   commit_msg='Build successfully'
@@ -93,7 +93,7 @@ def run_build(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) 
   # List all changed objects
   run_sys_cmd(['find build/* -type f -daystart -mtime -1 | xargs ls -la'], build_dir, True)
 
-  git_save_changes(meta_file, stage_obj, processing_step)
+  git_save_changes(meta_file, stage_obj, action)
 
   if error is not None:
     raise error
@@ -101,7 +101,7 @@ def run_build(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) 
 
 
 
-def git_save_changes(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str):
+def git_save_changes(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action):
 
   commit_msg='Save deployment changes'
 
@@ -116,7 +116,7 @@ def git_save_changes(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_ste
 
 
 
-def update_compiled_object_status(meta_file: mf.Meta_File, stage_obj: s.Stage):
+def update_compiled_object_status(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action):
 
   build_dir = stage_obj.build_dir
 
@@ -148,7 +148,7 @@ def update_compiled_object_status(meta_file: mf.Meta_File, stage_obj: s.Stage):
 
 
 
-def merge_results(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
+def merge_results(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
 
@@ -160,7 +160,7 @@ def merge_results(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:s
 
 
 
-def clean_current_commit(meta_file: mf.Meta_File, stage_obj: s.Stage, processing_step:str) -> None:
+def clean_current_commit(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
 
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch

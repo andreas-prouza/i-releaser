@@ -14,23 +14,27 @@
   "python.formatting.provider": "black",
   "emeraldwalk.runonsave": {
     "commands": [
-        {
-            "match": ".*$",
-            "isAsync": true,
-            "cmd": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__','*.json','log/*','*.log'} \"${workspaceFolder}/\" academy-test:~/ibm-i-deployment/ \nfi"
-        }
+      {
+        "match": ".*$",
+        "isAsync": true,
+        "cmd": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__','*.json','log/*','*.log'} \"${workspaceFolder}/\" academy-test:~/ibm-i-deployment/ \nfi"
+      }
     ]
   },
   "actionButtons": {
     "commands": [
-        {
-            "name": "$(symbol-property) Restart Web",
-            "command": "ssh academy-test \"source .profile; cd ibm-i-deployment/webapp/; ./service restart\" "
-        },
-        {
-            "name": "$(symbol-property) Clean logs",
-            "command": "ssh academy-test \"source .profile; cd ibm-i-deployment/webapp/log; echo '' > index; echo '' > webapp \" "
-        },
-      ]
+      {
+        "name": "Sync",
+        "command": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__','*.json','log/*','*.log'} \"${workspaceFolder}/\" academy-test:~/ibm-i-deployment/ \nfi"
+      },
+      {
+        "name": "$(symbol-property) Restart Web",
+        "command": "ssh academy-test \"source .profile; cd ibm-i-deployment/webapp/; ./service restart\" "
+      },
+      {
+        "name": "$(symbol-property) Clean logs",
+        "command": "ssh academy-test \"source .profile; cd ibm-i-deployment/webapp/log; echo '' > index; echo '' > webapp \" "
+      },
+    ]
   }
 }
