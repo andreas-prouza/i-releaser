@@ -21,6 +21,7 @@ btn_class_list = {
   Cmd_Status.FAILED.value: 'btn-danger',
   Cmd_Status.FINISHED.value: 'btn-success',
   Cmd_Status.IN_PREPERATION.value: 'btn-dark',
+  Cmd_Status.IN_PROCESS.value: 'btn-secondary',
   }
 
 flow_stages=[]

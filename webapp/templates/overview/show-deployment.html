@@ -156,14 +156,15 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             Version: <code>{{ deployment_dict['general']['deploy_version'] }} </code></h2>
         <br/>
         <h3>Status: 
-            <button type="button" class="btn 
+            <button type="button" onClick="window.location.reload();" class="btn 
             {% if deployment_dict['general']['status'] == 'finished' %}btn-success{% endif %}
             {% if deployment_dict['general']['status'] == 'canceled' %}btn-danger{% endif %}
             {% if deployment_dict['general']['status'] == 'failed' %}btn-danger{% endif %}
             {% if deployment_dict['general']['status'] == 'ready' %}btn-info{% endif %}
             {% if deployment_dict['general']['status'] == 'new' %}btn-primary{% endif %}
+            {% if deployment_dict['general']['status'] == 'in process' %}btn-secondary{% endif %}
             ">{{ deployment_dict['general']['status'] }} </button>
-            {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new', 'in_process'] %}
+            {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new', 'in process'] %}
             <img class="run" src="{{ url_for('static', filename='assets/img/cancel.png') }}" 
             onclick="cancel_deployment('{{ deployment_dict['general']['file_name'] }}')">
             {% endif %}
@@ -222,6 +223,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                 {% if object['deploy_status'] == 'finished' %}btn-success{% endif %}
                 {% if object['deploy_status'] == 'failed' %}btn-danger{% endif %}
                 {% if object['deploy_status'] == 'new' %}btn-info{% endif %}
+                {% if object['deploy_status'] == 'in process' %}btn-secondary{% endif %}
                 ">{{ object['deploy_status'] }}</button></td>
         </tr>
         {% endfor %}
@@ -422,9 +424,10 @@ async function runStage(filename, stage_id, stage_name) {
         icon: 'question',
         title: `Run stage ${stage_name} (${stage_id})?`,
         input: 'radio',
+        width: 'auto',
         inputOptions: {
-            'continue': 'Continue',
-            'run_all': 'Run all'
+            'continue': 'Continue processing',
+            'run_all': 'Run all steps from the beginning.'
             },
         inputValue: 'continue',
         showCancelButton: true,
@@ -446,7 +449,7 @@ async function runStage(filename, stage_id, stage_name) {
                 Swal.fire({
                     position: 'top-end',
                     icon: 'success',
-                    title: 'Run completed',
+                    title: 'Stage run in progress',
                     showConfirmButton: false,
                     timer: 1500
                 }).then(()=>{

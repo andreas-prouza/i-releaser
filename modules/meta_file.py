@@ -27,7 +27,7 @@ class Meta_file_status(Enum):
 
   NEW = 'new'
   READY = 'ready'
-  IN_PROCESS = 'in_process'
+  IN_PROCESS = 'in process'
   FAILED = 'failed'
   FINISHED = 'finished'
   CANCELED = 'canceled'
@@ -224,14 +224,24 @@ class Meta_File:
 
 
 
+    def run_current_stage_as_thread(self, stage_id: int, processing_step: str=None, continue_run=True) -> threading.Thread:
+      import threading
+      t = threading.Thread(target=self.run_current_stage, args=(stage_id, processing_step, continue_run))
+      t.start()
+      return t
 
-    def run_current_stage(self, stage_id: int, processing_step: str=None, continue_run=False) -> None:
+
+
+    def run_current_stage(self, stage_id: int, processing_step: str=None, continue_run=True) -> None:
       """Run given stage
 
       Args:
           stage_id (int): Stage id
           processing_step (str, optional): Step of stage. Defaults to None.
               If None, all steps will be issued
+          continue_run (bool, optional):
+              True: Continiue from first step which has not been finished
+              False: Run all steps from this stage, even if they already have been finished successful
 
       Raises:
           Exception: If a processing step was given, which is not in the step list of that stage
@@ -564,6 +574,8 @@ class Meta_File:
       {constant:prod_obj} | {lib on production system} | {lib on source system} | {object to be saved}
       prod_obj|prouzalib|prouzadev|testlog_test|prouzalib/qrpglesrc/testlog_test.rpgle.pgm
       '''
+
+      self.deploy_objects = do.Deploy_Object_List()
 
       file_path = self.object_list
 

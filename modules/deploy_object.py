@@ -4,7 +4,7 @@ import logging
 
 from modules import deploy_action as da
 from etc import constants
-from modules.cmd_status import Status as Cmd_Status
+from modules.object_status import Status as Obj_Status
 
 
 
@@ -201,6 +201,11 @@ class Deploy_Object_List(list):
     return list
 
 
+  def set_objects_status(self, status: Obj_Status):
+    for o in self:
+      o.deploy_status = status
+
+
 
 
 
@@ -230,7 +235,7 @@ class Deploy_Object:
 
   def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict={}):
 
-    self.deploy_status = Cmd_Status.NEW
+    self.deploy_status = Obj_Status.NEW
     self.actions = da.Deploy_Action_List_list()
 
     if len(dict) > 0:
@@ -240,7 +245,7 @@ class Deploy_Object:
       self.name = dict['obj_name'].lower()
       self.type = dict['obj_type'].lower()
       self.attribute = dict['obj_attribute'].lower()
-      self.deploy_status = Cmd_Status(dict['deploy_status'])
+      self.deploy_status = Obj_Status(dict['deploy_status'])
 
       if len(dict['actions']) > 0:
         for action in dict['actions']:

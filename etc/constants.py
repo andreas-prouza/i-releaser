@@ -64,7 +64,7 @@ C_DEFAULT_STEP_2_CMD_MAPPING = [
   {
     "processing_step": 'transfer',
     "environment": "SCRIPT",
-    "execute": 'transfer.set_cmd_transfer_to_target',
+    "execute": 'transfer.transfer_to_target',
     "check_error": True
   },
   {

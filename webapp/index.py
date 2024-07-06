@@ -306,14 +306,16 @@ def run_stage():
     mf = meta_file.Meta_File.load_json_file(data['filename'])
 
     try:
+        
         mf.set_status(meta_file.Meta_file_status.READY)
         mf.current_user = current_user=session.get('current_user', None).upper()
 
-        continue_run = True;
+        continue_run = True
         if data['option'] == 'run_all':
             continue_run = False
 
-        mf.run_current_stage(int(data['stage_id']), continue_run=continue_run)
+        mf.run_current_stage_as_thread(int(data['stage_id']), continue_run=continue_run)
+
     except Exception as e:
         logging.exception(e, stack_info=True)
         result['status'] = 'error'
@@ -379,6 +381,7 @@ def cancel_deployment():
 
 @app.route('/api/create_deployment/<wf_name>/<commit>/<obj_list>', methods=['GET'])
 @app.route('/api/create_deployment/<wf_name>/<commit>', defaults={'obj_list':None}, methods=['GET'])
+@app.route('/api/create_deployment/<wf_name>', defaults={'commit': None, 'obj_list':None}, methods=['GET'])
 def create_deployment(wf_name, commit, obj_list):
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}, {obj_list=}")
     result={}

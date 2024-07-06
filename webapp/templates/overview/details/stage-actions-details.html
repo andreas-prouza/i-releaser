@@ -6,6 +6,7 @@
       {% if stage['status'] == 'finished' %}btn-success{% endif %}
       {% if stage['status'] == 'failed' %}btn-danger{% endif %}
       {% if stage['status'] == 'new' %}btn-info{% endif %}
+      {% if stage['status'] == 'in process' %}btn-secondary{% endif %}
       ">{{ stage['status'] }}</button>
     </td>
   </tr>

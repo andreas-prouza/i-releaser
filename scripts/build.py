@@ -10,7 +10,7 @@ from etc import logger_config
 
 from etc import constants
 from modules import meta_file as mf, stages as s
-from modules.cmd_status import Status as Cmd_Status
+from modules.object_status import Status as Obj_Status
 
 
 
@@ -139,7 +139,7 @@ def update_compiled_object_status(meta_file: mf.Meta_File, stage_obj: s.Stage, a
         continue
 
       do = meta_file.deploy_objects.get_object(obj_lib=prod_lib, obj_name=prod_obj[0], obj_type=prod_obj[2])
-      do.deploy_status = Cmd_Status.FINISHED
+      do.deploy_status = Obj_Status.FINISHED
       
       logging.debug(f"{do.get_dict()}")
 

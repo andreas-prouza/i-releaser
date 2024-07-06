@@ -4,6 +4,7 @@ import os
 from etc import constants
 from modules import meta_file as mf, stages as s
 from modules import deploy_action as da
+from modules.cmd_status import Status as Cmd_Status
 
 
 def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
@@ -16,6 +17,9 @@ def set_init_cmds_for_deployment(meta_file: mf.Meta_File, stage_obj: s.Stage, ac
     Args:
         stage (str): Run for this stage
     """
+
+    if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
+        return
 
     actions = stage_obj.actions
     last_added_action = action

@@ -46,7 +46,7 @@ class IBM_i_commands:
 
 
 
-  def run_commands(self, stage: s.Stage, processing_step: str=None, continue_run=False) -> None:
+  def run_commands(self, stage: s.Stage, processing_step: str=None, continue_run=True) -> None:
 
     logging.debug(f"Run Commands for {stage.name=}, {processing_step=}")
 
@@ -68,7 +68,7 @@ class IBM_i_commands:
 
 
 
-  def execute_action(self, stage: s.Stage, action: da.Deploy_Action, continue_run=False):
+  def execute_action(self, stage: s.Stage, action: da.Deploy_Action, continue_run=True):
 
     executions = {
       da.Command_Type.QSYS: self.run_qsys_cmd,

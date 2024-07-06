@@ -3,6 +3,7 @@ import os, logging
 
 from etc import constants
 from modules import meta_file as mf, stages as s
+from modules.cmd_status import Status as Cmd_Status
 from modules import deploy_action as da
 
 
@@ -15,6 +16,9 @@ def set_init_cmds_for_save(meta_file: mf.Meta_File, stage_obj: s.Stage, action: 
     """
 
     # meta_file = mf.Meta_File.load_json_file(meta_file_name)
+
+    if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
+        return
 
     actions = stage_obj.actions
 

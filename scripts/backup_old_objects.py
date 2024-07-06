@@ -12,6 +12,10 @@ def set_cmd_backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage
     """
      Save production objects bevore deployment
     """
+
+    if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
+        return
+
     actions = stage_obj.actions
 
     includes = ''
