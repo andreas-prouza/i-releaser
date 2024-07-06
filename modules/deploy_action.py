@@ -82,8 +82,6 @@ class Deploy_Action_List_list(list):
         if a.sequence >= action.sequence:
           a.sequence += 1
 
-    action.status = Cmd_Status.NEW
-
     logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
 
     self.append(action)
@@ -221,6 +219,7 @@ class Deploy_Action:
     self.run_in_new_job = run_in_new_job
     self.run_history = rh.Run_History_List_list()
     self.check_error = check_error
+    self.sub_actions = Deploy_Action_List_list()
 
     self.processing_step = processing_step
 
@@ -269,6 +268,15 @@ class Deploy_Action:
       self.run_history = rh.Run_History_List_list()
       self.run_history.add_historys_from_list(run_history_list)
 
+    if self.sub_actions is None:
+      self.sub_actions = Deploy_Action_List_list()
+      
+    if type(self.sub_actions) != Deploy_Action_List_list:
+      sub_actions_list = self.sub_actions
+      self.sub_actions = Deploy_Action_List_list()
+      for sa in sub_actions_list:
+        self.sub_actions.add_actions_from_dict(sa)
+
 
 
 
@@ -301,6 +309,7 @@ class Deploy_Action:
       'environment': self.environment.value,
       'run_in_new_job': self.run_in_new_job,
       'run_history': self.run_history.get_list(),
+      'sub_actions': self.sub_actions.get_list(),
       'check_error': self.check_error
       }
 

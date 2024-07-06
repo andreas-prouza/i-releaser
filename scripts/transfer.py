@@ -59,8 +59,7 @@ def transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.D
         check_error=action.check_error, run_in_new_job=action.run_in_new_job,
         stage=stage_obj.name)
 
-    run_action.run_history = action.run_history
-    run_action.status = action.status
+    action.sub_actions.add_action(run_action)
 
     cmd = ibm_i_commands.IBM_i_commands(meta_file)
 

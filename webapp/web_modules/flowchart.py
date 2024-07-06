@@ -69,10 +69,26 @@ def generate_action_button(action : deploy_action.Deploy_Action):
 
 def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  logging.debug(f"Generate HTML for stage {stage.name}")
+  logging.debug(f"Generate HTML for stage {stage.name} ({stage.id})")
 
   actions = stage.actions.get_actions_as_dict()
-  
+
+  # Add subactions to root list
+  for a in actions:
+    if len(a['sub_actions']) == 0:
+      continue
+    i=0
+    for sa in a['sub_actions']:
+      i+=0.1
+      sa['sequence'] = a['sequence'] + i
+      logging.debug(f"flow subactions: {sa}")
+      actions.append(sa)
+
+  logging.debug(f"flow actions: {actions}")
+
+  actions.sort(key=lambda x: x['sequence'])
+  #---------------------------------------------
+
   multi='s'
   if len(actions) == 1:
     multi=''
