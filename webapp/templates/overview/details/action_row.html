@@ -1,0 +1,53 @@
+<tr>
+  <td>{{ cmd['sequence'] }}</td>
+  <td>{{ cmd['processing_step'] }}</td>
+  <td>{{ cmd['environment'] }}</td>
+  <td>
+    <button type="button" class="btn  
+            {% if cmd['status'] == 'finished' %}btn-success{% endif %}
+            {% if cmd['status'] == 'failed' %}btn-danger{% endif %}
+            {% if cmd['status'] == 'new' %}btn-info{% endif %}
+        ">
+      {{ cmd['status'] }}</button>
+  </td>
+  <td>
+    <label class="switch">
+      <input type="checkbox" {% if cmd['check_error'] %}checked{% endif %}
+        onchange="set_check_error('{{ file_name }}', '{{ stage.id }}', {{ cmd['id'] }}, this.checked)">
+      <span class="slider round"></span>
+    </label>
+  </td>
+  <td>{% if cmd['cmd'] != '' %}
+    {% if cmd['cmd']|length > 30 %}
+    <details>
+      <summary>{{ cmd['cmd'][:30] }} ...</summary>
+      <pre>{{ cmd['cmd']|safe }}</pre>
+    </details>
+    {% else %}
+    {{ cmd['cmd']|safe }}
+    {% endif %}
+    {% endif %}
+  </td>
+  <td>
+    <table class="table table-striped table-bordered">
+      {% for history in cmd['run_history'] %}
+      <tr>
+        <td>{{ history['create_time'] }}</td>
+        <td>
+          <button type="button" class="btn  
+                        {% if history['status'] == 'finished' %}btn-success{% endif %}
+                        {% if history['status'] == 'failed' %}btn-danger{% endif %}
+                        {% if history['status'] == 'new' %}btn-info{% endif %}
+                    ">
+            {{ history['status'] }}
+          </button>
+        </td>
+        <td>{% if history['stdout'] != '' %}<img src="{{ url_for('static', filename='assets/img/log.png') }}"
+            onclick="showLog('info', '{{ file_name }}', '{{ stage.id }}', {{ cmd['id'] }}, {{loop.index-1}})">&nbsp;{% endif %}
+          {% if history['stderr'] != '' %}<img src="{{ url_for('static', filename='assets/img/error-log.png') }}"
+            onclick="showLog('error', '{{ file_name }}', '{{ stage.id }}', {{ cmd['id'] }}, {{loop.index-1}})">{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </td>
+</tr>

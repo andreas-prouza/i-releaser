@@ -8,7 +8,7 @@ C_OBJECT_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/object_commands.json'
 C_STAGE_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/stage_commands.json'
 
 C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta"
-C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}"
+C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}/{{deploy_version}}"
 C_DEPLOY_META_FILE = f'{C_DEPLOY_DIR}/deployment_{{deploy_version}}.json'
 
 #C_OBJECT_LIST = 'objects.txt'
@@ -52,13 +52,13 @@ C_DEFAULT_STEP_2_CMD_MAPPING = [
   {
     "processing_step": 'save-prepare',
     "environment": "SCRIPT",
-    "execute": 'save_objects.set_init_cmds_for_save',
+    "execute": 'save_objects.init_save',
     "check_error": True
   },
   {
     "processing_step": 'save',
     "environment": "SCRIPT",
-    "execute": 'save_objects.set_cmd_object_to_savf',
+    "execute": 'save_objects.save_objects_to_savf',
     "check_error": True
   },
   {
@@ -70,19 +70,19 @@ C_DEFAULT_STEP_2_CMD_MAPPING = [
   {
     "processing_step": 'target-prepare',
     "environment": "SCRIPT",
-    "execute": 'target_prepare.set_init_cmds_for_deployment',
+    "execute": 'target_prepare.init_deployment',
     "check_error": True
   },
   {
     "processing_step": 'backup-old-objects',
     "environment": "SCRIPT",
-    "execute": 'backup_old_objects.set_cmd_backup_objects_on_target',
+    "execute": 'backup_old_objects.backup_objects_on_target',
     "check_error": True
   },
   {
     "processing_step": 'perform-deployment',
     "environment": "SCRIPT",
-    "execute": 'target_deployment.set_cmd_restore_objects_on_target',
+    "execute": 'target_deployment.restore_objects_on_target',
     "check_error": True
   },
   {

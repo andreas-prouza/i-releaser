@@ -332,14 +332,16 @@ function print_flow_connections() {
 
 
 
-var last_show_stage = '';
-var current_meta_file = '';
+var last_show_stage_id = null;
+var last_show_stage_name = null;
+var current_meta_file = null;
 
 
 
 function show_stage_steps(file_name, stage_id, stage_name) {
 
     last_show_stage_id = stage_id;
+    last_show_stage_name = stage_name;
     current_meta_file = file_name;
 
     postData("/api/get_stage_steps_html", { stage_id: stage_id, filename: file_name }).then((data) => {
@@ -354,7 +356,11 @@ function show_stage_steps(file_name, stage_id, stage_name) {
                 htmlContainer: 'sweet_container',
                 table: 'table',
             }
-        });
+        }).then((result) => {
+            last_show_stage_id=null;
+            last_show_stage_name=null;
+            current_meta_file=null;
+        });;
     });
 }
 
@@ -388,8 +394,8 @@ function showLog(type, file_name, stage_id, action_id, run_history_element) {
                 popup: 'logs'
             }
         }).then((result) => {
-            if (stage_id != null && last_show_stage_id != '') {
-                show_stage_steps(current_meta_file, last_show_stage_id);
+            if (stage_id != null && last_show_stage_id != null) {
+                show_stage_steps(current_meta_file, last_show_stage_id, last_show_stage_name);
             }
         });
     });
@@ -453,7 +459,12 @@ async function runStage(filename, stage_id, stage_name) {
                     showConfirmButton: false,
                     timer: 1500
                 }).then(()=>{
-                    location.reload();
+                    if (last_show_stage_id != null) {
+                        show_stage_steps(current_meta_file, last_show_stage_id, last_show_stage_name);
+                    }
+                    else {
+                        location.reload();
+                    }
                 })
                 return;
             }

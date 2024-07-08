@@ -358,10 +358,8 @@ def get_action_log():
     if data['stage_id'] is None:
         return jsonify({"stdout" : mf.run_history.get_list()[data['run_history_element']]['log']})
 
-    for action in mf.get_actions(stage_id=int(data['stage_id'])):
+    for action in mf.get_actions(stage_id=int(data['stage_id']), action_id=int(data['action_id']), include_subactions=True):
         logging.debug(f"Action logs: {action}")
-        if action.id != int(data['action_id']):
-            continue
         if len(action.run_history) > data['run_history_element']:
             return jsonify(action.run_history[data['run_history_element']].get_dict())
 

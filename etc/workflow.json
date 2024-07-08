@@ -55,9 +55,9 @@
         "check_error": true
       },
       {
-        "processing_step": "prepare_build",
+        "processing_step": "create_compile_script",
         "environment": "SCRIPT",
-        "execute": "build.prepare_build",
+        "execute": "build.create_compile_script",
         "check_error": true
       },
       {
@@ -109,9 +109,9 @@
         "check_error": true
       },
       {
-        "processing_step": "prepare_build",
+        "processing_step": "create_compile_script",
         "environment": "SCRIPT",
-        "execute": "build.prepare_build",
+        "execute": "build.create_compile_script",
         "check_error": true
       },
       {
@@ -193,9 +193,9 @@
         "check_error": true
       },
       {
-        "processing_step": "prepare_build",
+        "processing_step": "create_compile_script",
         "environment": "SCRIPT",
-        "execute": "build.prepare_build",
+        "execute": "build.create_compile_script",
         "check_error": true
       },
       {
@@ -255,7 +255,7 @@
       {
         "processing_step": "save_init",
         "environment": "SCRIPT",
-        "execute": "save_objects.set_init_cmds_for_save",
+        "execute": "save_objects.init_save",
         "check_error": true
       },
       {

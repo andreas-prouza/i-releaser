@@ -18,9 +18,6 @@ def set_cmd_transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, acti
         scp -rp /dir/deployment1 target_server:~/also-a-dir
     """
 
-    if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
-        return
-
     actions = stage_obj.actions
     deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
 
@@ -44,25 +41,20 @@ def transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.D
         scp -rp /dir/deployment1 target_server:~/also-a-dir
     """
 
-    if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
-        return
-
     actions = stage_obj.actions
     deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
-
-    cmd = f"scp -rp {deployment_dir} {stage_obj.host}:{stage_obj.base_dir}"
-
-    run_action = da.Deploy_Action(
-        cmd=cmd,
-        environment=da.Command_Type.PASE,
-        processing_step=action.processing_step,
-        check_error=action.check_error, run_in_new_job=action.run_in_new_job,
-        stage=stage_obj.name)
-
-    action.sub_actions.add_action(run_action)
+    meta_file.deploy_objects.set_objects_status(Obj_Status.IN_TRANSVER)
 
     cmd = ibm_i_commands.IBM_i_commands(meta_file)
 
-    meta_file.deploy_objects.set_objects_status(Obj_Status.IN_TRANSVER)
+    run_action = action.sub_actions.add_action(da.Deploy_Action(
+        cmd=f"scp -rp {deployment_dir} {stage_obj.host}:{stage_obj.base_dir}",
+        environment=da.Command_Type.PASE,
+        processing_step=action.processing_step,
+        check_error=action.check_error, run_in_new_job=action.run_in_new_job,
+        stage=stage_obj.name
+    ))
+
     cmd.execute_action(stage=stage_obj, action=run_action)
+
     meta_file.deploy_objects.set_objects_status(Obj_Status.TRANSVERRED)

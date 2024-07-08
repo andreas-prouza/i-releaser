@@ -65,7 +65,6 @@ def create_deployment_request(args):
   logging.debug(f"{sys.path=}")
 
   mf = meta_file.Meta_File(workflow_name=args.workflow, object_list=args.object_file_list)
-  mf.import_objects_from_config_file()
   mf.set_status(meta_file.Meta_file_status.READY)
   mf.write_meta_file()
   

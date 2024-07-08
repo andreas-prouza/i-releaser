@@ -1,9 +1,21 @@
-import logging, sys
+import logging, sys, os
 #from io import StringIO
 
 from etc import logger_config, constants
 from modules import deploy_action, workflow, meta_file, deploy_version
 from modules.cmd_status import Status
+import datetime
+
+
+print(os.path.join('test', 'xxx', '/'))
+print(datetime.datetime.now().strftime('%F %T.%f')[:-3])
+
+i=0
+while i< 1.2:
+  print(3 + i)
+  i+=0.1
+
+exit
 
 
 
@@ -54,9 +66,9 @@ step_2_script_mapping = [
         "check_error": True
       },
       {
-        "processing_step": "prepare_build",
+        "processing_step": "create_compile_script",
         "environment": "SCRIPT",
-        "execute": "build.prepare_build",
+        "execute": "build.create_compile_script",
         "check_error": True
       },
       {

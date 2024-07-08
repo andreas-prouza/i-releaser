@@ -3,6 +3,7 @@ import json
 import logging
 
 from modules import deploy_action as da
+from modules import workflow
 from etc import constants
 from modules.object_status import Status as Obj_Status
 
@@ -155,25 +156,29 @@ class Deploy_Object_List(list):
 
 
 
-  def add_object_action_from_dict(self, stage: str=None, dict: {}={}):
+  def add_object_action_from_dict(self, dict: {}, workflow: workflow.Workflow):
     
-    if stage is None:
-      raise Exception(f"No stage was given for {dict}")
-
     obj = self.get_object(dict['obj_lib'], dict['obj_name'], dict['obj_type'])
     
     if obj is None:
       return
-
+    
     for a in dict['actions']:
-      if 'stages' not in a.keys() or a['stages'] is None or a['stages'] == [] or stage in a['stages']:
-        if 'stages' in a.keys():
-          del a['stages']
-        action = da.Deploy_Action(dict=a, stage=stage)
+
+      if 'stages' not in a.keys() or a['stages'] is None or a['stages'] == []:
+        # Do it for all stages
+        a['stages'] = workflow.stages
+
+      stages = a['stages']
+      del a['stages']
+      
+      for stage in stages:
+        action = da.Deploy_Action(dict=a, stage=stage['name'])
         obj.actions.add_action(action)
 
 
-  def get_actions(self, processing_step: str=None, stage: str=None):
+
+  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False):
 
     if type(stage) != str:
       raise Exception(f"Stage is not a string")
@@ -181,14 +186,10 @@ class Deploy_Object_List(list):
     list=[]
 
     for do in self:
-      for a in do.actions:
-        if processing_step is None or a.processing_step == processing_step:
-          # Consider stage if given
-          if stage is not None and a.stage is not None and stage != a.stage:
-            continue
-          list.append(a)
+      list.append(do.actions.get_actions(processing_step=processing_step, stage=stage, action_id=action_id, include_subactions=include_subactions))
 
     return list
+
 
 
   def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
@@ -199,6 +200,7 @@ class Deploy_Object_List(list):
       list.append(a.get_dict())
 
     return list
+
 
 
   def set_objects_status(self, status: Obj_Status):

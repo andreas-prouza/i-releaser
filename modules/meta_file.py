@@ -94,10 +94,12 @@ class Meta_File:
       self.processed_stages = processed_stages
       if self.processed_stages is None:
         self.processed_stages = s.Stage_List_list()
+
       self.open_stages = open_stages
       if self.open_stages is None:
         self.open_stages = s.Stage_List_list()
-        self.open_stages.append(s.Stage.get_stage_from_workflow(self.workflow, 'START'))
+        start_stage = s.Stage.get_stage_from_workflow(self.workflow, 'START')
+        self.open_stages.append(start_stage)
         
       self.deploy_objects = do.Deploy_Object_List()
 
@@ -114,7 +116,11 @@ class Meta_File:
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
 
       if not imported_from_dict:
+
         dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name, self.commit)
+        self.import_objects_from_config_file()
+        self.copy_object_actions_2_open_stages()
+
         self.write_meta_file(False)
 
 
@@ -399,7 +405,7 @@ class Meta_File:
 
 
     
-    def get_actions(self, processing_step: str=None, stage_id: int=None) -> []:
+    def get_actions(self, processing_step: str=None, stage_id: int=None, action_id: int=None, include_subactions: bool=True) -> []:
 
       list=[]
 
@@ -408,9 +414,9 @@ class Meta_File:
 
       stage_obj = self.get_stage_by_id(stage_id)
 
-      list=stage_obj.actions.get_actions(processing_step=processing_step)
+      list=stage_obj.actions.get_actions(processing_step=processing_step, action_id=action_id, include_subactions=include_subactions)
       
-      list = list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage_obj.name)
+      list = list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage_obj.name, action_id=action_id, include_subactions=include_subactions)
       
       return list
 
@@ -443,11 +449,11 @@ class Meta_File:
                               update_time=meta_file_json['general']['update_time'],
                               processed_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['processed_stages']),
                               open_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['open_stages']),
+                              object_list=meta_file_json['general']['object_list'],
                               imported_from_dict=True
                              )
         meta_file.commit=meta_file_json['general']['commit']
         meta_file.release_branch=meta_file_json['general']['release_branch']
-        meta_file.object_list=meta_file_json['general']['object_list']
 
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
@@ -570,12 +576,25 @@ class Meta_File:
 
     
     def import_objects_from_config_file(self):
+      """
+      1. Import object list
+         Objects to be deployed
+      
+      2. Import object specific actions
+         These actions will be added in set_next_stage function
+      """
       '''
       {constant:prod_obj} | {lib on production system} | {lib on source system} | {object to be saved}
       prod_obj|prouzalib|prouzadev|testlog_test|prouzalib/qrpglesrc/testlog_test.rpgle.pgm
       '''
 
       self.deploy_objects = do.Deploy_Object_List()
+
+      if self.object_list is None:
+        return
+      if not os.path.exists(self.object_list):
+        logging.warning(f"Object list {self.object_list} does not exist")
+        return
 
       file_path = self.object_list
 
@@ -616,12 +635,9 @@ class Meta_File:
       with open(file, "r") as file:
         obj_cmds = json.load(file)
 
-      for stage in self.open_stages.get_all_names():
-        for oc in obj_cmds:
-          self.deploy_objects.add_object_action_from_dict(dict=oc, stage=stage)
-      
-      self.copy_object_actions_2_open_stages()
-      #self.write_meta_file()
+      for oc in obj_cmds:
+        self.deploy_objects.add_object_action_from_dict(dict=oc, workflow=self.workflow)
+
 
 
 
@@ -636,8 +652,10 @@ class Meta_File:
       open_stages = self.open_stages
 
       if stage_id is not None:
-        open_stages = [self.open_stages.get_stage(stage_id)]
+        open_stages = s.Stage_List_list()
+        open_stages.append(self.open_stages.get_stage(stage_id))
 
+      logging.info(f"Add object ({len(self.deploy_objects)}) actions to stages: {open_stages.get_all_names()}")
 
       for do in self.deploy_objects:
         

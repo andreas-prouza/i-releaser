@@ -49,6 +49,9 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
 def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
+  if stage.status not in [Cmd_Status.FAILED, Cmd_Status.NEW]:
+    return ''
+
   global btn_class_list
 
   btn_class = btn_class_list['None']
@@ -79,10 +82,10 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
       continue
     i=0
     for sa in a['sub_actions']:
-      i+=0.1
-      sa['sequence'] = a['sequence'] + i
+      i+=1
+      sa['sequence'] = f"{a['sequence']}.{i}"
       logging.debug(f"flow subactions: {sa}")
-      actions.append(sa)
+      #actions.append(sa)
 
   logging.debug(f"flow actions: {actions}")
 
@@ -97,7 +100,7 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
     logging.warning('No actions found')
     return ''
 
-  html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.get_dict(), cmds=actions)
+  html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.get_dict(), cmds=actions, run_stage_button=generate_run_button(mf=mf, stage=stage))
   #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
   html_actions=html_actions.replace('\n', '')

@@ -117,21 +117,38 @@ class Deploy_Action_List_list(list):
 
 
 
-  def get_actions(self, processing_step: str=None, stage: str=None) -> type[Deploy_Action]:
+  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> type[Deploy_Action]:
 
-    list=[]
+    list_actions=[]
 
     for a in self:
+      
       # Consider processing_step if given
-      if processing_step is None or a.processing_step == processing_step:
-        # Consider stage if given
-        if stage is not None and a.stage is not None and stage != a.stage:
-          continue
-        list.append(a)
+      if processing_step is not None and a.processing_step != processing_step:
+        continue
+      
+      # Consider stage if given
+      if stage is not None and a.stage is not None and stage != a.stage:
+        continue
 
-    list.sort(key=lambda x: x.sequence)
+      if include_subactions is not None and include_subactions:
+        for asa in a.sub_actions:
+          if action_id is not None and asa.id == action_id:
+            list_actions.append(asa)
+            return list_actions
+      
+      if action_id is not None and a.id == action_id:
+        list_actions.append(a)
+        return list_actions
 
-    return list
+      if action_id is not None:
+        continue
+
+      list_actions.append(a)
+
+    list_actions.sort(key=lambda x: x.sequence)
+
+    return list_actions
 
 
 

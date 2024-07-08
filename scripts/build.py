@@ -1,6 +1,8 @@
 from __future__ import annotations
 import os, logging, sys
 import subprocess
+import datetime
+from pathlib import Path
 
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__) + '/..'))
 
@@ -19,7 +21,7 @@ from modules.object_status import Status as Obj_Status
 #    Will be prepared by the client
 #    This is due to performance problems on IBM i
 #################################################################
-def prepare_build(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
+def create_compile_script(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
 
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
@@ -69,7 +71,8 @@ def load_object_list(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Dep
 
 
 
-def run_build(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
+@DeprecationWarning
+def run_compile_script(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
   commit_msg='Build successfully'
@@ -177,6 +180,20 @@ def reset_git_repo(build_dir):
   run_sys_cmd(['git', 'clean', '-fd'], build_dir)
   run_sys_cmd(['git', 'checkout', constants.C_GIT_BRANCH_PRODUCTION], build_dir)
   run_sys_cmd(['git', 'pull'], build_dir)
+
+
+
+
+def save_build_output(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
+
+  deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+
+  build_dir = stage_obj.build_dir
+  save_dir=os.path.join(deployment_dir, 'outputs', datetime.datetime.now().strftime('%F %T.%f')[:-3])
+  Path(save_dir).mkdir(parents=True)
+
+  run_sys_cmd(['cp', '-Rt', save_dir, 'tmp', 'log', 'build-output'], build_dir)
+  meta_file.deploy_objects.set_objects_status(Obj_Status.BUILDED)
 
 
 
