@@ -18,6 +18,12 @@ C_OBJECT_LIST = 'build-output/object-list.txt'
 #   E.g.: echo "build/prouzalib/testsqlerr.sqlrpgle.pgm.obj|"`date` >> ./tmp/compiled.txt
 C_COMPILED_OBJECT_LIST = 'build-output/compiled.txt'
 
+# Mapping for each step
+# Definition for Python scripts have a simple format to follow:
+#   Command is in the format {file-name}.{function-name}
+#   E.g.: file = pre.py; function = pre_cmd  
+#         ==> cmd-string = 'pre.pre_cmd'
+C_DEFAULT_STEP_ACTION = 'etc/default_step_action.json'
 
 # iconv will be used for convertion
 C_CONVERT_OUTPUT = False
@@ -36,59 +42,3 @@ C_GIT_BRANCH_RELEASE = '{project}-{deploy_version}'
 
 C_PHYSICAL_FILE_ATTRIBUTES =  ['sqltable', 'pf']
 
-
-# Mapping for each step
-# Define which python-file & function will be called for each step
-# Command is in the format {filen-ame}.{function-name}
-#   E.g.: file = pre.py; function = pre_cmd  
-#         ==> cmd-string = 'pre.pre_cmd'
-C_DEFAULT_STEP_2_CMD_MAPPING = [
-  {
-    "processing_step": 'pre',
-    "environment": "SCRIPT",
-    "execute": 'pre.pre_cmd',
-    "check_error": True
-  },
-  {
-    "processing_step": 'save-prepare',
-    "environment": "SCRIPT",
-    "execute": 'save_objects.init_save',
-    "check_error": True
-  },
-  {
-    "processing_step": 'save',
-    "environment": "SCRIPT",
-    "execute": 'save_objects.save_objects_to_savf',
-    "check_error": True
-  },
-  {
-    "processing_step": 'transfer',
-    "environment": "SCRIPT",
-    "execute": 'transfer.transfer_to_target',
-    "check_error": True
-  },
-  {
-    "processing_step": 'target-prepare',
-    "environment": "SCRIPT",
-    "execute": 'target_prepare.init_deployment',
-    "check_error": True
-  },
-  {
-    "processing_step": 'backup-old-objects',
-    "environment": "SCRIPT",
-    "execute": 'backup_old_objects.backup_objects_on_target',
-    "check_error": True
-  },
-  {
-    "processing_step": 'perform-deployment',
-    "environment": "SCRIPT",
-    "execute": 'target_deployment.restore_objects_on_target',
-    "check_error": True
-  },
-  {
-    "processing_step": 'post',
-    "environment": "PASE",
-    "execute": 'echo \'Not implemented\'',
-    "check_error": True
-  }
-]

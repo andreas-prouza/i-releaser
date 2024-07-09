@@ -2,26 +2,6 @@
   {
     "name": "test_attributes",
     "default_project": "test",
-    "step_2_script_mapping": [
-      {
-        "processing_step": "pre",
-        "environment": "PASE",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "test_error",
-        "environment": "PASE",
-        "execute": "Wrong definition",
-        "check_error": true
-      },
-      {
-        "processing_step": "test_error_OK",
-        "environment": "PASE",
-        "execute": "Wrong definition, but OK",
-        "check_error": false
-      }
-    ],
     "stages" : [
       {
         "name": "START",
@@ -47,26 +27,6 @@
   {
     "name": "test_build",
     "default_project": "test",
-    "step_2_script_mapping": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "create_compile_script",
-        "environment": "SCRIPT",
-        "execute": "build.create_compile_script",
-        "check_error": true
-      },
-      {
-        "processing_step": "run_build",
-        "environment": "SCRIPT",
-        "execute": "build.run_build",
-        "check_error": true
-      }
-    ],
     "stages" : [
       {
         "name": "START",
@@ -95,59 +55,11 @@
   {
     "name": "academy_test_build",
     "default_project": "default",
-    "step_2_script_mapping": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
+    "step_action": [
       {
         "processing_step": "print_pwd",
         "environment": "PASE",
         "execute": "pwd",
-        "check_error": true
-      },
-      {
-        "processing_step": "create_compile_script",
-        "environment": "SCRIPT",
-        "execute": "build.create_compile_script",
-        "check_error": true
-      },
-      {
-        "processing_step": "clean_current_commit",
-        "environment": "SCRIPT",
-        "execute": "build.clean_current_commit",
-        "check_error": true
-      },
-      {
-        "processing_step": "git_save_changes",
-        "environment": "SCRIPT",
-        "execute": "build.git_save_changes",
-        "check_error": true
-      },
-      {
-        "processing_step": "run_build",
-        "environment": "PASE",
-        "execute": "scripts/cleanup.sh  && scripts/run_build.sh",
-        "check_error": true
-      },
-      {
-        "processing_step": "create_object_list",
-        "environment": "PASE",
-        "execute": "scripts/cleanup.sh  && scripts/create_build_script.sh",
-        "check_error": true
-      },
-      {
-        "processing_step": "merge_results",
-        "environment": "SCRIPT",
-        "execute": "build.merge_results",
-        "check_error": true
-      },
-      {
-        "processing_step": "load_object_list",
-        "environment": "SCRIPT",
-        "execute": "build.load_object_list",
         "check_error": true
       }
     ],
@@ -179,41 +91,11 @@
   {
     "name": "unit_test_process",
     "default_project": "test",
-    "step_2_script_mapping": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
+    "step_action": [
       {
         "processing_step": "print_pwd",
         "environment": "PASE",
         "execute": "pwd",
-        "check_error": true
-      },
-      {
-        "processing_step": "create_compile_script",
-        "environment": "SCRIPT",
-        "execute": "build.create_compile_script",
-        "check_error": true
-      },
-      {
-        "processing_step": "run_build",
-        "environment": "PASE",
-        "execute": "echo 'scripts/cleanup.sh  && scripts/run_build.sh'",
-        "check_error": true
-      },
-      {
-        "processing_step": "create_object_list",
-        "environment": "PASE",
-        "execute": "echo 'scripts/cleanup.sh  && scripts/create_build_script.sh'",
-        "check_error": true
-      },
-      {
-        "processing_step": "load_object_list",
-        "environment": "PASE",
-        "execute": "echo 'build.load_object_list'",
         "check_error": true
       }
     ],
@@ -245,7 +127,7 @@
   {
     "name": "test",
     "default_project": "test",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
@@ -321,7 +203,7 @@
   {
     "name": "test_cmds",
     "default_project": "test",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
@@ -385,7 +267,7 @@
   {
     "name": "default",
     "default_project": "default",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
@@ -456,7 +338,7 @@
   {
     "name": "small_wf",
     "default_project": "test",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
@@ -482,7 +364,7 @@
   {
     "name": "test_error",
     "default_project": "test",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
@@ -522,7 +404,7 @@
   {
     "name": "unit_test_wf",
     "default_project": "test",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "PASE",
@@ -586,7 +468,7 @@
   {
     "name": "test_wf",
     "default_project": "test",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "PASE",
@@ -650,7 +532,7 @@
   {
     "name": "unit_test_missing_processing_mapping",
     "default_project": "test",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
@@ -684,7 +566,7 @@
   {
     "name": "unit_test_default",
     "default_project": "default",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
@@ -750,7 +632,7 @@
   {
     "name": "unit_test_scripts",
     "default_project": "test",
-    "step_2_script_mapping": [
+    "step_action": [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",

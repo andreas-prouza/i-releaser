@@ -52,7 +52,7 @@ t3.printVal()
 exit
 
 
-step_2_script_mapping = [
+step_action = [
       {
         "processing_step": "pre",
         "environment": "SCRIPT",
@@ -111,5 +111,5 @@ step_2_script_mapping = [
 
 #constants.C_DEFAULT_STEP_2_CMD_MAPPING
 
-#merged_list = [(d1 | d2) for d1, d2 in zip(constants.C_DEFAULT_STEP_2_CMD_MAPPING, wf["step_2_script_mapping"])]
+#merged_list = [(d1 | d2) for d1, d2 in zip(constants.C_DEFAULT_STEP_2_CMD_MAPPING, wf["step_action"])]
 #logging.debug(f"{merged_list=}")

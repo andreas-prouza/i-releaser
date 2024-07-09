@@ -72,20 +72,26 @@ It's flexible and open and can be adabtet using configuration files.
    * run stages
    * retrieve deployment information
 2. A list of all objects to deploy needs to be provided
-   * In ```constants.py``` ```C_OBJECT_LIST = 'build-output/object-list.txt'```
-3. In ```etc/workflow.json``` you have to define the environment and process of your deployment like ...
+   * Name and location of the list is defined in ```constants.py``` ```C_OBJECT_LIST = 'build-output/object-list.txt'```
+3. In ```etc/workflow.json``` you have to define the stages, steps, environment and process of your deployment like ...
    * ```build_dir```  
      Project directory
-   * ```base_dir```  
-     Directory for save files
-   * ```host```
+   * ```hostname```
 
 
 ## The concept
 
-1. Create new deployment request  
+There are 2 parts:
+* The deployment tool  
+  It handles the deployment process
+* [OBI IDE integration](https://github.com/andreas-prouza/ibm-i-build-obi)
+  It communicates with the deployment tool
+
+
+1. Create new deployment request (WebAPI call)  
    You will get a version number
-2. Create new release branch (containing the version number)
+   In this request 
+2. The [OBI IDE integration](https://github.com/andreas-prouza/ibm-i-build-obi) creates a new release branch (containing the version number)
    * Provide these information to the deployment tool:
      * Workflow (where the processing environment is defined)
      * Commit tag (which will be used for deployment)

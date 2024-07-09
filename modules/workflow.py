@@ -20,7 +20,7 @@ class Workflow:
   ----------
   name : str
       Name of the workflow
-  step_2_script_mapping : list
+  step_action : list
       A list of steps and the related scripts to run fo that step
   stages : list
       A list of stages for this workflow
@@ -35,7 +35,7 @@ class Workflow:
     self.name = name
     self.object_commands = []
     self.default_project = None
-    self.step_2_script_mapping = None
+    self.step_action = None
     self.stages = None
 
     logging.debug(f"{name=}, {dict=}")
@@ -44,8 +44,8 @@ class Workflow:
 
       self.name = dict['name'].lower()
       
-      if 'step_2_script_mapping' in dict:
-        self.step_2_script_mapping = dict['step_2_script_mapping']
+      if 'step_action' in dict:
+        self.step_action = dict['step_action']
 
       if 'default_project' in dict:
         self.default_project = dict['default_project']
@@ -56,7 +56,7 @@ class Workflow:
       return
 
     self.load_workflow_data()
-    #self.step_2_script_mapping = self.get_workflow_steps_mapping()
+    #self.step_action = self.get_workflow_steps_mapping()
 
 
 
@@ -71,8 +71,8 @@ class Workflow:
       if self.name == wf['name']:
 
         Workflow.validate_workflow(wf)
-        if 'step_2_script_mapping' in wf:
-          self.step_2_script_mapping = wf["step_2_script_mapping"]
+        if 'step_action' in wf:
+          self.step_action = wf["step_action"]
         if 'default_project' in wf:
           self.default_project = wf["default_project"]
 
@@ -81,6 +81,15 @@ class Workflow:
         return
     
     raise WorkflowNotFoundException(f"No workflow found with name '{self.name}'")
+
+
+
+  def get_default_step_mapping() -> {}:
+    with open(constants.C_DEFAULT_STEP_ACTION, "r") as file:
+      step_mapping_json = json.load(file)
+      return step_mapping_json
+    
+    return None
 
 
 
@@ -131,13 +140,15 @@ class Workflow:
         mapping_lsit (list): List of mappings
     """
 
-    if 'step_2_script_mapping' in workflow_dict.keys():
-      logging.debug(f'len {len(constants.C_DEFAULT_STEP_2_CMD_MAPPING)=}, {len(workflow_dict["step_2_script_mapping"])=}')
-      merged_list = {x['processing_step']:x for x in constants.C_DEFAULT_STEP_2_CMD_MAPPING + workflow_dict["step_2_script_mapping"]}.values()
+    step_mapping = Workflow.get_default_step_mapping()
+
+    if 'step_action' in workflow_dict.keys():
+      logging.debug(f'len {len(step_mapping)=}, {len(workflow_dict["step_action"])=}')
+      merged_list = {x['processing_step']:x for x in step_mapping + workflow_dict["step_action"]}.values()
       logging.debug(f"{merged_list=}")
       return merged_list
     
-    return constants.C_DEFAULT_STEP_2_CMD_MAPPING
+    return step_mapping
 
 
 
@@ -156,7 +167,7 @@ class Workflow:
     stages.Stage_List_list.validate_items(workflow_dict['stages'])
 
     for key in workflow_dict.keys():
-      if key not in ['name', 'step_2_script_mapping', 'stages', 'default_project']:
+      if key not in ['name', 'step_action', 'stages', 'default_project']:
         raise Exception(f"Workflow attribute '{key}' is invalid!")
     
     #######################################
@@ -176,8 +187,8 @@ class Workflow:
         if not found:
           raise MissingProcessingStepMappingException(f"No process mapping found for step {ps} in stage {stage['name']}")
 
-    if 'step_2_script_mapping' in workflow_dict.keys():
-      script_mappings = workflow_dict['step_2_script_mapping']
+    if 'step_action' in workflow_dict.keys():
+      script_mappings = workflow_dict['step_action']
       for mapping in script_mappings:
         for key in mapping.keys():
           if key not in ['processing_step', 'environment', 'execute', 'check_error']:
@@ -187,7 +198,7 @@ class Workflow:
 
   def get_scripts(self, step_name:str) -> str:
 
-    for step in self.step_2_script_mapping:
+    for step in self.step_action:
       if step['step'] == step_name:
         return step['script']
 
@@ -196,7 +207,7 @@ class Workflow:
   def get_dict(self) -> {}:
     return {
       'name': self.name,
-      'step_2_script_mapping': self.step_2_script_mapping,
+      'step_action': self.step_action,
       'object_commands': self.object_commands,
       'default_project': self.default_project,
       'stages': self.stages
@@ -205,6 +216,6 @@ class Workflow:
 
 
   def __eq__(self, o):
-    if self.name == o.name and self.step_2_script_mapping == o.step_2_script_mapping:
+    if self.name == o.name and self.step_action == o.step_action:
       return True
     return False
