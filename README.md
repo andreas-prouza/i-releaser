@@ -22,18 +22,19 @@
 # IBM i deployment
 
 
-This framework is used to organize the staging and deployment in projects.
+This framework is used to organize the deployment workflow in projects.
 
-It's very flexible and open and can be adabtet using existing configuration files.
+It's flexible and open and can be adabtet using configuration files.
 
 
 # General process
 
 ## Features
 
-* Can run under a profile with user class ```*USER```
+* Can run under a profile with user class ```*USER```  
+  No special authority needed.
 * Individual workflows
-* Parallel workflow steps
+* Parallel workflow branches stages
 * Detailed tracking of each step and action
 * Separate logs for each task
 * All functions can be accessed via WebAPIs
@@ -43,9 +44,33 @@ It's very flexible and open and can be adabtet using existing configuration file
 
 
 ## The setup
+
+1. Download this project
+2. Unzip to a directory of your choice 
+3. Open a terminal and navigate to this directory
+4. Run the setup script ```./setup.sh```
+5. Start the web server
+   ```sh
+   [andreas@arch webapp]$ cd webapp
+   [andreas@arch webapp]$ ./service start
+   Activate virtual environment: ibm-i-deployment/webapp/venv/bin/activate
+   Start service
+   Service is running ...
+   andreas    63909   63905 19 16:53 pts/0    00:00:00 gunicorn: master [wsgi:app]
+   andreas    63911   63909 31 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
+   andreas    63913   63909 27 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
+   andreas    63914   63909 29 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
+   andreas    63918   63905  0 16:53 pts/0    00:00:00 grep gunicorn
+   [andreas@arch webapp]$ 
+   ```
+
+
+## How to use it
+
 1. You call WebAPIs of this service to ...
    * create a new deployment request
    * run stages
+   * retrieve deployment information
 2. A list of all objects to deploy needs to be provided
    * In ```constants.py``` ```C_OBJECT_LIST = 'build-output/object-list.txt'```
 3. In ```etc/workflow.json``` you have to define the environment and process of your deployment like ...
