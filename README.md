@@ -1,4 +1,4 @@
-- [IBM i deployment](#ibm-i-deployment)
+- [IBM i deployment](#i-releaser)
 - [Get started](#get-started)
   - [SetUp Python project](#setup-python-project)
   - [Create a new deployment request](#create-a-new-deployment-request)
@@ -53,7 +53,7 @@ It's flexible and open and can be adabtet using configuration files.
    ```sh
    [andreas@arch webapp]$ cd webapp
    [andreas@arch webapp]$ ./service start
-   Activate virtual environment: ibm-i-deployment/webapp/venv/bin/activate
+   Activate virtual environment: i-releaser/webapp/venv/bin/activate
    Start service
    Service is running ...
    andreas    63909   63905 19 16:53 pts/0    00:00:00 gunicorn: master [wsgi:app]
@@ -326,8 +326,8 @@ yum install python39 python39-devel python39-wheel python39-six python39-setupto
 ```
 
 ```sh
-mkdir ibm-i-deployment
-cd ibm-i-deployment
+mkdir i-releaser
+cd i-releaser
 ```
 
 ```sh
