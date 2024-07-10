@@ -19,7 +19,7 @@
 
     <table class="table">
         <tr>
-            <th>Authentication-Token (sha256 encoded)</th><td><code>{{ user_key['key'] or 'None' }}</code></td>
+            <th>Authentication-Token (sha256 encoded)</th><td><code>{{ user_key['orig_key_masked'] or 'None' }}</code></td>
         </tr>
         <tr>
             <th>Creation date</th><td><code>{{ user_key['date'] or '-' }}</code></td>
@@ -54,7 +54,7 @@ function renew_key() {
         allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {
             if (result.isConfirmed) {
-                postData("/api/set_user_key", { }).then((data) => {
+                postData("/api/generate_user_key", { }).then((data) => {
                     console.log(data); // JSON data parsed by `data.json()` call
                     swalWithBootstrapButtons.fire(
                     'Token successfully generated!',

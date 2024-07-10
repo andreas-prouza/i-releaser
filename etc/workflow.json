@@ -7,7 +7,6 @@
         "name": "START",
         "next_stages": ["ERROR_TEST"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "processing_steps": ["pre", "post"],
         "clear_files": true
       },
@@ -32,7 +31,6 @@
         "name": "START",
         "next_stages": ["UAT"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "build_dir": "/home/PROUZAT1/ibm-i-build",
         "processing_steps": ["pre", "post"],
         "clear_files": true
@@ -41,7 +39,6 @@
         "name": "UAT",
         "next_stages": ["END"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "build_dir": "/home/andreas/projekte/tests/ibm-i-build-test",
         "processing_steps": ["pre", "run_build", "post"],
         "clear_files": true
@@ -66,20 +63,34 @@
     "stages" : [
       {
         "name": "START",
-        "next_stages": ["UAT"],
+        "next_stages": ["BUILD"],
         "host": "localhost",
-        "base_dir": "/home/prouzat1/dev",
         "build_dir": "/home/prouzat1/deployments/prod",
-        "processing_steps": ["pre", "print_pwd", "clean_current_commit", "create_object_list", "git_save_changes", "clean_current_commit", "run_build", "load_object_list", "post"],
+        "processing_steps": ["pre", "print_pwd", "post"],
         "clear_files": true
       },
       {
-        "name": "UAT",
+        "name": "BUILD",
+        "next_stages": ["SAVE"],
+        "host": "localhost",
+        "build_dir": "/home/prouzat1/deployments/prod",
+        "processing_steps": ["pre", "clean_current_commit", "create_object_list", "git_save_changes", "clean_current_commit", "run_build", "load_object_list"],
+        "clear_files": true
+      },
+      {
+        "name": "SAVE",
+        "next_stages": ["DEPLOY"],
+        "host": "localhost",
+        "build_dir": "/home/prouzat1/deployments/prod",
+        "processing_steps": ["pre", "save-prepare", "save", "post"],
+        "clear_files": true
+      },
+      {
+        "name": "DEPLOY",
         "next_stages": ["END"],
         "host": "localhost",
-        "base_dir": "/home/prouzat1/dev",
         "build_dir": "/home/prouzat1/deployments/prod",
-        "processing_steps": ["pre", "save-prepare", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment", "post"],
+        "processing_steps": ["pre", "transfer", "target-prepare", "backup-old-objects", "perform-deployment", "post"],
         "clear_files": true
       },
       {
@@ -104,7 +115,6 @@
         "name": "START",
         "next_stages": ["UAT"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "build_dir": "/tmp/deployments/prod",
         "processing_steps": ["pre", "print_pwd", "create_object_list", "run_build", "load_object_list", "post"],
         "clear_files": true
@@ -113,7 +123,6 @@
         "name": "UAT",
         "next_stages": ["END"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "build_dir": "/tmp/prod",
         "processing_steps": ["pre", "save-prepare", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment", "post"],
         "clear_files": true
@@ -152,7 +161,6 @@
         "name": "START",
         "next_stages": ["UAT_TEST", "ARCHIV_TEST"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "processing_steps": ["pre", "post"],
         "clear_files": true
       },
@@ -160,7 +168,6 @@
         "name": "UAT_TEST",
         "description": "User Acceptance Tests",
         "host": "localhost",
-        "base_dir": "/home/prouza/uat",
         "next_stages": ["PROD_TEST"],
         "clear_files": true,
         "processing_steps": ["pre", "post"],
@@ -175,7 +182,6 @@
         "name": "ARCHIV_TEST",
         "description": "Tests Archiv",
         "host": "localhost",
-        "base_dir": "/home/prouza/archiv",
         "next_stages": ["END"],
         "clear_files": true,
         "processing_steps": ["pre", "post"],
@@ -190,7 +196,6 @@
         "name": "PROD_TEST",
         "description": "Production",
         "host": "localhost",
-        "base_dir": "/home/prouza/prod",
         "processing_steps": ["pre", "post"],
         "next_stages": ["END"]
       },
@@ -216,7 +221,6 @@
         "name": "START",
         "next_stages": ["UAT_TEST", "ARCHIV_TEST"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "processing_steps": ["pre", "post"],
         "clear_files": true
       },
@@ -224,7 +228,6 @@
         "name": "UAT_TEST",
         "description": "User Acceptance Tests",
         "host": "academy-test",
-        "base_dir": "/home/prouza/uat",
         "next_stages": ["PROD_TEST"],
         "clear_files": true,
         "processing_steps": ["pre", "save-prepare", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
@@ -239,7 +242,6 @@
         "name": "ARCHIV_TEST",
         "description": "Tests Archiv",
         "host": "localhost",
-        "base_dir": "/home/prouza/archiv",
         "next_stages": ["END"],
         "clear_files": true,
         "processing_steps": ["pre", "post"],
@@ -254,7 +256,6 @@
         "name": "PROD_TEST",
         "description": "Production",
         "host": "localhost",
-        "base_dir": "/home/prouza/prod",
         "processing_steps": ["pre", "post"],
         "next_stages": ["END"]
       },
@@ -286,7 +287,6 @@
         "name": "START",
         "next_stages": ["UAT", "ARCHIV"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "build_dir": "/home/PROUZAT1/ibm-i-build",
         "processing_steps": ["pre", "post"],
         "clear_files": true
@@ -295,7 +295,6 @@
         "name": "UAT",
         "description": "User Acceptance Tests",
         "host": "academy-test",
-        "base_dir": "/home/prouza/uat",
         "next_stages": ["PROD"],
         "clear_files": true,
         "processing_steps": ["pre", "build", "save-prepare", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
@@ -310,7 +309,6 @@
         "name": "ARCHIV",
         "description": "Tests Archiv",
         "host": "localhost",
-        "base_dir": "/home/prouza/archiv",
         "next_stages": ["END"],
         "clear_files": true,
         "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
@@ -325,7 +323,6 @@
         "name": "PROD",
         "description": "Production",
         "host": "localhost",
-        "base_dir": "/home/prouza/prod",
         "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
         "next_stages": ["END"]
       },
@@ -351,7 +348,6 @@
         "name": "START",
         "next_stages": ["END"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "processing_steps": ["pre", "post"],
         "clear_files": true
       },
@@ -383,7 +379,6 @@
         "name": "START",
         "next_stages": ["STAGE 1"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "processing_steps": ["pre", "post"],
         "clear_files": true
       },
@@ -391,7 +386,6 @@
         "name": "STAGE 1",
         "next_stages": ["END"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "processing_steps": ["pre", "should_fail", "post"],
         "clear_files": true
       },
@@ -545,7 +539,6 @@
         "name": "START",
         "next_stages": ["STAGE 1"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "processing_steps": ["pre", "post"],
         "clear_files": true
       },
@@ -553,7 +546,6 @@
         "name": "STAGE 1",
         "next_stages": ["END"],
         "host": "localhost",
-        "base_dir": "/home/prouza/dev",
         "processing_steps": ["pre", "missing-mapping", "post"],
         "clear_files": true
       },

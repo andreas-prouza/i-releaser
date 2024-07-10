@@ -85,6 +85,7 @@ class Workflow:
 
 
   def get_default_step_mapping() -> {}:
+
     with open(constants.C_DEFAULT_STEP_ACTION, "r") as file:
       step_mapping_json = json.load(file)
       return step_mapping_json

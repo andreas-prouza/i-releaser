@@ -5,6 +5,8 @@
 # Configuration modules
 import sys, json, os
 base_dir = os.path.realpath(os.path.dirname(__file__)+"/..")
+#sys.path.insert(1, base_dir)
+#os.chdir(base_dir)
 sys.path.append(base_dir)
 from pathlib import Path
 
@@ -21,7 +23,7 @@ from flask_session import Session
 
 
 
-logging.debug(sys.path)
+logging.debug(f"{sys.path=}")
 
 # Custom modules
 from modules import deploy_version, meta_file
@@ -39,7 +41,6 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 #FontAwesome(app)
-
 #minify(app=app, html=True, js=True, cssless=True)
 
 
@@ -47,7 +48,7 @@ Session(app)
 # Set Flask configuration
 #######################################################
 app.config.from_object(flask_config.DevelopmentConfig())
-
+app_final = app
 logging.debug(app.config)
 
 
@@ -68,6 +69,7 @@ def add_header(response):
 @app.before_request
 def check_session():
 
+    logging.debug(f"{sys.path=}")
     logging.debug(request.path)
     #logging.debug(session)
     session.pop('error_text', None)
@@ -200,20 +202,18 @@ def show_user():
 
     user_keys=app_login.get_user_keys()
     user_key = user_keys.get(session['current_user'], None)
-    if user_key is not None:
-        user_key['key'] = app_login.mask_key(user_key['key'])
 
     return render_template('admin/user.html', sidebar=get_sidebar_data(), user_key=user_key) 
 
 
 
 
-@app.route('/api/set_user_key', methods=['POST'])
-def set_user_key():
+@app.route('/api/generate_user_key', methods=['POST'])
+def generate_user_key():
     logging.debug(f"Set new key for user {session['current_user']}")
 
-    app_login.set_new_user_key()
-    return jsonify({"token": app_login.set_new_user_key()})
+    app_login.generate_new_user_key()
+    return jsonify({"token": app_login.generate_new_user_key()})
     
 
 
@@ -254,8 +254,6 @@ def show_settings():
 
     logging.debug('Call settings')
     keys=app_login.get_user_keys()
-    for user, key in keys.items():
-        key['key']=app_login.mask_key(key['key'])
 
     logging.debug("Send response")
     return render_template('admin/settings.html', 
@@ -351,17 +349,17 @@ def get_meta_file_json():
 def get_action_log():
     data = request.get_json(force=True)
     logging.debug(f"Get logs from: {data=}")
-    logging.debug(f"Get logs from: {data['filename']=}, {data['stage_id']=}, {data['action_id']=}, {data['run_history_element']=}")
+    logging.debug(f"Get logs from: {data['filename']=}, {data['stage_id']=}, {data['action_id']=}, {data['history_element']=}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
 
     if data['stage_id'] is None:
-        return jsonify({"stdout" : mf.run_history.get_list()[data['run_history_element']]['log']})
+        return jsonify({"stdout" : mf.run_history.get_list()[data['history_element']]['log']})
 
     for action in mf.get_actions(stage_id=int(data['stage_id']), action_id=int(data['action_id']), include_subactions=True):
         logging.debug(f"Action logs: {action}")
-        if len(action.run_history) > data['run_history_element']:
-            return jsonify(action.run_history[data['run_history_element']].get_dict())
+        if len(action.run_history) > data['history_element']:
+            return jsonify(action.run_history[data['history_element']].get_dict())
 
     return jsonify({})
     
@@ -382,6 +380,7 @@ def cancel_deployment():
 @app.route('/api/create_deployment/<wf_name>', defaults={'commit': None, 'obj_list':None}, methods=['GET'])
 def create_deployment(wf_name, commit, obj_list):
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}, {obj_list=}")
+    logging.debug(f'{os.path.realpath(os.path.dirname(__file__)+"/..")=}')
     result={}
 
     try:

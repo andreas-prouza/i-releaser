@@ -54,15 +54,16 @@ def get_user_keys():
 
 
 
-def set_new_user_key():
+def generate_new_user_key():
 
   letters = string.ascii_letters
   key = ''.join(random.choice(letters) for i in range(10)) 
 
   hash_obj = hashlib.sha256(bytes(key, 'utf-8'))
+  hash_obj2 = hashlib.sha256(bytes(hash_obj.hexdigest(), 'utf-8'))
 
   keys=get_user_keys()
-  keys[session['current_user']]={'key': hash_obj.hexdigest(), 'date': str(datetime.datetime.now())}
+  keys[session['current_user']]={'key': hash_obj2.hexdigest(), 'orig_key_masked': "*" * (len(hash_obj.hexdigest()) - 5) + hash_obj.hexdigest()[-5:], 'date': str(datetime.datetime.now())}
 
   logging.debug(f"{keys=}")
 
@@ -81,15 +82,17 @@ def is_key_valid(auth_token):
 
   keys=get_user_keys()
 
+  hashed_key=hashlib.sha256(bytes(auth_token, 'utf-8')).hexdigest()
+
   for user,key in keys.items():
-    if key['key'] == auth_token:
+    if key['key'] == hashed_key:
       if user not in [x.lower() for x in global_cfg.C_ALLOWED_USERS]:
         e = Exception(f"User '{user}' has no permission.")
         raise e
       session['current_user'] = user
       return user
   
-  logging.warning(f"Could not find token '{auth_token}'")
+  logging.warning(f"Could not find token '************{hashed_key[-5:]}'")
 
   return None
 

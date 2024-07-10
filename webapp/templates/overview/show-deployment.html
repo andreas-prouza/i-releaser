@@ -366,10 +366,10 @@ function show_stage_steps(file_name, stage_id, stage_name) {
 
 
 
-function showLog(type, file_name, stage_id, action_id, run_history_element) {
+function showLog(type, file_name, stage_id, action_id, history_element) {
     let html = '';
 
-    postData("/api/get_action_log", { stage_id: stage_id, filename: file_name, action_id: action_id, run_history_element: run_history_element }).then((data) => {
+    postData("/api/get_action_log", { stage_id: stage_id, filename: file_name, action_id: action_id, history_element: history_element }).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         html = data['stdout'];
         if (type == 'error'){

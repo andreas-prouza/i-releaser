@@ -58,12 +58,13 @@ class Deploy_Version:
 
     def get_deployments(version_file):
 
-      logging.debug(os.path.abspath(version_file))
+      logging.debug(f"Deployment file: {version_file}")
+      logging.debug(f"Deployment file: {os.path.abspath(version_file)}")
       if os.path.isfile(version_file):
         with open(version_file, "r") as file:
             return json.load(file)
         
-      return None
+      return {"versions": {"last_deploy_version": 0}, "deployments": []}
 
 
 

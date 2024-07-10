@@ -16,7 +16,7 @@ class DevelopmentConfig(Config):
     """ Additional configuration for development system """
     def __init__(self) -> None:
         print('Development configuration')
-    PORT = "2005"
+    PORT = "8080"
     DEBUG = True
     HOST = "0.0.0.0"
 

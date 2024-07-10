@@ -29,7 +29,7 @@
                 <tr><th>User</th><th>Creation date</th><th>Key</th></tr>
                 {% for user,key in keys.items() %}
                     <tr>
-                        <td><code>{{ user }}</code></td><td><code>{{ key['date'] }}</code></td><td><code>{{ key['key'] }}</code></td>
+                        <td><code>{{ user }}</code></td><td><code>{{ key['date'] }}</code></td><td><code>{{ key['orig_key_masked'] }}</code></td>
                     </tr>
                 {% endfor %}
             </table>

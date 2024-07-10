@@ -1,23 +1,10 @@
 {
-  "python.testing.pytestArgs": [
-    "unit-tests"
-  ],
-  "python.testing.unittestEnabled": true,
-  "python.testing.pytestEnabled": false,
-  "python.testing.unittestArgs": [
-    "-v",
-    "-s",
-    "./unit-tests",
-    "-p",
-    "test*.py"
-  ],
-  "python.formatting.provider": "black",
   "emeraldwalk.runonsave": {
     "commands": [
       {
         "match": ".*$",
         "isAsync": true,
-        "cmd": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__','*.json','log/*','*.log'} \"${workspaceFolder}/\" academy-test:~/i-releaser/ \nfi"
+        "cmd": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__','log/*','*.log'} \"${workspaceFolder}/\" academy-test:~/i-releaser/ \nfi"
       }
     ]
   },
@@ -25,7 +12,7 @@
     "commands": [
       {
         "name": "Sync",
-        "command": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__','*.json','log/*','*.log'} \"${workspaceFolder}/\" academy-test:~/i-releaser/ \nfi"
+        "command": "if [[ \"${workspaceFolder}\" == '' ]]; then \n echo 'Wrong local workspace folder \"${workspaceFolder}\"!!'\nelse\n rsync -av --rsync-path=/QOpenSys/pkgs/bin/rsync --exclude={'.git','.vscode','.project','.gitignore','.venv','venv','__pycache__','log/*','*.log'} \"${workspaceFolder}/\" academy-test:~/i-releaser/ \nfi"
       },
       {
         "name": "$(symbol-property) Restart Web",

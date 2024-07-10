@@ -6,6 +6,7 @@ C_DEPLOY_VERSION = f'{C_LOCAL_BASE_DIR}/etc/deploy_version_{{project}}.json'
 C_WORKFLOW = f'{C_LOCAL_BASE_DIR}/etc/workflow.json'
 C_OBJECT_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/object_commands.json'
 C_STAGE_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/stage_commands.json'
+C_DEFAULT_STEP_ACTION = f'{C_LOCAL_BASE_DIR}/etc/default_step_action.json'
 
 C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta"
 C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}/{{deploy_version}}"
@@ -23,7 +24,6 @@ C_COMPILED_OBJECT_LIST = 'build-output/compiled.txt'
 #   Command is in the format {file-name}.{function-name}
 #   E.g.: file = pre.py; function = pre_cmd  
 #         ==> cmd-string = 'pre.pre_cmd'
-C_DEFAULT_STEP_ACTION = 'etc/default_step_action.json'
 
 # iconv will be used for convertion
 C_CONVERT_OUTPUT = False
