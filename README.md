@@ -1,4 +1,4 @@
-- [i-Releaser: The new deployment tool for i](#-width4--i-releaser-the-new-deployment-tool-for-i)
+- [ i-Releaser: The new deployment tool for i](#-i-releaser-the-new-deployment-tool-for-i)
 - [General process](#general-process)
   - [Features](#features)
   - [The setup](#the-setup)
@@ -25,7 +25,7 @@
 
 
 
-# ![logo2](docs/img/logo2-icon.png){ width=4.% } i-Releaser: The new deployment tool for i
+# ![logo2](docs/img/logo2-icon.png) i-Releaser: The new deployment tool for i
  
 ![deployment](docs/img/deployment.png)
 
