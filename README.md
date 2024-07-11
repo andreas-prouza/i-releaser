@@ -95,7 +95,7 @@ Port & Co are defined in ```etc/gunicorn.conf.py```.
    ![token](docs/img/http-token.png)
 4. When using [OBI](https://github.com/andreas-prouza/ibm-i-build-obi) you can integrate it in your IDE  
    Add the following settings into your ```etc/global.cfg```config:
-   ```toml
+   ```sh
    DEPLOYMENT_UAT_URL=https://my-ibmi
    DEPLOYMENT_UAT_WORKFLOW=standard_build
    DEPLOYMENT_UAT_MAIN_BRANCH=main
