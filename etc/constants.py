@@ -8,7 +8,7 @@ C_OBJECT_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/object_commands.json'
 C_STAGE_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/stage_commands.json'
 C_DEFAULT_STEP_ACTION = f'{C_LOCAL_BASE_DIR}/etc/default_step_action.json'
 
-C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta"
+C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta/{{project}}"
 C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}/{{deploy_version}}"
 C_DEPLOY_META_FILE = f'{C_DEPLOY_DIR}/deployment_{{deploy_version}}.json'
 
