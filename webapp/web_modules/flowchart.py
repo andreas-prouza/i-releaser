@@ -100,7 +100,12 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
     logging.warning('No actions found')
     return ''
 
-  html_actions = render_template('overview/details/stage-actions-details.html', file_name=mf.file_name, stage=stage.get_dict(), cmds=actions, run_stage_button=generate_run_button(mf=mf, stage=stage))
+  html_actions = render_template('overview/details/stage-actions-details.html', 
+                                  file_name=mf.file_name, 
+                                  stage=stage.get_dict(), 
+                                  cmds=actions, 
+                                  run_stage_button=generate_run_button(mf=mf, 
+                                  stage=stage))
   #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
   html_actions=html_actions.replace('\n', '')
@@ -154,7 +159,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
   # This stage
   html=div_column
   html+= generate_stage_button(mf, stage)
-  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.name in mf.open_stages.get_all_names(): #??????? stage.name??
+  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.id in mf.open_stages.get_all_ids(): #??????? stage.name??
     html+= generate_run_button(mf, stage)
 
   if len(stage.processing_steps) > 0:

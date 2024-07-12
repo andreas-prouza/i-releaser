@@ -439,7 +439,8 @@ class Meta_File:
       with open (file_name, "r") as file:
         meta_file_json=json.load(file)
         
-        workflow = wf.Workflow(name=meta_file_json['general']['workflow']['name'])
+        #workflow = wf.Workflow(name=meta_file_json['general']['workflow']['name'])
+        workflow = wf.Workflow(dict=meta_file_json['general']['workflow'])
         meta_file = Meta_File(workflow=workflow,
                               project=meta_file_json['general']['project'],
                               deploy_version=meta_file_json['general']['deploy_version'],

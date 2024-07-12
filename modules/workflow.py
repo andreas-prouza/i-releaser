@@ -30,7 +30,7 @@ class Workflow:
   name: str
   
 
-  def __init__(self, name='', dict={}):
+  def __init__(self, name=None, dict={}):
 
     self.name = name
     self.object_commands = []
