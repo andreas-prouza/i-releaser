@@ -179,6 +179,11 @@ class Meta_File:
 
 
     def set_next_stage(self, from_stage: s.Stage):
+      """Add next stages to open_stages list
+
+      Args:
+          from_stage (s.Stage): Current finished stage
+      """
 
       next_stages = from_stage.get_next_stages_name()
 
@@ -206,14 +211,23 @@ class Meta_File:
       
 
 
-    def get_next_stages(self, from_stage: s.Stage):
+    def get_next_stages(self, from_stage: s.Stage) -> s.Stage_List_list:
+      """Get's following stages objects from a stage
+          This is used for workflow drawing in flowchart.py
+
+      Args:
+          from_stage (s.Stage): Basis stage object
+
+      Returns:
+          s.Stage_List_list: List of stages
+      """
 
       next_stages = s.Stage_List_list()
 
       for next_id in from_stage.next_stage_ids:
         next_stages.append(self.get_stage_by_id(next_id))
 
-      logging.debug(f"Next stages for {from_stage.name}: {next_stages.get_all_ids}")
+      logging.debug(f"Next stages for {from_stage.name} ({from_stage.id}): {next_stages.get_all_ids}")
       if len(next_stages) > 0:
         return next_stages
 

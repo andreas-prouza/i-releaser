@@ -48,7 +48,7 @@ class IBM_i_commands:
 
   def run_commands(self, stage: s.Stage, processing_step: str=None, continue_run=True) -> None:
 
-    logging.debug(f"Run Commands for {stage.name=}, {processing_step=}")
+    logging.debug(f"Run Commands for {stage.name=} ({stage.id}), {processing_step=}")
 
     stage.processing_users.append({'user': self.meta_file.current_user, 'timestamp' : str(datetime.datetime.now()), 'action' : s.Actions.RUN_STAGE.value})
     stage.set_status('in process')
