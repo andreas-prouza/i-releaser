@@ -34,6 +34,8 @@ function connectItems(item1, item2, startPosition, endPosition) {
   const head_len = 16;
   const head_angle = Math.PI / 6;
   let angle = 0;
+  let addY = 0;
+  let addX = 0;
 
   if (item1.id == flow_button_fokus || item2.id == flow_button_fokus) {
     color = 'red';
@@ -44,14 +46,20 @@ function connectItems(item1, item2, startPosition, endPosition) {
   ctx.strokeStyle = color;
   ctx.lineJoin = 'red';
   ctx.lineWidth = width;
-
+  
+  console.log("connecting ", item1, " to ", item2);
   canvas_pos = canvas.getBoundingClientRect();
   item1 = item1.getBoundingClientRect();
   item2 = item2.getBoundingClientRect();
-  console.log("connecting ", item1, " to ", item2);
   
   let startX, startY, endX, endY = 0.0;
+
+  if (item2.top < item1.top && item2.left > (item1.left + item1.width)) {
+    startPosition = "right";
+  }
   
+  console.log("StartPosition: " + startPosition);
+
   switch (startPosition) {
     case "top":
       startX = item1.width / 2 + item1.left;
@@ -62,7 +70,7 @@ function connectItems(item1, item2, startPosition, endPosition) {
       startY = item1.height / 2 + item1.top;
       break;
     case "bottom":
-      startX = item1.width / 2 + item1.left;
+      startX = item1.width / 4 + item1.left;
       startY = item1.height + item1.top;
       break;
     case "left":
@@ -74,6 +82,11 @@ function connectItems(item1, item2, startPosition, endPosition) {
   }
   startX = startX - canvas_pos.left;
   startY = startY - canvas_pos.top;
+  
+  // Change to bottom if the target is higher than the source
+  if (item1.top > item2.top) {
+    endPosition = "bottom";
+  }
   
   switch (endPosition) {
     case "top":
@@ -88,12 +101,14 @@ function connectItems(item1, item2, startPosition, endPosition) {
       break;
     case "bottom":
       angle = -1.57
-      endX = item2.width / 2 + item2.left;
-      endY = item2.height + item2.top;
+      endX = item2.width / 4 + item2.left;
+      addY = 10;
+      endY = item2.height + item2.top+addY;
       break;
     case "left":
       angle= 0
-      endX = item2.left;
+      addX = 10
+      endX = item2.left-addX;
       endY = item2.height / 2 + item2.top;
       break;
     default:
@@ -116,6 +131,8 @@ function connectItems(item1, item2, startPosition, endPosition) {
   // triangle
   ctx.beginPath();
   //ctx.fillStyle = color;
+  endY -= addY;
+  endX += addX;
   ctx.moveTo(endX, endY);
   ctx.lineTo(endX - head_len * Math.cos(angle - head_angle), endY - head_len * Math.sin(angle - head_angle));
   ctx.lineTo(endX - head_len * Math.cos(angle + head_angle), endY - head_len * Math.sin(angle + head_angle));

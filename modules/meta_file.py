@@ -23,6 +23,12 @@ from modules.cmd_status import Status as Cmd_Status
 from modules import meta_file_history as mfh
 
 
+
+class StageNotReadyException(Exception):
+  pass
+
+
+
 class Meta_file_status(Enum):
 
   NEW = 'new'
@@ -237,6 +243,21 @@ class Meta_File:
 
 
 
+    def get_stages_needs_2_get_finished(self, stage: Stage) -> []:
+      if stage.after_stages_finished is None or len(stage.after_stages_finished) == 0:
+        return []
+
+      waiting_for_stages = []
+
+      for stage_name in stage.after_stages_finished:
+        if stage_name not in self.processed_stages.get_all_names():
+          waiting_for_stages.append(stage_name)
+      
+      return waiting_for_stages
+
+
+
+
     def run_current_stages(self) -> None:
 
       for open_stage_id in self.open_stages.get_all_ids():
@@ -283,6 +304,12 @@ class Meta_File:
         e = Exception(f"Processing step '{processing_step}' is not defined in stage '{runable_stage.name}' (id {runable_stage.id}). Defined steps are: {runable_stage.processing_steps}")
         logging.exception(e, stack_info=True)
         self.write_meta_file()
+        raise e
+
+      waiting_for_stages = self.get_stages_needs_2_get_finished(runable_stage)
+      if len(waiting_for_stages) > 0:
+        e = StageNotReadyException(f"Stage {runable_stage.name} ({stage_id}) is still waiting for other stages to get finished: {waiting_for_stages}")
+        logging.exception(e, stack_info=True)
         raise e
 
       try:

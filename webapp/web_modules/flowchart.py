@@ -30,8 +30,17 @@ flow_connection=[]
 
 
 def get_stage_as_html_id(stage:str) -> str:
-  #return f"flow_{base64.b64encode(stage.encode()).decode('ascii').replace('=', '')}"
-  return f"flow_{stage}"
+  """Generates an unique html id
+
+  Args:
+      stage (str): ID is a base64 code of the stage name.
+                   This avoids special character problems
+
+  Returns:
+      str: html id
+  """
+  return f"flow_{base64.b64encode(stage.encode()).decode('ascii').replace('=', '')}"
+  #return f"flow_{stage}"
 
 
 
@@ -43,7 +52,7 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
   btn_class = btn_class_list['None']
   logging.debug(f"{stage.name}: {stage.get_dict().get('status')=}")
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
-  return f'<button type="button" id="{get_stage_as_html_id(stage.id)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
+  return f'<button type="button" id="{get_stage_as_html_id(stage.name)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
 
 
 
@@ -126,14 +135,23 @@ def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
 
 
 
-def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
+def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage) -> str:
+  """Generates the flow diagram of stages
+
+  Args:
+      mf (meta_file.Meta_File): Meta file object
+      stage (stages.Stage): Stage object
+
+  Returns:
+      str: html code
+  """
 
   global flow_stages
   global flow_connection
   
   logging.debug(f"{stage.name=}")
 
-  flow_stages.append(get_stage_as_html_id(stage.id))
+  flow_stages.append(get_stage_as_html_id(stage.name))
 
   next_stages = mf.get_next_stages(stage)
   sub_row=''
@@ -145,7 +163,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage):
     direction_from='right'
     if i>1:
       direction_from='bottom'
-    flow_connection.append({'from': f"{get_stage_as_html_id(stage.id)}", 'to': f"{get_stage_as_html_id(ns.id)}", 'direction_from': direction_from, 'direction_to': 'left'})
+    flow_connection.append({'from': f"{get_stage_as_html_id(stage.name)}", 'to': f"{get_stage_as_html_id(ns.name)}", 'direction_from': direction_from, 'direction_to': 'left'})
     
     # Every stage will only be printed once
     if f"{get_stage_as_html_id(ns.name)}" in flow_stages:

@@ -37,6 +37,7 @@ class Stage:
     self.build_dir = None
     self.next_stages = Stage_List_list()
     self.next_stage_ids = []
+    self.after_stages_finished = []
     self.from_stage_id = None
     self.clear_files = None
     self.lib_replacement_necessary = None
@@ -160,6 +161,7 @@ class Stage:
       'build_dir' : self.build_dir,
       'next_stages' : self.next_stages.get_all_names(),
       'next_stage_ids': self.next_stage_ids,
+      'after_stages_finished': self.after_stages_finished,
       'clear_files' : self.clear_files,
       'processing_steps' : self.processing_steps,
       'lib_replacement_necessary' : self.lib_replacement_necessary,
@@ -201,7 +203,7 @@ class Stage:
       raise Exception(f"Stage name has to be defined: {stage_dict=}")
 
     for key in stage_dict.keys():
-      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'next_stage_ids', 'from_stage_id', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
+      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'base_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
         raise Exception(f"Attribute {key} is invalid for stage {stage_dict['name']}!")
     
     
@@ -228,12 +230,12 @@ class Stage:
   def __eq__(self, other):
     logging.debug('equals 2 stages')
  #   other.next_stages !!! ist das Problem
-    if (self.id, self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions) == \
-       (other.id, other.description, other.host, other.base_dir, other.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions):
+    if (self.id, self.description, self.host, self.base_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions, self.after_stages_finished) == \
+       (other.id, other.description, other.host, other.base_dir, other.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions, other.after_stages_finished):
       return True
 
-    logging.warn(f"{self.id} - {self.description} - {self.host} - {self.base_dir} - {self.build_dir} - {self.next_stages.get_all_names()} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions}")
-    logging.warn(f"{other.id} - {other.description} - {other.host} - {other.base_dir} - {other.build_dir} - {other.next_stages.get_all_names()} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions}")
+    logging.warn(f"{self.id} - {self.description} - {self.host} - {self.base_dir} - {self.build_dir} - {self.next_stages.get_all_names()} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=}")
+    logging.warn(f"{other.id} - {other.description} - {other.host} - {other.base_dir} - {other.build_dir} - {other.next_stages.get_all_names()} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=}")
 
     return False
 
@@ -378,7 +380,7 @@ class Stage_List_list(list):
 
 
 
-    def get_stages_by_name(self, stage_name: str) -> []:
+    def get_stages_by_name(self, stage_name: str) -> [Stage_List_list]:
 
       stages = Stage_List_list()
 
@@ -399,7 +401,6 @@ class Stage_List_list(list):
           stages.append(s)
 
       return stages
-
 
 
 
