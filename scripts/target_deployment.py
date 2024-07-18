@@ -28,7 +28,7 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
     for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
-        cmd=f"CRTSAVF {meta_file.main_deploy_lib}/{lib['lib']}",
+        cmd=f"CRTSAVF {meta_file.remote_deploy_lib}/{lib['lib']}",
         environment=da.Command_Type.QSYS,
         processing_step=action.processing_step,
         stage=stage_obj.name,
@@ -37,7 +37,7 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
       cmd.execute_action(stage=stage_obj, action=last_added_action)
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
-        cmd=f"CLRSAVF {meta_file.main_deploy_lib}/{lib['lib']}",
+        cmd=f"CLRSAVF {meta_file.remote_deploy_lib}/{lib['lib']}",
         environment=da.Command_Type.QSYS,
         processing_step=action.processing_step,
         stage=stage_obj.name,
@@ -46,8 +46,8 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
       cmd.execute_action(stage=stage_obj, action=last_added_action)
 
       # Copy savf from IFS to QSYS file system
-      savf = f"{meta_file.main_deploy_lib}/{lib['lib']}"
-      savf_ifs_qsys = f"/qsys.lib/{meta_file.main_deploy_lib}.lib/{lib['lib']}.file"
+      savf = f"{meta_file.remote_deploy_lib}/{lib['lib']}"
+      savf_ifs_qsys = f"/qsys.lib/{meta_file.remote_deploy_lib}.lib/{lib['lib']}.file"
       savf_ifs = f"{deployment_dir}/{lib['lib']}.file"
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
@@ -72,10 +72,12 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
         includes += f" (*INCLUDE {obj.name} {obj.type})"
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
-        cmd=f"RSTLIB SAVLIB({lib['lib']}) DEV(*SAVF) SAVF({meta_file.main_deploy_lib}/{lib['lib']}) SELECT({includes}) RSTLIB({restore_to_lib})", 
+        #cmd=f"RSTLIB SAVLIB({lib['lib']}) DEV(*SAVF) SAVF({meta_file.remote_deploy_lib}/{lib['lib']}) SELECT({includes}) RSTLIB({restore_to_lib})", 
+        cmd=f"call prouzalib/iRSTLIB ({lib['lib']} {meta_file.remote_deploy_lib} {lib['lib']} {restore_to_lib})", 
         environment=da.Command_Type.QSYS, 
         processing_step=action.processing_step, 
         stage=stage_obj.name, 
+        run_in_new_job=True,
         check_error=action.check_error
       ))
       cmd.execute_action(stage=stage_obj, action=last_added_action)

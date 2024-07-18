@@ -64,6 +64,7 @@ class Meta_File:
       self.status = None
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
+      self.remote_deploy_lib = None
       self.create_date = None
       self.create_time = None
       self.commit = None
@@ -120,6 +121,7 @@ class Meta_File:
 
       self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
+      self.remote_deploy_lib = f"r{str(self.deploy_version).zfill(9)}"
 
       if not imported_from_dict:
 
@@ -266,6 +268,11 @@ class Meta_File:
 
 
     def run_current_stage_as_thread(self, stage_id: int, processing_step: str=None, continue_run=True) -> threading.Thread:
+
+      logging.debug(f"Start deployment check")
+      self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
+      logging.debug(f"Deployment check successfully passed")
+
       import threading
       t = threading.Thread(target=self.run_current_stage, args=(stage_id, processing_step, continue_run))
       t.start()
@@ -273,26 +280,11 @@ class Meta_File:
 
 
 
-    def run_current_stage(self, stage_id: int, processing_step: str=None, continue_run=True) -> None:
-      """Run given stage
-
-      Args:
-          stage_id (int): Stage id
-          processing_step (str, optional): Step of stage. Defaults to None.
-              If None, all steps will be issued
-          continue_run (bool, optional):
-              True: Continiue from first step which has not been finished
-              False: Run all steps from this stage, even if they already have been finished successful
-
-      Raises:
-          Exception: If a processing step was given, which is not in the step list of that stage
-      """
+    def check_deployment_ready_2_run(self, stage_id: int, processing_step: str=None):
 
       if self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
       
-      cmd = ibm_i_commands.IBM_i_commands(self)
-
       runable_stage = self.open_stages.get_stage(id=stage_id)
       
       if runable_stage is None:
@@ -312,12 +304,38 @@ class Meta_File:
         logging.exception(e, stack_info=True)
         raise e
 
+      dv.Deploy_Version.validate_deployment(self.project, self.deploy_version, Meta_file_status.IN_PROCESS)
+
+
+
+
+    def run_current_stage(self, stage_id: int, processing_step: str=None, continue_run=True) -> None:
+      """Run given stage
+
+      Args:
+          stage_id (int): Stage id
+          processing_step (str, optional): Step of stage. Defaults to None.
+              If None, all steps will be issued
+          continue_run (bool, optional):
+              True: Continiue from first step which has not been finished
+              False: Run all steps from this stage, even if they already have been finished successful
+
+      Raises:
+          Exception: If a processing step was given, which is not in the step list of that stage
+      """
+
+      self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
+
       try:
         self.set_status(Meta_file_status.IN_PROCESS)
       except Exception as err:
         logging.exception(err, stack_info=True)
         self.write_meta_file()
         raise err
+
+      runable_stage = self.open_stages.get_stage(id=stage_id)
+
+      cmd = ibm_i_commands.IBM_i_commands(self)
       
       logging.info(f"Run stage {runable_stage.name} (id {runable_stage.id}), {processing_step=}")
 
@@ -500,6 +518,7 @@ class Meta_File:
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
         meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
+        meta_file.remote_deploy_lib = meta_file_json['deploy_libs']['remote_lib']
         #meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
         
         meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
@@ -547,6 +566,7 @@ class Meta_File:
                          'open_stages':  self.open_stages.get_dict(),
                         }
       dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
+                             'remote_lib':  self.remote_deploy_lib,
                              'backup_lib':  self.backup_deploy_lib,
                             }
       #dict['deploy_cmds'] = self.get_actions_as_dict()

@@ -69,7 +69,7 @@ class Deploy_Version:
 
 
 
-    def validate_deployment(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str, commit : str):
+    def validate_deployment(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str=None, commit : str=None):
 
       versions_config = Deploy_Version.get_deployments(Deploy_Version.get_deployment_file(project=project))
 

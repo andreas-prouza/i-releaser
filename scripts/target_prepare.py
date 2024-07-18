@@ -34,7 +34,7 @@ def init_deployment(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Depl
     cmd.execute_action(stage=stage_obj, action=last_added_action)
 
     last_added_action = action.sub_actions.add_action(da.Deploy_Action(
-        cmd=f"CRTLIB {meta_file.main_deploy_lib}",
+        cmd=f"CRTLIB {meta_file.remote_deploy_lib}",
         environment=da.Command_Type.QSYS,
         processing_step=action.processing_step,
         stage=stage_obj.name,
