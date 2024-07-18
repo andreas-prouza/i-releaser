@@ -315,6 +315,7 @@ def run_stage():
         mf.run_current_stage_as_thread(int(data['stage_id']), continue_run=continue_run)
 
     except Exception as e:
+        logging.error("An error occured. Please check details!")
         logging.exception(e, stack_info=True)
         result['status'] = 'error'
         result['error'] = str(e)

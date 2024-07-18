@@ -12,12 +12,6 @@
     "check_error": true
   },
   {
-    "processing_step": "run_build",
-    "environment": "SCRIPT",
-    "execute": "build.run_build",
-    "check_error": true
-  },
-  {
     "processing_step": "create_compile_script",
     "environment": "SCRIPT",
     "execute": "build.create_compile_script",
@@ -45,6 +39,12 @@
     "processing_step": "create_object_list",
     "environment": "PASE",
     "execute": "scripts/cleanup.sh  && scripts/create_build_script.sh",
+    "check_error": true
+  },
+  {
+    "processing_step": "run_build",
+    "environment": "PASE",
+    "execute": "scripts/cleanup.sh  && scripts/run_build.sh",
     "check_error": true
   },
   {
