@@ -103,7 +103,7 @@ class Deploy_Version:
 
     def update_deploy_status(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str, commit : str):
 
-      logging.debug(f"Update meta file status: {version=}, {status=}, {meta_file_name}, {commit}")
+      logging.debug(f"Update deployment status: {version=}, {status=}, {meta_file_name}, {commit}")
       version_file = Deploy_Version.get_deployment_file(project=project)
 
       Deploy_Version.validate_deployment(project=project, version=version, status=status, meta_file_name=meta_file_name, commit=commit)

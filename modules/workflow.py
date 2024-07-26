@@ -12,6 +12,9 @@ class MissingProcessingStepMappingException(Exception):
 class WorkflowNotFoundException(Exception):
   pass
 
+class StageRecursionException(Exception):
+  pass
+
 
 
 class Workflow:
@@ -192,8 +195,32 @@ class Workflow:
       script_mappings = workflow_dict['step_action']
       for mapping in script_mappings:
         for key in mapping.keys():
-          if key not in ['processing_step', 'environment', 'execute', 'check_error']:
+          if key not in ['processing_step', 'environment', 'execute', 'check_error', 'execute_remote']:
             raise Exception(f"Script-Mapping attribute '{key}' is invalid for workflow {workflow_dict['name']}!")
+
+    ########################################
+
+    Workflow.check_worfklow_loop(workflow_dict['stages'])
+
+
+
+
+  def check_worfklow_loop(workflow_stages: [], start_stage :str='START', counter :int=1) -> None:
+
+    if counter >= 200:
+      raise(StageRecursionException(f'Infinite loop ({counter}) in next_stage configuration: {workflow_stages=}'))
+
+    for stage in workflow_stages:
+      if stage['name'] == start_stage:
+        for next_stage in stage.get('next_stages', []):
+          counter += 1
+          Workflow.check_worfklow_loop(
+              workflow_stages=workflow_stages, 
+              start_stage=next_stage, 
+              counter=counter)
+
+
+
 
 
 

@@ -3,6 +3,7 @@
     "processing_step": "pre",
     "environment": "SCRIPT",
     "execute": "pre.pre_cmd",
+    "execute_remote": false,
     "check_error": true
   },
   {
@@ -93,6 +94,7 @@
     "processing_step": "post",
     "environment": "PASE",
     "execute": "echo \"Not implemented\"",
+    "execute_remote": false,
     "check_error": true
   },
   {

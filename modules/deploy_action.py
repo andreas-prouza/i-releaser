@@ -55,7 +55,7 @@ class Deploy_Action_List_list(list):
 
 
 
-  def get_list(self) -> []:
+  def get_list(self) -> [dict]:
 
     list = []
 
@@ -67,7 +67,7 @@ class Deploy_Action_List_list(list):
 
 
 
-  def add_action(self, action: type[Deploy_Action], add_after: Deploy_Action=None) -> Deploy_Action:
+  def add_action(self, action: Deploy_Action, add_after: Deploy_Action=None) -> Deploy_Action:
 
     #logging.error(traceback.format_stack())
 
@@ -82,7 +82,7 @@ class Deploy_Action_List_list(list):
         if a.sequence >= action.sequence:
           a.sequence += 1
 
-    logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
+    #logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
 
     self.append(action)
 
@@ -92,18 +92,18 @@ class Deploy_Action_List_list(list):
 
 
 
-  def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True, add_after: Deploy_Action=None, run_in_new_job: bool=False) -> Deploy_Action:
+  def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True, add_after: Deploy_Action=None, run_in_new_job: bool=False, execute_remote: bool=None) -> Deploy_Action:
     logging.debug(f'Add action for cmd: {cmd=}, {environment=}, {processing_step=}')
 
     return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step, 
-    stage=stage, check_error=check_error, run_in_new_job=run_in_new_job), add_after=add_after)
+    stage=stage, check_error=check_error, run_in_new_job=run_in_new_job, execute_remote=execute_remote), add_after=add_after)
 
 
 
-  def add_actions_from_dict(self, dict: {}):
+  def add_actions_from_dict(self, dict_input: {}):
 
-    logging.debug('Add actions from list')
-    action = Deploy_Action(dict=dict)
+    logging.debug(f'Add actions from {type(dict_input)}')
+    action = Deploy_Action(dict=dict_input)
     self.add_action(action)
 
 
@@ -117,7 +117,18 @@ class Deploy_Action_List_list(list):
 
 
 
-  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> type[Deploy_Action]:
+  def get_actions_by_processing_step(self, processing_step: str) -> Deploy_Action_List_list:
+
+    result = Deploy_Action_List_list()
+    for a in self:
+      if a.processing_step == processing_step:
+        result.append(a)
+
+    return result
+
+
+
+  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> [Deploy_Action]:
 
     list_actions=[]
 
@@ -154,12 +165,12 @@ class Deploy_Action_List_list(list):
 
   def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> []:
 
-    dict=[]
+    actions_dict=[]
 
     for a in self.get_actions(processing_step, stage):
-      dict.append(a.get_dict())
+      actions_dict.append(a.get_dict())
 
-    return dict
+    return actions_dict
 
 
 
@@ -218,22 +229,27 @@ class Deploy_Action:
     * ``post``: will be run after deployment
   check_error : bool
     When run the command, it must be checked for errors
+  execute_remote : bool | None
+    * ``None``: Default from stage will be taken
+    * ``True``: Execution will be done on remote system (via SSH)
+    * ``False``: Execution will be done on local system
   """
 
-  id = 0
+  id :int = 0
 
 
   def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=Cmd_Status.NEW,  
     environment: Command_Type=Command_Type.QSYS, stage: str=None, processing_step: str=None, 
-    check_error: bool=True, dict: {}=None, id: int=None, run_in_new_job: bool=False):
+    check_error: bool=True, dict: {}=None, id: int=None, run_in_new_job: bool=False, execute_remote: bool=None):
 
-    self.id = id
-    self.sequence = sequence
-    self.environment = environment
-    self.cmd = cmd
+    self.id :int = id
+    self.sequence :int = sequence
+    self.environment :Command_Type = environment
+    self.cmd :str = cmd
     self.stage = stage
     self.status = status
     self.run_in_new_job = run_in_new_job
+    self.execute_remote = execute_remote
     self.run_history = rh.Run_History_List_list()
     self.check_error = check_error
     self.sub_actions = Deploy_Action_List_list()
@@ -261,7 +277,7 @@ class Deploy_Action:
       self.id = Deploy_Action.get_next_id()
 
 
-  def get_next_id():
+  def get_next_id() -> int:
     Deploy_Action.id += 1
     return Deploy_Action.id
 
@@ -325,6 +341,7 @@ class Deploy_Action:
       'processing_step': self.processing_step,
       'environment': self.environment.value,
       'run_in_new_job': self.run_in_new_job,
+      'execute_remote': self.execute_remote,
       'run_history': self.run_history.get_list(),
       'sub_actions': self.sub_actions.get_list(),
       'check_error': self.check_error
@@ -333,10 +350,10 @@ class Deploy_Action:
 
 
   def __eq__(self, o):
-    if (self.id, self.sequence, self.environment, self.cmd, self.stage, self.status, self.run_history, self.check_error, self.processing_step, self.run_in_new_job) == \
-       (o.id, o.sequence, o.environment, o.cmd, o.stage, o.status, o.run_history, o.check_error, o.processing_step, o.run_in_new_job):
+    if (self.id, self.sequence, self.environment, self.cmd, self.stage, self.status, self.run_history, self.check_error, self.processing_step, self.run_in_new_job, self.execute_remote) == \
+       (o.id, o.sequence, o.environment, o.cmd, o.stage, o.status, o.run_history, o.check_error, o.processing_step, o.run_in_new_job, o.execute_remote):
       return True
 
-    logging.warn(f"{self.id=} - {self.sequence=} - {self.environment=} - {self.cmd=} - {self.stage=} - {self.status=} - {self.run_history=} - {self.check_error=} - {self.processing_step=} - {self.run_in_new_job=}")
-    logging.warn(f"{o.id=} - {o.sequence=} - {o.environment=} - {o.cmd=} - {o.stage=} - {o.status=} - {o.run_history=} - {o.check_error=} - {o.processing_step=} {o.run_in_new_job=}")
+    logging.warn(f"{self.id=} - {self.sequence=} - {self.environment=} - {self.cmd=} - {self.stage=} - {self.status=} - {self.run_history=} - {self.check_error=} - {self.processing_step=} - {self.run_in_new_job=} - {self.execute_remote=}")
+    logging.warn(f"{o.id=} - {o.sequence=} - {o.environment=} - {o.cmd=} - {o.stage=} - {o.status=} - {o.run_history=} - {o.check_error=} - {o.processing_step=} {o.run_in_new_job=} - {o.execute_remote=}")
     return False

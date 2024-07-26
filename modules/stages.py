@@ -28,27 +28,28 @@ class Stage:
   id=0
 
   def __init__(self, dict: {}={}):
-    self.id = None
+    self.id :int = None
     self.workflow = None
-    self.name = None
-    self.description = None
-    self.host = None
-    self.remote_dir = None
-    self.build_dir = None
-    self.next_stages = Stage_List_list()
-    self.next_stage_ids = []
-    self.after_stages_finished = []
+    self.name :str = None
+    self.description :str = None
+    self.host :str = None
+    self.remote_dir :str = None
+    self.build_dir :str = None
+    self.next_stages :Stage_List_list = Stage_List_list()
+    self.next_stage_ids :[int] = []
+    self.after_stages_finished :[str] = []
     self.from_stage_id = None
     self.clear_files = None
     self.lib_replacement_necessary = None
     self.lib_mapping = []
     self.processing_steps = []
     self.actions = da.Deploy_Action_List_list()
+    self.execute_remote = None
     self.status = Cmd_Status.NEW
     self.create_time = str(datetime.datetime.now())
 #    self.create_time = '2023-03-04 14:31:30.404775'
     self.update_time = None
-    self.processing_users = []
+    self.processing_users :[str] = []
 
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
@@ -95,8 +96,14 @@ class Stage:
 
       for all_step in all_steps:
         if step == all_step['processing_step']:
-          self.actions.add_action_cmd(cmd=all_step['execute'], environment=da.Command_Type(all_step['environment']), 
-                processing_step=all_step['processing_step'], stage=self.name, check_error=all_step['check_error'])
+          self.actions.add_action_cmd(
+                cmd=all_step['execute'], 
+                environment=da.Command_Type(all_step.get('environment')), 
+                processing_step=all_step.get('processing_step', []), 
+                stage=self.name, 
+                check_error=all_step.get('check_error', True), 
+                execute_remote=all_step.get('execute_remote', None)
+          )
           break
 
 
@@ -164,6 +171,7 @@ class Stage:
       'after_stages_finished': self.after_stages_finished,
       'clear_files' : self.clear_files,
       'processing_steps' : self.processing_steps,
+      'execute_remote' : self.execute_remote,
       'lib_replacement_necessary' : self.lib_replacement_necessary,
       'lib_mapping' : self.lib_mapping,
       'status' : self.status.value,
@@ -203,7 +211,7 @@ class Stage:
       raise Exception(f"Stage name has to be defined: {stage_dict=}")
 
     for key in stage_dict.keys():
-      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'remote_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
+      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'remote_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'execute_remote', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions']:
         raise Exception(f"Attribute {key} is invalid for stage {stage_dict['name']}!")
     
     
@@ -230,12 +238,12 @@ class Stage:
   def __eq__(self, other):
     logging.debug('equals 2 stages')
  #   other.next_stages !!! ist das Problem
-    if (self.id, self.description, self.host, self.remote_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions, self.after_stages_finished) == \
-       (other.id, other.description, other.host, other.remote_dir, other.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions, other.after_stages_finished):
+    if (self.id, self.description, self.host, self.remote_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions, self.after_stages_finished, self.execute_remote) == \
+       (other.id, other.description, other.host, other.remote_dir, other.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions, other.after_stages_finished, other.execute_remote):
       return True
 
-    logging.warn(f"{self.id} - {self.description} - {self.host} - {self.remote_dir} - {self.build_dir} - {self.next_stages.get_all_names()} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=}")
-    logging.warn(f"{other.id} - {other.description} - {other.host} - {other.remote_dir} - {other.build_dir} - {other.next_stages.get_all_names()} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=}")
+    logging.warn(f"{self.id} - {self.description} - {self.host} - {self.remote_dir} - {self.build_dir} - {self.next_stages.get_all_names()} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=} - {self.execute_remote=}")
+    logging.warn(f"{other.id} - {other.description} - {other.host} - {other.remote_dir} - {other.build_dir} - {other.next_stages.get_all_names()} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=} - {other.execute_remote=}")
 
     return False
 

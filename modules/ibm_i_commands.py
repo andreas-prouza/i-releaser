@@ -161,21 +161,46 @@ class IBM_i_commands:
 
     return run_history
 
-    
 
 
-  def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
-    
+
+  def generate_ssh_cmd(stage: s.Stage, cmd: str) -> str:
+    cmd = cmd.replace('"', '\\"')
+    return f'ssh "{stage.host}" "{cmd}"'
+
+
+
+  def generate_qsys_cmd(cmd: str, action: da.Deploy_Action) -> str:
     parameter = ''
     if action.run_in_new_job:
       parameter = 'S'
 
-    cmd = f'(cl -{parameter}v "{cmd}"; cl -v "dspjoblog")'
+    return f'(cl -{parameter}v "{cmd}"; cl -v "dspjoblog")'
+
+
+
+  def is_execute_remote(stage: s.Stage, action: da.Deploy_Action):
+    return (stage.execute_remote and action.execute_remote is None) or (action.execute_remote is not None and action.execute_remote)
+
+
+
+  def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
+    
+    logging.debug(f"Run QSYS: {cmd=}")
+    cmd = IBM_i_commands.generate_qsys_cmd(cmd, action=action)
+
+    if IBM_i_commands.is_execute_remote(stage, action):
+      cmd = IBM_i_commands.generate_ssh_cmd(stage=stage, cmd=cmd)
+      logging.debug(f"Run QSYS on remote: {cmd=}")
+
     return self.run_pase_cmd(stage, cmd, action)
     
 
 
   def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
+      
+      logging.debug(f"{cmd=}; {stage.build_dir=}; ")
+
       s=subprocess.run(cmd, stdout=subprocess.PIPE, cwd=stage.build_dir, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
       stdout = s.stdout
       stderr = s.stderr
