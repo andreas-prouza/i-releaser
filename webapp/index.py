@@ -373,6 +373,8 @@ def cancel_deployment():
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
     mf.cancel_deployment()
+
+    return jsonify({'status': 'success'})
     
 
 

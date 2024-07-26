@@ -8,7 +8,7 @@ from sys import path
 # Logger Configuration
 #########################################
 
-LOG_FORMAT = '%(asctime)s %(levelname)-7.7s %(filename)-10.10s %(funcName)-10.10s (%(lineno)d): %(message)s'
+LOG_FORMAT = '%(asctime)s (%(process)d) %(levelname)-7.7s %(filename)-10.10s %(funcName)-10.10s (%(lineno)d): %(message)s'
 
 LOG_LEVEL = logging.DEBUG
 

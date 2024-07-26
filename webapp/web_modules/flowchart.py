@@ -50,7 +50,6 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
   global btn_class_list
 
   btn_class = btn_class_list['None']
-  logging.debug(f"{stage.name}: {stage.get_dict().get('status')=}")
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
   return f'<button type="button" id="{get_stage_as_html_id(stage.name)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
 
@@ -64,7 +63,6 @@ def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
   global btn_class_list
 
   btn_class = btn_class_list['None']
-  logging.debug(f"{stage=}")
   return f'<br/><img class="run" src="/static/assets/img/run-green.png" onclick="runStage(\'{mf.file_name}\', \'{stage.id}\', \'{stage.name}\')">'
 
 
@@ -74,7 +72,6 @@ def generate_action_button(action : deploy_action.Deploy_Action):
   global btn_class_list
   
   btn_class = btn_class_list['None']
-  logging.debug(f"{action=}")
   btn_class=f' {btn_class_list.get(action.get_dict().get("status", "None"),"None")}'
   return f'<button class="btn btn-sm {btn_class}">{action.status.value}</button>'
 
@@ -93,11 +90,7 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
     for sa in a['sub_actions']:
       i+=1
       sa['sequence'] = f"{a['sequence']}.{i}"
-      logging.debug(f"flow subactions: {sa}")
-      #actions.append(sa)
-
-  logging.debug(f"flow actions: {actions}")
-
+  
   actions.sort(key=lambda x: x['sequence'])
   #---------------------------------------------
 
@@ -128,7 +121,6 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
 
 def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  logging.debug(f"Generate stage-action: {mf.file_name}, {stage.id=}, {stage.name=}")
   html = render_template('overview/details/stage-actions.html', file_name=mf.file_name, stage_id=stage.id, stage_name=stage.name)
 
   return html
@@ -149,8 +141,6 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage) -> str:
   global flow_stages
   global flow_connection
   
-  logging.debug(f"{stage.name=}")
-
   flow_stages.append(get_stage_as_html_id(stage.name))
 
   next_stages = mf.get_next_stages(stage)
@@ -270,9 +260,6 @@ def get_flowchart_text(mf: meta_file.Meta_File):
   
   # Fow diagramm for each stage
   for stage in mf.workflow.stages:
-
-    logging.debug(f"{stage=}")
-
     
     # Get current detailed stage information (status)
     mf_stage = stages.Stage()
@@ -309,11 +296,12 @@ def get_flowchart_text(mf: meta_file.Meta_File):
 
     stage_parallel_i=1
     first_parallel=f'path{stage_parallel_i},'
+
     for action in stage_actions:
-      logging.debug(f"{action=}")
       wf_steps += f'\n{stage["name"]}_{action.processing_step}=>subroutine: {action.processing_step}|step_{action.status.value}'
       wf_flow += f'({first_parallel}{default_step_direction})->{stage["name"]}_{action.processing_step}'
       first_parallel=''
+
     wf_flow += f'({default_step_direction})->end_{stage["name"]}'
 
   
@@ -357,7 +345,6 @@ def get_flowchart_text(mf: meta_file.Meta_File):
         if len(deploy_objects)>do_i and do_a_i == 1:
           flow_type=f'path{do_parallel},right'
 
-        logging.debug(f"{action=}")
         next = f'{stage["name"]}_{obj.prod_lib}_{obj.name}_{obj.type}_{action.processing_step}'
         wf_steps += f'\n{next}(align-next=no)=>subroutine: {obj.prod_lib}/{obj.name}.{obj.type} ({action.processing_step})|step_{action.status.value}'
         wf_flow += f'\n{previous_processing}({flow_type})->{next}'

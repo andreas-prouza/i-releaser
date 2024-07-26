@@ -170,7 +170,7 @@ class Meta_File:
         self.write_meta_file()
 
       self.status = status
-      logging.debug(f"Finished")
+      logging.debug(f"Finished meta file status set")
 
 
 
@@ -348,25 +348,34 @@ class Meta_File:
         self.set_status(Meta_file_status.FAILED)
         raise err
 
-      self.set_status(Meta_file_status.READY)
+      logging.info(f"All actions completed '{runable_stage.name}'")
+      logging.info(f"Set meta file status to '{Meta_file_status.READY}'")
 
       self.check_stage_finish(runable_stage)
       self.check_deployment_finish()
 
+      self.set_status(Meta_file_status.READY)
+
+      logging.info(f"Finished run of stage '{runable_stage.name}'")
 
 
 
-     #@validate_arguments
+
     def check_stage_finish(self, stage: s.Stage) -> None:
 
+      logging.debug("Check if stage has been finished")
+      
       for action in stage.actions:
+
         if action.status not in [Cmd_Status.FINISHED, Cmd_Status.FAILED] or (action.status == Cmd_Status.FAILED and action.check_error == True):
+
+          logging.info(f"Action {action.id} is in status '{action.status}'. So stage is not finished yet")
           # if stage is not completed, don't set the FINISHED status.
           return
 
       stage.status = Cmd_Status.FINISHED
 
-      logging.info(f"Stage {stage.name} ({stage.id}) has been finished. Setting next stage(s)")
+      logging.info(f"Stage {stage.name} ({stage.id}) has been finished. Setting next stage(s) {stage.next_stages.get_all_names()}")
       self.set_next_stage(stage)
 
 

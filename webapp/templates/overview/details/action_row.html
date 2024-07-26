@@ -1,5 +1,6 @@
 <tr class="nowrap">
   <td>{{ cmd['sequence'] }}</td>
+  <td>{% if (stage['execute_remote'] and cmd['execute_remote'] is none) or (cmd['execute_remote'] is not none and cmd['execute_remote']) %}Remote{% else %}Local{% endif %}</td>
   <td>{{ cmd['processing_step'] }}</td>
   <td>{{ cmd['environment'] }}</td>
   <td>

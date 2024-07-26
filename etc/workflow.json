@@ -1,57 +1,7 @@
 [
   {
-    "name": "test_attributes",
+    "name": "academy_deploy_2_test",
     "default_project": "test",
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["ERROR_TEST"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "ERROR_TEST",
-        "description": "Only for testing purpose",
-        "invalid_attribute": "xxxx",
-        "processing_steps": ["test_error"],
-        "next_stages": ["END"]
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "test_build",
-    "default_project": "test",
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["UAT"],
-        "host": "localhost",
-        "build_dir": "/home/PROUZAT1/ibm-i-build",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "UAT",
-        "next_stages": ["END"],
-        "host": "localhost",
-        "build_dir": "/home/andreas/projekte/tests/ibm-i-build-test",
-        "processing_steps": ["pre", "run_build", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "academy_test_build",
-    "default_project": "default",
     "step_action": [
       {
         "processing_step": "print_pwd",
@@ -65,7 +15,7 @@
         "name": "START",
         "next_stages": ["BUILD"],
         "host": "localhost",
-        "build_dir": "/home/prouzat1/deployments/prod",
+        "build_dir": "/home/prouzat1/deployments/test",
         "processing_steps": ["pre", "print_pwd", "post"],
         "clear_files": true
       },
@@ -73,384 +23,48 @@
         "name": "BUILD",
         "next_stages": ["SAVE"],
         "host": "localhost",
-        "build_dir": "/home/prouzat1/deployments/prod",
+        "build_dir": "/home/prouzat1/deployments/test",
         "processing_steps": ["pre", "clean_current_commit", "create_object_list", "git_save_changes", "clean_current_commit", "run_build", "load_object_list"],
+        "execute_remote": false,
         "clear_files": true
       },
       {
         "name": "SAVE",
+        "next_stages": ["TRANSFER"],
+        "host": "localhost",
+        "build_dir": "/home/prouzat1/deployments/test",
+        "processing_steps": ["pre", "save-prepare", "save", "post"],
+        "execute_remote": false,
+        "clear_files": true
+      },
+      {
+        "name": "TRANSFER",
+        "next_stages": ["BACKUP"],
+        "host": "localhost",
+        "remote_dir": "/home/PROUZAT1/deployments/remote_test",
+        "build_dir": "/home/prouzat1/deployments/test",
+        "processing_steps": ["pre", "transfer", "target-prepare", "post"],
+        "execute_remote": true,
+        "clear_files": true
+      },
+      {
+        "name": "BACKUP",
         "next_stages": ["DEPLOY"],
         "host": "localhost",
-        "build_dir": "/home/prouzat1/deployments/prod",
-        "processing_steps": ["pre", "save-prepare", "save", "post"],
+        "remote_dir": "/home/PROUZAT1/deployments/remote_test",
+        "build_dir": "/home/prouzat1/deployments/test",
+        "processing_steps": ["pre", "backup-old-objects", "post"],
+        "execute_remote": true,
         "clear_files": true
       },
       {
         "name": "DEPLOY",
         "next_stages": ["END"],
         "host": "localhost",
-        "build_dir": "/home/prouzat1/deployments/prod",
-        "processing_steps": ["pre", "transfer", "target-prepare", "backup-old-objects", "perform-deployment", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "unit_test_process",
-    "default_project": "test",
-    "step_action": [
-      {
-        "processing_step": "print_pwd",
-        "environment": "PASE",
-        "execute": "pwd",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["UAT"],
-        "host": "localhost",
-        "build_dir": "/tmp/deployments/prod",
-        "processing_steps": ["pre", "print_pwd", "create_object_list", "run_build", "load_object_list", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "UAT",
-        "next_stages": ["END"],
-        "host": "localhost",
-        "build_dir": "/tmp/prod",
-        "processing_steps": ["pre", "save-prepare", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "test",
-    "default_project": "test",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "save_init",
-        "environment": "SCRIPT",
-        "execute": "save_objects.init_save",
-        "check_error": true
-      },
-      {
-        "processing_step": "save",
-        "environment": "SCRIPT",
-        "execute": "save_objects.set_cmd_object_to_savf",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["UAT_TEST", "ARCHIV_TEST"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "UAT_TEST",
-        "description": "User Acceptance Tests",
-        "host": "localhost",
-        "next_stages": ["PROD_TEST"],
-        "clear_files": true,
-        "processing_steps": ["pre", "post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "ARCHIV_TEST",
-        "description": "Tests Archiv",
-        "host": "localhost",
-        "next_stages": ["END"],
-        "clear_files": true,
-        "processing_steps": ["pre", "post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "PROD_TEST",
-        "description": "Production",
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "next_stages": ["END"]
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "test_cmds",
-    "default_project": "test",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["UAT_TEST", "ARCHIV_TEST"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "UAT_TEST",
-        "description": "User Acceptance Tests",
-        "host": "academy-test",
-        "next_stages": ["PROD_TEST"],
-        "clear_files": true,
-        "processing_steps": ["pre", "save-prepare", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "ARCHIV_TEST",
-        "description": "Tests Archiv",
-        "host": "localhost",
-        "next_stages": ["END"],
-        "clear_files": true,
-        "processing_steps": ["pre", "post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "PROD_TEST",
-        "description": "Production",
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "next_stages": ["END"]
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "default",
-    "default_project": "default",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "build",
-        "environment": "SCRIPT",
-        "execute": "build.build_all",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["UAT", "ARCHIV"],
-        "host": "localhost",
-        "build_dir": "/home/PROUZAT1/ibm-i-build",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "UAT",
-        "description": "User Acceptance Tests",
-        "host": "academy-test",
-        "next_stages": ["PROD"],
-        "clear_files": true,
-        "processing_steps": ["pre", "build", "save-prepare", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "ARCHIV",
-        "description": "Tests Archiv",
-        "host": "localhost",
-        "next_stages": ["END"],
-        "clear_files": true,
-        "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "PROD",
-        "description": "Production",
-        "host": "localhost",
-        "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
-        "next_stages": ["END"]
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "small_wf",
-    "default_project": "test",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["END"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "test_error",
-    "default_project": "test",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "should_fail",
-        "environment": "SCRIPT",
-        "execute": "pre.not_exist",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["STAGE 1"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "STAGE 1",
-        "next_stages": ["END"],
-        "host": "localhost",
-        "processing_steps": ["pre", "should_fail", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "unit_test_wf",
-    "default_project": "test",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "PASE",
-        "execute": "echo 'Pre script'",
-        "check_error": true
-      },
-      {
-        "processing_step": "echo1",
-        "environment": "PASE",
-        "execute": "echo 'start Sleep for 0.1 seconds'; sleep 0.1; echo 'Sleep end'",
-        "check_error": true
-      },
-      {
-        "processing_step": "list_dir",
-        "environment": "PASE",
-        "execute": "pwd; ls -la",
-        "check_error": true
-      },
-      {
-        "processing_step": "sleep",
-        "environment": "PASE",
-        "execute": "sleep 0.1",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["STAGE 2.1", "STAGE 2.2"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "STAGE 2.1",
-        "next_stages": ["STAGE 3"],
-        "host": "localhost",
-        "processing_steps": ["pre", "sleep", "echo1", "sleep", "list_dir", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "STAGE 2.2",
-        "next_stages": ["STAGE 3"],
-        "host": "localhost",
-        "processing_steps": ["pre", "sleep", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "STAGE 3",
-        "next_stages": ["END"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
+        "remote_dir": "/home/PROUZAT1/deployments/remote_test",
+        "build_dir": "/home/prouzat1/deployments/test",
+        "processing_steps": ["pre", "perform-deployment", "post"],
+        "execute_remote": true,
         "clear_files": true
       },
       {
@@ -516,143 +130,6 @@
         "host": "localhost",
         "processing_steps": ["pre", "post"],
         "clear_files": true
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "unit_test_missing_processing_mapping",
-    "default_project": "test",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["STAGE 1"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "STAGE 1",
-        "next_stages": ["END"],
-        "host": "localhost",
-        "processing_steps": ["pre", "missing-mapping", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "unit_test_default",
-    "default_project": "default",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "build",
-        "environment": "SCRIPT",
-        "execute": "build.build_all",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["UAT", "ARCHIV"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "UAT",
-        "description": "User Acceptance Tests",
-        "host": "academy-test",
-        "next_stages": ["PROD"],
-        "clear_files": true,
-        "processing_steps": ["pre", "build", "save-prepare", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "ARCHIV",
-        "description": "Tests Archiv",
-        "host": "localhost",
-        "next_stages": ["END"],
-        "clear_files": true,
-        "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
-        "lib_mapping": {
-          "prouzalib": "t1",
-          "prouzalib2": "t2",
-          "prouza4": "t3",
-          "prouza2": "t3"
-        }
-      },
-      {
-        "name": "PROD",
-        "description": "Production",
-        "host": "localhost",
-        "processing_steps": ["pre", "save", "transfer", "target-prepare", "backup-old-objects", "perform-deployment" ,"post"],
-        "next_stages": ["END"]
-      },
-      {
-        "name": "END",
-        "description": "Finished"
-      }
-    ]
-  },
-  {
-    "name": "unit_test_scripts",
-    "default_project": "test",
-    "step_action": [
-      {
-        "processing_step": "pre",
-        "environment": "SCRIPT",
-        "execute": "pre.pre_cmd",
-        "check_error": true
-      },
-      {
-        "processing_step": "build",
-        "environment": "SCRIPT",
-        "execute": "build.build_all",
-        "check_error": true
-      }
-    ],
-    "stages" : [
-      {
-        "name": "START",
-        "next_stages": ["UAT"],
-        "host": "localhost",
-        "processing_steps": ["pre", "post"],
-        "clear_files": true
-      },
-      {
-        "name": "UAT",
-        "description": "User Acceptance Tests",
-        "host": "localhost",
-        "next_stages": ["END"],
-        "clear_files": true,
-        "processing_steps": ["pre", "save-prepare", "save", "target-prepare", "backup-old-objects" ,"post"]
       },
       {
         "name": "END",
