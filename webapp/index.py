@@ -447,6 +447,12 @@ def get_stage_steps_html():
 
 
 
+@app.route('/api/get_workflows', methods=['GET'])
+def get_workflows():
+
+    wfs = workflow.Workflow.get_all_workflow_json()
+    return jsonify(wfs)
+
 
 
 
