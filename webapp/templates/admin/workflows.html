@@ -8,7 +8,7 @@
 <div class="box box-info">
 
     <form>
-        <input type=button onClick="location.href='/'" value='Back to overview'>
+        <input type="button" onClick="location.href='/'" value='Back to overview'>
     </form>
     <br/>
     <br/>
@@ -17,11 +17,24 @@
 
     <h3>Raw JSON file</h3>
 
+
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Wokflow</th><th>Action</th>
+            </tr>
+        </thead>
+    {% for wf in workflows %}
+        <tr><td>{{ wf.name }}</td><td><input type="button" class="btn btn-primary" onClick="start_workflow('{{ wf.name }}')" value='Start'></td></tr>
+    {% endfor %}
+    </table>
+
     <pre class="prettyprint lang-json">
         {{ workflow_json }}
     </pre>
 </div>
 
+<script src="{{ url_for('static', filename='assets/js/web.deploy.js') }}"></script>
 
 <script type="text/javascript">
 
@@ -46,6 +59,14 @@
     injectPrettifyScript();
 
     })(document)
+
+
+    async function start_workflow(wf_name) {
+        console.log(`start ${wf_name}`);
+        http_getData(`/api/create_deployment/${wf_name}`).then((data) => {
+            window.open(`/show_details/${data.meta_file.general.project}/${data.meta_file.general.deploy_version}`,'_self');
+        });
+    }
 
 </script>
 

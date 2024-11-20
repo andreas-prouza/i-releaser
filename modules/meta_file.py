@@ -204,13 +204,28 @@ class Meta_File:
       self.open_stages.remove_stage(from_stage.id)
 
       for next_stage in next_stages:
+
+        existing_stages = [*self.processed_stages.get_stages_by_name(next_stage), *self.open_stages.get_stages_by_name(next_stage)]
+
+        logging.debug(f'{next_stage=}')
+        # Check if already processed
+        if len(existing_stages) > 0:
+          for es in existing_stages:
+            logging.debug(f"Stage ({next_stage}) already processed: {es.id}")
+            from_stage.next_stage_ids.append(es.id)
+            es.from_stage_id.append(from_stage.id)
+          continue
+
+        logging.debug(f"Register new stage for {next_stage}")
         next_stage_object = s.Stage.get_stage_from_workflow(self.workflow, next_stage)
+        logging.debug(f"New stage id {next_stage_object.id}")
         
         from_stage.next_stage_ids.append(next_stage_object.id)
-        next_stage_object.from_stage_id = from_stage.id
+        next_stage_object.from_stage_id.append(from_stage.id)
         self.open_stages.append(next_stage_object)
         self.copy_object_actions_2_open_stages(next_stage_object.id)
       
+      logging.debug(f'{self.open_stages.summary()=}')
       if len(self.open_stages) == 0:
         self.set_status(Meta_file_status.FINISHED)
 

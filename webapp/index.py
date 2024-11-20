@@ -246,7 +246,7 @@ def show_workflows():
     wf_json = json.dumps(wf, default=str, indent=4)
 
     logging.debug("Send response")
-    return render_template('admin/workflows.html', sidebar=get_sidebar_data(), workflow_json=wf_json, projects=workflow.Workflow.get_all_projects()) 
+    return render_template('admin/workflows.html', sidebar=get_sidebar_data(), workflows=wf, workflow_json=wf_json, projects=workflow.Workflow.get_all_projects()) 
 
 
 @app.route('/settings', methods=['GET', 'POST'])

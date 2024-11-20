@@ -38,7 +38,7 @@ class Stage:
     self.next_stages :Stage_List_list = Stage_List_list()
     self.next_stage_ids :[int] = []
     self.after_stages_finished :[str] = []
-    self.from_stage_id = None
+    self.from_stage_id :[int]= []
     self.clear_files = None
     self.lib_replacement_necessary = None
     self.lib_mapping = []
@@ -340,6 +340,15 @@ class Stage_List_list(list):
       for item in dict:
         Stage.validate(item)
 
+        
+
+    def summary(self) ->[]:
+      list = []
+
+      for s in self:
+        list.append(f"{s.name} ({s.id}) {s.status}")
+
+      return list
         
 
     def get_all_names(self) ->[]:
