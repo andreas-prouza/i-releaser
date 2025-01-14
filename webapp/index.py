@@ -456,6 +456,25 @@ def get_workflows():
 
 
 
+@app.route('/api/get_projects', methods=['GET'])
+def get_projects():
+
+    result = {}
+    projects = workflow.Workflow.get_all_projects()
+
+    for project in projects:
+        result[project] = {}
+        dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
+        for depl in dv['deployments']:
+            if depl['status'] not in result[project]:
+                result[project][depl['status']] = 0
+            result[project][depl['status']] = result[project][depl['status']] + 1
+
+    return jsonify(result)
+
+
+
+
 #######################################################
 # Run service
 #######################################################
