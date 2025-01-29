@@ -19,8 +19,6 @@ from etc import flask_config, logger_config, constants, global_cfg, web_constant
 from web_modules import own_session
 
 from aiohttp import web
-import aiohttp_cors
-import aiomcache
 
 #from aiohttp_session import setup, get_session, session_middleware, Session
 #from aiohttp_session.cookie_storage import AbstractStorage
@@ -44,7 +42,17 @@ app = web.Application()
 
 sio = socketio.AsyncServer(logger=True, cors_allowed_origins='*')
 
-sessions_context: contextvars.ContextVar = contextvars.ContextVar('sessions', default={})
+
+
+def get_session(request: web.Request):
+    id = get_session_id(request)
+    session = own_session.get_session(id)
+    own_session.add_session_event(session, f'Path: {request.path}')
+
+
+def update_session(request: web.Request, session):
+    id = get_session_id(request)
+    return own_session.update_session(id, session)
 
 
 #@app.after_request
@@ -85,8 +93,7 @@ def get_session_id(request: web.Request):
 async def check_session(request: web.Request):
 
     logging.debug(f'First check session {request.path}')
-    id = get_session_id(request)
-    session = await own_session.get_session(sessions_context, id)
+    session = get_session(request)
     logging.debug(session)
 
     session['error_text'] = None
@@ -106,7 +113,7 @@ async def check_session(request: web.Request):
     if auth_token is not None:
         logging.debug(f"Check auth-token ({app_login.mask_key(auth_token)})")
         if app_login.is_key_valid(session, auth_token):
-            await own_session.update_session(sessions_context, id, session)
+            update_session(request, session)
             return None
         return get_json_response({'Error': 'Your authentication-token is not permitted'}, status=401)
 
@@ -124,11 +131,11 @@ async def check_session(request: web.Request):
     if user is not None and password is not None:
         if app_login.connect(session, user, password):
             logging.debug(f"After login: {session}")
-            await own_session.update_session(sessions_context, id, session)
-            logging.debug(f"Read session again: {await own_session.get_session(sessions_context, id)}")
+            update_session(request, session)
+            logging.debug(f"Read session again: {get_session(request)}")
             return None
 
-    await own_session.update_session(sessions_context, id, session)
+    update_session(request, session)
     return await login(request)
 
     #return login()
@@ -137,7 +144,7 @@ async def check_session(request: web.Request):
 
 async def get_sidebar_data(request: web.Request):
 
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
 
     x ={}
 
@@ -156,7 +163,7 @@ async def index(request: web.Request):
     logging.debug(sys.path)
     logging.debug('Call index.html')
     
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
     
     project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
 
@@ -181,8 +188,7 @@ async def list_deployments(request: web.Request):
 
 async def select_project(request: web.Request):
     
-    id = get_session_id(request)
-    session = await own_session.get_session(sessions_context, id)
+    session = get_session(request)
     
     project = request.match_info['project']
 
@@ -192,7 +198,7 @@ async def select_project(request: web.Request):
         project = available_projects[0]
 
     session['current_project'] = project
-    await own_session.update_session(sessions_context, id, session)
+    update_session(request, session)
 
     return web.HTTPFound('/')
 
@@ -220,7 +226,7 @@ async def show_log(request: web.Request):
 async def login(request: web.Request) -> web.Response:
     
     logging.debug('Login')
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
 
     if 'is_logged_in' in session and '__invalid__' not in session:
         return web.HTTPFound('/')
@@ -235,7 +241,7 @@ async def login(request: web.Request) -> web.Response:
 
 async def show_user(request: web.Request):
 
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
 
     user_keys=app_login.get_user_keys()
     user_key = user_keys.get(session['current_user'], None)
@@ -247,7 +253,7 @@ async def show_user(request: web.Request):
 
 async def generate_user_key(request: web.Request):
 
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
     logging.debug(f"Set new key for user {session['current_user']}")
 
     token = app_login.generate_new_user_key(session)
@@ -257,7 +263,7 @@ async def generate_user_key(request: web.Request):
 
 async def drop_user_key(request: web.Request):
 
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
     logging.debug(f"Drop key for user {session['current_user']}")
 
     app_login.drop_user_key(session)
@@ -267,7 +273,7 @@ async def drop_user_key(request: web.Request):
 
 
 async def logout(request: web.Request):
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
     session.pop('error_text', None)
     session.pop('is_logged_in', None)
     session.pop('uid', None)
@@ -336,7 +342,7 @@ async def show_details(request: web.Request):
 
 
 async def run_stage(request: web.Request):
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
     data = await request.json()
 
     result={'status': 'success'}
@@ -452,7 +458,7 @@ async def create_deployment(request: web.Request):
 
 async def set_check_error(request: web.Request):
     
-    session = await own_session.get_session(sessions_context, get_session_id(request))
+    session = get_session(request)
     data = await request.json()
 
     logging.debug(f"Set check error stage: {data['stage_id']}, action_id: {data['action_id']}, checked: {data['checked']}, filename: {data['filename']}")
