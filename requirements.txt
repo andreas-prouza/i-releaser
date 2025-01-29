@@ -1,4 +1,53 @@
 pyodbc
-flask-cors
+#flask-cors
 gunicorn
-Flask-Session==0.6.0
+#Flask-Session==0.6.0
+#flask-socketio>=5.5.1
+
+eventlet
+#ln /QOpenSys/pkgs/bin/gcc-12 /QOpenSys/pkgs/bin/gcc
+
+#greenlet==2.0.2
+
+asyncio
+aiohttp
+aiohttp-cors
+aiohttp-session
+aiomcache
+Jinja2
+
+
+#fastapi
+
+
+#Package          Version Location                                                    Installer
+#---------------- ------- ----------------------------------------------------------- ---------
+#bidict           0.23.1  /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#blinker          1.9.0   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#cachelib         0.13.0  /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#click            8.1.8   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#dnspython        2.7.0   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#eventlet         0.39.0  /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#Flask            3.1.0   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#Flask-Cors       5.0.0   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#Flask-Session    0.6.0   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#Flask-SocketIO   5.5.1   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#greenlet         3.1.1   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#gunicorn         23.0.0  /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#h11              0.14.0  /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#itsdangerous     2.2.0   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#Jinja2           3.1.5   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#MarkupSafe       3.0.2   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#packaging        24.2    /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#pillow           11.0.0  /QOpenSys/pkgs/lib/python3.13/site-packages                 rpm
+#pip              24.3.1  /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#pycparser        2.22    /QOpenSys/pkgs/lib/python3.13/site-packages                 rpm
+#pyodbc           5.2.0   /QOpenSys/pkgs/lib/python3.13/site-packages                 rpm
+#python-engineio  4.11.2  /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#python-socketio  5.12.1  /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#setuptools       75.2.0  /QOpenSys/pkgs/lib/python3.13/site-packages                 rpm
+#simple-websocket 1.1.0   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#six              1.16.0  /QOpenSys/pkgs/lib/python3.13/site-packages                 rpm
+#Werkzeug         3.1.3   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip
+#wheel            0.44.0  /QOpenSys/pkgs/lib/python3.13/site-packages                 rpm
+#wsproto          1.2.0   /home/prouzat1/i-releaser/venv/lib/python3.13/site-packages pip

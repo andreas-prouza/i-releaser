@@ -1,2 +1,2 @@
 import logging
-from index import app
+from index2 import app

@@ -1,6 +1,5 @@
 from __future__ import annotations
 import logging, string, random
-from flask import session
 import hashlib, json
 import datetime
 
@@ -16,7 +15,7 @@ import pyodbc
 
 
 
-def connect(user, password):
+def connect(session, user, password):
   driver = db_config.DATABASES['IBM_I']['DRIVER']
   host = db_config.DATABASES['IBM_I']['HOST']
   connection_string = f"driver={driver};system={host};uid={user};pwd={password}"
@@ -54,7 +53,7 @@ def get_user_keys():
 
 
 
-def generate_new_user_key():
+def generate_new_user_key(session) -> str:
 
   letters = string.ascii_letters
   key = ''.join(random.choice(letters) for i in range(10)) 
@@ -78,7 +77,7 @@ def mask_key(key):
 
 
 
-def is_key_valid(auth_token):
+def is_key_valid(session, auth_token):
 
   keys=get_user_keys()
 
@@ -97,7 +96,7 @@ def is_key_valid(auth_token):
   return None
 
 
-def drop_user_key():
+def drop_user_key(session):
 
   keys=get_user_keys()
   keys.pop(session['current_user'], None)

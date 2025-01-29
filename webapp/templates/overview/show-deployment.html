@@ -170,7 +170,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             {% if deployment_dict['general']['status'] == 'in process' %}btn-secondary{% endif %}
             ">{{ deployment_dict['general']['status'] }} </button>
             {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new', 'in process'] %}
-            <img class="run" src="{{ url_for('static', filename='assets/img/cancel.png') }}" 
+            <img class="run" src="/static/assets/img/cancel.png" 
             onclick="cancel_deployment('{{ deployment_dict['general']['file_name'] }}')">
             {% endif %}
         </h3>
@@ -246,7 +246,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
         {% for history in deployment_dict['run_history'] %}
         <tr>
             <td>{{ history['create_time'] }}</td>
-            <td><img src="{{ url_for('static', filename='assets/img/log.png') }}" 
+            <td><img src="/static/assets/img/log.png" 
                 onclick="showLog('info', '{{ deployment_dict['general']['file_name'] }}', null, null, {{loop.index-1}})"></td>
         </tr>
         {% endfor %}
@@ -267,10 +267,10 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 </div>
 
 
-<script src="{{ url_for('static', filename='assets/js/sweetalert2.all.min.js') }}"></script>
-<script src="{{ url_for('static', filename='assets/js/web.deploy.js') }}"></script>
-<script src="{{ url_for('static', filename='assets/js/chart.js') }}"></script>
-<script src="{{ url_for('static', filename='assets/js/json.js') }}"></script>
+<script src="/static/assets/js/sweetalert2.all.min.js"></script>
+<script src="/static/assets/js/web.deploy.js"></script>
+<script src="/static/assets/js/chart.js"></script>
+<script src="/static/assets/js/json.js"></script>
 
 <script type="text/javascript">
 
