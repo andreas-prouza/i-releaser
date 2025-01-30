@@ -4,7 +4,7 @@ from modules import meta_file, stages, deploy_action
 from modules.cmd_status import Status as Cmd_Status
 import base64
 from web_modules.http_functions import get_html_response, get_json_response
-
+from aiohttp import web
 
 div_container=f'\n<div id="flow_html_container" onClick="print_flow_connections()" class="flow_container">\n'
 div_container_end=f'</div><!-- container end -->\n\n'
@@ -108,7 +108,7 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
                                   cmds=actions, 
                                   run_stage_button=generate_run_button(mf=mf, 
                                   stage=stage))
-  html_actions = html_actions.body
+  html_actions = html_actions.text
   #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
   html_actions=html_actions.replace('\n', '')
@@ -122,9 +122,9 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
 
 def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  html = get_html_response('overview/details/stage-actions.html', file_name=mf.file_name, stage_id=stage.id, stage_name=stage.name)
+  html: web.Response = get_html_response('overview/details/stage-actions.html', file_name=mf.file_name, stage_id=stage.id, stage_name=stage.name)
 
-  return html.body
+  return html.text
 
 
 

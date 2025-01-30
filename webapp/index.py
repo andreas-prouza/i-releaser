@@ -48,11 +48,11 @@ def get_session(request: web.Request):
     id = get_session_id(request)
     session = own_session.get_session(id)
     own_session.add_session_event(session, f'Path: {request.path}')
+    return session
 
 
-def update_session(request: web.Request, session):
-    id = get_session_id(request)
-    return own_session.update_session(id, session)
+def update_session(session):
+    return own_session.update_session(session)
 
 
 #@app.after_request
@@ -113,7 +113,7 @@ async def check_session(request: web.Request):
     if auth_token is not None:
         logging.debug(f"Check auth-token ({app_login.mask_key(auth_token)})")
         if app_login.is_key_valid(session, auth_token):
-            update_session(request, session)
+            update_session(session)
             return None
         return get_json_response({'Error': 'Your authentication-token is not permitted'}, status=401)
 
@@ -131,11 +131,11 @@ async def check_session(request: web.Request):
     if user is not None and password is not None:
         if app_login.connect(session, user, password):
             logging.debug(f"After login: {session}")
-            update_session(request, session)
+            update_session(session)
             logging.debug(f"Read session again: {get_session(request)}")
             return None
 
-    update_session(request, session)
+    update_session(session)
     return await login(request)
 
     #return login()
@@ -198,7 +198,7 @@ async def select_project(request: web.Request):
         project = available_projects[0]
 
     session['current_project'] = project
-    update_session(request, session)
+    update_session(session)
 
     return web.HTTPFound('/')
 
