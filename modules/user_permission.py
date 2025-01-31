@@ -8,35 +8,33 @@ from modules import permission
 
 
 def is_user_allowed(user, action : permission.Permission, workflow=None, stage=None):
-  
-  user_permission = user_cfg.USER_PERMISSION
 
-  logging.debug(f"{user=}; {action=}: {type(action)}")
+    user_permission = user_cfg.USER_PERMISSION
 
-  if user not in user_permission.keys():
-    logging.info(f"{user=} is not in list: {user_permission.keys()}")
-    return False
+    logging.debug(f"{user=}; {action=}: {type(action)}")
 
-  current_permission = user_permission[user]
+    if user not in user_permission.keys():
+        logging.info(f"{user=} is not in list: {user_permission.keys()}")
+        return False
 
-  if 'general' in current_permission.keys() and action in current_permission['general']:
-    return True
+    current_permission = user_permission[user]
 
-  if workflow is not None and 'workflows' in current_permission.keys() and workflow in current_permission['workflows'].keys():
-    current_wf = current_permission['workflows'][workflow]
-
-    if 'general' in current_wf.keys() and current_wf['general'] == action:
-      return True
-
-    if stage is not None and 'stages' in current_wf.keys() and stage in current_wf['stages'].keys():
-      current_stage = current_wf['stages'][stage]
-
-      if action in current_stage:
+    if 'general' in current_permission.keys() and action in current_permission['general']:
         return True
 
+    if workflow is not None and 'workflows' in current_permission.keys() and workflow in current_permission['workflows'].keys():
+        current_wf = current_permission['workflows'][workflow]
 
-  logging.info(f"No permission for {user=}, {action=}, {workflow=}, {stage=}")
+        if 'general' in current_wf.keys() and current_wf['general'] == action:
+            return True
 
-  return False
+        if stage is not None and 'stages' in current_wf.keys() and stage in current_wf['stages'].keys():
+            current_stage = current_wf['stages'][stage]
+
+            if action in current_stage:
+                return True
 
 
+    logging.info(f"No permission for {user=}, {action=}, {workflow=}, {stage=}")
+
+    return False

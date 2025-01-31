@@ -141,6 +141,6 @@ async def main():
 if __name__ == '__main__':
     logging.info("Run WebApp from MAIN")
     #app.run(port=app.config["PORT"],host=app.config['HOST'])
-    
+
     # https://docs.aiohttp.org/en/stable/web_reference.html#aiohttp.web.run_app
     web.run_app(app, host='0.0.0.0', port=2001, print=print)

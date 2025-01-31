@@ -34,10 +34,10 @@ start() {
         echo "Start service"
         mkdir -p $SCRIPT_DIR/log
         #nohup $SCRIPT_DIR/../venv/bin/python $SCRIPT_DIR/../venv/bin/gunicorn --config=etc/gunicorn.conf.py --log-file $LOG_FILE --log-level $LOG_LEVEL --worker-class eventlet wsgi:app > log/nohub.log 2>&1 &
-        nohup $SCRIPT_DIR/../venv/bin/python $SCRIPT_DIR/../venv/bin/gunicorn --config=etc/gunicorn.conf.py --log-file $LOG_FILE --log-level $LOG_LEVEL --worker-class aiohttp.GunicornWebWorker index:main > log/nohub.log 
+        nohup $SCRIPT_DIR/../venv/bin/python $SCRIPT_DIR/../venv/bin/gunicorn --config=etc/gunicorn.conf.py --log-file $LOG_FILE --log-level $LOG_LEVEL --worker-class aiohttp.GunicornWebWorker index:main  > log/nohub.log 2>&1 &
         #$SCRIPT_DIR/../venv/bin/python $SCRIPT_DIR/../venv/bin/gunicorn --config=etc/gunicorn.conf.py --log-file $LOG_FILE --log-level $LOG_LEVEL  wsgi:app
     fi
-    
+
     sleep 1
     status
 }
@@ -74,22 +74,22 @@ status() {
 }
 
 
-case "$1" in 
+case "$1" in
     start)
-       start
-       ;;
+        start
+        ;;
     stop)
-       stop
-       ;;
+        stop
+        ;;
     restart)
-       stop
-       start
-       ;;
+        stop
+        start
+        ;;
     status)
-       # code to check status of app comes here 
-       # example: status program_name
-       status
-       ;;
+        # code to check status of app comes here
+        # example: status program_name
+        status
+        ;;
     *)
-       echo "Usage: $0 {start|stop|status|restart}"
+        echo "Usage: $0 {start|stop|status|restart}"
 esac

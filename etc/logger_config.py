@@ -22,24 +22,28 @@ LOG_NAME = None
 # Set logger 
 #########################################
 
-# File name from callers file
-if LOG_NAME is None:
+def initial_logger(log_name=None, log_dir=None, log_level=None, log_format=None):
 
-    for stack in inspect.stack()[1:]:
+    LOG_NAME = log_name or LOG_NAME
+    LOG_DIR = log_dir or LOG_DIR
+    LOG_LEVEL = log_level or LOG_LEVEL
+    LOG_FORMAT = log_format or LOG_FORMAT
 
-        if not stack.filename.startswith('<'):
+    # File name from callers file
+    if LOG_NAME is None:
 
-            LOG_NAME = Path(stack.filename).stem
-            break
+        for stack in inspect.stack()[1:]:
 
-# File name from current file
-# current_file = os.path.splitext(os.path.abspath(__file__))[0]
+            if not stack.filename.startswith('<'):
 
-if not Path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+                LOG_NAME = Path(stack.filename).stem
+                break
 
-file_handler = logging.FileHandler(filename=Path(LOG_DIR, f"{LOG_NAME}.log"))
-#stdout_handler = logging.StreamHandler(stream=sys.stdout)
-handlers = [file_handler]
+    if not Path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
 
-logging.basicConfig(format=LOG_FORMAT, level=LOG_LEVEL, handlers=handlers)
+    file_handler = logging.FileHandler(filename=Path(LOG_DIR, f"{LOG_NAME}.log"))
+    #stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    handlers = [file_handler]
+
+    logging.basicConfig(format=LOG_FORMAT, level=LOG_LEVEL, handlers=handlers)

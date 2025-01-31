@@ -40,29 +40,29 @@ class Run_History_List_list(list):
 
 
     def add_history(self, history: type[Run_History]=None) -> None:
-      if type(history) != Run_History:
-        raise Exception(f"Parameter type {type(history)} does not match Run_History")
+        if type(history) != Run_History:
+            raise Exception(f"Parameter type {type(history)} does not match Run_History")
 
-      self.append(history)
+        self.append(history)
 
 
 
     def add_historys_from_list(self, list: []):
 
-      for a in list:
-        history = Run_History(dict=a)
-        self.add_history(history)
+        for a in list:
+            history = Run_History(dict=a)
+            self.add_history(history)
 
 
 
     def get_list(self) -> []:
 
-      list = []
+        list = []
 
-      for h in self:
-        list.append(h.get_dict())
+        for h in self:
+            list.append(h.get_dict())
 
-      return list
+        return list
 
 
 
@@ -71,52 +71,52 @@ class Run_History_List_list(list):
 
 
 class Run_History:
-  """       
-  History of executed commands (runs)
+    """
+    History of executed commands (runs)
 
-  Parameters
-  ----------
-  timestamp : datetime
-  status : str
-    * ``new``: Command hast not yet been run
-    * ``failed``: Command has failed
-    * ``finished``: Command has finished successfully
-  stdout : str
-  stderr : str
-  """
-
-
-
-  def __init__(self, status: Cmd_Status=Cmd_Status.NEW, stdout: str=None, stderr: str=None, create_time=None, dict: {}={}):
-    self.status = status
-    self.stdout = stdout # Run in these stages
-    self.stderr = stderr
-    self.create_time = create_time
-
-    if self.create_time == None:
-        self.create_time = str(datetime.datetime.now())
-        #self.create_time = '2023-03-04 14:31:30.404775'
-
-    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
-      for k, v in dict.items():
-        setattr(self, k, v)
-
-    self.status = Cmd_Status(self.status)
+    Parameters
+    ----------
+    timestamp : datetime
+    status : str
+      * ``new``: Command hast not yet been run
+      * ``failed``: Command has failed
+      * ``finished``: Command has finished successfully
+    stdout : str
+    stderr : str
+    """
 
 
 
-  def get_dict(self) -> {}:
-    return {
-      'create_time': self.create_time,
-      'status': self.status.value,
-      'stdout': self.stdout,
-      'stderr': self.stderr
-      }
+    def __init__(self, status: Cmd_Status=Cmd_Status.NEW, stdout: str=None, stderr: str=None, create_time=None, dict: {}={}):
+        self.status = status
+        self.stdout = stdout # Run in these stages
+        self.stderr = stderr
+        self.create_time = create_time
+
+        if self.create_time == None:
+            self.create_time = str(datetime.datetime.now())
+            #self.create_time = '2023-03-04 14:31:30.404775'
+
+        if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+            for k, v in dict.items():
+                setattr(self, k, v)
+
+        self.status = Cmd_Status(self.status)
 
 
 
-  def __eq__(self, o):
-    if (self.create_time, self.status, self.stdout, self.stderr) == \
-           (o.create_time, o.status, o.stdout, o.stderr):
-      return True
-    return False
+    def get_dict(self) -> {}:
+        return {
+          'create_time': self.create_time,
+          'status': self.status.value,
+          'stdout': self.stdout,
+          'stderr': self.stderr
+          }
+
+
+
+    def __eq__(self, o):
+        if (self.create_time, self.status, self.stdout, self.stderr) == \
+               (o.create_time, o.status, o.stdout, o.stderr):
+            return True
+        return False

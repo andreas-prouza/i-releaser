@@ -41,29 +41,29 @@ class Meta_File_History_List_list(list):
 
 
     def add_history(self, history: type[Meta_File_History]=None) -> None:
-      if type(history) != Meta_File_History:
-        raise Exception(f"Parameter type {type(history)} does not match Meta_File_History")
+        if type(history) != Meta_File_History:
+            raise Exception(f"Parameter type {type(history)} does not match Meta_File_History")
 
-      self.append(history)
+        self.append(history)
 
 
 
     def add_historys_from_list(self, list: []):
 
-      for a in list:
-        history = Meta_File_History(dict=a)
-        self.add_history(history)
+        for a in list:
+            history = Meta_File_History(dict=a)
+            self.add_history(history)
 
 
 
     def get_list(self) -> []:
 
-      list = []
+        list = []
 
-      for h in self:
-        list.append(h.get_dict())
+        for h in self:
+            list.append(h.get_dict())
 
-      return list
+        return list
 
 
 
@@ -72,42 +72,42 @@ class Meta_File_History_List_list(list):
 
 
 class Meta_File_History:
-  """       
-  History of executed commands (runs)
+    """
+    History of executed commands (runs)
 
-  Parameters
-  ----------
-  timestamp : datetime
-  log : StringIO
-  """
-
-
-
-  def __init__(self, log: StringIO=None, create_time=None, dict: {}={}):
-    self.log = log
-    self.create_time = create_time
-
-    if self.create_time == None:
-        self.create_time = str(datetime.datetime.now())
-        #self.create_time = '2023-03-04 14:31:30.404775'
-
-    if len(dict) > 0 and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
-      for k, v in dict.items():
-        setattr(self, k, v)
-
-
-  def get_dict(self) -> {}:
-
-    dict={'create_time': self.create_time}
-    dict['log']= self.log
-    if type(self.log) == StringIO:
-      dict['log']= self.log.getvalue()
-    return dict
+    Parameters
+    ----------
+    timestamp : datetime
+    log : StringIO
+    """
 
 
 
-  def __eq__(self, o):
-    if (self.create_time, self.log) == \
-           (o.create_time, o.log):
-      return True
-    return False
+    def __init__(self, log: StringIO=None, create_time=None, dict: {}={}):
+        self.log = log
+        self.create_time = create_time
+
+        if self.create_time == None:
+            self.create_time = str(datetime.datetime.now())
+            #self.create_time = '2023-03-04 14:31:30.404775'
+
+        if len(dict) > 0 and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+            for k, v in dict.items():
+                setattr(self, k, v)
+
+
+    def get_dict(self) -> {}:
+
+        dict={'create_time': self.create_time}
+        dict['log']= self.log
+        if type(self.log) == StringIO:
+            dict['log']= self.log.getvalue()
+        return dict
+
+
+
+    def __eq__(self, o):
+        if (self.create_time, self.log) == \
+               (o.create_time, o.log):
+            return True
+        return False
