@@ -15,7 +15,7 @@ aiohttp-cors
 aiohttp-session
 aiomcache
 Jinja2
-
+socketio
 
 #fastapi
 

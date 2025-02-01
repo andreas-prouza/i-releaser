@@ -4,7 +4,7 @@ from aiohttp import web
 import json
 
 env = Environment(
-  loader=PackageLoader("index"),
+  loader=PackageLoader("webapp"),
   autoescape=select_autoescape()
 )
 
