@@ -18,7 +18,7 @@ import socketio
 # Custom modules
 from modules import workflow
 from web_modules import app_login
-from web_modules.routes import api_route, app_route
+from web_modules.routes import api_route, app_route, socket_route
 from web_modules.http_functions import get_json_response
 
 
@@ -89,6 +89,7 @@ async def check_session(request: web.Request):
 
     # If a token was given --> check it
     auth_token = request.query.get('auth-token', None)
+    logging.debug(f"{request.query=}")
     
     if auth_token is not None:
         logging.debug(f"Check auth-token ({app_login.mask_key(auth_token)})")
@@ -122,14 +123,6 @@ async def check_session(request: web.Request):
 
 
 
-@sio.event
-async def connect(sid, environ, parm2=None):
-    """event listener when client connects to the server"""
-    logging.info(f"client has connected {sid=} {environ=}")
-
-
-
-
 #######################################################
 # Run service
 #######################################################
@@ -154,6 +147,7 @@ async def main():
     #   request.values.get('parameter')
     #######################################################
 
+    # Register web routes
     app.add_routes([
       web.get('/', app_route.index),
       web.post('/', app_route.index),
@@ -192,6 +186,12 @@ async def main():
       web.get('/api/get_projects', api_route.get_projects),
       ])
     app.router.add_static('/static', path=os.path.join(os.path.dirname(__file__), 'static'),)
+
+    # Register socket events
+    socket_handlers = socket_route.SocketHandlers(sio)
+    sio.on('connect', socket_handlers.connect)
+    sio.on('disconnect', socket_handlers.disconnect)
+    sio.on('notify', socket_handlers.notify)
 
     return app
 

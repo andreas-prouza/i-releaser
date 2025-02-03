@@ -17,6 +17,8 @@ aiomcache
 Jinja2
 socketio
 
+watchdog
+
 #fastapi
 
 

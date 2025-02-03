@@ -2,13 +2,13 @@ import os
 
 C_LOCAL_BASE_DIR = f'{os.path.realpath(os.path.dirname(__file__)+"/..")}'
 
-C_DEPLOY_VERSION = f'{C_LOCAL_BASE_DIR}/etc/deploy_version_{{project}}.json'
+C_DEPLOY_VERSION = f'{C_LOCAL_BASE_DIR}/meta/versions/deploy_version_{{project}}.json'
 C_WORKFLOW = f'{C_LOCAL_BASE_DIR}/etc/workflow.json'
 C_OBJECT_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/object_commands.json'
 C_STAGE_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/stage_commands.json'
 C_DEFAULT_STEP_ACTION = f'{C_LOCAL_BASE_DIR}/etc/default_step_action.json'
 
-C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta/{{project}}"
+C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta/deployments/{{project}}"
 C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}/{{deploy_version}}"
 C_DEPLOY_META_FILE = f'{C_DEPLOY_DIR}/deployment_{{deploy_version}}.json'
 

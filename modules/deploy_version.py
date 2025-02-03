@@ -7,7 +7,7 @@ import logging
 # from pydantic import validate_arguments
 
 from etc import constants
-from modules import meta_file
+from modules import meta_file, file_utils
 from operator import itemgetter
 
 class DeploymentExistException(Exception):
@@ -48,6 +48,8 @@ class Deploy_Version:
         })
 
         versions_config['deployments'] = sorted(versions_config['deployments'], key=lambda d: d['version'], reverse=True)
+
+        file_utils.create_dir_of_file_if_not_exist(version_file)
 
         with open(version_file, 'w') as file:
             json.dump(versions_config, file, default=str, indent=2)
