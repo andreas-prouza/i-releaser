@@ -1,8 +1,11 @@
 from __future__ import annotations
 import os
+import time
 import datetime
 import json
 import logging
+
+from typing import TypedDict, Optional
 
 # from pydantic import validate_arguments
 
@@ -15,6 +18,19 @@ class DeploymentExistException(Exception):
 
 class StatusConflictException(Exception):
     pass
+
+
+class Deployment(TypedDict):
+    versions: int
+    status: str
+    timestamp: str
+    meta_file: str
+    commit: Optional[str]
+
+class Deployments(TypedDict):
+    versions: {'last_deploy_version': int}
+    deployments: [Deployment]
+
 
 
 class Deploy_Version:
@@ -58,13 +74,27 @@ class Deploy_Version:
 
 
 
-    def get_deployments(version_file):
+
+    def get_deployments(version_file) -> Deployments:
 
         logging.debug(f"Deployment file: {version_file}")
         logging.debug(f"Deployment file: {os.path.abspath(version_file)}")
+        retries=5
+        delay=0.1
+
         if os.path.isfile(version_file):
-            with open(version_file, "r") as file:
-                return json.load(file)
+
+            for _ in range(retries):
+
+                with open(version_file, "r") as file:
+
+                    try:
+                        return json.load(file)
+
+                    except json.JSONDecodeError:
+                        logging.error(f"An error occurred during JSON parsing of {version_file}")
+                        time.sleep(delay)
+            return None
 
         return {"versions": {"last_deploy_version": 0}, "deployments": []}
 

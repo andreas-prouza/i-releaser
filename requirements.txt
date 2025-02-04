@@ -18,6 +18,7 @@ Jinja2
 socketio
 
 watchdog
+typing
 
 #fastapi
 

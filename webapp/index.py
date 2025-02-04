@@ -191,7 +191,7 @@ async def main():
     socket_handlers = socket_route.SocketHandlers(sio)
     sio.on('connect', socket_handlers.connect)
     sio.on('disconnect', socket_handlers.disconnect)
-    sio.on('notify', socket_handlers.notify)
+    sio.on('watch_project_summary', socket_handlers.watch_project_summary)
 
     return app
 

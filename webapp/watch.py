@@ -27,11 +27,6 @@ class Handler(FileSystemEventHandler):
 
   def on_any_event(self, event):
 
-    if event.is_directory:
-      return None
-
-    if os.path.basename(event.src_path)[0:15] == C_DEPLOY_FILE_PREFIX:
-
     print(os.path.basename(event.src_path))
     print(f"Event: {event.event_type}")
 
@@ -42,7 +37,7 @@ class Handler(FileSystemEventHandler):
       # Event is modified, you can process it now
       print("Watchdog received modified event - % s." % event.src_path)
 
-    self.observer.stop()
+    #self.observer.stop()
       
 
 if __name__ == '__main__':

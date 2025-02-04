@@ -1,8 +1,10 @@
 import logging, time
 import socketio
 
+from watchdog.observers import Observer
+
 from etc import constants
-from modules import workflow, deploy_version
+from modules import workflow, deploy_version, file_utils, deploy_version
 
 
 class SocketHandlers:
@@ -14,7 +16,7 @@ class SocketHandlers:
 
   async def connect(self, sid, environ, parm2=None):
       """event listener when client connects to the server"""
-      logging.info(f"client has connected {sid=} {environ=}")
+      logging.info(f"client has connected {sid=}")
 
 
 
@@ -33,20 +35,37 @@ class SocketHandlers:
   async def watch_project_summary(self, sid, project_filter:[str]=None):
       logging.info(f"Watch: start {sid=}, {project_filter=}")
       
+      file_utils.create_dir_if_not_exist(constants.C_DEPLOY_FILE_DIR)
+
+      # Wait until something has changed
       observer = Observer()
-      event_handler = Handler(observer)
+      event_handler = file_utils.DirHandler(observer)
       observer.schedule(event_handler, constants.C_DEPLOY_FILE_DIR, recursive=False)
       observer.start()
       observer.join()
 
+      logging.info("Change detected")
+
       projects = workflow.Workflow.get_all_projects()
+      
+      summary={}
+
       for project in projects:
         file = constants.C_DEPLOY_VERSION.format(project=project)
-        deploy_version.Deploy_Version.get_deployments(file)
+        deployments: deploy_version.Deployments = deploy_version.Deploy_Version.get_deployments(file)
 
-      await self.sio.emit("projects", {'project': 3}, to=sid)
-      #logging.info(f"Notify: end")
-      time.sleep(5)
+        if deployments is None:
+          continue
+
+        ready_counter = 0
+        for dp in deployments['deployments']:
+          if dp['status'] == 'ready':
+            ready_counter += 1
+
+        summary[project] = {'ready' : ready_counter}
+
+      logging.info(f"Send back to client: {summary}")
+      await self.sio.emit("projects", summary, to=sid)
 
 
 

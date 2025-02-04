@@ -1,6 +1,8 @@
-import os
+import os, logging
 from pathlib import Path
 from etc import constants
+
+from watchdog.events import FileSystemEventHandler
 
 
 def create_dir_if_not_exist(path: str=None) -> None:
@@ -27,6 +29,8 @@ class DirHandler(FileSystemEventHandler):
     self.observer = observer
 
   def on_any_event(self, event):
+
+    logging.debug(f"Event: {event=}")
     
     if event.is_directory:
       return None
@@ -34,6 +38,6 @@ class DirHandler(FileSystemEventHandler):
     if os.path.basename(event.src_path)[0:15] != constants.C_DEPLOY_FILE_PREFIX:
       return None
 
-    if event.event_type in ['created', 'modified']:
+    if event.event_type in ['modified']:
       self.observer.stop()
       
