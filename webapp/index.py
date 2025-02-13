@@ -12,7 +12,8 @@ import logging
 from etc import logger_config, web_constants
 from web_modules import own_session
 
-from aiohttp import web
+#from aiohttp import web
+from fastapi import FastAPI
 import socketio
 
 # Custom modules
@@ -28,7 +29,7 @@ logger_config.initial_logger()
 # Start Flask framework
 #######################################################
 
-app = web.Application()
+app = FastAPI()
 
 sio = socketio.AsyncServer(logger=True, cors_allowed_origins='*')
 
@@ -43,7 +44,7 @@ async def add_header(response):
 
 
 # Middleware to mimic "before_request"
-@web.middleware
+#@web.middleware
 async def before_request_middleware(request: web.Request, handler):
 
     if request.path[0:8] == '/static/' or request.path == '/favicon.ico':
@@ -129,7 +130,7 @@ async def check_session(request: web.Request):
 
 async def main():
 
-    app.middlewares.append(before_request_middleware)
+    #app.middlewares.append(before_request_middleware)
 
     sio.attach(app)
 
@@ -148,44 +149,46 @@ async def main():
     #######################################################
 
     # Register web routes
-    app.add_routes([
-      web.get('/', app_route.index),
-      web.post('/', app_route.index),
-      web.get('/api/list_deployments/{project}', api_route.list_deployments),
-      web.post('/api/list_deployments/{project}', api_route.list_deployments),
-      web.get('/project/{project}', app_route.select_project),
-      web.post('/project/{project}', app_route.select_project),
-      web.post('/log/{log}', app_route.show_log),
-      web.get('/log/{log}', app_route.show_log),
-      web.get(r'/log/{log}/{number_of_lines:[0-9]{1:10}}', app_route.show_log),
-      web.post(r'/log/{log}/{number_of_lines:[0-9]{1:10}}', app_route.show_log),
-      web.get('/login', app_route.login),
-      web.post('/login', app_route.login),
-      web.get('/user', app_route.show_user),
-      web.post('/user', app_route.show_user),
-      web.post('/api/generate_user_key', api_route.generate_user_key),
-      web.post('/api/drop_key', api_route.drop_user_key),
-      web.get('/logout', app_route.logout),
-      web.post('/logout', app_route.logout),
-      web.get('/workflows', app_route.show_workflows),
-      web.post('/workflows', app_route.show_workflows),
-      web.get('/settings', app_route.show_settings),
-      web.post('/settings', app_route.show_settings),
-      web.get(r'/show_details/{project}/{version:[0-9]+}', app_route.show_details),
-      web.post(r'/show_details/{project}/{version:[0-9]+}', app_route.show_details),
-      web.post('/api/run_stage', api_route.run_stage),
-      web.post('/api/get_meta_file_json', api_route.get_meta_file_json),
-      web.post('/api/get_action_log', api_route.get_action_log),
-      web.post('/api/cancel_deployment', api_route.cancel_deployment),
-      web.get('/api/create_deployment/{wf_name}/{commit}/{obj_list}', api_route.create_deployment),
-      web.get('/api/create_deployment/{wf_name}/{commit}', api_route.create_deployment),
-      web.get('/api/create_deployment/{wf_name}', api_route.create_deployment),
-      web.post('/api/set_check_error', api_route.set_check_error),
-      web.post('/api/get_stage_steps_html', api_route.get_stage_steps_html),
-      web.get('/api/get_workflows', api_route.get_workflows),
-      web.get('/api/get_projects', api_route.get_projects),
-      ])
-    app.router.add_static('/static', path=os.path.join(os.path.dirname(__file__), 'static'),)
+#    app.add_api_route("/heartbeat", heartbeat.heartbeat, methods=['GET'])
+
+    app.add_api_route('/', app_route.index, method=['GET'])
+    app.add_api_route('/', app_route.index, method=['POST'])
+    app.add_api_route('/api/list_deployments/{project}', api_route.list_deployments, method=['GET'])
+    app.add_api_route('/api/list_deployments/{project}', api_route.list_deployments, method=['POST'])
+    app.add_api_route('/project/{project}', app_route.select_project, method=['GET'])
+    app.add_api_route('/project/{project}', app_route.select_project, method=['POST'])
+    app.add_api_route('/log/{log}', app_route.show_log, method=['POST'])
+    app.add_api_route('/log/{log}', app_route.show_log, method=['GET'])
+    #app.add_api_route(r'/log/{log}/{number_of_lines:[0-9]{1:10}}', app_route.show_log, method=['GET'])
+    #app.add_api_route(r'/log/{log}/{number_of_lines:[0-9]{1:10}}', app_route.show_log, method=['POST'])
+    app.add_api_route('/login', app_route.login, method=['GET'])
+    app.add_api_route('/login', app_route.login, method=['POST'])
+    app.add_api_route('/user', app_route.show_user, method=['GET'])
+    app.add_api_route('/user', app_route.show_user, method=['POST'])
+    app.add_api_route('/api/generate_user_key', api_route.generate_user_key, method=['POST'])
+    app.add_api_route('/api/drop_key', api_route.drop_user_key, method=['POST'])
+    app.add_api_route('/logout', app_route.logout, method=['GET'])
+    app.add_api_route('/logout', app_route.logout, method=['POST'])
+    app.add_api_route('/workflows', app_route.show_workflows, method=['GET'])
+    app.add_api_route('/workflows', app_route.show_workflows, method=['POST'])
+    app.add_api_route('/settings', app_route.show_settings, method=['GET'])
+    app.add_api_route('/settings', app_route.show_settings, method=['POST'])
+    #app.add_api_route(r'/show_details/{project}/{version:[0-9]+}', app_route.show_details, method=['GET'])
+    #app.add_api_route(r'/show_details/{project}/{version:[0-9]+}', app_route.show_details, method=['POST'])
+    app.add_api_route('/api/run_stage', api_route.run_stage, method=['POST'])
+    app.add_api_route('/api/get_meta_file_json', api_route.get_meta_file_json, method=['POST'])
+    app.add_api_route('/api/get_action_log', api_route.get_action_log, method=['POST'])
+    app.add_api_route('/api/cancel_deployment', api_route.cancel_deployment, method=['POST'])
+    app.add_api_route('/api/create_deployment/{wf_name}/{commit}/{obj_list}', api_route.create_deployment, method=['GET'])
+    app.add_api_route('/api/create_deployment/{wf_name}/{commit}', api_route.create_deployment, method=['GET'])
+    app.add_api_route('/api/create_deployment/{wf_name}', api_route.create_deployment, method=['GET'])
+    app.add_api_route('/api/set_check_error', api_route.set_check_error, method=['POST'])
+    app.add_api_route('/api/get_stage_steps_html', api_route.get_stage_steps_html, method=['POST'])
+    app.add_api_route('/api/get_workflows', api_route.get_workflows, method=['GET'])
+    app.add_api_route('/api/get_projects', api_route.get_projects, method=['GET'])
+   
+    #app.router.add_static('/static', path=os.path.join(os.path.dirname(__file__), 'static'),)
+
 
     # Register socket events
     socket_handlers = socket_route.SocketHandlers(sio)

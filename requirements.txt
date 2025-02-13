@@ -1,5 +1,6 @@
 pyodbc
 #flask-cors
+uvicorn
 gunicorn
 #Flask-Session==0.6.0
 #flask-socketio>=5.5.1
@@ -9,16 +10,22 @@ eventlet
 
 #greenlet==2.0.2
 
+fastapi
+gunicorn
+uvicorn
+pydantic==1.10.21
+python-socketio
+
 asyncio
 aiohttp
 aiohttp-cors
 aiohttp-session
 aiomcache
 Jinja2
-socketio
+#socketio
 
 watchdog
-typingmaturin
+#typingmaturin
 
 #fastapi
 
