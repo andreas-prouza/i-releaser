@@ -1,6 +1,7 @@
 
 import time, logging, os, json
-from aiohttp import web
+
+from fastapi import Request, Response
 
 import uuid
 
@@ -16,15 +17,15 @@ def get_session_file_name(id) -> str:
 
 
 
-def get_session_id(request: web.Request):
+def get_session_id(request: Request):
     return request.cookies.get('uid', uuid.uuid4())
 
 
 
-def get_session(request: web.Request):
+def get_session(request: Request):
     id = get_session_id(request)
     session = get_session_by_id(id)
-    add_session_event(session, f'Path: {request.path}')
+    add_session_event(session, f'Path: {request.url.path}')
     return session
 
 
@@ -32,6 +33,8 @@ def get_session(request: web.Request):
 def get_session_by_id(id) -> {}:
 
     file_name = get_session_file_name(id)
+    logging.debug(f"{id=} | {file_name=}")
+
     if not os.path.isfile(file_name):
         session = {
           "id": id,
@@ -39,12 +42,14 @@ def get_session_by_id(id) -> {}:
           "last-update": int(time.time()),
           "events": [{'time': time.time(), 'event': 'create session'}]
           }
+        logging.debug(session)
         return session
 
     with open(file_name, "r") as file:
         session = json.load(file)
         if 'events' not in session:
             session['events'] = []
+        logging.debug(session)
         return session
 
     logging.error(f'Error during session load: {file_name=}, {os.path.isfile(file_name)=}')

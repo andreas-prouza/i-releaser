@@ -35,8 +35,8 @@
     
 </div>
 
-<script src="/static/assets/js/sweetalert2.all.min.js"></script>
-<script src="/static/assets/js/web.deploy.js"></script>
+<script src="{{ url_for('static', path='assets/js/sweetalert2.all.min.js') }}"></script>
+<script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
 <script type="text/javascript">
 const swalWithBootstrapButtons = Swal.mixin({
     customClass: {

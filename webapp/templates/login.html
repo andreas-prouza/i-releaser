@@ -72,7 +72,7 @@
     <h1>Login</b></h1>
 
     <div class="imgcontainer">
-      <img src="/static/assets/img/logo.png" class="logo" alt="logo">
+      <img src="{{ url_for('static', path='assets/img/logo.png') }}" class="logo" alt="logo">
     </div>
 
     {% if error_text is not none %}

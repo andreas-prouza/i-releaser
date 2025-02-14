@@ -61,7 +61,7 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
                     <hr>
                     <div class="dropdown pb-4">
                         <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
-                            <img src="/static/assets/img/log.png" alt="hugenerd" width="30" height="30" class="rounded-circle">
+                            <img src="{{ url_for('static', path='assets/img/log.png') }}" alt="hugenerd" width="30" height="30" class="rounded-circle">
                             <span class="d-none d-sm-inline mx-1">{{ current_user }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">

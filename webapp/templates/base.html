@@ -44,7 +44,7 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
                 <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-2 text-white min-vh-100 bg-dark">
                     <a href="/?sidebar_active=deployments"
                         class="d-flex align-items-center pb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-                        <span class="fs-5 d-none d-sm-inline"><img style="width: 40px;" src="/static/assets/img/logo2-icon.png"> Menu</span>
+                        <span class="fs-5 d-none d-sm-inline"><img style="width: 40px;" src="{{ url_for('static', path='assets/img/logo2-icon.png') }}"> Menu</span>
                     </a>
                     <ul class="nav nav-pills flex-column mb-sm-auto mb-0 align-items-center align-items-sm-start"
                         id="menu">
@@ -122,7 +122,7 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
                         </li>
                         <hr /><br />
                         <li>
-                            Powered by <a href="https://prouza.at">Andreas&nbsp;Prouza</a><img style="width: 40px;" src="/static/assets/img/logo.png">
+                            Powered by <a href="https://prouza.at">Andreas&nbsp;Prouza</a><img style="width: 40px;" src="{{ url_for('static', path='assets/img/logo.png') }}">
                         </li>
                     </ul>
                 </div>

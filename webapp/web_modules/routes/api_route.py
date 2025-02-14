@@ -2,7 +2,9 @@ import json, os
 
 import logging
 from etc import constants
-from aiohttp import web
+
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 
 from modules import deploy_version, meta_file
 from modules import workflow
@@ -12,9 +14,32 @@ from web_modules import app_login
 from web_modules import own_session
 from web_modules import flowchart
 
+import threading
+import multiprocessing
 
-async def list_deployments(request: web.Request):
-    project = request.match_info['project']
+
+import subprocess
+
+def get_num_children(parent_pid):
+    # Run the `ps` command to list child processes
+    result = subprocess.run(['ps', '-L', str(parent_pid)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    child_pids = result.stdout.decode().strip().splitlines()
+    return len(child_pids) - 3 # -Heading -ParentID -ps from above subprocess
+
+
+async def heartbeat(request: Request) -> JSONResponse:
+    return get_json_response({
+        'status': 'ok', 
+        'number-of-threads': threading.active_count(),
+        'pid': os.getppid(),
+        'workers': get_num_children(os.getppid())
+        })
+
+
+
+
+
+async def list_deployments(project: str) -> JSONResponse:
     dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
     logging.debug(dv)
     dv = dv['deployments']
@@ -23,7 +48,7 @@ async def list_deployments(request: web.Request):
 
 
 
-async def generate_user_key(request: web.Request):
+async def generate_user_key(request: Request) -> JSONResponse:
 
     session = own_session.get_session(request)
     logging.debug(f"Set new key for user {session['current_user']}")
@@ -33,7 +58,7 @@ async def generate_user_key(request: web.Request):
 
 
 
-async def drop_user_key(request: web.Request):
+async def drop_user_key(request: Request) -> JSONResponse:
 
     session = own_session.get_session(request)
     logging.debug(f"Drop key for user {session['current_user']}")
@@ -45,7 +70,7 @@ async def drop_user_key(request: web.Request):
 
 
 
-async def run_stage(request: web.Request):
+async def run_stage(request: Request) -> JSONResponse:
     session = own_session.get_session(request)
     data = await request.json()
 
@@ -76,7 +101,7 @@ async def run_stage(request: web.Request):
 
 
 
-async def get_meta_file_json(request: web.Request):
+async def get_meta_file_json(request: Request) -> JSONResponse:
     data = await request.json()
     logging.debug(f"Get logs from: {data=}")
 
@@ -95,7 +120,7 @@ async def get_meta_file_json(request: web.Request):
 
 
 
-async def get_action_log(request: web.Request):
+async def get_action_log(request: Request) -> JSONResponse:
     data = await request.json()
     logging.debug(f"Get logs from: {data=}")
     logging.debug(f"Get logs from: {data['filename']=}, {data['stage_id']=}, {data['action_id']=}, {data['history_element']=}")
@@ -114,7 +139,7 @@ async def get_action_log(request: web.Request):
 
 
 
-async def cancel_deployment(request: web.Request):
+async def cancel_deployment(request: Request) -> JSONResponse:
     data = await request.json()
     logging.debug(f"Cancel Deployment: {data['filename']}")
 
@@ -125,11 +150,7 @@ async def cancel_deployment(request: web.Request):
 
 
 
-async def create_deployment(request: web.Request):
-
-    wf_name = request.match_info['wf_name']
-    commit = request.match_info.get('commit', None)
-    obj_list = request.match_info.get('obj_list', None)
+async def create_deployment(wf_name: str, commit: str = None, obj_list: str = None) -> JSONResponse:
 
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}, {obj_list=}")
     logging.debug(f'{os.path.realpath(os.path.dirname(__file__)+"/..")=}')
@@ -159,7 +180,7 @@ async def create_deployment(request: web.Request):
 
 
 
-async def set_check_error(request: web.Request):
+async def set_check_error(request: Request) -> JSONResponse:
 
     session = own_session.get_session(request)
     data = await request.json()
@@ -182,14 +203,14 @@ async def set_check_error(request: web.Request):
 
 
 
-async def get_stage_steps_html(request: web.Request):
+async def get_stage_steps_html(request: Request) -> JSONResponse:
 
     data = await request.json()
     logging.debug(f"Get html for stage steps: {data['stage_id']}, filename: {data['filename']}")
 
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
-        html = flowchart.generate_stage_steps_html(mf, mf.get_stage_by_id(int(data['stage_id'])))
+        html = flowchart.generate_stage_steps_html(request, mf, mf.get_stage_by_id(int(data['stage_id'])))
         return get_json_response({'html': html})
     except Exception as e:
         logging.exception(e, stack_info=True)
@@ -197,7 +218,7 @@ async def get_stage_steps_html(request: web.Request):
 
 
 
-async def get_workflows(request: web.Request):
+async def get_workflows(request: Request) -> JSONResponse:
 
     wfs = workflow.Workflow.get_all_workflow_json()
     return get_json_response(wfs)
@@ -205,7 +226,7 @@ async def get_workflows(request: web.Request):
 
 
 
-async def get_projects(request: web.Request):
+async def get_projects(request: Request) -> JSONResponse:
 
     result = {}
     projects = workflow.Workflow.get_all_projects()

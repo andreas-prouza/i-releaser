@@ -1,25 +1,12 @@
 #!/bin/bash
 
-FILE=/QOpenSys/run/webapp.sock
-
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-#SCRIPT_DIR=$SCRIPT_DIR/webapp
-
-
 PID=$SCRIPT_DIR/etc/webapp.pid
-LOG_FILE=$SCRIPT_DIR/log/webapp
-LOG_LEVEL='debug'
-PROCESS_COUNT=3
-SOCKET_FILE=/QOpenSys/run/webapp.sock
 
-
-#START_CMD=$SCRIPT_DIR/venv/bin/python $SCRIPT_DIR/venv/bin/gunicorn --reload -p $PID --log-file $LOG_FILE --log-level $LOG_LEVEL --workers $PROCESS_COUNT --bind unix:$SOCKET_FILE wsgi:app &
-#START_CMD=$SCRIPT_DIR/../venv/bin/python $SCRIPT_DIR/../venv/bin/gunicorn --reload -p $PID --log-file $LOG_FILE --log-level $LOG_LEVEL --workers $PROCESS_COUNT --bind :7000 wsgi:app &
-# START_CMD=$SCRIPT_DIR/venv/bin/gunicorn -b :7000  webapp.wsgi
-# START_CMD=$SCRIPT_DIR/venv/bin/python $SCRIPT_DIR/venv/bin/gunicorn --workers 3 --bind unix:/QOpenSys/run/webapp.sock wsgi:app &
 
 
 start() {
+
     if [ -f $PID ]; then
         echo "Process already exist"
         echo "1. Check if process is running:"
@@ -28,14 +15,10 @@ start() {
         echo "    rm $PID"
 
     else
-        echo "Activate virtual environment: $SCRIPT_DIR/venv/bin/activate"
 
-        #source $SCRIPT_DIR/../venv/bin/activate
         echo "Start service"
         mkdir -p $SCRIPT_DIR/log
-        #nohup $SCRIPT_DIR/../venv/bin/python $SCRIPT_DIR/../venv/bin/gunicorn --config=etc/gunicorn.conf.py --log-file $LOG_FILE --log-level $LOG_LEVEL --worker-class eventlet wsgi:app > log/nohub.log 2>&1 &
-        nohup $SCRIPT_DIR/../venv/bin/python $SCRIPT_DIR/../venv/bin/gunicorn --config=etc/gunicorn.conf.py --log-file $LOG_FILE --log-level $LOG_LEVEL --worker-class aiohttp.GunicornWebWorker index:main  > log/nohub.log 2>&1 &
-        #$SCRIPT_DIR/../venv/bin/python $SCRIPT_DIR/../venv/bin/gunicorn --config=etc/gunicorn.conf.py --log-file $LOG_FILE --log-level $LOG_LEVEL  wsgi:app
+        nohup $SCRIPT_DIR/../venv/bin/gunicorn -c etc/gunicorn.conf.py index:socket_app  > log/nohub.log 2>&1 &
     fi
 
     sleep 1
@@ -43,7 +26,9 @@ start() {
 }
 
 
+
 stop() {
+
     echo "Killing process `cat $PID`"
     kill `cat $PID`
     echo "remove $PID"
@@ -53,7 +38,9 @@ stop() {
 }
 
 
+
 status() {
+
     RED='\033[0;31m'
     GREEN='\033[0;32m'
     NC='\033[0m' # No Color
@@ -62,7 +49,7 @@ status() {
     IGreen='\033[0;92m'
 
     RUNNING='\033[102;97m'
-    STOPPED='\033[101;31m'
+    STOPPED='\033[101;97m'
 
     if [ -f $PID ]; then
         echo -e "Service is ${RUNNING}running${NC} ..."

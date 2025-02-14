@@ -43,9 +43,9 @@
             {{ history['status'] }}
           </button>
         </td>
-        <td>{% if history['stdout'] != '' %}<img src="/static/assets/img/log.png"
+        <td>{% if history['stdout'] != '' %}<img src="{{ url_for('static', path='assets/img/log.png') }}"
             onclick="showLog('info', '{{ file_name }}', '{{ stage.id }}', {{ cmd['id'] }}, {{loop.index-1}})">&nbsp;{% endif %}
-          {% if history['stderr'] != '' %}<img src="/static/assets/img/error-log.png"
+          {% if history['stderr'] != '' %}<img src="{{ url_for('static', path='assets/img/error-log.png') }}"
             onclick="showLog('error', '{{ file_name }}', '{{ stage.id }}', {{ cmd['id'] }}, {{loop.index-1}})">{% endif %}</td>
       </tr>
       {% endfor %}
