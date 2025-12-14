@@ -5,7 +5,7 @@ if [ -d "./.venv" ]; then
   echo "Virtual environment does already exist"
 else
   echo "Create virtual environment"
-  python -m venv --system-site-packages ./.venv
+  python3.13 -m venv --system-site-packages ./.venv
 fi
 
 echo "Activate virtual environment"
