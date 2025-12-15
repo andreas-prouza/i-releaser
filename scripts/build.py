@@ -62,9 +62,9 @@ def load_object_list(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Dep
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
 
-  reset_git_repo(build_dir)
-  run_sys_cmd(['git', 'checkout', new_release], build_dir)
-  run_sys_cmd(['git', 'reset', '--hard', f'origin/{new_release}'], build_dir)
+#  reset_git_repo(build_dir)
+#  run_sys_cmd(['git', 'checkout', new_release], build_dir)
+#  run_sys_cmd(['git', 'reset', '--hard', f'origin/{new_release}'], build_dir)
 
   meta_file.import_objects_from_config_file()
   meta_file.write_meta_file()

@@ -382,6 +382,26 @@ def cancel_deployment():
 @app.route('/api/create_deployment/<wf_name>/<commit>', defaults={'obj_list':None}, methods=['GET'])
 @app.route('/api/create_deployment/<wf_name>', defaults={'commit': None, 'obj_list':None}, methods=['GET'])
 def create_deployment(wf_name, commit, obj_list):
+    """
+    Creates a new deployment for a given workflow, commit, and the name of the list of objects.
+    This function checks if a deployment already exists for the specified commit and workflow.
+    If a deployment exists and its status is not 'CANCELED', it returns an error response.
+    Otherwise, it creates a new meta file for the deployment, sets its status to 'READY', and returns the deployment metadata.
+    Args:
+        wf_name (str): The name of the workflow for which the deployment is to be created.
+        commit (str): The commit hash or identifier associated with the deployment.
+        obj_list (list): Name of a list of objects to be included in the deployment.
+                This list should contain strings in the following format:
+                        prod_obj|{production_lib}|{development_lib}|{object_name}|{object_type}|{object_attr}|{source_path}
+                Example:
+                        prod_obj|prouzalib|devlib|date|srvpgm|sqlrpgle|prouzalib/qrpglesrc/date.sqlrpgle.srvpgm
+
+    Returns:
+        flask.Response: A JSON response containing the status of the operation and relevant data or error message.
+    """
+    
+    obj_list = request.args.get('obj_list', obj_list)
+
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}, {obj_list=}")
     logging.debug(f'{os.path.realpath(os.path.dirname(__file__)+"/..")=}')
     result={}

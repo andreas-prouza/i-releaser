@@ -69,7 +69,8 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
       includes = ''
       
       for obj in meta_file.deploy_objects.get_obj_list_by_lib(lib['lib']):
-        includes += f" (*INCLUDE {obj.name} {obj.type})"
+        obj_name = obj.name.replace('$', '\\$')
+        includes += f" (*INCLUDE {obj_name} {obj.type})"
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
         #cmd=f"RSTLIB SAVLIB({lib['lib']}) DEV(*SAVF) SAVF({meta_file.remote_deploy_lib}/{lib['lib']}) SELECT({includes}) RSTLIB({restore_to_lib})", 

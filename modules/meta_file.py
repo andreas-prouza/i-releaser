@@ -81,9 +81,6 @@ class Meta_File:
       self.update_time = update_time
       self.create_time = create_time
 
-      if self.object_list == None:
-        self.object_list = constants.C_OBJECT_LIST
-
       if self.create_time == None:
         self.create_time = str(datetime.datetime.now())
 
@@ -126,7 +123,7 @@ class Meta_File:
       if not imported_from_dict:
 
         dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, self.status, self.file_name, self.commit)
-        self.import_objects_from_config_file()
+        #self.import_objects_from_config_file()
         self.copy_object_actions_2_open_stages()
 
         self.write_meta_file(False)
@@ -676,15 +673,15 @@ class Meta_File:
 
       self.deploy_objects = do.Deploy_Object_List()
 
-      if self.object_list is None:
+      if self.object_list is None and not os.path.exists(constants.C_OBJECT_LIST):
         return
-      if not os.path.exists(self.object_list):
-        logging.warning(f"Object list {self.object_list} does not exist")
-        return
-
-      file_path = self.object_list
-
+      
+      file_path = self.object_list if self.object_list is not None else constants.C_OBJECT_LIST
       logging.debug(f"Abs. file: {os.path.abspath(file_path)}")
+
+      if not os.path.exists(file_path):
+        raise Exception(f"Object list {file_path} does not exist")
+
       logging.debug(f"File: {file_path}")
 
       with open(file_path, "r") as file:

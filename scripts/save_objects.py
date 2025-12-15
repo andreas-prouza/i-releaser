@@ -73,14 +73,16 @@ def save_objects_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da
     for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
         includes = ""
         for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib["prod_lib"]):
-            includes += f" (*INCLUDE {obj.name} *{obj.type})"
+
+            obj_name = obj.name.replace('$', '\\$')
+            includes += f" (*INCLUDE {obj_name} *{obj.type})"
 
             if (
                 clear_files is True
                 and obj.attribute in constants.C_PHYSICAL_FILE_ATTRIBUTES
             ):
                 last_added_action = action.sub_actions.add_action(da.Deploy_Action(
-                    cmd=f"CLRPFM {obj.lib}/{obj.name}",
+                    cmd=f"CLRPFM {obj.lib}/{obj_name}",
                     environment=da.Command_Type.QSYS,
                     processing_step=action.processing_step,
                     stage=stage_obj.name,
