@@ -3,6 +3,7 @@
 #######################################################
 
 # Configuration modules
+from datetime import datetime
 import sys, json, os
 base_dir = os.path.realpath(os.path.dirname(__file__)+"/..")
 #sys.path.insert(1, base_dir)
@@ -26,8 +27,10 @@ from flask_session import Session
 logging.debug(f"{sys.path=}")
 
 # Custom modules
+from modules import action_type
 from modules import deploy_version, meta_file
 from modules import workflow
+from modules.deploy_object import Deploy_Object
 
 from web_modules import flowchart, app_login
 
@@ -85,6 +88,7 @@ def check_session():
         session['uid'] = uuid.uuid4()
 
     if 'is_logged_in' in session and '__invalid__' not in session:
+        meta_file.Meta_File.CURRENT_USER = session.get('current_user', None).upper()
         return
     
     auth_token = request.args.get('auth-token', None)
@@ -372,6 +376,7 @@ def cancel_deployment():
     logging.debug(f"Cancel Deployment: {data['filename']}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
+    action_type.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
     mf.cancel_deployment()
 
     return jsonify({'status': 'success'})
@@ -417,6 +422,8 @@ def create_deployment(wf_name, commit, obj_list):
             return Response(json.dumps({'status': 'error', 'error': f"Given commit is already used in deployment version {existing_version['version']} with status '{existing_version['status']}'"}), status=401, mimetype='application/json') 
 
         mf = meta_file.Meta_File(workflow_name=wf_name, object_list=obj_list)
+        action_type.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
+
         mf.commit = commit
         mf.set_status(meta_file.Meta_file_status.READY)
         result={'status': 'success', 'meta_file': mf.get_all_data_as_dict()}
@@ -439,6 +446,29 @@ def set_check_error():
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
         mf.set_action_check(int(data['stage_id']), int(data['action_id']), data['checked'], session['current_user'])
+        mf.write_meta_file()
+    except Exception as e:
+        logging.exception(e, stack_info=True)
+        result={'status': 'error', 'error': str(e)}
+
+    #mf.set_status(meta_file.Meta_file_status.READY)
+    logging.debug(f"{result=}")
+
+    return jsonify(result)
+
+
+
+@app.route('/api/set_source_ready_4_deployment', methods=['POST'])
+def set_source_ready_4_deployment():
+    data = request.get_json(force=True)
+    logging.debug(f"Set source ready for deployment lib: {data['lib']}, name: {data['name']}, type: {data['type']}, checked: {data['checked']}, filename: {data['filename']}")
+    result={}
+
+    try:
+        mf = meta_file.Meta_File.load_json_file(data['filename'])
+        action_type.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set object {data['lib']}/{data['name']}({data['type']}) ready={data['checked']}", meta_file=mf)
+        obj: Deploy_Object = mf.deploy_objects.get_deploy_object(data['lib'], data['name'], data['type'])
+        obj.ready = data['checked']
         mf.write_meta_file()
     except Exception as e:
         logging.exception(e, stack_info=True)

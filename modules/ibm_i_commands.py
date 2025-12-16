@@ -13,6 +13,7 @@ from modules import meta_file
 from modules import deploy_action as da
 from modules import run_history as rh
 from modules import stages as s
+from modules import action_type
 from modules.cmd_status import Status as Cmd_Status
 
 from scripts import *
@@ -50,7 +51,7 @@ class IBM_i_commands:
 
     logging.debug(f"Run Commands for {stage.name=} ({stage.id}), {processing_step=}")
 
-    stage.processing_users.append({'user': self.meta_file.current_user, 'timestamp' : str(datetime.datetime.now()), 'action' : s.Actions.RUN_STAGE.value})
+    action_type.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage)
     stage.set_status('in process')
 
     # Execute all from stage

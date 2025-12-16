@@ -23,6 +23,7 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
 
     last_action = action
     meta_file.deploy_objects.set_objects_status(Obj_Status.IN_BACKUP)
+    deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
 
     for lib in meta_file.deploy_objects.get_lib_list_from_prod():
 
@@ -38,6 +39,23 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
             check_error=action.check_error
         ))
         cmd.execute_action(stage=stage_obj, action=last_action)
+
+        # Copy save file to IFS
+        savf_ifs_qsys = (
+            f"/qsys.lib/{meta_file.backup_deploy_lib}.lib/{lib}.file"
+        )
+        savf_ifs_target = f"{deployment_dir}/{lib}.file"
+
+        last_added_action = action.sub_actions.add_action(da.Deploy_Action(
+            cmd=f"CPYTOSTMF FROMMBR('{savf_ifs_qsys}') TOSTMF('{savf_ifs_target}') STMFOPT(*REPLACE)",
+            environment=da.Command_Type.QSYS,
+            processing_step=action.processing_step,
+            stage=stage_obj.name,
+            check_error=action.check_error,
+            run_in_new_job=True
+        ))
+        cmd.execute_action(stage=stage_obj, action=last_added_action)
+
 
     meta_file.deploy_objects.set_objects_status(Obj_Status.BACKUPED)
     meta_file.write_meta_file()

@@ -141,7 +141,7 @@ def update_compiled_object_status(meta_file: mf.Meta_File, stage_obj: s.Stage, a
         logging.warning(f"Object has less than 3 attributes. Will be skipped. {prod_obj=}")
         continue
 
-      do = meta_file.deploy_objects.get_object(obj_lib=prod_lib, obj_name=prod_obj[0], obj_type=prod_obj[2])
+      do = meta_file.deploy_objects.get_prod_object(obj_lib=prod_lib, obj_name=prod_obj[0], obj_type=prod_obj[2])
       do.deploy_status = Obj_Status.FINISHED
       
       logging.debug(f"{do.get_dict()}")

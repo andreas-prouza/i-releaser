@@ -31,9 +31,10 @@
           <th>User</th>
           <th>Timestamp</th>
           <th>Action</th>
+          <th>Details</th>
         </thead>
         {% for user in stage.processing_users %}
-        <tr><td>{{ user['user'] }}</td><td>{{ user['timestamp'] }}</td><td>{{ user['action'] }}</td></tr>
+        <tr><td>{{ user['user'] }}</td><td>{{ user['timestamp'] }}</td><td>{{ user['action'] }}</td><td>{{ user['details'] }}</td></tr>
         {% endfor %}
       </table>
     </td>

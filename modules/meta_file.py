@@ -13,7 +13,7 @@ from enum import Enum
 # from pydantic import validate_arguments
 
 from etc import constants, logger_config
-from modules import deploy_action as da
+from modules import action_type, deploy_action as da
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
@@ -43,6 +43,8 @@ class Meta_file_status(Enum):
 
 
 class Meta_File:
+    
+    CURRENT_USER = None
 
     """
     Meta_File describes a information of a deployment
@@ -52,6 +54,7 @@ class Meta_File:
     def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, 
                 object_list=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, 
                 deploy_version : int=None, processed_stages: s.Stage_List_list=None, open_stages: s.Stage_List_list=None, 
+                processing_users: list=[],
                 imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
@@ -75,6 +78,9 @@ class Meta_File:
       self.object_list = object_list
       self.run_history = mfh.Meta_File_History_List_list()
       self.activate_history()
+      self.processing_users = processing_users
+      if self.processing_users is None:
+        self.processing_users = []
 
       self.set_status(status, False)
         
@@ -177,7 +183,7 @@ class Meta_File:
       stage = self.open_stages.get_stage(stage_id)
       stage.actions.set_action_check(action_id, check)
 
-      stage.processing_users.append({'user': current_user, 'timestamp' : str(datetime.datetime.now()), 'action' : s.Actions.SET_CHECK_ERROR})
+      action_type.create_action_log(action_type.Action_type.SET_CHECK_ERROR, details=f"Set check error to {check} for action id {action_id}", meta_file=self, stage=stage)
       self.write_meta_file()
 
 
@@ -257,7 +263,7 @@ class Meta_File:
 
 
 
-    def get_stages_needs_2_get_finished(self, stage: Stage) -> []:
+    def get_stages_needs_2_get_finished(self, stage: Stage) -> list[str]:
       if stage.after_stages_finished is None or len(stage.after_stages_finished) == 0:
         return []
 
@@ -531,6 +537,7 @@ class Meta_File:
                               processed_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['processed_stages']),
                               open_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['open_stages']),
                               object_list=meta_file_json['general']['object_list'],
+                              processing_users=meta_file_json.get('processing_users', []),
                               imported_from_dict=True
                              )
         meta_file.commit=meta_file_json['general']['commit']
@@ -591,6 +598,7 @@ class Meta_File:
                              'backup_lib':  self.backup_deploy_lib,
                             }
       #dict['deploy_cmds'] = self.get_actions_as_dict()
+      dict['processing_users'] = self.processing_users
       dict['objects'] = self.deploy_objects.get_objectjs_as_dict()
       dict['run_history'] = self.run_history.get_list()
       logging.debug(f"Number of histories: {len(self.run_history)}")

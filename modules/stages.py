@@ -11,14 +11,6 @@ from modules.cmd_status import Status as Cmd_Status
 from modules import deploy_action as da, workflow
 
 
-from enum import Enum
-
-
-class Actions(Enum):
-
-  RUN_STAGE = 'run_stage'
-  SET_CHECK_ERROR = 'set_check_error'
-  
 
 
 
@@ -27,7 +19,7 @@ class Stage:
   # Static id counter for each stage to be unique
   id=0
 
-  def __init__(self, dict: {}={}):
+  def __init__(self, dict: dict={}):
     self.id :int = None
     self.workflow = None
     self.name :str = None
@@ -36,9 +28,9 @@ class Stage:
     self.remote_dir :str = None
     self.build_dir :str = None
     self.next_stages :Stage_List_list = Stage_List_list()
-    self.next_stage_ids :[int] = []
-    self.after_stages_finished :[str] = []
-    self.from_stage_id :[int]= []
+    self.next_stage_ids :list[int] = []
+    self.after_stages_finished :list[str] = []
+    self.from_stage_id :list[int]= []
     self.clear_files = None
     self.lib_replacement_necessary = None
     self.lib_mapping = []
@@ -49,7 +41,7 @@ class Stage:
     self.create_time = str(datetime.datetime.now())
 #    self.create_time = '2023-03-04 14:31:30.404775'
     self.update_time = None
-    self.processing_users :[str] = []
+    self.processing_users :list[str] = []
 
 
     if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
@@ -141,7 +133,7 @@ class Stage:
 
 
 
-  def get_stage_from_dict(wf:workflow.Workflow, dict: {}={}):
+  def get_stage_from_dict(wf:workflow.Workflow, dict: dict = {}):
 
     stage = Stage()
 
@@ -158,7 +150,7 @@ class Stage:
 
 
 
-  def get_dict(self) -> {}:
+  def get_dict(self) -> dict:
     return {
       'id' : self.id,
       'name' : self.name,
@@ -194,7 +186,7 @@ class Stage:
 
 
 
-  def get_next_stages_name(self) -> []:
+  def get_next_stages_name(self) -> list:
 
     new_next_stages = []
     
@@ -205,7 +197,7 @@ class Stage:
 
 
 
-  def validate(stage_dict: {}):
+  def validate(stage_dict: dict) -> None:
 
     if 'name' not in stage_dict.keys():
       raise Exception(f"Stage name has to be defined: {stage_dict=}")
@@ -335,14 +327,14 @@ class Stage_List_list(list):
         )
 
 
-    def validate_items(dict: []) -> None:
+    def validate_items(dict: list) -> None:
 
       for item in dict:
         Stage.validate(item)
 
         
 
-    def summary(self) ->[]:
+    def summary(self) -> list:
       list = []
 
       for s in self:
@@ -351,7 +343,7 @@ class Stage_List_list(list):
       return list
         
 
-    def get_all_names(self) ->[]:
+    def get_all_names(self) -> list[str]:
       list = []
 
       for s in self:
@@ -360,7 +352,7 @@ class Stage_List_list(list):
       return list
 
 
-    def get_all_ids(self) ->[]:
+    def get_all_ids(self) -> list[int]:
       list = []
 
       for s in self:
@@ -370,7 +362,7 @@ class Stage_List_list(list):
 
 
 
-    def get_dict(self) -> {}:
+    def get_dict(self) -> list[dict]:
       list = []
 
       for s in self:
@@ -397,7 +389,7 @@ class Stage_List_list(list):
 
 
 
-    def get_stages_by_name(self, stage_name: str) -> [Stage_List_list]:
+    def get_stages_by_name(self, stage_name: str) -> list[Stage_List_list]:
 
       stages = Stage_List_list()
 
@@ -409,7 +401,7 @@ class Stage_List_list(list):
 
 
 
-    def get_stage_list_by_status(self, status: Cmd_Status) -> []:
+    def get_stage_list_by_status(self, status: Cmd_Status) -> list[Stage_List_list]:
 
       stages = Stage_List_list()
 

@@ -188,6 +188,22 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                 <button type="button" class="btn btn-link" onclick="show_json('{{ deployment_dict['general']['file_name'] }}')">{{ deployment_dict['general']['file_name'] }}</button>
             </td>
         </tr>
+        <tr>
+            <th>Processing users</th>
+            <td>
+                <table class="table table-striped table-bordered">
+                    <thead>
+                    <th>User</th>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>Details</th>
+                    </thead>
+                    {% for user in (deployment_dict.get('processing_users') or []) %}
+                        <tr><td>{{ user['user'] }}</td><td>{{ user['timestamp'] }}</td><td>{{ user['action'] }}</td><td>{{ user['details'] }}</td></tr>
+                    {% endfor %}
+                </table>
+            </td>
+        </tr>
     </table>
 
 
@@ -215,10 +231,17 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     <h3>Objects to deploy</h3>
     <table class="table table-striped table-bordered w-auto">
         <thead>
-            <th>Prod Lib</th><th>Target Lib</th><th>Name</th><th>Type</th><th>Attribute</th><th>Status</th>
+            <th>Ready</th><th>Prod Lib</th><th>Target Lib</th><th>Name</th><th>Type</th><th>Attribute</th><th>Status</th>
         </thead>
         {% for object in deployment_dict['objects'] %}
         <tr>
+            <td>
+                <label class="switch">
+                    <input type="checkbox" {% if object['ready'] %}checked{% endif %}
+                        onchange="set_source_ready_4_deployment('{{ deployment_dict['general']['file_name'] }}', '{{ object['obj_lib'] }}', '{{ object['obj_name'] }}', '{{ object['obj_type'] }}', this.checked)">
+                    <span class="slider round"></span>
+                </label>
+            </td>
             <td>{{ object['obj_prod_lib'] }}</td>
             <td>{{ object['obj_lib'] }}</td>
             <td>{{ object['obj_name'] }}</td>
@@ -506,6 +529,13 @@ async function runStage(filename, stage_id, stage_name) {
         }
     });
     */
+
+
+function set_source_ready_4_deployment(filename, lib, name, type, checked) {
+    postData("/api/set_source_ready_4_deployment", { lib: lib, name: name, type: type, filename: filename, checked: checked }).then((data) => {
+        console.log(data); // JSON data parsed by `data.json()` call
+    });
+}
 
 
 function set_check_error(filename, stage_id, action_id, checked) {

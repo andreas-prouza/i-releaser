@@ -101,7 +101,7 @@ class Deploy_Object_List(list):
   def get_lib_list_from_prod(self) -> {}:
     libs = []
     for o in self:
-      if o.prod_lib not in libs:
+      if o.prod_lib not in libs and o.ready:
         libs.append(o.prod_lib)
     return libs
 
@@ -110,7 +110,7 @@ class Deploy_Object_List(list):
   def get_obj_list_by_lib(self, lib) -> [Deploy_Object]:
     objs = []
     for o in self:
-      if o.prod_lib == lib:
+      if o.prod_lib == lib and o.ready:
         objs.append(o)
     return objs
 
@@ -119,17 +119,25 @@ class Deploy_Object_List(list):
   def get_obj_list_by_prod_lib(self, lib) -> [Deploy_Object]:
     objs = []
     for o in self:
-      if o.prod_lib == lib:
+      if o.prod_lib == lib and o.ready:
         objs.append(o)
     return objs
 
 
 
-  def get_object(self, obj_lib: str, obj_name: str, obj_type: str) -> Deploy_Object:
+  def get_prod_object(self, prod_lib: str, obj_name: str, obj_type: str, ready: bool=None) -> Deploy_Object:
     for o in self:
-      if o.prod_lib == obj_lib and o.type == obj_type and o.name == obj_name:
+      if o.prod_lib == prod_lib and o.type == obj_type and o.name == obj_name and (o.ready == ready or ready is None):
         return o
-    logging.warning(f"No object found for {obj_lib=}, {obj_name=}, {obj_type=}")
+    logging.warning(f"No prod object found for {prod_lib=}, {obj_name=}, {obj_type=}")
+    return None
+
+
+  def get_deploy_object(self, obj_lib: str, obj_name: str, obj_type: str) -> Deploy_Object:
+    for o in self:
+      if o.lib == obj_lib and o.type == obj_type and o.name == obj_name:
+        return o
+    logging.warning(f"No deploy object found for {obj_lib=}, {obj_name=}, {obj_type=}")
     return None
 
 
@@ -139,7 +147,7 @@ class Deploy_Object_List(list):
     if type(action) == str:
       action = da.Deploy_Action(cmd=action)
 
-    obj = self.get_object(obj_lib, obj_name, obj_type)
+    obj = self.get_prod_object(obj_lib, obj_name, obj_type)
     obj.actions.add_action(action)
 
 
@@ -158,7 +166,7 @@ class Deploy_Object_List(list):
 
   def add_object_action_from_dict(self, dict: {}, workflow: workflow.Workflow):
     
-    obj = self.get_object(dict['obj_lib'], dict['obj_name'], dict['obj_type'])
+    obj = self.get_prod_object(dict['obj_lib'], dict['obj_name'], dict['obj_type'])
     
     if obj is None:
       return
@@ -205,7 +213,8 @@ class Deploy_Object_List(list):
 
   def set_objects_status(self, status: Obj_Status):
     for o in self:
-      o.deploy_status = status
+      if o.ready:
+        o.deploy_status = status
 
 
 
@@ -237,11 +246,13 @@ class Deploy_Object:
 
   def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict={}):
 
+    self.ready = True
     self.deploy_status = Obj_Status.NEW
     self.actions = da.Deploy_Action_List_list()
 
     if len(dict) > 0:
 
+      self.ready = dict.get('ready', True)
       self.prod_lib = dict['obj_prod_lib'].lower()
       self.lib = dict['obj_lib'].lower()
       self.name = dict['obj_name'].lower()
@@ -254,7 +265,7 @@ class Deploy_Object:
           self.actions.add_actions_from_dict(action)
           #self.actions.add_action(da.Deploy_Action(dict=action))
       return
-
+ 
     self.prod_lib = prod_lib.lower()
     self.lib = lib.lower()
     self.name = name.lower()
@@ -268,6 +279,7 @@ class Deploy_Object:
 
   def get_dict(self) -> {}:
     return {
+      'ready' : self.ready,
       'obj_lib' : self.lib,
       'obj_prod_lib' : self.prod_lib,
       'obj_name' : self.name,
@@ -279,11 +291,11 @@ class Deploy_Object:
 
 
   def __eq__(self, o):
-    if (self.lib, self.prod_lib, self.name, self.type, self.attribute, self.deploy_status, self.actions) == \
-       (o.lib, o.prod_lib, o.name, o.type, o.attribute, o.deploy_status, o.actions):
+    if (self.ready, self.lib, self.prod_lib, self.name, self.type, self.attribute, self.deploy_status, self.actions) == \
+       (o.ready, o.lib, o.prod_lib, o.name, o.type, o.attribute, o.deploy_status, o.actions):
       return True
 
-    logging.warn(f"{self.lib} - {self.prod_lib} - {self.name} - {self.type} - {self.attribute} - {self.deploy_status} - {self.actions}")
-    logging.warn(f"{o.lib} - {o.prod_lib} - {o.name} - {o.type} - {o.attribute} - {o.deploy_status} - {o.actions}")
+    logging.warning(f"{self.ready} - {self.lib} - {self.prod_lib} - {self.name} - {self.type} - {self.attribute} - {self.deploy_status} - {self.actions}")
+    logging.warning(f"{o.ready} - {o.lib} - {o.prod_lib} - {o.name} - {o.type} - {o.attribute} - {o.deploy_status} - {o.actions}")
 
     return False
