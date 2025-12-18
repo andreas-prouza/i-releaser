@@ -23,3 +23,4 @@ pip install -r requirements.txt
 
 cp -n webapp/etc/examples/* webapp/etc/
 cp -n etc/examples/* etc/
+cp -n scripts/examples/* scripts/
