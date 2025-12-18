@@ -621,7 +621,7 @@ class Meta_File:
 
 
     
-    def write_meta_file(self, update_time: bool=True):
+    def write_meta_file(self, update_time: bool=True, loop: int=0):
 
       if update_time:
         self.update_time = str(datetime.datetime.now())
@@ -632,8 +632,16 @@ class Meta_File:
 
       logging.debug(f"Save meta file to {self.file_name}")
       
-      with open(self.file_name, 'w') as file:
-        json.dump(self.get_all_data_as_dict(), file, default=str, indent=4)
+      try:
+        with open(self.file_name, 'w') as file:
+          json.dump(self.get_all_data_as_dict(), file, default=str, indent=4)
+      except Exception as err:
+        logging.exception(err, stack_info=True)
+        if loop < 3:
+          datetime.time.sleep(1)
+          self.write_meta_file(update_time=update_time, loop=loop+1)
+        else:
+          raise err
 
 
 
