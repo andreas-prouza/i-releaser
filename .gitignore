@@ -8,6 +8,11 @@ meta/**
 unit-tests/output
 ***/flask_session
 **/*.pid
-etc/deploy_version*.json
+etc/*.json
+etc/*.py
+webapp/etc/*.json
+webapp/etc/*.py
+scripts/*.py
+scripts/*.json
 **/logs/**
 **/build/**
