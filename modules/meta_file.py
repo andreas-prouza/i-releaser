@@ -263,7 +263,7 @@ class Meta_File:
 
 
 
-    def get_stages_needs_2_get_finished(self, stage: Stage) -> list[str]:
+    def get_stages_needs_2_get_finished(self, stage: s.Stage) -> list[str]:
       if stage.after_stages_finished is None or len(stage.after_stages_finished) == 0:
         return []
 
@@ -459,7 +459,7 @@ class Meta_File:
 
 
 
-    def set_deploy_objects(self, objects: []):
+    def set_deploy_objects(self, objects: list[dict]):
 
       for obj in objects:
         self.add_deploy_object(do.Deploy_Object(dict=obj))
@@ -491,9 +491,9 @@ class Meta_File:
 
 
     
-    def get_actions(self, processing_step: str=None, stage_id: int=None, action_id: int=None, include_subactions: bool=True) -> []:
+    def get_actions(self, processing_step: str=None, stage_id: int=None, action_id: int=None, include_subactions: bool=True) -> list[da.Deploy_Action]:
 
-      list=[]
+      list: list[da.Deploy_Action]=[]
 
       if stage_id is None:
         raise Exception(f"Stage id is None")
@@ -577,7 +577,7 @@ class Meta_File:
 
 
 
-    def get_all_data_as_dict(self) -> {}:
+    def get_all_data_as_dict(self) -> dict:
 
       dict = {}
       dict['general'] = {'workflow':        self.workflow.get_dict(),
@@ -646,7 +646,7 @@ class Meta_File:
 
 
     
-    def add_object_from_meta_structure(self, objects: [], object_type: str):
+    def add_object_from_meta_structure(self, objects: list[str], object_type: str):
 
       for obj in objects:
 

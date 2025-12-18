@@ -55,7 +55,7 @@ class Deploy_Action_List_list(list):
 
 
 
-  def get_list(self) -> [dict]:
+  def get_list(self) -> list[dict]:
 
     list = []
 
@@ -100,7 +100,7 @@ class Deploy_Action_List_list(list):
 
 
 
-  def add_actions_from_dict(self, dict_input: {}):
+  def add_actions_from_dict(self, dict_input: dict) -> None:
 
     logging.debug(f'Add actions from {type(dict_input)}')
     action = Deploy_Action(dict=dict_input)
@@ -128,7 +128,7 @@ class Deploy_Action_List_list(list):
 
 
 
-  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> [Deploy_Action]:
+  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> list[Deploy_Action]:
 
     list_actions=[]
 
@@ -163,7 +163,7 @@ class Deploy_Action_List_list(list):
 
 
 
-  def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> []:
+  def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]:
 
     actions_dict=[]
 
@@ -240,7 +240,7 @@ class Deploy_Action:
 
   def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=Cmd_Status.NEW,  
     environment: Command_Type=Command_Type.QSYS, stage: str=None, processing_step: str=None, 
-    check_error: bool=True, dict: {}=None, id: int=None, run_in_new_job: bool=False, execute_remote: bool=None):
+    check_error: bool=True, dict: dict=None, id: int=None, run_in_new_job: bool=False, execute_remote: bool=None):
 
     self.id :int = id
     self.sequence :int = sequence
@@ -313,7 +313,7 @@ class Deploy_Action:
 
 
 
-  def get_action_from_dict(dict: {}={}):
+  def get_action_from_dict(dict: dict={}):
 
     action = Deploy_Action()
 
@@ -330,7 +330,7 @@ class Deploy_Action:
 
 
 
-  def get_dict(self) -> {}:
+  def get_dict(self) -> dict:
     return {
       'id': self.id,
       'sequence': self.sequence, 

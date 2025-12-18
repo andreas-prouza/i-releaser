@@ -191,7 +191,7 @@ class Deploy_Object_List(list):
     if type(stage) != str:
       raise Exception(f"Stage is not a string")
       
-    list=[]
+    list: list[da.Deploy_Action]=[]
 
     for do in self:
       list.append(do.actions.get_actions(processing_step=processing_step, stage=stage, action_id=action_id, include_subactions=include_subactions))
