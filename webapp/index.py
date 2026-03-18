@@ -192,11 +192,6 @@ def show_log(log, number_of_lines):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    
-    if 'is_logged_in' in session and '__invalid__' not in session:
-        return redirect('/')
-
-    logging.debug(f"{session.get('error_text', None)=}")
     return render_template('login.html', sidebar=None, error_text=session.get('error_text', None)) 
 
 
