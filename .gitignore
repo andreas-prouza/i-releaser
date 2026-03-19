@@ -1,6 +1,6 @@
 **/__pycache__
 *coverage*
-log
+log/**
 .pytest_cache
 .venv
 venv
@@ -14,6 +14,8 @@ webapp/etc/*.json
 webapp/etc/*.py
 scripts/*.py
 scripts/*.json
-**/logs/**
+logs/**
 **/build/**
 **/sessions
+**/custom_routes/**
+**/custom_templates/**
