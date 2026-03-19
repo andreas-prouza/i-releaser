@@ -1,8 +1,9 @@
 from __future__ import annotations
 import logging, string, random
-from flask import session
 import hashlib, json
 import datetime
+
+from fastapi import Request
 
 from modules import meta_file, stages
 from modules.cmd_status import Status as Cmd_Status
@@ -10,19 +11,22 @@ from etc import db_config, global_cfg, web_constants
 
 import pyodbc
 
+from web_modules import server_sessions
+
 
 #cnxn = pyodbc.connect('DSN=*LOCAL')
 #cursor = cnxn.cursor()
 
 
 
-def connect(user, password):
+def connect(request: Request, user, password):
   driver = db_config.DATABASES['IBM_I']['DRIVER']
   host = db_config.DATABASES['IBM_I']['HOST']
   connection_string = f"driver={driver};system={host};uid={user};pwd={password}"
   logging.debug(f"Try to login; {user=}, {driver=}, {host=}")
-
   user = user.lower()
+
+  session = request.state.session
   
   try:
 
@@ -54,7 +58,9 @@ def get_user_keys():
 
 
 
-def generate_new_user_key():
+def generate_new_user_key(request: Request):
+
+  session = request.state.session
 
   letters = string.ascii_letters
   key = ''.join(random.choice(letters) for i in range(10)) 
@@ -78,7 +84,9 @@ def mask_key(key):
 
 
 
-def is_key_valid(auth_token):
+def is_key_valid(request: Request, auth_token):
+
+  session = request.state.session
 
   keys=get_user_keys()
 
@@ -97,7 +105,9 @@ def is_key_valid(auth_token):
   return None
 
 
-def drop_user_key():
+def drop_user_key(request: Request):
+
+  session = request.state.session
 
   keys=get_user_keys()
   keys.pop(session['current_user'], None)

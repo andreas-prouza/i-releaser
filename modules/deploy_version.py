@@ -19,6 +19,7 @@ class StatusConflictException(Exception):
 
 class Deploy_Version:
 
+    @staticmethod
     def get_next_deploy_version(project:str, status : meta_file.Meta_file_status) -> int:
 
       version_file = constants.C_DEPLOY_VERSION.format(project=project)
@@ -56,6 +57,7 @@ class Deploy_Version:
 
 
 
+    @staticmethod
     def get_deployments(version_file):
 
       logging.debug(f"Deployment file: {version_file}")
@@ -68,8 +70,8 @@ class Deploy_Version:
 
 
 
-
-    def validate_deployment(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str=None, commit : str=None):
+    @staticmethod
+    def validate_deployment(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str|None=None, commit : str|None=None):
 
       versions_config = Deploy_Version.get_deployments(Deploy_Version.get_deployment_file(project=project))
 
@@ -95,12 +97,14 @@ class Deploy_Version:
 
 
 
+    @staticmethod
     def get_deployment_file(project:str):
       return constants.C_DEPLOY_VERSION.format(project=project)
 
 
 
 
+    @staticmethod
     def update_deploy_status(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str, commit : str):
 
       logging.debug(f"Update deployment status: {version=}, {status=}, {meta_file_name}, {commit}")
@@ -132,6 +136,7 @@ class Deploy_Version:
 
 
     #@validate_arguments
+    @staticmethod
     def get_deployment(project:str, version : int):
 
       if type(version) == str:
@@ -154,6 +159,7 @@ class Deploy_Version:
 
 
 
+    @staticmethod
     def get_deployment_by_commit(project:str, commit : str):
 
       logging.debug(f"Get deployment {commit=}, {project=}") 

@@ -1,9 +1,12 @@
 from __future__ import annotations
 import logging
+
+from fastapi import Request
 from modules import meta_file, stages, deploy_action
 from modules.cmd_status import Status as Cmd_Status
-from flask import render_template
 import base64
+from web_modules import http_functions
+
 
 
 div_container=f'\n<div id="flow_html_container" onClick="print_flow_connections()" class="flow_container">\n'
@@ -76,7 +79,7 @@ def generate_action_button(action : deploy_action.Deploy_Action):
   return f'<button class="btn btn-sm {btn_class}">{action.status.value}</button>'
 
 
-def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
+def generate_stage_steps_html(request: Request, mf: meta_file.Meta_File, stage : stages.Stage):
 
   logging.debug(f"Generate HTML for stage {stage.name} ({stage.id})")
 
@@ -102,12 +105,12 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
     logging.warning('No actions found')
     return ''
 
-  html_actions = render_template('overview/details/stage-actions-details.html', 
+  html_actions = http_functions.get_html_response(request, 'overview/details/stage-actions-details.html', 
                                   file_name=mf.file_name, 
                                   stage=stage.get_dict(), 
                                   cmds=actions, 
                                   run_stage_button=generate_run_button(mf=mf, 
-                                  stage=stage))
+                                  stage=stage)).body.decode()
   #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
   html_actions=html_actions.replace('\n', '')
@@ -119,15 +122,15 @@ def generate_stage_steps_html(mf: meta_file.Meta_File, stage : stages.Stage):
 
 
 
-def generate_steps(mf: meta_file.Meta_File, stage : stages.Stage):
+def generate_steps(request: Request, mf: meta_file.Meta_File, stage : stages.Stage):
 
-  html = render_template('overview/details/stage-actions.html', file_name=mf.file_name, stage_id=stage.id, stage_name=stage.name)
+  html = http_functions.get_html_response(request, 'overview/details/stage-actions.html', file_name=mf.file_name, stage_id=stage.id, stage_name=stage.name).body.decode()
 
   return html
 
 
 
-def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage) -> str:
+def get_flow_stage(request: Request, mf: meta_file.Meta_File, stage : stages.Stage) -> str:
   """Generates the flow diagram of stages
 
   Args:
@@ -161,7 +164,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage) -> str:
     
     # All next stages in a new Row
     sub_row+=div_row
-    sub_row+=get_flow_stage(mf, ns)
+    sub_row+=get_flow_stage(request, mf, ns)
     sub_row+=div_row_end
 
   # This stage
@@ -171,7 +174,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage) -> str:
     html+= generate_run_button(mf, stage)
 
   if len(stage.processing_steps) > 0:
-    html+= generate_steps(mf, stage)
+    html+= generate_steps(request, mf, stage)
   html+=div_column_end
   # Next stages
   html+=div_column
@@ -182,7 +185,7 @@ def get_flow_stage(mf: meta_file.Meta_File, stage : stages.Stage) -> str:
 
 
 
-def get_flowchar_html(mf: meta_file.Meta_File):
+def get_flowchar_html(request: Request, mf: meta_file.Meta_File):
 
   global flow_stages
   global flow_connection
@@ -193,7 +196,7 @@ def get_flowchar_html(mf: meta_file.Meta_File):
 
   html=div_container
   html+=div_row
-  html+=get_flow_stage(mf, mf.get_stages_by_name('START')[0])
+  html+=get_flow_stage(request, mf, mf.get_stages_by_name('START')[0])
   html+=div_row_end
   html+=div_container_end
   
@@ -247,7 +250,7 @@ def get_flowchar_html(mf: meta_file.Meta_File):
 #ARCHIV_TEST->END
 #UAT_TEST->END
 
-def get_flowchart_text(mf: meta_file.Meta_File):
+def get_flowchart_text(request: Request, mf: meta_file.Meta_File):
 
   wf_steps = 'start=>start: Start'
   wf_flow = ''

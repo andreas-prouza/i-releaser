@@ -16,3 +16,4 @@ scripts/*.py
 scripts/*.json
 **/logs/**
 **/build/**
+**/sessions

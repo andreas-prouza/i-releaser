@@ -51,9 +51,9 @@ class Meta_File:
     It's the main controller
     """
 
-    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, 
+    def __init__(self, project: str|None=None, workflow_name : str|None=None, workflow=None, file_name=None, 
                 object_list=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, 
-                deploy_version : int=None, processed_stages: s.Stage_List_list=None, open_stages: s.Stage_List_list=None, 
+                deploy_version : int|None=None, processed_stages: s.Stage_List_list=None, open_stages: s.Stage_List_list=None, 
                 processing_users: list=[],
                 imported_from_dict=False):
 
@@ -285,7 +285,7 @@ class Meta_File:
 
 
 
-    def run_current_stage_as_thread(self, stage_id: int, processing_step: str=None, continue_run=True) -> threading.Thread:
+    def run_current_stage_as_thread(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> threading.Thread:
 
       logging.debug(f"Start deployment check")
       self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
@@ -298,7 +298,7 @@ class Meta_File:
 
 
 
-    def check_deployment_ready_2_run(self, stage_id: int, processing_step: str=None):
+    def check_deployment_ready_2_run(self, stage_id: int, processing_step: str|None=None):
 
       if self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
@@ -327,7 +327,7 @@ class Meta_File:
 
 
 
-    def run_current_stage(self, stage_id: int, processing_step: str=None, continue_run=True) -> None:
+    def run_current_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> None:
       """Run given stage
 
       Args:
@@ -402,7 +402,7 @@ class Meta_File:
      #@validate_arguments
     def check_deployment_finish(self) -> None:
 
-      if len(self.open_stages) == 0:
+      if self.open_stages is None or len(self.open_stages) == 0:
         logging.info(f"Deployment {self.file_name} has been finished.")
         self.set_status(Meta_file_status.FINISHED)
 
@@ -466,15 +466,15 @@ class Meta_File:
 
 
 
-    def get_stage_by_id(self, stage_id: int) -> s.Stage:
+    def get_stage_by_id(self, stage_id: int) -> s.Stage|None:
 
       if type(stage_id) == str:
         stage_id = int(stage_id)
 
-      if stage_id in self.open_stages.get_all_ids():
+      if self.open_stages is not None and stage_id in self.open_stages.get_all_ids():
         return self.open_stages.get_stage(stage_id)
 
-      if stage_id in self.processed_stages.get_all_ids():
+      if self.processed_stages is not None and stage_id in self.processed_stages.get_all_ids():
         return self.processed_stages.get_stage(stage_id)
       
       logging.error(f'No stage found with id {stage_id}. Existing: {self.open_stages.get_all_ids()=}, {self.processed_stages.get_all_ids()=}')
@@ -483,15 +483,15 @@ class Meta_File:
 
     def get_stages_by_name(self, stage: str) -> s.Stage:
 
-      if stage in self.open_stages.get_all_names():
+      if self.open_stages is not None and stage in self.open_stages.get_all_names():
         return self.open_stages.get_stages_by_name(stage)
 
-      if stage in self.processed_stages.get_all_names():
+      if self.processed_stages is not None and stage in self.processed_stages.get_all_names():
         return self.processed_stages.get_stages_by_name(stage)
 
 
     
-    def get_actions(self, processing_step: str=None, stage_id: int=None, action_id: int=None, include_subactions: bool=True) -> list[da.Deploy_Action]:
+    def get_actions(self, processing_step: str|None=None, stage_id: int|None=None, action_id: int|None=None, include_subactions: bool=True) -> list[da.Deploy_Action]:
 
       list: list[da.Deploy_Action]=[]
 
@@ -508,7 +508,7 @@ class Meta_File:
 
 
 
-#    def get_next_open_action(self, processing_step: str=None, stage: str=None):
+#    def get_next_open_action(self, processing_step: str|None=None, stage: str|None=None):
 #      for action in self.get_actions(processing_step=processing_step, stage=stage):
 #        if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
 #          continue
@@ -517,7 +517,7 @@ class Meta_File:
 
 
 
-
+    @staticmethod
     def load_json_file(file_name: str) -> Meta_File:
 
       logging.debug(f"Load meta file {file_name}")
@@ -566,6 +566,7 @@ class Meta_File:
 
 
     # Load meta file based on its version number
+    @staticmethod
     def load_version(project:str, version: int) -> Meta_File:
 
       deployment = dv.Deploy_Version.get_deployment(project, version)
@@ -740,7 +741,7 @@ class Meta_File:
 
 
 
-    def copy_object_actions_2_open_stages(self, stage_id: int=None):
+    def copy_object_actions_2_open_stages(self, stage_id: int|None=None):
       """
       Add object actions to related open stages
 
