@@ -8,6 +8,7 @@ from fastapi import Request
 from modules import meta_file, stages
 from modules.cmd_status import Status as Cmd_Status
 from etc import db_config, global_cfg, web_constants
+from pathlib import Path
 
 import pyodbc
 
@@ -51,9 +52,14 @@ def connect(request: Request, user, password):
 
 
 def get_user_keys():
+
+  if not Path(web_constants.C_KEYS_FILE).exists():
+    return {}
+  
   with open(web_constants.C_KEYS_FILE) as f:
     keys = json.load(f)
     return keys
+  
   return {}
 
 
