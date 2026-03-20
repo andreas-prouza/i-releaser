@@ -54,9 +54,15 @@ class Stage:
       for k, v in dict.items():
         setattr(self, k, v)
 
+    if self.name is None:
+      e = Exception(f"Stage name has to be defined: {dict=}")
+      logging.exception(e, stack_info=True)
+      raise e
+    
     if self.id is None:
       Stage.id += 1
-      self.id = Stage.id
+      self.id = int(f"{str(Stage.id)}{str(abs(hash(self.name)))[:5]}")
+      logging.debug(f"Generate new stage id for stage '{self.name}' hash: {str(abs(hash(self.name)))[:5]}, id: {self.id}")
 
 
   def set_status(self, status, update_time=True):
@@ -135,12 +141,9 @@ class Stage:
 
   def get_stage_from_dict(wf:workflow.Workflow, dict: dict = {}):
 
-    stage = Stage()
-
     Stage.validate(dict)
 
-    for k, v in dict.items():
-      setattr(stage, k, v)
+    stage = Stage(dict=dict)
 
     stage.set_status(stage.status, False)
     stage.actions = da.Deploy_Action_List_list(stage.actions)
@@ -219,7 +222,7 @@ class Stage:
       if type(stage_dict['clear_files']) != bool:
         raise Exception(f"Key 'clear_files' has to be a bool in stage {stage_dict=}")
 
-    stage = Stage()
+    stage = Stage(dict=stage_dict)
 
     if len(list(set(stage_dict.keys()) - set(stage.__dict__.keys()))) > 0:
       raise Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
@@ -314,7 +317,7 @@ class Stage_List_list(list):
         super().append(self._validate_item(item))
 
     def extend(self, other):
-        if isinstance(other, type(Stage())):
+        if isinstance(other, Stage):
             super().extend(other)
         else:
             super().extend(self._validate_item(item) for item in other)

@@ -48,7 +48,7 @@
             {% for key, value in row.items() %}
             <td style="white-space: nowrap;">
                 {% if key == 'status' %}
-                    <a href="show_details/{{ project }}/{{ row['version'] }}">
+                    <a href="/show_details/{{ project }}/{{ row['version'] }}">
                     <button type="button" class="btn 
                         {% if value == 'finished' %}btn-success{% endif %}
                         {% if value == 'failed' %}btn-danger{% endif %}

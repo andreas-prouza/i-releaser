@@ -30,12 +30,12 @@ class Workflow:
   ----------
   """
 
-  name: str
+  name: str|None
   
 
-  def __init__(self, name=None, dict={}):
+  def __init__(self, name: str|None=None, dict={}):
 
-    self.name = name
+    self.name = name.lower() if name else None
     self.object_commands = []
     self.default_project = None
     self.step_action = None
@@ -71,7 +71,7 @@ class Workflow:
 
     for wf in workflows_json:
 
-      if self.name == wf['name']:
+      if self.name == wf['name'].lower():
 
         Workflow.validate_workflow(wf)
         if 'step_action' in wf:

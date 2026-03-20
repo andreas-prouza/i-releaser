@@ -12,14 +12,11 @@ class Action_type(Enum):
   CHANGE_OBJ_READY_STATUS = 'change_obj_ready_status'
   CREATE_WF = 'create_workflow'
   CANCEL_WF = 'cancel_workflow'
+  CUSTOM_ACTION = 'custom_action'
   
 
 def create_action_log(action: Action_type, details: str=None, meta_file: mf.Meta_File=None, stage: Stage=None) -> None:
 
   user = mf.Meta_File.CURRENT_USER
 
-  if stage is not None:
-    stage.processing_users.append({'action': action.value, 'user': user, 'timestamp' : str(datetime.datetime.now()), 'details': details})
-    details = f"Stage {stage.name}: {details}" if details is not None else f"Stage {stage.name}"
-  
-  meta_file.processing_users.append({'action': action.value, 'user': user, 'timestamp' : str(datetime.datetime.now()), 'details': details})
+  meta_file.processing_users.append({'action': action.value, 'user': user, 'timestamp' : str(datetime.datetime.now()), 'stage': stage.name if stage else None, 'details': details})

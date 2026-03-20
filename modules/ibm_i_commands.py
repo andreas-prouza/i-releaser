@@ -84,15 +84,10 @@ class IBM_i_commands:
 
     cmd = action.cmd.format(**all_attributes)
 
-    logging.info(f"run {action.sequence=}, {cmd=}")
     
-    original_dir=os.getcwd()
+    logging.info(f"run {action.sequence=}, {cmd=}, {os.getcwd()=}")
     
     try:
-      
-      if stage.build_dir is not None:
-        os.chdir(stage.build_dir)
-
       run_history = executions.get(action.environment)(stage, cmd, action)
 
     except Exception as e:
@@ -102,8 +97,6 @@ class IBM_i_commands:
       run_history.status = Cmd_Status.FAILED
       run_history.stderr = str(e)
 
-    os.chdir(original_dir)
-
     #time.sleep(0.02)
     action.run_history.add_history(run_history)
 
@@ -112,6 +105,7 @@ class IBM_i_commands:
     if run_history.status == Cmd_Status.FAILED and action.check_error:
       stage.set_status(run_history.status)
       self.meta_file.write_meta_file()
+      logging.exception(f"Error in action {action.sequence} of stage {stage.name}: {run_history.stderr}")
       raise Command_Exception(run_history.stderr)
       
     self.meta_file.write_meta_file()
@@ -125,7 +119,7 @@ class IBM_i_commands:
     #cmd='pre.pre_cmd'
     #pre.pre_cmd('test', 'xxx')
     logging.info(f"Going to run script {cmd}")
-    
+
     obj = cmd.split('.')
     
     if len(obj) != 2:
@@ -145,6 +139,7 @@ class IBM_i_commands:
     try:
       func = getattr(globals()[obj[0]], obj[1])
       logging.info(f"Run {str(func)}")
+
       func(self.meta_file, stage, action)
       run_history.status = Cmd_Status.FINISHED
 
@@ -198,11 +193,13 @@ class IBM_i_commands:
     
 
 
+
   def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
       
-      logging.debug(f"{cmd=}; {stage.build_dir=}; ")
+      logging.debug(f"{cmd=}; {stage.build_dir=}; {os.getcwd()=}")
 
       s=subprocess.run(cmd, stdout=subprocess.PIPE, cwd=stage.build_dir, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
+
       stdout = s.stdout
       stderr = s.stderr
 

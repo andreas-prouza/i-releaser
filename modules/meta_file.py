@@ -51,10 +51,10 @@ class Meta_File:
     It's the main controller
     """
 
-    def __init__(self, project:str=None, workflow_name :str=None, workflow=None, file_name=None, 
+    def __init__(self, project: str|None=None, workflow_name : str|None=None, workflow=None, file_name=None, 
                 object_list=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, 
-                deploy_version : int=None, processed_stages: s.Stage_List_list=None, open_stages: s.Stage_List_list=None, 
-                processing_users: list=[],
+                deploy_version : int|None=None, processed_stages: s.Stage_List_list=None, open_stages: s.Stage_List_list=None, 
+                processing_users: list=[], custom_data: dict={},
                 imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
@@ -81,6 +81,8 @@ class Meta_File:
       self.processing_users = processing_users
       if self.processing_users is None:
         self.processing_users = []
+
+      self.custom_data = custom_data
 
       self.set_status(status, False)
         
@@ -173,7 +175,7 @@ class Meta_File:
         self.write_meta_file()
 
       self.status = status
-      logging.debug(f"Finished meta file status set")
+      logging.debug(f"Finished meta file status set to {self.status.value}")
 
 
 
@@ -195,7 +197,7 @@ class Meta_File:
       Args:
           from_stage (s.Stage): Current finished stage
       """
-
+      logging.debug(f"Set next stage from '{from_stage.name}' (ID: {from_stage.id})")
       next_stages = from_stage.get_next_stages_name()
 
       #commands = ibm_i_commands.IBM_i_commands(self)
@@ -205,6 +207,8 @@ class Meta_File:
       # 3. Set global stages commands
       self.processed_stages.append(from_stage)
       self.open_stages.remove_stage(from_stage.id)
+
+      logging.debug(f"Next stages: {next_stages=}")
 
       for next_stage in next_stages:
 
@@ -285,7 +289,7 @@ class Meta_File:
 
 
 
-    def run_current_stage_as_thread(self, stage_id: int, processing_step: str=None, continue_run=True) -> threading.Thread:
+    def run_current_stage_as_thread(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> threading.Thread:
 
       logging.debug(f"Start deployment check")
       self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
@@ -298,7 +302,7 @@ class Meta_File:
 
 
 
-    def check_deployment_ready_2_run(self, stage_id: int, processing_step: str=None):
+    def check_deployment_ready_2_run(self, stage_id: int, processing_step: str|None=None):
 
       if self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
@@ -327,7 +331,7 @@ class Meta_File:
 
 
 
-    def run_current_stage(self, stage_id: int, processing_step: str=None, continue_run=True) -> None:
+    def run_current_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> None:
       """Run given stage
 
       Args:
@@ -402,7 +406,7 @@ class Meta_File:
      #@validate_arguments
     def check_deployment_finish(self) -> None:
 
-      if len(self.open_stages) == 0:
+      if self.open_stages is None or len(self.open_stages) == 0:
         logging.info(f"Deployment {self.file_name} has been finished.")
         self.set_status(Meta_file_status.FINISHED)
 
@@ -466,15 +470,15 @@ class Meta_File:
 
 
 
-    def get_stage_by_id(self, stage_id: int) -> s.Stage:
+    def get_stage_by_id(self, stage_id: int) -> s.Stage|None:
 
       if type(stage_id) == str:
         stage_id = int(stage_id)
 
-      if stage_id in self.open_stages.get_all_ids():
+      if self.open_stages is not None and stage_id in self.open_stages.get_all_ids():
         return self.open_stages.get_stage(stage_id)
 
-      if stage_id in self.processed_stages.get_all_ids():
+      if self.processed_stages is not None and stage_id in self.processed_stages.get_all_ids():
         return self.processed_stages.get_stage(stage_id)
       
       logging.error(f'No stage found with id {stage_id}. Existing: {self.open_stages.get_all_ids()=}, {self.processed_stages.get_all_ids()=}')
@@ -483,15 +487,15 @@ class Meta_File:
 
     def get_stages_by_name(self, stage: str) -> s.Stage:
 
-      if stage in self.open_stages.get_all_names():
+      if self.open_stages is not None and stage in self.open_stages.get_all_names():
         return self.open_stages.get_stages_by_name(stage)
 
-      if stage in self.processed_stages.get_all_names():
+      if self.processed_stages is not None and stage in self.processed_stages.get_all_names():
         return self.processed_stages.get_stages_by_name(stage)
 
 
     
-    def get_actions(self, processing_step: str=None, stage_id: int=None, action_id: int=None, include_subactions: bool=True) -> list[da.Deploy_Action]:
+    def get_actions(self, processing_step: str|None=None, stage_id: int|None=None, action_id: int|None=None, include_subactions: bool=True) -> list[da.Deploy_Action]:
 
       list: list[da.Deploy_Action]=[]
 
@@ -508,7 +512,7 @@ class Meta_File:
 
 
 
-#    def get_next_open_action(self, processing_step: str=None, stage: str=None):
+#    def get_next_open_action(self, processing_step: str|None=None, stage: str|None=None):
 #      for action in self.get_actions(processing_step=processing_step, stage=stage):
 #        if action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and action.check_error == False):
 #          continue
@@ -517,7 +521,7 @@ class Meta_File:
 
 
 
-
+    @staticmethod
     def load_json_file(file_name: str) -> Meta_File:
 
       logging.debug(f"Load meta file {file_name}")
@@ -538,6 +542,7 @@ class Meta_File:
                               open_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['open_stages']),
                               object_list=meta_file_json['general']['object_list'],
                               processing_users=meta_file_json.get('processing_users', []),
+                              custom_data=meta_file_json.get('custom_data', {}),
                               imported_from_dict=True
                              )
         meta_file.commit=meta_file_json['general']['commit']
@@ -566,6 +571,7 @@ class Meta_File:
 
 
     # Load meta file based on its version number
+    @staticmethod
     def load_version(project:str, version: int) -> Meta_File:
 
       deployment = dv.Deploy_Version.get_deployment(project, version)
@@ -601,6 +607,7 @@ class Meta_File:
       dict['processing_users'] = self.processing_users
       dict['objects'] = self.deploy_objects.get_objectjs_as_dict()
       dict['run_history'] = self.run_history.get_list()
+      dict['custom_data'] = self.custom_data
       logging.debug(f"Number of histories: {len(self.run_history)}")
 
       return dict
@@ -689,18 +696,19 @@ class Meta_File:
 
       self.deploy_objects = do.Deploy_Object_List()
 
-      if self.object_list is None and not os.path.exists(constants.C_OBJECT_LIST):
-        return
+      if self.object_list is None:# and not os.path.exists(constants.C_OBJECT_LIST):
+        e = Exception(f"No object list defined. No objects will be imported. {self.object_list=}")
+        logging.exception(e, stack_info=True)
+        raise e
       
-      file_path = self.object_list if self.object_list is not None else constants.C_OBJECT_LIST
-      logging.debug(f"Abs. file: {os.path.abspath(file_path)}")
+      logging.debug(f"Abs. file: {os.path.abspath(self.object_list)}")
 
-      if not os.path.exists(file_path):
-        raise Exception(f"Object list {file_path} does not exist")
+      if not os.path.exists(self.object_list):
+        raise Exception(f"Object list {self.object_list} does not exist")
 
-      logging.debug(f"File: {file_path}")
+      logging.debug(f"File: {self.object_list}")
 
-      with open(file_path, "r") as file:
+      with open(self.object_list, "r") as file:
         for line in file:
           logging.debug(f"Import object: {line}")
           tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
@@ -740,7 +748,7 @@ class Meta_File:
 
 
 
-    def copy_object_actions_2_open_stages(self, stage_id: int=None):
+    def copy_object_actions_2_open_stages(self, stage_id: int|None=None):
       """
       Add object actions to related open stages
 
