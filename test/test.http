@@ -1,0 +1,22 @@
+
+http://academy:8080/api/create_deployment/OBI_deploy_2_test
+
+###
+
+http://academy:8080/api/create_deployment/OBI_deploy_2_test?obj_list=object-list.txt
+
+
+###
+
+
+GET http://academy:8080/api/start_workflow/Rollback_Deployment?project=test&version=4
+Cookie: session=cYGSqgXhoAdBrnLxpew5vEPZpXaLchgK2srNVTGgA0w; session_id=83aa60e6-29d0-4ac0-8f47-3bd399a08286
+
+
+###
+
+POST http://academy:8080/api/get_action_log
+Content-Type: application/json
+Cookie: session=cYGSqgXhoAdBrnLxpew5vEPZpXaLchgK2srNVTGgA0w; session_id=f82e78a9-6445-43d2-b33f-868dab8766c2
+
+{"stage_id":"111","filename":"/home/PROUZAT1/i-releaser-2/meta/development/2026-03-19/1/deployment_1.json","action_id":122,"history_element":0}
