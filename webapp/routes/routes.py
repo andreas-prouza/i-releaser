@@ -49,7 +49,7 @@ async def index(request: Request):
     logging.debug("Send response")
     
     #current_user=session['current_user'], 
-    return http_functions.get_html_response(request, 'overview/list-deployments.html', sidebar=get_sidebar_data(request), deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv) 
+    return http_functions.get_html_response(request, 'overview/list-deployments.html', project=project, sidebar=get_sidebar_data(request), deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv) 
 
 
 
@@ -173,7 +173,7 @@ async def show_details(request: Request, project: str, version: int):
         dv = deploy_version.Deploy_Version.get_deployment(project, version)
         logging.debug(f"{dv=}")
         mf = meta_file.Meta_File.load_json_file(dv['meta_file'])
-        flow = flowchart.get_flowchar_html(mf)
+        flow = flowchart.get_flowchar_html(request, mf)
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
         progress = (len(mf.workflow.stages) - len(mf.open_stages)) / len(mf.workflow.stages)
@@ -182,6 +182,7 @@ async def show_details(request: Request, project: str, version: int):
         return http_functions.get_html_response(request, 'overview/show-deployment.html', sidebar=get_sidebar_data(request), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script']) 
 
     except Exception as e:
+        logging.debug(f"{os.getcwd()=}")
         logging.exception(e, stack_info=True)
         error = e
         return http_functions.get_html_response(request, 'error.html', sidebar=get_sidebar_data(request), error=error) 
@@ -189,7 +190,7 @@ async def show_details(request: Request, project: str, version: int):
 
 
 async def run_stage(request: Request):
-    data = request.get_json(force=True)
+    data = await request.json()
     result={'status': 'success'}
     logging.debug(f"Run stage-id {data['stage_id']} of {data['filename']} with option {data['option']}")
     session = request.state.session
@@ -218,7 +219,7 @@ async def run_stage(request: Request):
 
 
 async def get_meta_file_json(request: Request):
-    data = request.get_json(force=True)
+    data = await request.json()
     logging.debug(f"Get logs from: {data=}")
 
     if 'filename' not in data.keys():
@@ -237,7 +238,7 @@ async def get_meta_file_json(request: Request):
 
 
 async def get_action_log(request: Request):
-    data = request.get_json(force=True)
+    data = await request.json()
     logging.debug(f"Get logs from: {data=}")
     logging.debug(f"Get logs from: {data['filename']=}, {data['stage_id']=}, {data['action_id']=}, {data['history_element']=}")
 
@@ -256,7 +257,7 @@ async def get_action_log(request: Request):
 
 
 async def cancel_deployment(request: Request):
-    data = request.get_json(force=True)
+    data = await request.json()
     logging.debug(f"Cancel Deployment: {data['filename']}")
 
     mf = meta_file.Meta_File.load_json_file(data['filename'])
@@ -286,7 +287,7 @@ async def create_deployment(request: Request, wf_name, commit=None, obj_list=Non
         flask.Response: A JSON response containing the status of the operation and relevant data or error message.
     """
     
-    obj_list = request.args.get('obj_list', obj_list)
+    obj_list = dict(request.query_params).get('obj_list', obj_list)
 
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}, {obj_list=}")
     logging.debug(f'{os.path.realpath(os.path.dirname(__file__)+"/..")=}')
@@ -317,8 +318,40 @@ async def create_deployment(request: Request, wf_name, commit=None, obj_list=Non
    
 
 
+
+
+
+async def start_workflow(request: Request, wf_name: str):
+    """
+    Starts a workflow with the given parameters.
+    """
+    params = dict(request.query_params)
+    logging.info(f"Starting workflow with parameters: {params}")
+    
+    logging.debug(f"Create Deployment: {wf_name=}")
+    logging.debug(f'{os.path.realpath(os.path.dirname(__file__)+"/..")=}')
+    result={}
+
+    try:
+        wf = workflow.Workflow(wf_name)
+        logging.debug(f"Workflow: {wf}")
+ 
+        mf = meta_file.Meta_File(workflow_name=wf_name, custom_data=params)
+        action_type.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
+
+        mf.set_status(meta_file.Meta_file_status.READY)
+        result={'status': 'success', 'meta_file': mf.get_all_data_as_dict()}
+
+    except Exception as e:
+        logging.exception(e, stack_info=True)
+        result={'status': 'error', 'error': str(e)}
+
+    return http_functions.get_json_response(result)
+
+
+
 async def set_check_error(request: Request):
-    data = request.get_json(force=True)
+    data = await request.json()
     logging.debug(f"Set check error stage: {data['stage_id']}, action_id: {data['action_id']}, checked: {data['checked']}, filename: {data['filename']}")
     result={}
     session = request.state.session
@@ -339,12 +372,16 @@ async def set_check_error(request: Request):
 
 
 async def set_source_ready_4_deployment(request: Request):
-    data = request.get_json(force=True)
+    data = await request.json()
     logging.debug(f"Set source ready for deployment lib: {data['lib']}, name: {data['name']}, type: {data['type']}, checked: {data['checked']}, filename: {data['filename']}")
     result={}
     
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
+        
+        if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
+            raise Exception(f"Can't change object status because deployment is already {mf.status.value}.")
+        
         action_type.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set object {data['lib']}/{data['name']}({data['type']}) ready={data['checked']}", meta_file=mf)
         obj: Deploy_Object = mf.deploy_objects.get_deploy_object(data['lib'], data['name'], data['type'])
         obj.ready = data['checked']
@@ -362,7 +399,7 @@ async def set_source_ready_4_deployment(request: Request):
 
 async def get_stage_steps_html(request: Request):
     
-    data = request.get_json(force=True)
+    data = await request.json()
     logging.debug(f"Get html for stage steps: {data['stage_id']}, filename: {data['filename']}")
 
     try:

@@ -54,7 +54,7 @@ class Meta_File:
     def __init__(self, project: str|None=None, workflow_name : str|None=None, workflow=None, file_name=None, 
                 object_list=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, 
                 deploy_version : int|None=None, processed_stages: s.Stage_List_list=None, open_stages: s.Stage_List_list=None, 
-                processing_users: list=[],
+                processing_users: list=[], custom_data: dict={},
                 imported_from_dict=False):
 
       logging.debug(f"{sys.path=}")
@@ -81,6 +81,8 @@ class Meta_File:
       self.processing_users = processing_users
       if self.processing_users is None:
         self.processing_users = []
+
+      self.custom_data = custom_data
 
       self.set_status(status, False)
         
@@ -173,7 +175,7 @@ class Meta_File:
         self.write_meta_file()
 
       self.status = status
-      logging.debug(f"Finished meta file status set")
+      logging.debug(f"Finished meta file status set to {self.status.value}")
 
 
 
@@ -195,7 +197,7 @@ class Meta_File:
       Args:
           from_stage (s.Stage): Current finished stage
       """
-
+      logging.debug(f"Set next stage from '{from_stage.name}' (ID: {from_stage.id})")
       next_stages = from_stage.get_next_stages_name()
 
       #commands = ibm_i_commands.IBM_i_commands(self)
@@ -205,6 +207,8 @@ class Meta_File:
       # 3. Set global stages commands
       self.processed_stages.append(from_stage)
       self.open_stages.remove_stage(from_stage.id)
+
+      logging.debug(f"Next stages: {next_stages=}")
 
       for next_stage in next_stages:
 
@@ -538,6 +542,7 @@ class Meta_File:
                               open_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['open_stages']),
                               object_list=meta_file_json['general']['object_list'],
                               processing_users=meta_file_json.get('processing_users', []),
+                              custom_data=meta_file_json.get('custom_data', {}),
                               imported_from_dict=True
                              )
         meta_file.commit=meta_file_json['general']['commit']
@@ -602,6 +607,7 @@ class Meta_File:
       dict['processing_users'] = self.processing_users
       dict['objects'] = self.deploy_objects.get_objectjs_as_dict()
       dict['run_history'] = self.run_history.get_list()
+      dict['custom_data'] = self.custom_data
       logging.debug(f"Number of histories: {len(self.run_history)}")
 
       return dict
@@ -690,18 +696,19 @@ class Meta_File:
 
       self.deploy_objects = do.Deploy_Object_List()
 
-      if self.object_list is None and not os.path.exists(constants.C_OBJECT_LIST):
-        return
+      if self.object_list is None:# and not os.path.exists(constants.C_OBJECT_LIST):
+        e = Exception(f"No object list defined. No objects will be imported. {self.object_list=}")
+        logging.exception(e, stack_info=True)
+        raise e
       
-      file_path = self.object_list if self.object_list is not None else constants.C_OBJECT_LIST
-      logging.debug(f"Abs. file: {os.path.abspath(file_path)}")
+      logging.debug(f"Abs. file: {os.path.abspath(self.object_list)}")
 
-      if not os.path.exists(file_path):
-        raise Exception(f"Object list {file_path} does not exist")
+      if not os.path.exists(self.object_list):
+        raise Exception(f"Object list {self.object_list} does not exist")
 
-      logging.debug(f"File: {file_path}")
+      logging.debug(f"File: {self.object_list}")
 
-      with open(file_path, "r") as file:
+      with open(self.object_list, "r") as file:
         for line in file:
           logging.debug(f"Import object: {line}")
           tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')

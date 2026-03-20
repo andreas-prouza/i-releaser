@@ -173,24 +173,35 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             <img class="run" src="{{ url_for('static', path='assets/img/cancel.png') }}" 
             onclick="cancel_deployment('{{ deployment_dict['general']['file_name'] }}')">
             {% endif %}
+            {% include 'custom_templates/deployment_status.html' ignore missing %}
         </h3>
     </div>
     <table class="table table-striped table-bordered">
         <tr>
             <th>Created</th><td> {{ deployment_dict['general']['create_time'] }}</td>
+            <th>Deployment lib</th><td>{{ deployment_dict['deploy_libs']['main_lib'] }}</td>
         </tr>
         <tr>
             <th>Last update</th><td> {{ deployment_dict['general']['update_time'] }}</td>
+            <th>Backup lib</th><td>{{ deployment_dict['deploy_libs']['backup_lib'] }}</td>
         </tr>
         <tr>
             <th>File name</th>
-            <td>
+            <td colspan="3">
                 <button type="button" class="btn btn-link" onclick="show_json('{{ deployment_dict['general']['file_name'] }}')">{{ deployment_dict['general']['file_name'] }}</button>
             </td>
         </tr>
+        {% if deployment_dict.get('custom_data') %}
+        <tr>
+            <th>Custom data</th>
+            <td colspan="3">
+                <pre>{{ deployment_dict['custom_data'] }}</pre>
+            </td>
+        </tr>
+        {% endif %}
         <tr>
             <th>Processing users</th>
-            <td>
+            <td colspan="3">
                 <table class="table table-striped table-bordered">
                     <thead>
                     <th>User</th>
@@ -199,7 +210,17 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                     <th>Details</th>
                     </thead>
                     {% for user in (deployment_dict.get('processing_users') or []) %}
-                        <tr><td>{{ user['user'] }}</td><td>{{ user['timestamp'] }}</td><td>{{ user['action'] }}</td><td>{{ user['details'] }}</td></tr>
+                        <tr><td>{{ user['user'] }}</td><td>{{ user['timestamp'] }}</td><td>{{ user['action'] }}</td><td>
+                            {% if user['stage'] %}
+                                Stage: {{ user['stage'] }}
+                            {% endif %}
+                            {% if user['stage'] and user['details'] %}
+                            <br/>
+                            {% endif %}
+                            {% if user['details'] %}
+                                <code>{{ user['details'] }}</code>
+                            {% endif %}
+                        </td></tr>
                     {% endfor %}
                 </table>
             </td>
@@ -238,7 +259,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             <td>
                 <label class="switch">
                     <input type="checkbox" {% if object['ready'] %}checked{% endif %}
-                        onchange="set_source_ready_4_deployment('{{ deployment_dict['general']['file_name'] }}', '{{ object['obj_lib'] }}', '{{ object['obj_name'] }}', '{{ object['obj_type'] }}', this.checked)">
+                        onchange="set_source_ready_4_deployment(this, '{{ deployment_dict['general']['file_name'] }}', '{{ object['obj_lib'] }}', '{{ object['obj_name'] }}', '{{ object['obj_type'] }}', this.checked)">
                     <span class="slider round"></span>
                 </label>
             </td>
@@ -531,9 +552,18 @@ async function runStage(filename, stage_id, stage_name) {
     */
 
 
-function set_source_ready_4_deployment(filename, lib, name, type, checked) {
+function set_source_ready_4_deployment(obj, filename, lib, name, type, checked) {
+
     postData("/api/set_source_ready_4_deployment", { lib: lib, name: name, type: type, filename: filename, checked: checked }).then((data) => {
-        console.log(data); // JSON data parsed by `data.json()` call
+        if (data['status'] == 'error') {
+            obj.checked = !checked;
+            console.log(data); // JSON data parsed by `data.json()` call
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data['error']
+            })
+        }
     });
 }
 

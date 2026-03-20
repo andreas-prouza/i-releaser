@@ -17,5 +17,5 @@ scripts/*.json
 logs/**
 **/build/**
 **/sessions
-**/custom_routes/**
+**/custom/**
 **/custom_templates/**

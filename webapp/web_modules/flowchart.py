@@ -265,7 +265,7 @@ def get_flowchart_text(request: Request, mf: meta_file.Meta_File):
   for stage in mf.workflow.stages:
     
     # Get current detailed stage information (status)
-    mf_stage = stages.Stage()
+    mf_stage = None
     if stage['name'] in mf.stages.get_all_names():
       mf_stage = mf.stages.get_stage(stage['name'])
     

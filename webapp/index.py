@@ -3,6 +3,8 @@
 #######################################################
 
 # Configuration modules
+import glob
+import importlib
 import sys, os
 
 base_dir = os.path.realpath(os.path.dirname(__file__)+"/..")
@@ -10,6 +12,7 @@ base_dir = os.path.realpath(os.path.dirname(__file__)+"/..")
 #os.chdir(base_dir)
 sys.path.append(base_dir)
 
+from etc import logger_config
 import logging
 
 from fastapi import FastAPI
@@ -20,12 +23,29 @@ logging.debug(f"{sys.path=}")
 # Custom modules
 from routes import routes, initial
 
+
 #######################################################
 # Set FastAPI configuration
 #######################################################
 app: FastAPI = initial.setup_fastapi()
 
 
+
+
+#######################################################
+# Dynamically load custom routes
+#######################################################
+
+custom_route_path = os.path.join(os.path.dirname(__file__), "custom", "routes")
+if os.path.exists(custom_route_path):
+    for path in glob.glob(f"{custom_route_path}/*.py"):
+        module_name = os.path.basename(path)[:-3]
+        if module_name != "__init__":
+            try:
+                importlib.import_module(f"custom.routes.{module_name}")
+                logging.info(f"Successfully loaded custom route: {module_name}")
+            except ImportError as e:
+                logging.error(f"Failed to load custom route {module_name}: {e}")
 
 
 #######################################################
@@ -49,6 +69,8 @@ app.add_api_route('/log/{log}', routes.show_log, methods=['GET'])
 app.add_api_route('/log/{log}/{number_of_lines}', routes.show_log, methods=['GET', 'POST'])
 
 
+
+app.add_api_route('/api/start_workflow/{wf_name}', routes.start_workflow, methods=['GET'])
 
 app.add_api_route('/login', routes.login, methods=['GET', 'POST'])
 

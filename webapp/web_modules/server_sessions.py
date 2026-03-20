@@ -31,8 +31,7 @@ def get_session(request: Request) -> dict:
         return {}
 
     try:
-        with open(session_file, 'r') as f:
-            session_data = json.load(f)
+        session_data = load_json_file(session_file)
 
         last_update = datetime.fromisoformat(session_data.get("last-update"))
         if datetime.now() - last_update > SESSION_LIFETIME:
@@ -45,9 +44,23 @@ def get_session(request: Request) -> dict:
     except (json.JSONDecodeError, KeyError, TypeError) as e:
         logging.error(f"Error reading session file {session_file}: {e}")
         # If file is corrupt, treat as non-existent
-        if os.path.exists(session_file):
-            os.remove(session_file)
         return {}
+    
+
+def load_json_file(filepath: str) -> dict:
+    """Utility function to load JSON data from a file."""
+
+    for i in range(5):  
+        try:
+            with open(filepath, 'r') as f:
+                return json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            logging.error(f"Error loading JSON file {filepath}: {e}")
+            time.sleep(0.1)
+
+    return {}
+
+
 
 def save_session(session_id: str, data: dict):
     """Saves the session data to a JSON file."""

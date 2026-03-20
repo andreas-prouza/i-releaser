@@ -61,22 +61,22 @@ class WebMiddleware(BaseHTTPMiddleware):
         logging.debug(f'Now call handler for {request.url.path}')
         
         try:
-            request.state.session = server_sessions.SessionManager(request)
-            await request.state.session.load()
 
             # We can now safely access request.session
             response = await self.check_session(request)
+            logging.debug(f"Session check result: {response}")
             
             if response is None:
                 response = await call_next(request)
 
         except Exception as e:
+            logging.exception(f"Error in middleware: {e}", exc_info=True)
             response = http_functions.get_json_response({ "error": str(e) })
-            logging.exception(f"Error in middleware: {e}")
             response.status_code = 500
 
-        request.state.session.save()
-        request.state.session.set_cookie(response)
+        if hasattr(request.state, 'session'):
+            request.state.session.save()
+            request.state.session.set_cookie(response)
 
         logging.debug(f"Response send code: {response.status_code}")
         
@@ -89,14 +89,18 @@ class WebMiddleware(BaseHTTPMiddleware):
         logging.debug(f"{sys.path=}")
         logging.debug(request.url.path)
         #logging.debug(session)
-        request.state.session.pop('error_text', None)
 
         if '/static' == request.url.path[:len('/static')] or '/favicon.ico' == request.url.path:
-            #logging.debug("No need to check session. Only media!")
+            logging.debug("No need to check session. Only media!")
             return
 
         if request.url.path == '/logout':
             return
+        
+        request.state.session = server_sessions.SessionManager(request)
+        await request.state.session.load()
+
+        request.state.session.pop('error_text', None)
 
         if 'is_logged_in' in request.state.session and '__invalid__' not in request.state.session:
             current_user = request.state.session.get('current_user', None)
@@ -130,5 +134,7 @@ class WebMiddleware(BaseHTTPMiddleware):
         if user is not None and password is not None:
             if app_login.connect(request, user, password):
                 return
+            
+        logging.debug(f"User not authenticated, redirect to login: {request.state.session.__dict__=}")
 
         return await routes.login(request)
