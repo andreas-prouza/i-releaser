@@ -1,9 +1,11 @@
 from __future__ import annotations
 import json, os
 import logging
+from typing import List
 
 from etc import constants
 from modules import stages, deploy_action
+import glob
 
 
 class MissingProcessingStepMappingException(Exception):
@@ -65,29 +67,15 @@ class Workflow:
 
   def load_workflow_data(self) -> None:
 
-    logging.debug(f"Workflow file: {os.path.abspath(constants.C_WORKFLOW)}")
-    with open(constants.C_WORKFLOW, "r") as file:
-      workflows_json = json.load(file)
-
-    for wf in workflows_json:
-
-      if self.name == wf['name'].lower():
-
-        Workflow.validate_workflow(wf)
-        if 'step_action' in wf:
-          self.step_action = wf["step_action"]
-        if 'default_project' in wf:
-          self.default_project = wf["default_project"]
-
-        self.stages = wf['stages']
-
-        return
-    
-    raise WorkflowNotFoundException(f"No workflow found with name '{self.name}'")
+    if not self.name:
+      raise Exception(f"No workflow name provided for loading workflow data!")
+    wf = self.get_workflow_by_name(self.name)
+    self = wf
 
 
 
-  def get_default_step_mapping() -> {}:
+  @staticmethod
+  def get_default_step_mapping() -> dict|None:
 
     with open(constants.C_DEFAULT_STEP_ACTION, "r") as file:
       step_mapping_json = json.load(file)
@@ -96,13 +84,45 @@ class Workflow:
     return None
 
 
+  @staticmethod
+  def get_workflow_by_name(workflow_name:str) -> Workflow:
 
-  def get_all_projects() -> []:
+    workflows_json = Workflow.get_all_workflows_json()
+
+    for wf in workflows_json:
+
+      if workflow_name == wf['name'].lower():
+        return Workflow(dict=wf)
     
-    projects=[]
+    raise WorkflowNotFoundException(f"No workflow found with name '{workflow_name}'")
+
+
+
+  @staticmethod
+  def get_all_workflows_from_old_workflow_json() -> List[dict]:
+
+    if not os.path.isfile(constants.C_WORKFLOW):
+      logging.info(f"No old workflow file found at {constants.C_WORKFLOW}! Very good!")
+      return []
+    
+    import warnings
+    warnings.warn(f"Use of old workflow file: {os.path.abspath(constants.C_WORKFLOW)}. Migrate to single etc/workflows/*.json file for each workflow!", DeprecationWarning, stacklevel=2)
+    logging.warning(f"Use of old workflow file: {os.path.abspath(constants.C_WORKFLOW)}. Migrate to single etc/workflows/*.json file for each workflow!")
 
     with open(constants.C_WORKFLOW, "r") as file:
       workflows_json = json.load(file)
+
+    return workflows_json
+
+
+
+
+  @staticmethod
+  def get_all_projects() -> List[str]:
+    
+    projects=[]
+
+    workflows_json = Workflow.get_all_workflows_json()
 
     for wf in workflows_json:
       if wf['default_project'] not in projects:
@@ -111,16 +131,41 @@ class Workflow:
     return projects
 
 
-  def get_all_workflow_json():
+
+  @staticmethod
+  def get_all_workflows_json() -> List[dict]:
+
+    workflow_files = glob.glob(os.path.join(constants.C_WORKFLOWS_DIR, "*.json"))
+    workflows_json = []
+
+    for wf_file in workflow_files:
+
+      try:
+
+        with open(wf_file, "r") as file:
+
+          json_data = json.load(file)
+
+          if not isinstance(json_data, dict):
+              raise Exception(f"Workflow file contains a {type(json_data)} instead of dict.")
+
+          Workflow.validate_workflow(json_data, wf_file)
+
+          workflows_json.append(json_data)
+
+      except Exception as e:
+
+        error = Exception(f"Error loading workflow file {wf_file}: {e}")
+        logging.error(error)
+        raise error
     
-    with open(constants.C_WORKFLOW, "r") as file:
-      workflows_json = json.load(file)
+    workflows_json += Workflow.get_all_workflows_from_old_workflow_json()
 
     return workflows_json
 
 
 
-  def get_stage(self, stage_name:str) -> {}:
+  def get_stage(self, stage_name:str) -> dict:
     """
     Retrieves stage dict from workflow.json
 
@@ -129,14 +174,17 @@ class Workflow:
     Returns:
         stage (dict): Stage as dictionary
     """
+    if not self.stages:
+      raise Exception(f"No stages defined for workflow {self.name}!")
+    
     for stage in self.stages:
       if stage['name'] == stage_name:
         logging.debug(f'Found stage in workflow: {stage=}')
         return stage
 
 
-
-  def get_workflow_steps_mapping(workflow_dict: {}) -> []:
+  @staticmethod
+  def get_workflow_steps_mapping(workflow_dict: dict) -> List[dict]:
     """
     Get steps mapping list of the current workflow + the global constants definition
 
@@ -157,22 +205,23 @@ class Workflow:
 
 
 
-  def validate_workflow(workflow_dict: {}) -> None:
+  @staticmethod
+  def validate_workflow(workflow_dict: dict, wf_file: str) -> None:
 
     if 'name' not in workflow_dict.keys():
-      raise Exception(f"No workflow name is defined!")
+      raise Exception(f"No workflow name is defined in file {wf_file}!")
 
     if 'default_project' not in workflow_dict.keys():
-      raise Exception(f"No default_project name is defined!")
+      raise Exception(f"No default_project name is defined in file {wf_file}!")
 
     if 'stages' not in workflow_dict.keys() or len(workflow_dict['stages']) == 0:
-      raise Exception(f"No stage definition for workflow {workflow_dict['name']}!")
+      raise Exception(f"No stage definition for workflow {workflow_dict['name']} in file {wf_file}!")
 
     stages.Stage_List_list.validate_items(workflow_dict['stages'])
 
     for key in workflow_dict.keys():
       if key not in ['name', 'step_action', 'stages', 'default_project']:
-        raise Exception(f"Workflow attribute '{key}' is invalid!")
+        raise Exception(f"Workflow attribute '{key}' is invalid in file {wf_file}!")
     
     #######################################
 
@@ -196,19 +245,20 @@ class Workflow:
       for mapping in script_mappings:
         for key in mapping.keys():
           if key not in ['processing_step', 'environment', 'execute', 'check_error', 'execute_remote']:
-            raise Exception(f"Script-Mapping attribute '{key}' is invalid for workflow {workflow_dict['name']}!")
+            raise Exception(f"Script-Mapping attribute '{key}' is invalid for workflow {workflow_dict['name']} in file {wf_file}!")
 
     ########################################
 
-    Workflow.check_worfklow_loop(workflow_dict['stages'])
+    Workflow.check_worfklow_loop(workflow_dict['stages'], wf_file=wf_file)
 
 
 
 
-  def check_worfklow_loop(workflow_stages: [], start_stage :str='START', counter :int=1) -> None:
+  @staticmethod
+  def check_worfklow_loop(workflow_stages: List[dict], start_stage :str='START', counter :int=1, wf_file: str='') -> None:
 
     if counter >= 200:
-      raise(StageRecursionException(f'Infinite loop ({counter}) in next_stage configuration: {workflow_stages=}'))
+      raise(StageRecursionException(f'Infinite loop ({counter}) in next_stage configuration: {workflow_stages=} in file {wf_file}'))
 
     for stage in workflow_stages:
       if stage['name'] == start_stage:
@@ -217,22 +267,27 @@ class Workflow:
           Workflow.check_worfklow_loop(
               workflow_stages=workflow_stages, 
               start_stage=next_stage, 
-              counter=counter)
+              counter=counter,
+              wf_file=wf_file)
 
 
 
 
 
 
-  def get_scripts(self, step_name:str) -> str:
+  def get_scripts(self, step_name:str) -> str|None:
+
+    if not self.step_action:
+      return None
 
     for step in self.step_action:
       if step['step'] == step_name:
         return step['script']
 
+    return None
 
 
-  def get_dict(self) -> {}:
+  def get_dict(self) -> dict:
     return {
       'name': self.name,
       'step_action': self.step_action,

@@ -14,7 +14,7 @@
   <td>
     <label class="switch">
       <input type="checkbox" {% if cmd['check_error'] %}checked{% endif %}
-        onchange="set_check_error('{{ file_name }}', '{{ stage.id }}', {{ cmd['id'] }}, this.checked)">
+        onchange="set_check_error(this, '{{ file_name }}', '{{ stage.id }}', {{ cmd['id'] }}, this.checked)">
       <span class="slider round"></span>
     </label>
   </td>

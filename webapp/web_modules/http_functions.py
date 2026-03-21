@@ -40,7 +40,12 @@ def get_html_response(request: Request, template: str, **kwargs) -> HTMLResponse
     if len(service_path) > 0:
         service_path += '/'
 
+    def format_json(value):
+        return json.dumps(value, indent=4)
+
     templates = Jinja2Templates(directory=f"{service_path}templates")
+    templates.env.filters["pretty_json"] = format_json
+    templates.env.filters["get_type"] = lambda v: type(v).__name__
 
     return templates.TemplateResponse(
         request=request, name=template, context={**kwargs}

@@ -136,7 +136,7 @@ async def show_workflows(request: Request):
 
     logging.debug('Call workflows')
 
-    wf = workflow.Workflow.get_all_workflow_json()
+    wf = workflow.Workflow.get_all_workflows_json()
     wf_json = json.dumps(wf, default=str, indent=4)
 
     logging.debug("Send response")
@@ -358,6 +358,9 @@ async def set_check_error(request: Request):
 
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
+        if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
+            raise Exception(f"Can't change step check because deployment is already {mf.status.value}.")
+
         mf.set_action_check(int(data['stage_id']), int(data['action_id']), data['checked'], session['current_user'])
         mf.write_meta_file()
     except Exception as e:
@@ -414,7 +417,7 @@ async def get_stage_steps_html(request: Request):
 
 async def get_workflows(request: Request):
 
-    wfs = workflow.Workflow.get_all_workflow_json()
+    wfs = workflow.Workflow.get_all_workflows_json()
     return http_functions.get_json_response(wfs)
 
 

@@ -133,7 +133,7 @@ class Stage:
 
       return stage
 
-    e = Exception(f"No stage found with '{workflow.name=}' & '{stage_name=}' in '{constants.C_WORKFLOW}'")
+    e = Exception(f"No stage found with '{workflow.name=}' & '{stage_name=}'")
     logging.exception(e, stack_info=True)
     raise e
 
