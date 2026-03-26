@@ -94,9 +94,8 @@ class Meta_File:
 
       self.create_date = re.sub(" .*", '', self.create_time)
         
-      self.workflow = workflow
-      if workflow_name is not None:
-        self.workflow = wf.Workflow(name=workflow_name)
+      self.workflow = wf.Workflow(name=workflow_name, dict=workflow)
+      logging.debug(f"Meta Workflow: {self.workflow.get_dict()}")
       
       if self.project is None:
         self.project = self.workflow.default_project
@@ -531,7 +530,7 @@ class Meta_File:
         
         #workflow = wf.Workflow(name=meta_file_json['general']['workflow']['name'])
         workflow = wf.Workflow(dict=meta_file_json['general']['workflow'])
-        meta_file = Meta_File(workflow=workflow,
+        meta_file = Meta_File(workflow=meta_file_json['general']['workflow'],
                               project=meta_file_json['general']['project'],
                               deploy_version=meta_file_json['general']['deploy_version'],
                               status=meta_file_json['general']['status'],

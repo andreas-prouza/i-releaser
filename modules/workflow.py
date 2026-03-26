@@ -35,7 +35,7 @@ class Workflow:
   name: str|None
   
 
-  def __init__(self, name: str|None=None, dict={}):
+  def __init__(self, name: str|None=None, dict: dict|None={}):
 
     self.name = name.lower() if name else None
     self.object_commands = []
@@ -45,7 +45,7 @@ class Workflow:
 
     logging.debug(f"{name=}, {dict=}")
 
-    if len(dict) > 0:
+    if dict is not None and len(dict) > 0:
 
       self.name = dict['name'].lower()
       
@@ -58,9 +58,13 @@ class Workflow:
       if 'stages' in dict:
         self.stages = dict['stages']
 
+      logging.debug(f"Workflow created from dict: {self.get_dict()}")
+
       return
 
+    logging.debug(f"Dict is None: {dict=} {name=}")
     self.load_workflow_data()
+    logging.debug(f"Workflow loaded: {self.get_dict()}")
     #self.step_action = self.get_workflow_steps_mapping()
 
 
@@ -70,7 +74,8 @@ class Workflow:
     if not self.name:
       raise Exception(f"No workflow name provided for loading workflow data!")
     wf = self.get_workflow_by_name(self.name)
-    self = wf
+    self.__dict__.update(wf.__dict__)
+    logging.debug(f"Workflow data loaded for workflow {self.get_dict()}!")
 
 
 
