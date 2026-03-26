@@ -80,7 +80,7 @@ class Workflow:
 
 
   @staticmethod
-  def get_default_step_mapping() -> dict|None:
+  def get_default_step_mapping() -> List[dict]|None:
 
     with open(constants.C_DEFAULT_STEP_ACTION, "r") as file:
       step_mapping_json = json.load(file)
@@ -180,12 +180,20 @@ class Workflow:
         stage (dict): Stage as dictionary
     """
     if not self.stages:
-      raise Exception(f"No stages defined for workflow {self.name}!")
+      logging.info(f"Workflow: {self.get_dict()}")
+      error = Exception(f"No stages defined for workflow {self.name}!")
+      logging.exception(error, stack_info=True)
+      raise error
     
     for stage in self.stages:
       if stage['name'] == stage_name:
         logging.debug(f'Found stage in workflow: {stage=}')
         return stage
+      
+    error = Exception(f"No stage found for {stage_name}!")
+    logging.exception(error, stack_info=True)
+    raise error
+
 
 
   @staticmethod
@@ -197,13 +205,13 @@ class Workflow:
         mapping_lsit (list): List of mappings
     """
 
-    step_mapping = Workflow.get_default_step_mapping()
+    step_mapping: List[dict] = Workflow.get_default_step_mapping() or []
 
     if 'step_action' in workflow_dict.keys():
       logging.debug(f'len {len(step_mapping)=}, {len(workflow_dict["step_action"])=}')
       merged_list = {x['processing_step']:x for x in step_mapping + workflow_dict["step_action"]}.values()
       logging.debug(f"{merged_list=}")
-      return merged_list
+      return list(merged_list)
     
     return step_mapping
 
