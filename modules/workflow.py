@@ -207,7 +207,7 @@ class Workflow:
 
     step_mapping: List[dict] = Workflow.get_default_step_mapping() or []
 
-    if 'step_action' in workflow_dict.keys():
+    if 'step_action' in workflow_dict.keys() and workflow_dict['step_action'] is not None:
       logging.debug(f'len {len(step_mapping)=}, {len(workflow_dict["step_action"])=}')
       merged_list = {x['processing_step']:x for x in step_mapping + workflow_dict["step_action"]}.values()
       logging.debug(f"{merged_list=}")

@@ -25,6 +25,7 @@ class Stage:
     self.name :str = None
     self.description :str = None
     self.host :str = None
+    self.base_dir :str = None
     self.remote_dir :str = None
     self.build_dir :str = None
     self.next_stages :Stage_List_list = Stage_List_list()

@@ -125,7 +125,7 @@ class Meta_File:
 
       self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
       self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
-      self.remote_deploy_lib = f"r{str(self.deploy_version).zfill(9)}"
+      self.set_deploy_remote_lib(f"r{str(self.deploy_version).zfill(9)}")
 
       if not imported_from_dict:
 
@@ -422,6 +422,11 @@ class Meta_File:
       self.backup_deploy_lib = library.lower()
 
 
+     #@validate_arguments
+    def set_deploy_remote_lib(self, library: str):
+      self.remote_deploy_lib = library.lower()
+
+
 
     
     def add_deploy_object(self, object: type[do.Deploy_Object]):
@@ -550,7 +555,7 @@ class Meta_File:
         meta_file.set_deploy_objects(meta_file_json['objects'])
         meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
         meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
-        meta_file.remote_deploy_lib = meta_file_json['deploy_libs']['remote_lib']
+        meta_file.set_deploy_remote_lib(meta_file_json['deploy_libs']['remote_lib'])
         #meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
         
         meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
