@@ -1,6 +1,5 @@
 
 from enum import Enum
-from modules import meta_file as mf
 from modules.stages import Stage
 import datetime
 
@@ -15,7 +14,8 @@ class Action_type(Enum):
   CUSTOM_ACTION = 'custom_action'
   
 
-def create_action_log(action: Action_type, details: str=None, meta_file: mf.Meta_File=None, stage: Stage=None) -> None:
+def create_action_log(action: Action_type, details: str|None=None, meta_file=None, stage: Stage|None=None) -> None:
+  from modules import meta_file as mf
 
   user = mf.Meta_File.CURRENT_USER
 
