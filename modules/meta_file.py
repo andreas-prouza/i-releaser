@@ -13,7 +13,7 @@ from enum import Enum
 # from pydantic import validate_arguments
 
 from etc import constants, logger_config
-from modules import action_type, deploy_action as da, permission
+from modules import action_type, deploy_action as da, files, permission
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
@@ -541,41 +541,39 @@ class Meta_File:
 
       logging.debug(f"Load meta file {file_name}")
 
-      with open (file_name, "r") as file:
-        meta_file_json=json.load(file)
-        
-        #workflow = wf.Workflow(name=meta_file_json['general']['workflow']['name'])
-        workflow = wf.Workflow(dict=meta_file_json['general']['workflow'])
-        meta_file = Meta_File(workflow=meta_file_json['general']['workflow'],
-                              project=meta_file_json['general']['project'],
-                              deploy_version=meta_file_json['general']['deploy_version'],
-                              status=meta_file_json['general']['status'],
-                              file_name=f"{meta_file_json['general']['file_name']}",
-                              create_time=meta_file_json['general']['create_time'],
-                              update_time=meta_file_json['general']['update_time'],
-                              processed_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['processed_stages']),
-                              open_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['open_stages']),
-                              object_list=meta_file_json['general']['object_list'],
-                              processing_users=meta_file_json.get('processing_users', []),
-                              custom_data=meta_file_json.get('custom_data', {}),
-                              imported_from_dict=True
-                             )
-        meta_file.commit=meta_file_json['general']['commit']
-        meta_file.release_branch=meta_file_json['general']['release_branch']
-
-        meta_file.set_deploy_objects(meta_file_json['objects'])
-        meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
-        meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
-        meta_file.set_deploy_remote_lib(meta_file_json['deploy_libs']['remote_lib'])
-        #meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
-        
-        meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
-
-        #meta_file.write_meta_file()
-
-        return meta_file
+      meta_file_json=files.getJson(file_name, retry=True)
       
-      raise Exception(f"Meta file {file_name} does not exist")
+      #workflow = wf.Workflow(name=meta_file_json['general']['workflow']['name'])
+      workflow = wf.Workflow(dict=meta_file_json['general']['workflow'])
+      meta_file = Meta_File(workflow=meta_file_json['general']['workflow'],
+                            project=meta_file_json['general']['project'],
+                            deploy_version=meta_file_json['general']['deploy_version'],
+                            status=meta_file_json['general']['status'],
+                            file_name=f"{meta_file_json['general']['file_name']}",
+                            create_time=meta_file_json['general']['create_time'],
+                            update_time=meta_file_json['general']['update_time'],
+                            processed_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['processed_stages']),
+                            open_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['open_stages']),
+                            object_list=meta_file_json['general']['object_list'],
+                            processing_users=meta_file_json.get('processing_users', []),
+                            custom_data=meta_file_json.get('custom_data', {}),
+                            imported_from_dict=True
+                            )
+      meta_file.commit=meta_file_json['general']['commit']
+      meta_file.release_branch=meta_file_json['general']['release_branch']
+
+      meta_file.set_deploy_objects(meta_file_json['objects'])
+      meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
+      meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
+      meta_file.set_deploy_remote_lib(meta_file_json['deploy_libs']['remote_lib'])
+      #meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
+      
+      meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
+
+      #meta_file.write_meta_file()
+
+      return meta_file
+
 
 
 

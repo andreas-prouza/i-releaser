@@ -3,7 +3,7 @@ import time
 from typing import List
 
 from etc import constants, constants
-from modules import permission, meta_file
+from modules import files, permission, meta_file
 import json
 
 
@@ -19,6 +19,10 @@ def _check_user_permission(user, action : permission.Permission, workflow=None, 
 
 
 def is_user_allowed(user, action : permission.Permission, workflow=None, stage=None):
+  
+  if user is None:
+    logging.warning("User is None")
+    return False
   
   user = user.lower()
   if workflow is not None:
@@ -100,6 +104,7 @@ class UserPermission:
 
   __last_loaded = 0
   __reload_interval = 60
+  __file_hash = None
   
   allowed_users = []
   user_permissions = {}
@@ -130,11 +135,17 @@ class UserPermission:
 
     if current_time - UserPermission.__last_loaded > UserPermission.__reload_interval:
 
-      with open(constants.C_USER_PERMISSIONS, 'r') as f:
-        data = json.load(f)
-        UserPermission.user_permissions = data
-        UserPermission.convert_permissions()
-        UserPermission.allowed_users = list(UserPermission.user_permissions.keys())
+      file_hash = files.get_file_hash(constants.C_USER_PERMISSIONS)
+
+      if file_hash == UserPermission.__file_hash:
+        return
+
+      data = files.getJson(constants.C_USER_PERMISSIONS, retry=True)
+  
+      UserPermission.user_permissions = data
+      UserPermission.convert_permissions()
+      UserPermission.allowed_users = list(UserPermission.user_permissions.keys())
+      UserPermission.__file_hash = file_hash
 
       UserPermission.__last_loaded = current_time
 
