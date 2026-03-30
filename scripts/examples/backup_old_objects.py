@@ -25,9 +25,9 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
     meta_file.deploy_objects.set_objects_status(Obj_Status.IN_BACKUP)
     deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
 
-    for lib in meta_file.deploy_objects.get_lib_list_from_prod():
+    for lib in meta_file.deploy_objects.get_lib_list_from_prod(ready=True):
 
-        for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib):
+        for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib, ready=True):
             obj_name = obj.name.replace('$', '\\$')
             includes += f" (*INCLUDE {obj_name} *{obj.type})"
 

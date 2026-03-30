@@ -25,7 +25,7 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
 
     meta_file.deploy_objects.set_objects_status(Obj_Status.IN_RESTORE)
 
-    for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
+    for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib(ready=True):
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
         cmd=f"CRTSAVF {meta_file.remote_deploy_lib}/{lib['lib']}",
@@ -68,7 +68,7 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
 
       includes = ''
       
-      for obj in meta_file.deploy_objects.get_obj_list_by_lib(lib['lib']):
+      for obj in meta_file.deploy_objects.get_obj_list_by_lib(lib['lib'], ready=True):
         obj_name = obj.name.replace('$', '\\$')
         includes += f" (*INCLUDE {obj_name} {obj.type})"
 

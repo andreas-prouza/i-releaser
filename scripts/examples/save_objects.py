@@ -31,7 +31,7 @@ def init_save(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Act
     cmd.execute_action(stage=stage_obj, action=last_added_action)
 
     # Create save files for each lib to deploy
-    for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
+    for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib(ready=True):
 
         last_added_action = action.sub_actions.add_action(da.Deploy_Action(
             cmd=f"CRTSAVF {meta_file.main_deploy_lib}/{lib['lib']}",
@@ -70,9 +70,9 @@ def save_objects_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da
     deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
     last_added_action = action
 
-    for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
+    for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib(ready=True):
         includes = ""
-        for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib["prod_lib"]):
+        for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib["prod_lib"], ready=True):
 
             obj_name = obj.name.replace('$', '\\$')
             includes += f" (*INCLUDE {obj_name} *{obj.type})"
@@ -95,6 +95,9 @@ def save_objects_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da
             f"/qsys.lib/{meta_file.main_deploy_lib}.lib/{lib['lib']}.file"
         )
         savf_ifs_target = f"{deployment_dir}/{lib['lib']}.file"
+
+        if includes == "":
+            continue
 
         last_added_action = action.sub_actions.add_action(da.Deploy_Action(
             cmd=f"SAVLIB LIB({lib['lib']}) DEV(*SAVF) SAVF({savf}) CLEAR(*ALL) SELECT({includes}) DTACPR(*HIGH)",

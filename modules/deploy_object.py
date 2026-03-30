@@ -87,39 +87,39 @@ class Deploy_Object_List(list):
     return libs
 
 
-  def get_lib_list_with_prod_lib(self) -> {}:
+  def get_lib_list_with_prod_lib(self, ready: bool=None) -> {}:
     libs = []
     lib_list = []
     for o in self:
-      if o.lib not in lib_list:
+      if (ready is None or o.ready == ready) and o.lib not in lib_list:
         lib_list.append(o.lib)
         libs.append({'lib' : o.lib, 'prod_lib': o.prod_lib})
     return libs
 
 
 
-  def get_lib_list_from_prod(self) -> {}:
+  def get_lib_list_from_prod(self, ready: bool=None) -> {}:
     libs = []
     for o in self:
-      if o.prod_lib not in libs and o.ready:
+      if (ready is None or o.ready == ready) and o.prod_lib not in libs:
         libs.append(o.prod_lib)
     return libs
 
 
 
-  def get_obj_list_by_lib(self, lib) -> [Deploy_Object]:
+  def get_obj_list_by_lib(self, lib, ready: bool=None) -> [Deploy_Object]:
     objs = []
     for o in self:
-      if o.prod_lib == lib and o.ready:
+      if o.prod_lib == lib and (o.ready == ready or ready is None):
         objs.append(o)
     return objs
 
 
 
-  def get_obj_list_by_prod_lib(self, lib) -> [Deploy_Object]:
+  def get_obj_list_by_prod_lib(self, lib, ready: bool=None) -> [Deploy_Object]:
     objs = []
     for o in self:
-      if o.prod_lib == lib and o.ready:
+      if o.prod_lib == lib and (o.ready == ready or ready is None):
         objs.append(o)
     return objs
 
