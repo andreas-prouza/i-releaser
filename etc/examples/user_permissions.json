@@ -1,0 +1,30 @@
+{
+    "prouza": {
+      "general": ["read"],
+      "workflows": {
+        "unit_test_permissions": {
+          "general": ["deploy"],
+          "stages": {
+              "uat": ["admin"]
+            }
+        },
+        "unit_test_permissions_admin": {
+          "general": ["admin"],
+          "stages": {
+              "uat": ["admin"]
+            }
+        }
+      }
+    },
+    "prouzat1": {
+      "general": ["update"],
+      "workflows": {
+        "unit_test_permissions": {
+          "general": ["read"],
+          "stages": {
+              "uat": ["four_eyes_check"]
+            }
+        }
+      }
+    }
+  }

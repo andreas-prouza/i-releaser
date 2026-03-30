@@ -1,0 +1,75 @@
+
+{
+  "name": "academy_deploy_2_test",
+  "default_project": "test",
+  "step_action": [
+    {
+      "processing_step": "print_pwd",
+      "environment": "PASE",
+      "execute": "pwd",
+      "check_error": true
+    }
+  ],
+  "stages" : [
+    {
+      "name": "START",
+      "next_stages": ["BUILD"],
+      "host": "localhost",
+      "build_dir": "/home/prouzat1/deployments/test",
+      "processing_steps": ["pre", "print_pwd", "post"],
+      "clear_files": true
+    },
+    {
+      "name": "BUILD",
+      "next_stages": ["SAVE"],
+      "host": "localhost",
+      "build_dir": "/home/prouzat1/deployments/test",
+      "processing_steps": ["pre", "clean_current_commit", "create_object_list", "git_save_changes", "clean_current_commit", "run_build", "load_object_list"],
+      "execute_remote": false,
+      "clear_files": true
+    },
+    {
+      "name": "SAVE",
+      "next_stages": ["TRANSFER"],
+      "host": "localhost",
+      "build_dir": "/home/prouzat1/deployments/test",
+      "processing_steps": ["pre", "save-prepare", "save", "post"],
+      "execute_remote": false,
+      "clear_files": true
+    },
+    {
+      "name": "TRANSFER",
+      "next_stages": ["BACKUP"],
+      "host": "localhost",
+      "remote_dir": "/home/PROUZAT1/deployments/remote_test",
+      "build_dir": "/home/prouzat1/deployments/test",
+      "processing_steps": ["pre", "transfer", "target-prepare", "post"],
+      "execute_remote": true,
+      "clear_files": true
+    },
+    {
+      "name": "BACKUP",
+      "next_stages": ["DEPLOY"],
+      "host": "localhost",
+      "remote_dir": "/home/PROUZAT1/deployments/remote_test",
+      "build_dir": "/home/prouzat1/deployments/test",
+      "processing_steps": ["pre", "backup-old-objects", "post"],
+      "execute_remote": true,
+      "clear_files": true
+    },
+    {
+      "name": "DEPLOY",
+      "next_stages": ["END"],
+      "host": "localhost",
+      "remote_dir": "/home/PROUZAT1/deployments/remote_test",
+      "build_dir": "/home/prouzat1/deployments/test",
+      "processing_steps": ["pre", "perform-deployment", "post"],
+      "execute_remote": true,
+      "clear_files": true
+    },
+    {
+      "name": "END",
+      "description": "Finished"
+    }
+  ]
+}

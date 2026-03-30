@@ -1,3 +1,19 @@
+## Definition
+
+* Workflow ID needs to be unique. Also over all projects
+* Store workflows in separate json files
+
+
+
+## Features
+
+* Permission check
+* 4 eyes check
+* Parallel processing
+  * Wait for next stage processing until a defined list of previous stages has been finished
+  * Proceed processing, even not all previous stages has been finished
+
+
 
 ## General processing of stages
 

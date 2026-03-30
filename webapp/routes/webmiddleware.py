@@ -7,6 +7,7 @@ import aiofiles
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
+from modules import user_permission
 from starlette.middleware.base import BaseHTTPMiddleware
 from starsessions import SessionStore
 
@@ -16,6 +17,7 @@ from web_modules import app_login
 from web_modules import http_functions
 from web_modules import server_sessions
 from routes import routes
+from modules import permission
 
 
 class FileSystemStore(SessionStore):
@@ -59,12 +61,14 @@ class WebMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
 
         logging.debug(f'Now call handler for {request.url.path}')
+        response = None
         
         try:
 
             # We can now safely access request.session
-            response = await self.check_session(request)
-            logging.debug(f"Session check result: {response}")
+            if response is None:
+                response = await self.check_session(request)
+                logging.debug(f"Session check result: {response}")
             
             if response is None:
                 response = await call_next(request)
@@ -81,7 +85,6 @@ class WebMiddleware(BaseHTTPMiddleware):
         logging.debug(f"Response send code: {response.status_code}")
         
         return response
-
 
 
     async def check_session(self, request: Request) -> None | JSONResponse | HTMLResponse:
@@ -109,12 +112,13 @@ class WebMiddleware(BaseHTTPMiddleware):
             else:
                 meta_file.Meta_File.CURRENT_USER = None
             return
-        
+
         auth_token = request.query_params.get('auth-token', None)
 
         if auth_token is not None:
             
             if app_login.is_key_valid(request, auth_token):
+                meta_file.Meta_File.CURRENT_USER = request.state.session.get('current_user', None)
                 return
             return http_functions.get_json_response({'Error': 'Your authentication-token is not permitted'}, status=401)
 

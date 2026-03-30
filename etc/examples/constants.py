@@ -13,6 +13,8 @@ C_META_DIR = f"{C_LOCAL_BASE_DIR}/meta/{{project}}"
 C_DEPLOY_DIR = f"{C_META_DIR}/{{create_date}}/{{deploy_version}}"
 C_DEPLOY_META_FILE = f'{C_DEPLOY_DIR}/deployment_{{deploy_version}}.json'
 
+C_USER_PERMISSIONS = f'{C_LOCAL_BASE_DIR}/etc/user_permissions.json'
+
 #C_OBJECT_LIST = 'objects.txt'
 C_OBJECT_LIST = 'build-output/object-list.txt'
 

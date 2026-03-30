@@ -7,8 +7,9 @@ import logging
 # from pydantic import validate_arguments
 
 from etc import constants
-from modules import meta_file
+from modules import meta_file, permission
 from operator import itemgetter
+from modules.user_permission import check_user_permission
 
 class DeploymentExistException(Exception):
     pass
@@ -20,6 +21,7 @@ class StatusConflictException(Exception):
 class Deploy_Version:
 
     @staticmethod
+    @check_user_permission(permission.Permission.START_WORKFLOW)
     def get_next_deploy_version(project:str, status : meta_file.Meta_file_status) -> int:
 
       version_file = constants.C_DEPLOY_VERSION.format(project=project)
@@ -58,6 +60,7 @@ class Deploy_Version:
 
 
     @staticmethod
+    @check_user_permission(permission.Permission.READ)
     def get_deployments(version_file):
 
       logging.debug(f"Deployment file: {version_file}")
@@ -105,6 +108,7 @@ class Deploy_Version:
 
 
     @staticmethod
+    @check_user_permission(permission.Permission.UPDATE)
     def update_deploy_status(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str, commit : str):
 
       logging.debug(f"Update deployment status: {version=}, {status=}, {meta_file_name}, {commit}")
@@ -137,6 +141,7 @@ class Deploy_Version:
 
     #@validate_arguments
     @staticmethod
+    @check_user_permission(permission.Permission.READ)
     def get_deployment(project:str, version : int):
 
       if type(version) == str:
@@ -160,6 +165,7 @@ class Deploy_Version:
 
 
     @staticmethod
+    @check_user_permission(permission.Permission.READ)
     def get_deployment_by_commit(project:str, commit : str):
 
       logging.debug(f"Get deployment {commit=}, {project=}") 
