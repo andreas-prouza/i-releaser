@@ -145,6 +145,9 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 </style>
 
 <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/font/bootstrap-icons.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
 
 <div class="box box-info">
 
@@ -155,6 +158,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     <br/>
 
     <!-- /.box-header -->
+    <div style="position: relative;">
     <div>
         <h2>Projekt: <code>{{ deployment_dict['general']['project'] }} </code>&nbsp;&nbsp;&nbsp;&nbsp;
             Workflow: <code>{{ deployment_dict['general']['workflow']['name'] }} </code>&nbsp;&nbsp;&nbsp;&nbsp;
@@ -175,6 +179,16 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             {% endif %}
             {% include 'custom_templates/deployment_status.html' ignore missing %}
         </h3>
+        <div style="position: absolute; bottom: 0; right: 100px;">
+            <a onclick="show_processing_history('{{ deployment_dict['general']['file_name'] }}')" title="Show history">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-clock-history" viewBox="0 0 16 16">
+                <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z" fill="#198754"/>
+                <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"  fill="#0dcaf0"/>
+                <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5"/>
+            </svg>
+            </a>
+        </div>
+    </div>
     </div>
     <table class="table table-striped table-bordered">
         <tr>
@@ -199,32 +213,6 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             </td>
         </tr>
         {% endif %}
-        <tr>
-            <th>Processing users</th>
-            <td colspan="3">
-                <table class="table table-striped table-bordered">
-                    <thead>
-                    <th>User</th>
-                    <th>Timestamp</th>
-                    <th>Action</th>
-                    <th>Details</th>
-                    </thead>
-                    {% for user in (deployment_dict.get('processing_users') or []) %}
-                        <tr><td>{{ user['user'] }}</td><td>{{ user['timestamp'] }}</td><td>{{ user['action'] }}</td><td>
-                            {% if user['stage'] %}
-                                Stage: {{ user['stage'] }}
-                            {% endif %}
-                            {% if user['stage'] and user['details'] %}
-                            <br/>
-                            {% endif %}
-                            {% if user['details'] %}
-                                <code>{{ user['details'] }}</code>
-                            {% endif %}
-                        </td></tr>
-                    {% endfor %}
-                </table>
-            </td>
-        </tr>
     </table>
 
 
@@ -250,15 +238,42 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     <br/>
 
     <h3>Objects to deploy</h3>
-    <table class="table table-striped table-bordered w-auto">
+    
+    <table class="table table-striped table-bordered w-auto"
+            data-toggle="table" 
+            data-filter-control="true"
+            data-show-search-clear-button="true" 
+            data-show-columns="true"
+            data-pagination="true" 
+            data-page-list="[5, 10, 20, 50, 100, all]"
+            data-page-size="10"
+            data-pagination-h-align="left"
+            data-pagination-detail-h-align="left"
+            data-buttons-align="left"
+            data-search-align="left">
         <thead>
-            <th>Ready</th><th>Prod Lib</th><th>Target Lib</th><th>Name</th><th>Type</th><th>Attribute</th><th>Status</th>
+            <th>Ready<br/>
+                <label class="switch">
+                    <input type="checkbox" id="selectAll" onchange="toggleAll(this)">
+                    <span class="slider round"></span>
+                </label>
+            </th>
+            <th data-field="member" data-sortable="true" data-filter-control="input" data-filter-control-container="#prod_lib_filter">Prod Lib</th>
+            <th data-field="target" data-sortable="true" data-filter-control="input" data-filter-control-container="#target_lib_filter">Target Lib</th>
+            <th data-field="name" data-sortable="true" data-filter-control="input" data-filter-control-container="#name_filter">Name</th>
+            <th data-field="type" data-sortable="true" data-filter-control="select" data-filter-control-container="#type_filter">Type</th>
+            <th data-field="attribute" data-sortable="true" data-filter-control="select" data-filter-control-container="#attribute_filter">Attribute</th>
+            <th data-field="status" data-sortable="true" data-filter-control="select" data-filter-control-container="#status_filter">Status</th>
         </thead>
         {% for object in deployment_dict['objects'] %}
         <tr>
             <td>
                 <label class="switch">
-                    <input type="checkbox" {% if object['ready'] %}checked{% endif %}
+                    <input type="checkbox" class="obj-checkbox" {% if object['ready'] %}checked{% endif %}
+                        data-file="{{ deployment_dict['general']['file_name'] }}"
+                        data-lib="{{ object['obj_lib'] }}"
+                        data-name="{{ object['obj_name'] }}"
+                        data-type="{{ object['obj_type'] }}"
                         onchange="set_source_ready_4_deployment(this, '{{ deployment_dict['general']['file_name'] }}', '{{ object['obj_lib'] }}', '{{ object['obj_name'] }}', '{{ object['obj_type'] }}', this.checked)">
                     <span class="slider round"></span>
                 </label>
@@ -296,17 +311,22 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
         {% endfor %}
     </table>
 
-
     <hr>
     
     <br/>
 </div>
 
-
+<script src="{{ url_for('static', path='assets/js/jquery.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/chart.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/json.js') }}"></script>
+
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table.min.js') }}"></script>
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-resizable.min.js') }}"></script>
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-filter-control.min.js') }}"></script>
+
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
 <script type="text/javascript">
 
@@ -352,8 +372,9 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             print_flow_connections();
         });
 
-        
+
     })(document)
+
 
 function print_flow_connections() {
 
@@ -437,6 +458,50 @@ function showLog(type, file_name, stage_id, action_id, history_element) {
         }).then((result) => {
             if (stage_id != null && last_show_stage_id != null) {
                 show_stage_steps(current_meta_file, last_show_stage_id, last_show_stage_name);
+            }
+        });
+    });
+}
+
+
+function show_processing_history(file_name) {
+    let html = '';
+
+    postData("/api/show_processing_history", { filename: file_name }).then((data) => {
+        console.log(data); // JSON data parsed by `data.json()` call
+        
+        let tableRows = data.map(item => {
+            return `<tr>
+                <td>${item.timestamp}</td>
+                <td>${item.user}</td>
+                <td>${item.action}</td>
+                <td>${item.stage ? item.stage : ''}</td>
+                <td>${item.details ? item.details : ''}</td>
+            </tr>`;
+        }).join('');
+        html = `<table class="table table-striped table-bordered w-auto">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Stage</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRows}
+            </tbody>
+        </table>`;
+
+
+        Swal.fire({
+            icon: 'info',
+            title: 'Processing history',
+            html: '<pre class="logs">'+html+'</pre>',
+            width: 'auto',
+            customClass: {
+                popup: 'logs'
             }
         });
     });
@@ -544,21 +609,6 @@ async function runStage(filename, stage_id, stage_name) {
     */
 
 
-function set_source_ready_4_deployment(obj, filename, lib, name, type, checked) {
-
-    postData("/api/set_source_ready_4_deployment", { lib: lib, name: name, type: type, filename: filename, checked: checked }).then((data) => {
-        if (data['status'] == 'error') {
-            obj.checked = !checked;
-            console.log(data); // JSON data parsed by `data.json()` call
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data['error']
-            })
-        }
-    });
-}
-
 
 function set_check_error(obj, filename, stage_id, action_id, checked) {
     postData("/api/set_check_error", { stage_id: stage_id, filename: filename, action_id: action_id, checked: checked }).then((data) => {
@@ -616,6 +666,52 @@ function cancel_deployment(filename) {
     }
     })
     
+}
+
+
+async function set_source_ready_4_deployment(obj, filename, lib, name, type, checked) {
+
+    await postData("/api/set_source_ready_4_deployment", { lib: lib, name: name, type: type, filename: filename, checked: checked }).then(async (data) => {
+        if (data['status'] == 'error') {
+            obj.checked = !checked;
+            console.log(data); // JSON data parsed by `data.json()` call
+            await Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data['error']
+            });
+            throw new Error(data['error']);
+        }
+    });
+}
+
+
+
+async function toggleAll(masterCheckbox) {
+    // Get all row checkboxes
+    const checkboxes = document.querySelectorAll('.obj-checkbox');
+    const newState = masterCheckbox.checked;
+
+    for (const cb of checkboxes) {
+        // Only trigger update if the state is actually changing
+        if (cb.checked !== newState) {
+            
+            // Extract data from attributes to call your existing function
+            const fileName = cb.getAttribute('data-file');
+            const lib = cb.getAttribute('data-lib');
+            const name = cb.getAttribute('data-name');
+            const type = cb.getAttribute('data-type');
+            // Trigger your backend update function
+            try {
+                await set_source_ready_4_deployment(cb, fileName, lib, name, type, newState);
+                cb.checked = newState;
+                console.log(`Set ${name} to ${newState}`);
+            } catch (error) {
+                console.error(error);
+                break;
+            }
+        }
+    };
 }
 
 </script>

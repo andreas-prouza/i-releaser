@@ -104,6 +104,7 @@ app.add_api_route('/api/get_meta_file_json', routes.get_meta_file_json, methods=
 
 
 app.add_api_route('/api/get_action_log', routes.get_action_log, methods=['POST'])
+app.add_api_route('/api/show_processing_history', routes.show_processing_history, methods=['POST'])
 
 
 app.add_api_route('/api/cancel_deployment', routes.cancel_deployment, methods=['POST'])

@@ -19,3 +19,4 @@ logs/**
 **/sessions
 **/custom/**
 **/custom_templates/**
+test/*.http

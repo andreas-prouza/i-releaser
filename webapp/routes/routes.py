@@ -256,6 +256,18 @@ async def get_action_log(request: Request):
     
 
 
+
+async def show_processing_history(request: Request):
+    data = await request.json()
+    logging.debug(f"Get logs from: {data=}")
+    logging.debug(f"Get logs from: {data['filename']=}")
+
+    mf = meta_file.Meta_File.load_json_file(data['filename'])
+
+    return http_functions.get_json_response(mf.processing_users)
+
+
+
 async def cancel_deployment(request: Request):
     data = await request.json()
     logging.debug(f"Cancel Deployment: {data['filename']}")

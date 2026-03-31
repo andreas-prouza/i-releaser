@@ -4,7 +4,8 @@ import os, logging
 from etc import constants
 from modules import meta_file as mf, stages as s
 from modules import deploy_action as da
-from scripts import save_objects, target_prepare, transfer, backup_old_objects, target_deployment
+from scripts.examples import transfer
+from scripts.examples import backup_old_objects, save_objects, target_deployment, target_prepare
 
 
 @DeprecationWarning

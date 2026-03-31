@@ -20,3 +20,11 @@ Content-Type: application/json
 Cookie: session=cYGSqgXhoAdBrnLxpew5vEPZpXaLchgK2srNVTGgA0w; session_id=f82e78a9-6445-43d2-b33f-868dab8766c2
 
 {"stage_id":"111","filename":"/home/PROUZAT1/i-releaser-2/meta/development/2026-03-19/1/deployment_1.json","action_id":122,"history_element":0}
+
+
+###
+
+POST http://academy:8080/api/show_processing_history?auth-token=9d39120c80c5d7c507b48cf8c96347e90676334b2708921ebb02dc39096d65a9
+Content-Type: application/json
+
+{"filename":"/home/PROUZAT1/i-releaser-2/meta/test/2026-03-31/33/deployment_33.json"}

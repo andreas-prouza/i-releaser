@@ -46,7 +46,7 @@ def init_deployment(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Depl
     add_qsys_action_n_execute(meta_file, stage_obj, action, cmd, False)
 
     # Create save files for each lib to deploy
-    for lib in meta_file.deploy_objects.get_lib_list_from_prod(ready=True):
+    for lib in meta_file.deploy_objects.get_lib_list_from_prod():
 
         cmd = f"CRTSAVF {meta_file.backup_deploy_lib}/{lib}"
         add_qsys_action_n_execute(meta_file, stage_obj, action, cmd, False)
