@@ -145,8 +145,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 </style>
 
 <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
-  <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/font/bootstrap-icons.css') }}">
+
   <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
 
 <div class="box box-info">
@@ -239,7 +238,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 
     <h3>Objects to deploy</h3>
     
-    <table class="table table-striped table-bordered w-auto"
+    <table id="object_list" class="table w-auto"
             data-toggle="table" 
             data-filter-control="true"
             data-show-search-clear-button="true" 
@@ -252,14 +251,14 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             data-buttons-align="left"
             data-search-align="left">
         <thead>
-            <th>Ready<br/>
+            <th data-field="ready">Ready<br/>
                 <label class="switch">
                     <input type="checkbox" id="selectAll" onchange="toggleAll(this)">
                     <span class="slider round"></span>
                 </label>
             </th>
-            <th data-field="member" data-sortable="true" data-filter-control="input" data-filter-control-container="#prod_lib_filter">Prod Lib</th>
-            <th data-field="target" data-sortable="true" data-filter-control="input" data-filter-control-container="#target_lib_filter">Target Lib</th>
+            <th data-field="prod_lib" data-sortable="true" data-filter-control="input" data-filter-control-container="#prod_lib_filter">Prod Lib</th>
+            <th data-field="target_lib" data-sortable="true" data-filter-control="input" data-filter-control-container="#target_lib_filter">Target Lib</th>
             <th data-field="name" data-sortable="true" data-filter-control="input" data-filter-control-container="#name_filter">Name</th>
             <th data-field="type" data-sortable="true" data-filter-control="select" data-filter-control-container="#type_filter">Type</th>
             <th data-field="attribute" data-sortable="true" data-filter-control="select" data-filter-control-container="#attribute_filter">Attribute</th>
@@ -326,7 +325,6 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-resizable.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-filter-control.min.js') }}"></script>
 
-<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
 <script type="text/javascript">
 
@@ -689,23 +687,38 @@ async function set_source_ready_4_deployment(obj, filename, lib, name, type, che
 
 async function toggleAll(masterCheckbox) {
     // Get all row checkboxes
-    const checkboxes = document.querySelectorAll('.obj-checkbox');
+    //const checkboxes = document.querySelectorAll('.obj-checkbox');
     const newState = masterCheckbox.checked;
 
-    for (const cb of checkboxes) {
+    const $table = $('#object_list'); // Make sure 
+    
+    // Get ALL data from the table (even hidden pages)
+    const allData = $table.bootstrapTable('getData');
+    console.log(allData);
+
+    const fileName = '{{ deployment_dict['general']['file_name'] }}';
+
+    for (const cb of allData) {
+        console.log(`${cb.name}: ${cb.ready.toString().includes('checked=""')}`);
+
         // Only trigger update if the state is actually changing
-        if (cb.checked !== newState) {
+        if (cb.ready.toString().includes('checked=""') !== newState) {
             
             // Extract data from attributes to call your existing function
-            const fileName = cb.getAttribute('data-file');
-            const lib = cb.getAttribute('data-lib');
-            const name = cb.getAttribute('data-name');
-            const type = cb.getAttribute('data-type');
+            const lib = cb.target_lib;
+            const name = cb.name;
+            const type = cb.type;
             // Trigger your backend update function
             try {
                 await set_source_ready_4_deployment(cb, fileName, lib, name, type, newState);
-                cb.checked = newState;
+                // 3. Update the HTML string manually for the table refresh
+                if (newState) {
+                    cb.ready = cb.ready.replace('<input type="checkbox"', '<input type="checkbox" checked=""');
+                } else {
+                    cb.ready = cb.ready.replace('checked=""', '');
+                }
                 console.log(`Set ${name} to ${newState}`);
+                $table.bootstrapTable('load', allData);
             } catch (error) {
                 console.error(error);
                 break;
