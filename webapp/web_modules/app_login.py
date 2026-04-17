@@ -5,7 +5,7 @@ import datetime
 
 from fastapi import Request
 
-from modules import meta_file, stages
+from modules import meta_file, stages, user_permission
 from modules.cmd_status import Status as Cmd_Status
 from etc import db_config, global_cfg, web_constants
 from pathlib import Path
@@ -31,7 +31,7 @@ def connect(request: Request, user, password):
   
   try:
 
-    if user not in [x.lower() for x in global_cfg.C_ALLOWED_USERS]:
+    if user not in [x.lower() for x in user_permission.UserPermission.get_user_list()]:
       e = Exception(f"User '{user}' has no permission.")
       raise e
 
@@ -100,7 +100,7 @@ def is_key_valid(request: Request, auth_token):
 
   for user,key in keys.items():
     if key['key'] == hashed_key:
-      if user not in [x.lower() for x in global_cfg.C_ALLOWED_USERS]:
+      if user not in [x.lower() for x in user_permission.UserPermission.get_user_list()]:
         e = Exception(f"User '{user}' has no permission.")
         raise e
       session['current_user'] = user

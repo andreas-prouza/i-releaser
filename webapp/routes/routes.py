@@ -3,7 +3,7 @@ from typing import List, Optional
 from pathlib import Path
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 # Custom modules
 from etc import constants, global_cfg
@@ -15,7 +15,7 @@ from modules.deploy_object import Deploy_Object
 
 from web_modules import http_functions
 from web_modules import flowchart, app_login
-from webapp.web_modules import server_sessions
+from modules import user_permission
 
 
 def get_sidebar_data(request: Request):
@@ -152,7 +152,7 @@ async def show_settings(request: Request):
     logging.debug("Send response")
     return http_functions.get_html_response(request, 'admin/settings.html', 
         sidebar=get_sidebar_data(request), 
-        allowed_users=global_cfg.C_ALLOWED_USERS, 
+        allowed_users=user_permission.UserPermission.get_user_list(), 
         default_project=global_cfg.C_DEFAULT_PROJECT, 
         port='????',
         path=Path(os.path.dirname(__file__)),
