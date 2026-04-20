@@ -1,18 +1,14 @@
-from __future__ import annotations
 import logging, string, random
 import hashlib, json
 import datetime
 
 from fastapi import Request
 
-from modules import meta_file, stages, user_permission
-from modules.cmd_status import Status as Cmd_Status
-from etc import db_config, global_cfg, web_constants
+from modules import meta_file, user_permission
+from etc import db_config, web_constants
 from pathlib import Path
 
 import pyodbc
-
-from web_modules import server_sessions
 
 
 #cnxn = pyodbc.connect('DSN=*LOCAL')
@@ -39,6 +35,7 @@ def connect(request: Request, user, password):
     conn.close()
     session['is_logged_in'] = True
     session['current_user'] = user
+    meta_file.Meta_File.CURRENT_USER = user.upper()
     session.pop('__invalid__', None)
     logging.debug(f"Login successfully for user {user}")
     return True

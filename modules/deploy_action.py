@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import logging
 from enum import Enum
@@ -6,197 +5,6 @@ from enum import Enum
 from modules import run_history as rh
 from modules.cmd_status import Status as Cmd_Status
 #import traceback
-
-
-
-class Deploy_Action_List_list(list):
-
-
-  def __init__(self, iterable=None):
-
-    iterable2 = []
-
-    if iterable is not None:
-      for i, a in enumerate(iterable):
-        iterable2.append(a)
-        if type(a) == dict:
-          iterable2[i] = Deploy_Action.get_action_from_dict(a)
-
-    if len(iterable2) > 0:
-      super().__init__(iterable2)
-      return
-    super().__init__()
-
-
-
-
-  def __setitem__(self, index, item):
-      super().__setitem__(index, self._validate_number(item))
-
-  def insert(self, index, item):
-      super().insert(index, self._validate_number(item))
-
-  def append(self, item):
-      super().append(self._validate_number(item))
-
-  def extend(self, other):
-      if isinstance(other, type(Deploy_Action)):
-          super().extend(other)
-      else:
-          super().extend(self._validate_number(item) for item in other)
-
-  def _validate_number(self, value):
-      if type(value) == Deploy_Action:
-          return value
-      raise TypeError(
-          f"Deploy_Action value expected, got {type(value).__name__}"
-      )
-
-
-
-  def get_list(self) -> list[dict]:
-
-    list = []
-
-    for a in self:
-      list.append(a.get_dict())
-
-    return list
-
-
-
-
-  def add_action(self, action: Deploy_Action, add_after: Deploy_Action=None) -> Deploy_Action:
-
-    #logging.error(traceback.format_stack())
-
-    if type(action) != Deploy_Action:
-      raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
-
-    action.sequence = self.get_next_sequence()
-    
-    if add_after is not None:
-      action.sequence = add_after.sequence + 1
-      for a in self:
-        if a.sequence >= action.sequence:
-          a.sequence += 1
-
-    #logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
-
-    self.append(action)
-
-    logging.debug(f"Number of actions: {len(self)}")
-
-    return action
-
-
-
-  def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True, add_after: Deploy_Action=None, run_in_new_job: bool=False, execute_remote: bool=None) -> Deploy_Action:
-    logging.debug(f'Add action for cmd: {cmd=}, {environment=}, {processing_step=}')
-
-    return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step, 
-    stage=stage, check_error=check_error, run_in_new_job=run_in_new_job, execute_remote=execute_remote), add_after=add_after)
-
-
-
-  def add_actions_from_dict(self, dict_input: dict) -> None:
-
-    logging.debug(f'Add actions from {type(dict_input)}')
-    action = Deploy_Action(dict=dict_input)
-    self.add_action(action)
-
-
-
-  def get_action_by_id(self, id: int) -> Deploy_Action:
-    for a in self:
-      if a.id == id:
-        return a
-
-    raise Exception(f"Action id {id} not found in list {self.get_actions_as_dict()}")
-
-
-
-  def get_actions_by_processing_step(self, processing_step: str) -> Deploy_Action_List_list:
-
-    result = Deploy_Action_List_list()
-    for a in self:
-      if a.processing_step == processing_step:
-        result.append(a)
-
-    return result
-
-
-
-  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> list[Deploy_Action]:
-
-    list_actions=[]
-
-    for a in self:
-      
-      # Consider processing_step if given
-      if processing_step is not None and a.processing_step != processing_step:
-        continue
-      
-      # Consider stage if given
-      if stage is not None and a.stage is not None and stage != a.stage:
-        continue
-
-      if include_subactions is not None and include_subactions:
-        for asa in a.sub_actions:
-          if action_id is not None and asa.id == action_id:
-            list_actions.append(asa)
-            return list_actions
-      
-      if action_id is not None and a.id == action_id:
-        list_actions.append(a)
-        return list_actions
-
-      if action_id is not None:
-        continue
-
-      list_actions.append(a)
-
-    list_actions.sort(key=lambda x: x.sequence)
-
-    return list_actions
-
-
-
-  def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]:
-
-    actions_dict=[]
-
-    for a in self.get_actions(processing_step, stage):
-      actions_dict.append(a.get_dict())
-
-    return actions_dict
-
-
-
-  def set_action_check(self, action_id: int, check: bool) -> None:
-
-    action = self.get_action_by_id(action_id)
-
-    if action.status == Cmd_Status.FINISHED:
-      raise Exception('Not possible to change a finished step')
-
-    action.check_error = check
-
-
-
-  def get_next_sequence(self) -> int:
-
-    if len(self) == 0:
-      return 0
-
-    seq = 0
-    for a in self:
-      if a.sequence > seq:
-        seq = a.sequence
-    
-    return seq + 1
-
-
 
 
 
@@ -353,6 +161,202 @@ class Deploy_Action:
        (o.id, o.sequence, o.environment, o.cmd, o.stage, o.status, o.run_history, o.check_error, o.processing_step, o.run_in_new_job, o.execute_remote):
       return True
 
-    logging.warn(f"{self.id=} - {self.sequence=} - {self.environment=} - {self.cmd=} - {self.stage=} - {self.status=} - {self.run_history=} - {self.check_error=} - {self.processing_step=} - {self.run_in_new_job=} - {self.execute_remote=}")
-    logging.warn(f"{o.id=} - {o.sequence=} - {o.environment=} - {o.cmd=} - {o.stage=} - {o.status=} - {o.run_history=} - {o.check_error=} - {o.processing_step=} {o.run_in_new_job=} - {o.execute_remote=}")
+    logging.warning(f"{self.id=} - {self.sequence=} - {self.environment=} - {self.cmd=} - {self.stage=} - {self.status=} - {self.run_history=} - {self.check_error=} - {self.processing_step=} - {self.run_in_new_job=} - {self.execute_remote=}")
+    logging.warning(f"{o.id=} - {o.sequence=} - {o.environment=} - {o.cmd=} - {o.stage=} - {o.status=} - {o.run_history=} - {o.check_error=} - {o.processing_step=} {o.run_in_new_job=} - {o.execute_remote=}")
     return False
+  
+
+
+
+
+
+
+
+class Deploy_Action_List_list(list):
+
+
+  def __init__(self, iterable=None):
+
+    iterable2 = []
+
+    if iterable is not None:
+      for i, a in enumerate(iterable):
+        iterable2.append(a)
+        if type(a) == dict:
+          iterable2[i] = Deploy_Action.get_action_from_dict(a)
+
+    if len(iterable2) > 0:
+      super().__init__(iterable2)
+      return
+    super().__init__()
+
+
+
+
+  def __setitem__(self, index, item):
+      super().__setitem__(index, self._validate_number(item))
+
+  def insert(self, index, item):
+      super().insert(index, self._validate_number(item))
+
+  def append(self, item):
+      super().append(self._validate_number(item))
+
+  def extend(self, other):
+      if isinstance(other, type(Deploy_Action)):
+          super().extend(other)
+      else:
+          super().extend(self._validate_number(item) for item in other)
+
+  def _validate_number(self, value):
+      if type(value) == Deploy_Action:
+          return value
+      raise TypeError(
+          f"Deploy_Action value expected, got {type(value).__name__}"
+      )
+
+
+
+  def get_list(self) -> list[dict]:
+
+    list = []
+
+    for a in self:
+      list.append(a.get_dict())
+
+    return list
+
+
+
+
+  def add_action(self, action: Deploy_Action, add_after: Deploy_Action=None) -> Deploy_Action:
+
+    #logging.error(traceback.format_stack())
+
+    if type(action) != Deploy_Action:
+      raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
+
+    action.sequence = self.get_next_sequence()
+    
+    if add_after is not None:
+      action.sequence = add_after.sequence + 1
+      for a in self:
+        if a.sequence >= action.sequence:
+          a.sequence += 1
+
+    #logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
+
+    self.append(action)
+
+    #logging.debug(f"Number of actions: {len(self)}")
+
+    return action
+
+
+
+  def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True, add_after: Deploy_Action=None, run_in_new_job: bool=False, execute_remote: bool=None) -> Deploy_Action:
+    #logging.debug(f'Add action for cmd: {cmd=}, {environment=}, {processing_step=}')
+
+    return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step, 
+    stage=stage, check_error=check_error, run_in_new_job=run_in_new_job, execute_remote=execute_remote), add_after=add_after)
+
+
+
+  def add_actions_from_dict(self, dict_input: dict) -> None:
+
+    #logging.debug(f'Add actions from {type(dict_input)}')
+    action = Deploy_Action(dict=dict_input)
+    self.add_action(action)
+
+
+
+  def get_action_by_id(self, id: int) -> Deploy_Action:
+    for a in self:
+      if a.id == id:
+        return a
+
+    raise Exception(f"Action id {id} not found in list {self.get_actions_as_dict()}")
+
+
+
+  def get_actions_by_processing_step(self, processing_step: str) -> 'Deploy_Action_List_list':
+
+    result = Deploy_Action_List_list()
+    for a in self:
+      if a.processing_step == processing_step:
+        result.append(a)
+
+    return result
+
+
+
+  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> list['Deploy_Action']:
+
+    list_actions=[]
+
+    for a in self:
+      
+      # Consider processing_step if given
+      if processing_step is not None and a.processing_step != processing_step:
+        continue
+      
+      # Consider stage if given
+      if stage is not None and a.stage is not None and stage != a.stage:
+        continue
+
+      if include_subactions is not None and include_subactions:
+        for asa in a.sub_actions:
+          if action_id is not None and asa.id == action_id:
+            list_actions.append(asa)
+            return list_actions
+      
+      if action_id is not None and a.id == action_id:
+        list_actions.append(a)
+        return list_actions
+
+      if action_id is not None:
+        continue
+
+      list_actions.append(a)
+
+    list_actions.sort(key=lambda x: x.sequence)
+
+    return list_actions
+
+
+
+  def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]:
+
+    actions_dict=[]
+
+    for a in self.get_actions(processing_step, stage):
+      actions_dict.append(a.get_dict())
+
+    return actions_dict
+
+
+
+  def set_action_check(self, action_id: int, check: bool) -> None:
+
+    action = self.get_action_by_id(action_id)
+
+    if action.status == Cmd_Status.FINISHED:
+      raise Exception('Not possible to change a finished step')
+
+    action.check_error = check
+
+
+
+  def get_next_sequence(self) -> int:
+
+    if len(self) == 0:
+      return 0
+
+    seq = 0
+    for a in self:
+      if a.sequence > seq:
+        seq = a.sequence
+    
+    return seq + 1
+
+

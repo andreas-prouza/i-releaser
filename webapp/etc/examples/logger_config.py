@@ -3,12 +3,19 @@ import inspect
 from pathlib import Path
 import os
 from sys import path
+import threading
 
 #########################################
 # Logger Configuration
 #########################################
 
-LOG_FORMAT = '%(asctime)s (%(process)d) %(levelname)-7.7s %(filename)-10.10s %(funcName)-10.10s (%(lineno)d): %(message)s'
+def thread_id_filter(record):
+    """Inject thread_id to log records"""
+    record.thread_id = threading.get_native_id()
+    return record
+
+
+LOG_FORMAT = '%(asctime)s (%(process)d)|%(thread_id)d %(levelname)-7.7s %(filename)-10.10s %(funcName)-10.10s (%(lineno)d): %(message)s'
 
 LOG_LEVEL = logging.DEBUG
 
@@ -39,3 +46,12 @@ if not Path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 
 logging.basicConfig(format=LOG_FORMAT, filename=Path(LOG_DIR, LOG_NAME), level=LOG_LEVEL)
+#logging.getLogger().addFilter(thread_id_filter)
+
+# Get the root logger
+root_logger = logging.getLogger()
+
+# FIX: Attach the filter to all handlers on the root logger, 
+# ensuring all propagating logs get the thread_id injected.
+for handler in root_logger.handlers:
+    handler.addFilter(thread_id_filter)

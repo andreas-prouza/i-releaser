@@ -1,10 +1,9 @@
-from __future__ import annotations
 import json, os
 import logging
 from typing import List
 
 from etc import constants
-from modules import stages, deploy_action
+from modules import stages
 import glob
 
 
@@ -43,7 +42,7 @@ class Workflow:
     self.step_action = None
     self.stages = None
 
-    logging.debug(f"{name=}, {dict=}")
+    #logging.debug(f"{name=}, {dict=}")
 
     if dict is not None and len(dict) > 0:
 
@@ -58,13 +57,13 @@ class Workflow:
       if 'stages' in dict:
         self.stages = dict['stages']
 
-      logging.debug(f"Workflow created from dict: {self.get_dict()}")
+      #logging.debug(f"Workflow created from dict: {self.get_dict()}")
 
       return
 
-    logging.debug(f"Dict is None: {dict=} {name=}")
+    #logging.debug(f"Dict is None: {dict=} {name=}")
     self.load_workflow_data()
-    logging.debug(f"Workflow loaded: {self.get_dict()}")
+    logging.debug("Workflow loaded")
     #self.step_action = self.get_workflow_steps_mapping()
 
 
@@ -90,7 +89,7 @@ class Workflow:
 
 
   @staticmethod
-  def get_workflow_by_name(workflow_name:str) -> Workflow:
+  def get_workflow_by_name(workflow_name:str) -> 'Workflow':
 
     workflows_json = Workflow.get_all_workflows_json()
 
@@ -210,7 +209,7 @@ class Workflow:
     if 'step_action' in workflow_dict.keys() and workflow_dict['step_action'] is not None:
       logging.debug(f'len {len(step_mapping)=}, {len(workflow_dict["step_action"])=}')
       merged_list = {x['processing_step']:x for x in step_mapping + workflow_dict["step_action"]}.values()
-      logging.debug(f"{merged_list=}")
+      #logging.debug(f"{merged_list=}")
       return list(merged_list)
     
     return step_mapping

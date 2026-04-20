@@ -5,9 +5,8 @@ import json
 
 import aiofiles
 
-from fastapi import FastAPI, Request
+from fastapi import Request
 from fastapi.responses import JSONResponse, HTMLResponse
-from modules import user_permission
 from starlette.middleware.base import BaseHTTPMiddleware
 from starsessions import SessionStore
 
@@ -17,7 +16,6 @@ from web_modules import app_login
 from web_modules import http_functions
 from web_modules import server_sessions
 from routes import routes
-from modules import permission
 
 
 class FileSystemStore(SessionStore):
@@ -110,13 +108,14 @@ class WebMiddleware(BaseHTTPMiddleware):
             if current_user is not None:
                 meta_file.Meta_File.CURRENT_USER = current_user.upper()
             else:
+                logging.warning(f"Session indicates logged in but no current_user found: {request.state.session.__dict__=}")
                 meta_file.Meta_File.CURRENT_USER = None
             return
 
         auth_token = request.query_params.get('auth-token', None)
 
         if auth_token is not None:
-            
+            logging.debug(f"Auth token provided: xxxx{auth_token[-5:]}")
             if app_login.is_key_valid(request, auth_token):
                 meta_file.Meta_File.CURRENT_USER = request.state.session.get('current_user', None)
                 return
@@ -137,6 +136,7 @@ class WebMiddleware(BaseHTTPMiddleware):
         #logging.debug(f"{user=}")
         if user is not None and password is not None:
             if app_login.connect(request, user, password):
+                logging.debug(f"User authenticated: {request.state.session.get('current_user', None)}")
                 return
             
         logging.debug(f"User not authenticated, redirect to login: {request.state.session.__dict__=}")

@@ -1,17 +1,13 @@
-from __future__ import annotations
 import os
 import subprocess
 import logging
-import json
 import sys
-import time, datetime
 
 from io import StringIO
 
-from etc import constants
 from modules import meta_file, permission
 from modules import deploy_action as da
-from modules import run_history as rh
+from modules import run_history
 from modules import stages as s
 from modules import action_type
 from modules.cmd_status import Status as Cmd_Status
@@ -36,7 +32,7 @@ class IBM_i_commands:
 
 
 
-  def get_all_attributes(self, action:da.Deploy_Action) -> {}:
+  def get_all_attributes(self, action:da.Deploy_Action) -> dict:
     dict = {
       'processing_step': action.processing_step,
       'stage': action.stage
@@ -92,25 +88,25 @@ class IBM_i_commands:
     logging.info(f"run {action.sequence=}, {cmd=}, {os.getcwd()=}")
     
     try:
-      run_history = executions.get(action.environment)(stage, cmd, action)
+      rh = executions.get(action.environment)(stage, cmd, action)
 
     except Exception as e:
     
       logging.exception(e, stack_info=True)
-      run_history = rh.Run_History()
-      run_history.status = Cmd_Status.FAILED
-      run_history.stderr = str(e)
+      rh = run_history.Run_History()
+      rh.status = Cmd_Status.FAILED
+      rh.stderr = str(e)
 
     #time.sleep(0.02)
-    action.run_history.add_history(run_history)
+    action.run_history.add_history(rh)
 
-    action.status = run_history.status
+    action.status = rh.status
 
-    if run_history.status == Cmd_Status.FAILED and action.check_error:
-      stage.set_status(run_history.status)
+    if rh.status == Cmd_Status.FAILED and action.check_error:
+      stage.set_status(rh.status)
       self.meta_file.write_meta_file()
-      logging.exception(f"Error in action {action.sequence} of stage {stage.name}: {run_history.stderr}")
-      raise Command_Exception(run_history.stderr)
+      logging.exception(f"Error in action {action.sequence} of stage {stage.name}: {rh.stderr}")
+      raise Command_Exception(rh.stderr)
       
     self.meta_file.write_meta_file()
 
@@ -119,7 +115,7 @@ class IBM_i_commands:
 
 
   @check_user_permission(permission.Permission.RUN_WORKFLOW)
-  def run_script_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> rh.Run_History:
+  def run_script_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
     
     #cmd='pre.pre_cmd'
     #pre.pre_cmd('test', 'xxx')
@@ -130,7 +126,7 @@ class IBM_i_commands:
     if len(obj) != 2:
       raise Command_Exception(f"Command '{cmd}' has not the correct format: 'filename.function_name' (without '.py' in filename)")
     
-    run_history = rh.Run_History()
+    rh = run_history.Run_History()
 
     stdout_orig = sys.stdout
     stdout_new = StringIO()
@@ -146,21 +142,21 @@ class IBM_i_commands:
       logging.info(f"Run {str(func)}")
 
       func(self.meta_file, stage, action)
-      run_history.status = Cmd_Status.FINISHED
+      rh.status = Cmd_Status.FINISHED
 
     except Exception as e:
       print(str(e), file=sys.stderr)
       logging.exception(e, stack_info=True)
-      run_history.status = Cmd_Status.FAILED
+      rh.status = Cmd_Status.FAILED
 
-    run_history.stdout = stdout_new.getvalue()
-    run_history.stderr = stderr_new.getvalue()
+    rh.stdout = stdout_new.getvalue()
+    rh.stderr = stderr_new.getvalue()
     
     sys.stdout = stdout_orig
     sys.stderr = stderr_orig
     logging.getLogger().removeHandler(hdl)
 
-    return run_history
+    return rh
 
 
 
@@ -186,7 +182,7 @@ class IBM_i_commands:
 
 
   @check_user_permission(permission.Permission.RUN_WORKFLOW)
-  def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
+  def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
     
     logging.debug(f"Run QSYS: {cmd=}")
     cmd = IBM_i_commands.generate_qsys_cmd(cmd, action=action)
@@ -201,7 +197,7 @@ class IBM_i_commands:
 
 
   @check_user_permission(permission.Permission.RUN_WORKFLOW)
-  def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> Run_History:
+  def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
       
       logging.debug(f"{cmd=}; {stage.build_dir=}; {os.getcwd()=}")
 
@@ -213,14 +209,14 @@ class IBM_i_commands:
       stdout = stdout.decode('utf-8')
       stderr = stderr.decode('utf-8')
 
-      run_history = rh.Run_History()
+      rh = run_history.Run_History()
       
-      run_history.stdout = stdout
-      run_history.stderr = stderr
+      rh.stdout = stdout
+      rh.stderr = stderr
 
-      run_history.status = Cmd_Status.FINISHED
+      rh.status = Cmd_Status.FINISHED
 
       if s.returncode != 0 or stderr != '':
-        run_history.status = Cmd_Status.FAILED
+        rh.status = Cmd_Status.FAILED
 
-      return run_history
+      return rh

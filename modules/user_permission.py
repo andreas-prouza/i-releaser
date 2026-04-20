@@ -4,7 +4,6 @@ from typing import List
 
 from etc import constants, constants
 from modules import files, permission, meta_file
-import json
 
 
 

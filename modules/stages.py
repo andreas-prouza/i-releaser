@@ -1,11 +1,8 @@
-from __future__ import annotations
-import json
 import datetime
 import logging
 
 # from pydantic import validate_arguments
 
-from etc import constants
 from modules import workflow as wf
 from modules.cmd_status import Status as Cmd_Status
 from modules import deploy_action as da, workflow
@@ -63,7 +60,7 @@ class Stage:
     if self.id is None:
       Stage.id += 1
       self.id = int(f"{str(Stage.id)}{str(abs(hash(self.name)))[:5]}")
-      logging.debug(f"Generate new stage id for stage '{self.name}' hash: {str(abs(hash(self.name)))[:5]}, id: {self.id}")
+      #logging.debug(f"Generate new stage id for stage '{self.name}' hash: {str(abs(hash(self.name)))[:5]}, id: {self.id}")
 
 
   def set_status(self, status, update_time=True):
@@ -107,7 +104,7 @@ class Stage:
 
 
 
-  def get_stage_from_workflow(workflow:workflow.Workflow, stage_name: str) -> Stage:
+  def get_stage_from_workflow(workflow:workflow.Workflow, stage_name: str) -> 'Stage':
     """Retrieves stage from workflow
         This is also a check if the wanted stage exist in the workflow config
 
@@ -140,7 +137,7 @@ class Stage:
 
 
 
-  def get_stage_from_dict(wf:workflow.Workflow, dict: dict = {}):
+  def get_stage_from_dict(wf:workflow.Workflow, dict: dict = {}) -> 'Stage':
 
     Stage.validate(dict)
 
@@ -179,7 +176,7 @@ class Stage:
 
 
 
-  def get_next_stages(self) -> Stage_List_list:
+  def get_next_stages(self) -> 'Stage_List_list':
 
     new_next_stages = Stage_List_list()
     
@@ -190,7 +187,7 @@ class Stage:
 
 
 
-  def get_next_stages_name(self) -> list:
+  def get_next_stages_name(self) -> list[str]:
 
     new_next_stages = []
     
@@ -232,14 +229,14 @@ class Stage:
 
 
   def __eq__(self, other):
-    logging.debug('equals 2 stages')
+    #logging.debug('equals 2 stages')
  #   other.next_stages !!! ist das Problem
     if (self.id, self.description, self.host, self.remote_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions, self.after_stages_finished, self.execute_remote) == \
        (other.id, other.description, other.host, other.remote_dir, other.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions, other.after_stages_finished, other.execute_remote):
       return True
 
-    logging.warn(f"{self.id} - {self.description} - {self.host} - {self.remote_dir} - {self.build_dir} - {self.next_stages.get_all_names()} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=} - {self.execute_remote=}")
-    logging.warn(f"{other.id} - {other.description} - {other.host} - {other.remote_dir} - {other.build_dir} - {other.next_stages.get_all_names()} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=} - {other.execute_remote=}")
+    logging.warning(f"{self.id} - {self.description} - {self.host} - {self.remote_dir} - {self.build_dir} - {self.next_stages.get_all_names()} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=} - {self.execute_remote=}")
+    logging.warning(f"{other.id} - {other.description} - {other.host} - {other.remote_dir} - {other.build_dir} - {other.next_stages.get_all_names()} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=} - {other.execute_remote=}")
 
     return False
 
@@ -287,7 +284,7 @@ class Stage_List_list(list):
           if stage['name'] in stage_list:
             continue
 
-          logging.debug(f"Got stage from workflow: {stage=}")
+          #logging.debug(f"Got stage from workflow: {stage=}")
           additional_stage = Stage.get_stage_from_workflow(workflow, stage['name'])
           iterable2.append(additional_stage)
           stage_list.append(additional_stage.name)
@@ -393,7 +390,7 @@ class Stage_List_list(list):
 
 
 
-    def get_stages_by_name(self, stage_name: str) -> list[Stage_List_list]:
+    def get_stages_by_name(self, stage_name: str) -> list['Stage_List_list']:
 
       stages = Stage_List_list()
 
@@ -405,7 +402,7 @@ class Stage_List_list(list):
 
 
 
-    def get_stage_list_by_status(self, status: Cmd_Status) -> list[Stage_List_list]:
+    def get_stage_list_by_status(self, status: Cmd_Status) -> list['Stage_List_list']:
 
       stages = Stage_List_list()
 

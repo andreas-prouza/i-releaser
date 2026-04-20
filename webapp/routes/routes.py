@@ -200,7 +200,7 @@ async def run_stage(request: Request):
     try:
         
         mf.set_status(meta_file.Meta_file_status.READY)
-        mf.current_user = current_user=session.get('current_user', None).upper()
+        mf.current_user = session.get('current_user', None).upper()
 
         continue_run = True
         if data['option'] == 'run_all':

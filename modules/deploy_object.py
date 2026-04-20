@@ -1,222 +1,8 @@
-from __future__ import annotations
-import json
 import logging
 
 from modules import deploy_action as da
 from modules import workflow
-from etc import constants
 from modules.object_status import Status as Obj_Status
-
-
-
-class Deploy_Object_List(list):
-  def __init__(self):
-      super().__init__()
-
-  def __setitem__(self, index, item):
-      super().__setitem__(index, self._validate_number(item))
-
-  def insert(self, index, item):
-      super().insert(index, self._validate_number(item))
-
-  def append(self, item):
-      super().append(self._validate_number(item))
-
-  def extend(self, other):
-      if isinstance(other, type(Deploy_Object)):
-          super().extend(other)
-      else:
-          super().extend(self._validate_number(item) for item in other)
-
-  def _validate_number(self, value):
-      if type(value) == Deploy_Object:
-          return value
-      raise TypeError(
-          f"Deploy_Object value expected, got {type(value).__name__}"
-      )
-
-
-
-  def add_objects(self, objects: type[da.Deploy_Object_List]):
-    
-    self = self + objects.get_objectjs_as_list()
-
-
-  def add_object(self, objects: type[Deploy_Object]):
-    
-    self.append(objects)
-
-
-
-  def sort_objects(self):
-    def get_sorted_object_list_value(obj):
-      return obj.lib + obj.type + obj.name
-
-    #self.sort(key=get_sorted_object_list_value)
-
-
-
-  def get_objectjs_as_list(self) -> []: 
-    #self.sort_objects()
-    return self
-
-
-
-  def get_objectjs_as_dict(self, processing_step: str=None, stage: str=None) -> []: 
-
-    #self.sort_objects()
-    objs = []
-
-    for obj in self:
-      if processing_step is None or obj.processing_step == processing_step:
-        # Consider stage if given
-        if stage is not None and a.stage.name is not None and stage != a.stage.name:
-          continue
-        objs.append(obj.get_dict())
-
-    return objs
-
-
-
-  def get_lib_list(self) -> []:
-    libs = []
-    for o in self:
-      if o.lib not in libs:
-        libs.append(o.lib)
-    libs.sort()
-    return libs
-
-
-  def get_lib_list_with_prod_lib(self, ready: bool=None) -> {}:
-    libs = []
-    lib_list = []
-    for o in self:
-      if (ready is None or o.ready == ready) and o.lib not in lib_list:
-        lib_list.append(o.lib)
-        libs.append({'lib' : o.lib, 'prod_lib': o.prod_lib})
-    return libs
-
-
-
-  def get_lib_list_from_prod(self, ready: bool=None) -> {}:
-    libs = []
-    for o in self:
-      if (ready is None or o.ready == ready) and o.prod_lib not in libs:
-        libs.append(o.prod_lib)
-    return libs
-
-
-
-  def get_obj_list_by_lib(self, lib, ready: bool=None) -> [Deploy_Object]:
-    objs = []
-    for o in self:
-      if o.prod_lib == lib and (o.ready == ready or ready is None):
-        objs.append(o)
-    return objs
-
-
-
-  def get_obj_list_by_prod_lib(self, lib, ready: bool=None) -> [Deploy_Object]:
-    objs = []
-    for o in self:
-      if o.prod_lib == lib and (o.ready == ready or ready is None):
-        objs.append(o)
-    return objs
-
-
-
-  def get_prod_object(self, prod_lib: str, obj_name: str, obj_type: str, ready: bool=None) -> Deploy_Object:
-    for o in self:
-      if o.prod_lib == prod_lib and o.type == obj_type and o.name == obj_name and (o.ready == ready or ready is None):
-        return o
-    logging.warning(f"No prod object found for {prod_lib=}, {obj_name=}, {obj_type=}")
-    return None
-
-
-  def get_deploy_object(self, obj_lib: str, obj_name: str, obj_type: str) -> Deploy_Object:
-    for o in self:
-      if o.lib == obj_lib and o.type == obj_type and o.name == obj_name:
-        return o
-    logging.warning(f"No deploy object found for {obj_lib=}, {obj_name=}, {obj_type=}")
-    return None
-
-
-
-  def add_object_action(self, obj_lib: str, obj_name: str, obj_type: str, action: type[da.Deploy_Action]):
-
-    if type(action) == str:
-      action = da.Deploy_Action(cmd=action)
-
-    obj = self.get_prod_object(obj_lib, obj_name, obj_type)
-    obj.actions.add_action(action)
-
-
-
-#  def load_actions_from_json(self, file: str, stages: []=[]):
-#    obj_cmds = []
-
-#    with open(file, "r") as file:
-#      obj_cmds = json.load(file)
-
-#    for stage in stages:
-#      for oc in obj_cmds:
-#        self.add_object_action_from_dict(oc)
-
-
-
-  def add_object_action_from_dict(self, dict: {}, workflow: workflow.Workflow):
-    
-    obj = self.get_prod_object(dict['obj_lib'], dict['obj_name'], dict['obj_type'])
-    
-    if obj is None:
-      return
-    
-    for a in dict['actions']:
-
-      if 'stages' not in a.keys() or a['stages'] is None or a['stages'] == []:
-        # Do it for all stages
-        a['stages'] = workflow.stages
-
-      stages = a['stages']
-      del a['stages']
-      
-      for stage in stages:
-        action = da.Deploy_Action(dict=a, stage=stage['name'])
-        obj.actions.add_action(action)
-
-
-
-  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False):
-
-    if type(stage) != str:
-      raise Exception(f"Stage is not a string")
-      
-    list: list[da.Deploy_Action]=[]
-
-    for do in self:
-      list.append(do.actions.get_actions(processing_step=processing_step, stage=stage, action_id=action_id, include_subactions=include_subactions))
-
-    return list
-
-
-
-  def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
-
-    list=[]
-
-    for a in self.get_actions(processing_step, stage):
-      list.append(a.get_dict())
-
-    return list
-
-
-
-  def set_objects_status(self, status: Obj_Status):
-    for o in self:
-      if o.ready:
-        o.deploy_status = status
-
-
 
 
 
@@ -277,7 +63,7 @@ class Deploy_Object:
 
 
 
-  def get_dict(self) -> {}:
+  def get_dict(self) -> dict:
     return {
       'ready' : self.ready,
       'obj_lib' : self.lib,
@@ -299,3 +85,218 @@ class Deploy_Object:
     logging.warning(f"{o.ready} - {o.lib} - {o.prod_lib} - {o.name} - {o.type} - {o.attribute} - {o.deploy_status} - {o.actions}")
 
     return False
+  
+
+
+
+
+
+class Deploy_Object_List(list):
+  def __init__(self):
+      super().__init__()
+
+  def __setitem__(self, index, item):
+      super().__setitem__(index, self._validate_number(item))
+
+  def insert(self, index, item):
+      super().insert(index, self._validate_number(item))
+
+  def append(self, item):
+      super().append(self._validate_number(item))
+
+  def extend(self, other):
+      if isinstance(other, type(Deploy_Object)):
+          super().extend(other)
+      else:
+          super().extend(self._validate_number(item) for item in other)
+
+  def _validate_number(self, value):
+      if type(value) == Deploy_Object:
+          return value
+      raise TypeError(
+          f"Deploy_Object value expected, got {type(value).__name__}"
+      )
+
+
+
+  def add_objects(self, objects: 'Deploy_Object_List'):
+    
+    self = self + objects.get_objectjs_as_list()
+
+
+  def add_object(self, objects: Deploy_Object):
+    
+    self.append(objects)
+
+
+
+  def sort_objects(self):
+    def get_sorted_object_list_value(obj):
+      return obj.lib + obj.type + obj.name
+
+    #self.sort(key=get_sorted_object_list_value)
+
+
+
+  def get_objectjs_as_list(self) -> list[Deploy_Object]:
+    #self.sort_objects()
+    return self
+
+
+
+  def get_objectjs_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]: 
+
+    #self.sort_objects()
+    objs = []
+
+    for obj in self:
+      if processing_step is None or obj.processing_step == processing_step:
+        # Consider stage if given
+        if stage is not None and obj.stage.name is not None and stage != obj.stage.name:
+          continue
+        objs.append(obj.get_dict())
+
+    return objs
+
+
+
+  def get_lib_list(self) -> list[str]:
+    libs = []
+    for o in self:
+      if o.lib not in libs:
+        libs.append(o.lib)
+    libs.sort()
+    return libs
+
+
+  def get_lib_list_with_prod_lib(self, ready: bool=None) -> list[dict]:
+    libs = []
+    lib_list = []
+    for o in self:
+      if (ready is None or o.ready == ready) and o.lib not in lib_list:
+        lib_list.append(o.lib)
+        libs.append({'lib' : o.lib, 'prod_lib': o.prod_lib})
+    return libs
+
+
+
+  def get_lib_list_from_prod(self, ready: bool=None) -> list[str]:
+    libs = []
+    for o in self:
+      if (ready is None or o.ready == ready) and o.prod_lib not in libs:
+        libs.append(o.prod_lib)
+    return libs
+
+
+
+  def get_obj_list_by_lib(self, lib, ready: bool=None) -> list[Deploy_Object]:
+    objs = []
+    for o in self:
+      if o.prod_lib == lib and (o.ready == ready or ready is None):
+        objs.append(o)
+    return objs
+
+
+
+  def get_obj_list_by_prod_lib(self, lib, ready: bool=None) -> list[Deploy_Object]:
+    objs = []
+    for o in self:
+      if o.prod_lib == lib and (o.ready == ready or ready is None):
+        objs.append(o)
+    return objs
+
+
+
+  def get_prod_object(self, prod_lib: str, obj_name: str, obj_type: str, ready: bool=None) -> Deploy_Object:
+    for o in self:
+      if o.prod_lib == prod_lib and o.type == obj_type and o.name == obj_name and (o.ready == ready or ready is None):
+        return o
+    logging.warning(f"No prod object found for {prod_lib=}, {obj_name=}, {obj_type=}")
+    return None
+
+
+  def get_deploy_object(self, obj_lib: str, obj_name: str, obj_type: str) -> Deploy_Object:
+    for o in self:
+      if o.lib == obj_lib and o.type == obj_type and o.name == obj_name:
+        return o
+    logging.warning(f"No deploy object found for {obj_lib=}, {obj_name=}, {obj_type=}")
+    return None
+
+
+
+  def add_object_action(self, obj_lib: str, obj_name: str, obj_type: str, action: type[da.Deploy_Action]):
+
+    if type(action) == str:
+      action = da.Deploy_Action(cmd=action)
+
+    obj = self.get_prod_object(obj_lib, obj_name, obj_type)
+    obj.actions.add_action(action)
+
+
+
+#  def load_actions_from_json(self, file: str, stages: []=[]):
+#    obj_cmds = []
+
+#    with open(file, "r") as file:
+#      obj_cmds = json.load(file)
+
+#    for stage in stages:
+#      for oc in obj_cmds:
+#        self.add_object_action_from_dict(oc)
+
+
+
+  def add_object_action_from_dict(self, dict: dict, workflow: workflow.Workflow):
+    
+    obj = self.get_prod_object(dict['obj_lib'], dict['obj_name'], dict['obj_type'])
+    
+    if obj is None:
+      return
+    
+    for a in dict['actions']:
+
+      if 'stages' not in a.keys() or a['stages'] is None or a['stages'] == []:
+        # Do it for all stages
+        a['stages'] = workflow.stages
+
+      stages = a['stages']
+      del a['stages']
+      
+      for stage in stages:
+        action = da.Deploy_Action(dict=a, stage=stage['name'])
+        obj.actions.add_action(action)
+
+
+
+  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False):
+
+    if type(stage) != str:
+      raise Exception(f"Stage is not a string")
+      
+    list: list[da.Deploy_Action]=[]
+
+    for do in self:
+      list.append(do.actions.get_actions(processing_step=processing_step, stage=stage, action_id=action_id, include_subactions=include_subactions))
+
+    return list
+
+
+
+  def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
+
+    list=[]
+
+    for a in self.get_actions(processing_step, stage):
+      list.append(a.get_dict())
+
+    return list
+
+
+
+  def set_objects_status(self, status: Obj_Status):
+    for o in self:
+      if o.ready:
+        o.deploy_status = status
+
+
+

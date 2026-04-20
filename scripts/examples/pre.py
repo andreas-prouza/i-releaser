@@ -1,4 +1,3 @@
-from __future__ import annotations
 import os, logging
 
 from etc import constants

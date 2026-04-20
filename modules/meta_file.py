@@ -1,4 +1,3 @@
-from __future__ import annotations
 import datetime
 import json
 import configparser
@@ -9,6 +8,7 @@ import sys
 from io import StringIO
 
 from enum import Enum
+import threading
 
 # from pydantic import validate_arguments
 
@@ -17,7 +17,6 @@ from modules import action_type, deploy_action as da, files, permission
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
-from modules import ibm_i_commands
 from modules import deploy_version as dv
 from modules.cmd_status import Status as Cmd_Status
 from modules import meta_file_history as mfh
@@ -59,7 +58,7 @@ class Meta_File:
                 processing_users: list=[], custom_data: dict={},
                 imported_from_dict=False):
 
-      logging.debug(f"{sys.path=}")
+      #logging.debug(f"{sys.path=}")
 
       self.file_name = None
       self.processed_stages = None
@@ -100,7 +99,7 @@ class Meta_File:
       self.create_date = re.sub(" .*", '', self.create_time)
         
       self.workflow = wf.Workflow(name=workflow_name, dict=workflow)
-      logging.debug(f"Meta Workflow: {self.workflow.get_dict()}")
+      #logging.debug(f"Meta Workflow: {self.workflow.get_dict()}")
       
       if self.project is None:
         self.project = self.workflow.default_project
@@ -143,14 +142,14 @@ class Meta_File:
 
 
     def activate_history(self):
-      logging.debug(f"Aktivate history log for {self.file_name}")
-      logging.debug(f"0. Number of histories: {len(self.run_history)}")
+      #logging.debug(f"Aktivate history log for {self.file_name}")
+      #logging.debug(f"0. Number of histories: {len(self.run_history)}")
 
       stdout_new = StringIO()
       history = mfh.Meta_File_History(log=stdout_new)
       self.run_history.add_history(history)
 
-      logging.debug(f"1. Number of histories: {len(self.run_history)}")
+      #logging.debug(f"1. Number of histories: {len(self.run_history)}")
 
 
       hdl = logging.StreamHandler(stream=stdout_new)
@@ -173,9 +172,9 @@ class Meta_File:
         raise Exception("Deployment has been canceled already. It's not possible to change the status!")
 
       if update_meta_file and status is not Meta_file_status.NEW:
-        logging.debug(f"Finished 1.0")
+        logging.debug(f"Update meta file: Finished 1.0")
         dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.file_name, self.commit)
-        logging.debug(f"Finished 1")
+        logging.debug(f"Update meta file: Finished 1")
         self.status = status
         self.write_meta_file()
 
@@ -353,10 +352,13 @@ class Meta_File:
       Raises:
           Exception: If a processing step was given, which is not in the step list of that stage
       """
+      logging.debug(f"Run current stage with id {stage_id} and processing step {processing_step}")
 
       self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
+      logging.debug('Check passed')
 
       try:
+        logging.debug("Set meta file status to 'in process'")
         self.set_status(Meta_file_status.IN_PROCESS)
       except Exception as err:
         logging.exception(err, stack_info=True)
@@ -364,8 +366,11 @@ class Meta_File:
         raise err
 
       runable_stage = self.open_stages.get_stage(id=stage_id)
+      logging.debug(f"Runable stage: {runable_stage.name} ({runable_stage.id}) with processing step {processing_step}")
 
-      cmd = ibm_i_commands.IBM_i_commands(self)
+      from modules.ibm_i_commands import IBM_i_commands
+      logging.debug(f"Create IBM i commands instance")
+      cmd = IBM_i_commands(self)
       
       logging.info(f"Run stage {runable_stage.name} (id {runable_stage.id}), {processing_step=}")
 
@@ -537,7 +542,7 @@ class Meta_File:
 
     @staticmethod
     @check_user_permission(permission.Permission.READ)
-    def load_json_file(file_name: str) -> Meta_File:
+    def load_json_file(file_name: str) -> 'Meta_File':
 
       logging.debug(f"Load meta file {file_name}")
 
@@ -588,7 +593,7 @@ class Meta_File:
     # Load meta file based on its version number
     @staticmethod
     @check_user_permission(permission.Permission.READ)
-    def load_version(project:str, version: int) -> Meta_File:
+    def load_version(project:str, version: int) -> 'Meta_File':
 
       deployment = dv.Deploy_Version.get_deployment(project, version)
 
