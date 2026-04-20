@@ -28,3 +28,10 @@ POST http://academy:8080/api/show_processing_history?auth-token=9d39120c80c5d7c5
 Content-Type: application/json
 
 {"filename":"/home/PROUZAT1/i-releaser-2/meta/test/2026-03-31/33/deployment_33.json"}
+
+###
+
+POST http://academy:8080/api/run_stage?auth-token=3333333333
+Content-Type: application/json
+
+{"stage_id":"11735925","filename":"/home/PROUZAT1/i-releaser-2/meta/test/2026-04-20/39/deployment_39.json","option":"continue"}
