@@ -25,7 +25,8 @@
 
 
 
-# ![logo2](docs/img/logo2-icon.png) i-Releaser: The new deployment tool for i
+![logo2](docs/img/logo2-icon.png) 
+# i-Releaser: The new deployment tool for i
  
 ![deployment](docs/img/deployment.png)
 
@@ -43,47 +44,63 @@ It's flexible and open and can be adabtet using configuration files.
 * Individual workflows
 * Graphical workflow overview
 * Parallel workflow branches
-  ![parallel](docs/img/parallel.png){ width= 40%}
+  ![parallel](docs/img/parallel.png)
 * Detailed tracking of each step and action
-  ![details](docs/img/details.png){ width= 50%}
+  ![details](docs/img/details.png)
 * Separate logs for each task
-* User specific commands for objects  
+* User specific commands for objects to deploy  
     For each object a user specific command can be defined which will be issued in addition.
 * All functions can be accessed via WebAPIs
-* IDE integration using [OBI IDE integration](https://github.com/andreas-prouza/ibm-i-build-obi)
-  ![ide-integration](docs/img/ide-integration.png){ width= 50%}
-
+* History  
+  ![details](docs/img/history.png)  
+  ![details](docs/img/history-detail.png)  
+* Individual enhancements
+  * HTML
+  * Scripts you want to run in a stage
+  * Example: automatic rollback function  
+    This is custom enhancement to the i-Releaser project
+    ![details](docs/img/rollback.png)  
+    ![details](docs/img/rollback-started.png)  
+* Save individual data in a deployment (e.g. JIRA ticket)  
+  See picture above
+* Choose the object to include/exclude from deployment
+  ![details](docs/img/object-list.png)  
 
 
 
 ## The setup
 
-1. Download this project
-2. Unzip to a directory of your choice on your IBM i
-3. Open a terminal on IBM i and navigate to this directory
-   See [SSH setup](https://github.com/andreas-prouza/ibm-i-build/blob/main/docs/pages/SSH.md) you haven't used it before
-4. Run the setup script ```./setup.sh```
-5. Start the web server
-   ```sh
-   [andreas@idev webapp]$ cd webapp
-   [andreas@idev webapp]$ ./service start
-   Activate virtual environment: i-releaser/webapp/venv/bin/activate
-   Start service
-   Service is running ...
-   andreas    63909   63905 19 16:53 pts/0    00:00:00 gunicorn: master [wsgi:app]
-   andreas    63911   63909 31 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
-   andreas    63913   63909 27 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
-   andreas    63914   63909 29 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
-   andreas    63918   63905  0 16:53 pts/0    00:00:00 grep gunicorn
-   [andreas@idev webapp]$ 
-   ```
+On your IBM i via QSH or (better) via SSH (see [SSH setup](https://github.com/andreas-prouza/ibm-i-build/blob/main/docs/pages/SSH.md) you haven't used it before):
+
+```bash
+mkdir /apps/
+cd /apps/
+git clone https://github.com/andreas-prouza/i-releaser
+cd i-releaser
+./setup.sh
+```
+
+## Start the web server
+```bash
+[andreas@idev webapp]$ cd webapp
+[andreas@idev webapp]$ ./service start
+Activate virtual environment: i-releaser/webapp/venv/bin/activate
+Start service
+Service is running ...
+andreas    63909   63905 19 16:53 pts/0    00:00:00 gunicorn: master [wsgi:app]
+andreas    63911   63909 31 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
+andreas    63913   63909 27 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
+andreas    63914   63909 29 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
+andreas    63918   63905  0 16:53 pts/0    00:00:00 grep gunicorn
+[andreas@idev webapp]$ 
+```
 
 Port & Co are defined in ```etc/gunicorn.conf.py```.
 
 
 ## How to use it
 
-1. You call [WebAPIs](docs/webapi.md) of this service to ...
+1. There are [WebAPIs](docs/webapi.md) to call all actions like ...
    * create a new deployment request
    * run stages
    * retrieve deployment information
@@ -91,44 +108,19 @@ Port & Co are defined in ```etc/gunicorn.conf.py```.
    * ```build_dir```  
      Project directory
    * ```hostname```
-3. Generate a new API-Token for your HTTP access
+3. You can call that APIs from every other application using an API-Token.
    ![token](docs/img/http-token.png)
-4. When using [OBI](https://github.com/andreas-prouza/ibm-i-build-obi) you can integrate it in your IDE  
-   Add the following settings into your ```etc/global.cfg```config:
-   ```sh
-   DEPLOYMENT_UAT_URL=https://my-ibmi
-   DEPLOYMENT_UAT_WORKFLOW=standard_build
-   DEPLOYMENT_UAT_MAIN_BRANCH=main
-   DEPLOYMENT_AUTH_TOKEN=9999999999999999999999999999999999999999999999999999999999013320
-   ```
-   Then you can use the deployment button:
-   ![ide-integration](docs/img/ide-integration.png){ width= 50%}
 
-
-
-## The concept
-
-There are 2 parts:
-* The deployment tool  
-  It handles the deployment process
-* [OBI IDE integration](https://github.com/andreas-prouza/ibm-i-build-obi)
-  Creates a new deployment
-
-
-1. The [OBI IDE integration](https://github.com/andreas-prouza/ibm-i-build-obi) creates a new release branch (containing the version number)
-2. The deployment tool should build all from a "production" project folder in the IFS.  
-   This should be used for production builds only.
-3. Run steps of this deployment (e.g. in web frontend)
 
 
 ## Interesting to know
 
-* The tool checks if the same commit is already in use in an existing deployment.  
-  To use the same commit multiple times is not allowed within the same worfklow.
 * If you need a emergency deployment you can define a HotFix worfklow for this.
-* It's not possible to run multiple deployments in parallel.  
+* It's not possible to run multiple deployments in parallel from the same project.  
   You first have to finish all previous open deployments.  
-  You can cancel them, if you don't need them anymore.
+  You can cancel them, if you don't need them anymore.  
+  Only deployments from different projects can run at the same time.
+
 
 
 # Get started
