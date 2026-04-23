@@ -94,14 +94,14 @@ class WebMiddleware(BaseHTTPMiddleware):
         if '/static' == request.url.path[:len('/static')] or '/favicon.ico' == request.url.path:
             logging.debug("No need to check session. Only media!")
             return
-
-        if request.url.path == '/logout':
-            return
         
         request.state.session = server_sessions.SessionManager(request)
         await request.state.session.load()
 
         request.state.session.pop('error_text', None)
+
+        if request.url.path == '/logout':
+            return
 
         if 'is_logged_in' in request.state.session and '__invalid__' not in request.state.session:
             current_user = request.state.session.get('current_user', None)

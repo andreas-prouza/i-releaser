@@ -92,6 +92,8 @@ async def show_log(request: Request, log: str, number_of_lines: int=100):
 
 async def login(request: Request):
     session = request.state.session
+    if session.get('is_logged_in', False):
+        return RedirectResponse("/", status_code=302)
     return http_functions.get_html_response(request, 'login.html', sidebar=None, error_text=session.get('error_text', None)) 
 
 
@@ -123,11 +125,17 @@ async def drop_user_key(request: Request):
 
 async def logout(request: Request):
 
-    session = request.state.session
-    session.pop('error_text', None)
-    session.pop('is_logged_in', None)
-    session.pop('uid', None)
-    session['__invalid__'] = True
+    logging.debug(f"{request.state=}")
+    logging.debug(f"{request.state.session=}")
+    if request.state is not None and hasattr(request.state, 'session'):
+        logging.debug(f"Logout user {request.state.session.get('current_user', None)}")
+        session = request.state.session
+        session.pop('error_text', None)
+        session.pop('is_logged_in', None)
+        session.pop('uid', None)
+        session['__invalid__'] = True
+        session.save()
+
     return RedirectResponse("/login", status_code=302)
 
 
