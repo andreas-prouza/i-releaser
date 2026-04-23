@@ -42,6 +42,7 @@ It's flexible and open and can be adabtet using configuration files.
 * Can run under a profile with user class ```*USER```  
   No special authority needed.
 * Individual workflows
+  ![details](docs/img/workflow-list.png)  
 * Graphical workflow overview
 * Parallel workflow branches
   ![parallel](docs/img/parallel.png)
