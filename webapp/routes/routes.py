@@ -161,6 +161,7 @@ async def show_settings(request: Request):
     return http_functions.get_html_response(request, 'admin/settings.html', 
         sidebar=get_sidebar_data(request), 
         allowed_users=user_permission.UserPermission.get_user_list(), 
+        permissions=user_permission.UserPermission.user_permissions,
         default_project=global_cfg.C_DEFAULT_PROJECT, 
         port='????',
         path=Path(os.path.dirname(__file__)),

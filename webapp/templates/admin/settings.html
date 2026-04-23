@@ -1,43 +1,143 @@
 {% extends 'base.html' %}
 
 {% block title %}
+Settings
+{% endblock %}
+
+{% block css %}
+<style>
+  /* 1. Style the tab container */
+  .tab-container {
+    font-family: Arial, sans-serif;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* 2. Style the buttons (tabs) */
+  .tab-buttons {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+  }
+
+  .tab-buttons button {
+    background-color: #f1f1f1;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 20px;
+    font-size: 16px;
+    transition: 0.3s;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    margin-right: 2px;
+  }
+
+  /* Change background color of buttons on hover */
+  .tab-buttons button:hover {
+    background-color: #ddd;
+  }
+
+  /* Create an active/current tabbed class */
+  .tab-buttons button.active {
+    background-color: #007BFF;
+    color: white;
+  }
+
+  /* 3. Style the tab content */
+  .tab-content {
+    display: none; /* Hide all content by default */
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-top: none;
+    animation: fadeEffect 0.5s; /* Optional fade animation */
+  }
+
+  /* Fade in animation */
+  @keyframes fadeEffect {
+    from {opacity: 0;}
+    to {opacity: 1;}
+  }
+</style>
 {% endblock %}
 
 {% block content %}
 
 <div class="box box-info">
 
-    <form>
-        <input type=button onClick="location.href='/'" value='Back to overview'>
-    </form>
-    <br/>
-    <br/>
+    <div class="tab-container">
+    
+        <div class="tab-buttons">
+            <button type="button" class="tablinks active" onclick="openTab(event, 'General')">General</button>
+            <button type="button" class="tablinks" onclick="openTab(event, 'Permission')">Permission</button>
+        </div>
 
-    <!-- /.box-header -->
+        <div id="General" class="tab-content" style="display: block;">
 
-    <h3>Settings</h3>
+            <h3>General</h3>
 
-    <table class="table table-striped table-bordered">
-        <tr>
-            <th>Allowed users</th><td>{% for user in allowed_users %}{{ user }}&nbsp;&nbsp;{% endfor %}</td>
-        </tr>
-        <tr><th>Default project</th><td>{{ default_project }}</td></tr>
-        <tr><th>Web port</th><td>{{ port }}</td></tr>
-        <tr><th>Web path</th><td>{{ path }}</td></tr>
-        <tr><th>User keys</th><td>
             <table class="table table-striped table-bordered">
-                <tr><th>User</th><th>Creation date</th><th>Key</th></tr>
-                {% for user,key in keys.items() %}
+                <tr>
+                    <th>Allowed users</th><td>{% for user in allowed_users %}{{ user }}&nbsp;&nbsp;{% endfor %}</td>
+                </tr>
+                <tr><th>Default project</th><td>{{ default_project }}</td></tr>
+                <tr><th>Web port</th><td>{{ port }}</td></tr>
+                <tr><th>Web path</th><td>{{ path }}</td></tr>
+                <tr><th>User keys</th><td>
+                    <table class="table table-striped table-bordered">
+                        <tr><th>User</th><th>Creation date</th><th>Key</th></tr>
+                        {% for user,key in keys.items() %}
+                            <tr>
+                                <td><code>{{ user }}</code></td><td><code>{{ key['date'] }}</code></td><td><code>{{ key['orig_key_masked'] }}</code></td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </td></tr>
+            </table>
+        </div>
+
+        <div id="Permission" class="tab-content" style="display: none;">
+
+            <h3>Permission</h3>
+
+            <table class="table table-striped table-bordered">
+                <tr><th>User</th><th>Permissions</th></tr>
+                {% for user, user_permissions in permissions.items() %}
                     <tr>
-                        <td><code>{{ user }}</code></td><td><code>{{ key['date'] }}</code></td><td><code>{{ key['orig_key_masked'] }}</code></td>
+                        <td><code>{{ user }}</code></td><td>{% for permission in user_permissions %}<code>{{ permission }}</code>&nbsp;&nbsp;{% endfor %}</td>
                     </tr>
                 {% endfor %}
             </table>
-        </td></tr>
-    </table>
+        </div>
 
+    </div>
 </div>
 
 
 
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+  function openTab(evt, tabName) {
+    // Declare variables
+    let i, tabcontent, tablinks;
+
+    // Get all elements with class="tab-content" and hide them
+    tabcontent = document.getElementsByClassName("tab-content");
+    for (i = 0; i < tabcontent.length; i++) {
+      tabcontent[i].style.display = "none";
+    }
+
+    // Get all elements with class="tablinks" and remove the class "active"
+    tablinks = document.getElementsByClassName("tablinks");
+    for (i = 0; i < tablinks.length; i++) {
+      tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+
+    // Show the current tab, and add an "active" class to the button that opened the tab
+    document.getElementById(tabName).style.display = "block";
+    evt.currentTarget.className += " active";
+  }
+</script>
 {% endblock %}

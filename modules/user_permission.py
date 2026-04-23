@@ -39,26 +39,37 @@ def is_user_allowed(user, action : permission.Permission, workflow=None, stage=N
 
   current_permission = UserPermission.get_user_permissions(user)
 
+  if is_permission_allowed(current_permission, action, workflow, stage):
+    logging.debug(f"User {user} has permission {action} (workflow: {workflow}, stage: {stage})")
+    return True
+
+  for role in current_permission.get('roles', []):
+    role_permission = UserPermission.role_permissions.get(role, {})
+    if is_permission_allowed(role_permission, action, workflow, stage):
+      logging.debug(f"User {user} has permission {action} through role {role} (workflow: {workflow}, stage: {stage})")
+      return True
+    
+  logging.info(f"User {user} does not have permission {action} (workflow: {workflow}, stage: {stage})")
+  return False
+
+
+
+def is_permission_allowed(current_permission, action : permission.Permission, workflow=None, stage=None):
+
   if 'general' in current_permission.keys() and action in current_permission['general']:
-    logging.debug("allowed")
     return True
 
   if workflow is not None and 'workflows' in current_permission.keys() and workflow in current_permission['workflows'].keys():
     current_wf = current_permission['workflows'][workflow]
 
     if 'general' in current_wf.keys() and action in current_wf['general']:
-      logging.debug("allowed")
       return True
 
     if stage is not None and 'stages' in current_wf.keys() and stage in current_wf['stages'].keys():
       current_stage = current_wf['stages'][stage]
 
       if action in current_stage:
-        logging.debug("allowed")
         return True
-
-
-  logging.info(f"No permission for {user=}, {action=}, {workflow=}, {stage=}")
 
   return False
 
@@ -106,6 +117,7 @@ class UserPermission:
   __file_hash = None
   
   allowed_users = []
+  role_permissions = {}
   user_permissions = {}
 
 
@@ -141,8 +153,12 @@ class UserPermission:
 
       data = files.getJson(constants.C_USER_PERMISSIONS, retry=True)
   
-      UserPermission.user_permissions = data
-      UserPermission.convert_permissions()
+      UserPermission.user_permissions = data.get('users', {})
+      UserPermission.role_permissions = data.get('roles', {})
+
+      UserPermission.convert_permissions(UserPermission.user_permissions)
+      UserPermission.convert_permissions(UserPermission.role_permissions)
+
       UserPermission.allowed_users = list(UserPermission.user_permissions.keys())
       UserPermission.__file_hash = file_hash
 
@@ -151,9 +167,9 @@ class UserPermission:
 
 
   @staticmethod
-  def convert_permissions() -> None:
+  def convert_permissions(user_permissions: dict) -> None:
 
-    for user, permissions in UserPermission.user_permissions.items():
+    for user, permissions in user_permissions.items():
 
       for gp in permissions.get('general', []):
         if isinstance(gp, str):

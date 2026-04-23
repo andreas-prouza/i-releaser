@@ -1,5 +1,20 @@
 {
+  "roles": {
+    "admin": {
+      "general": ["admin"],
+      "workflows": {
+        "*": {
+          "general": ["admin"],
+          "stages": {
+            "*": ["admin"]
+          }
+        }
+      }
+    }
+  },
+  "users": {
     "prouza": {
+      "roles": ["admin"],
       "general": ["read"],
       "workflows": {
         "unit_test_permissions": {
@@ -17,14 +32,15 @@
       }
     },
     "prouzat1": {
-      "general": ["update"],
+      "general": ["admin"],
       "workflows": {
         "unit_test_permissions": {
           "general": ["read"],
           "stages": {
-              "uat": ["four_eyes_check"]
+              "uat": ["4-eyes_check"]
             }
         }
       }
     }
   }
+}
