@@ -97,11 +97,22 @@ Settings
 
         <div id="Permission" class="tab-content" style="display: none;">
 
-            <h3>Permission</h3>
+            <h3>Role</h3>
+
+            <table class="table table-striped table-bordered">
+                <tr><th>Role</th><th>Permissions</th></tr>
+                {% for role, role_permissions in role_permissions.items() %}
+                    <tr>
+                        <td><code>{{ role }}</code></td><td>{% for permission in role_permissions %}<code>{{ permission }}</code>&nbsp;&nbsp;{% endfor %}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+
+            <h3>User</h3>
 
             <table class="table table-striped table-bordered">
                 <tr><th>User</th><th>Permissions</th></tr>
-                {% for user, user_permissions in permissions.items() %}
+                {% for user, user_permissions in user_permissions.items() %}
                     <tr>
                         <td><code>{{ user }}</code></td><td>{% for permission in user_permissions %}<code>{{ permission }}</code>&nbsp;&nbsp;{% endfor %}</td>
                     </tr>
