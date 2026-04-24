@@ -156,9 +156,11 @@ class UserPermission:
       UserPermission.user_permissions = data.get('users', {})
       UserPermission.role_permissions = data.get('roles', {})
 
-      for user, permissions in UserPermission.user_permissions.items():
+      # Convert string permissions to Permission objects
       UserPermission.convert_permissions(UserPermission.user_permissions)
       UserPermission.convert_permissions(UserPermission.role_permissions)
+      logging.debug(f"Reloaded user permissions: {UserPermission.user_permissions}")
+      logging.debug(f"Reloaded role permissions: {UserPermission.role_permissions}")
 
       UserPermission.allowed_users = list(UserPermission.user_permissions.keys())
       UserPermission.__file_hash = file_hash
@@ -173,28 +175,31 @@ class UserPermission:
     logging.debug(f"{user_permissions=}")
     for user, permissions in user_permissions.items():
 
-      for gp in permissions.get('general', []):
-        if isinstance(gp, str):
-          user_permissions['general'][permissions['general'].index(gp)] = permission.Permission(gp)
-      user_permissions['general'] = get_list_of_dependent_permissions(user_permissions['general'])
+      if 'general' in permissions.keys():
+        for gp in permissions.get('general', []):
+          if isinstance(gp, str):
+            user_permissions[user]['general'][permissions['general'].index(gp)] = permission.Permission(gp)
+        user_permissions[user]['general'] = get_list_of_dependent_permissions(user_permissions[user]['general'])
 
       for wf, wf_permissions in list(permissions.get('workflows', {}).items()):
 
-        for stage, stage_permissions in list(user_permissions['workflows'][wf].get('stages', {}).items()):
+        for stage, stage_permissions in list(user_permissions[user]['workflows'][wf].get('stages', {}).items()):
 
-          for i, sp in enumerate(user_permissions['workflows'][wf]['stages'][stage]):
+          for i, sp in enumerate(user_permissions[user]['workflows'][wf]['stages'][stage]):
              if isinstance(sp, str):
-                user_permissions['workflows'][wf]['stages'][stage][i] = permission.Permission(sp)
-          user_permissions['workflows'][wf]['stages'][stage] = get_list_of_dependent_permissions(user_permissions['workflows'][wf]['stages'][stage])
+                user_permissions[user]['workflows'][wf]['stages'][stage][i] = permission.Permission(sp)
+          user_permissions[user]['workflows'][wf]['stages'][stage] = get_list_of_dependent_permissions(user_permissions[user]['workflows'][wf]['stages'][stage])
 
-        for i, wfp in enumerate(wf_permissions.get('general', [])):
-          if isinstance(wfp, str):
-            user_permissions['workflows'][wf]['general'][i] = permission.Permission(wfp)
+        if 'general' in wf_permissions.keys():
+          for i, wfp in enumerate(wf_permissions.get('general', [])):
+            if isinstance(wfp, str):
+              user_permissions[user]['workflows'][wf]['general'][i] = permission.Permission(wfp)
 
-        user_permissions['workflows'][wf]['general'] = get_list_of_dependent_permissions(user_permissions['workflows'][wf]['general'])
+          user_permissions[user]['workflows'][wf]['general'] = get_list_of_dependent_permissions(user_permissions[user]['workflows'][wf]['general'])
 
-      for i, gp in enumerate(permissions.get('general', [])):
-        if isinstance(gp, str):
-          user_permissions['general'][i] = permission.Permission(gp)
+      if 'general' in permissions.keys():
+        for i, gp in enumerate(permissions.get('general', [])):
+          if isinstance(gp, str):
+            user_permissions[user]['general'][i] = permission.Permission(gp)
 
-      user_permissions['general'] = get_list_of_dependent_permissions(user_permissions['general'])
+        user_permissions[user]['general'] = get_list_of_dependent_permissions(user_permissions[user]['general'])
