@@ -40,6 +40,7 @@
     </table>
 </div>
 
+<script src="{{ url_for('static', path='assets/js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
 
 <script type="text/javascript">
@@ -69,9 +70,28 @@
 
     async function start_workflow(wf_name) {
         console.log(`start ${wf_name}`);
-        http_getData(`/api/create_deployment/${wf_name}`).then((data) => {
-            window.open(`/show_details/${data.meta_file.general.project}/${data.meta_file.general.deploy_version}`,'_self');
-        });
+        http_get(`/api/create_deployment/${wf_name}`)
+            .then((response) => {
+                if (!response.ok) {
+                    if (response.status === 500) {
+                        return response.json().then((data) => {
+                            throw new Error(data.error || 'Unknown server error');
+                        });
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then((data) => {
+                window.open(`/show_details/${data.meta_file.general.project}/${data.meta_file.general.deploy_version}`,'_self');
+            })
+            .catch((error) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message
+                });
+            });
     }
 
 </script>

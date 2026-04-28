@@ -9,7 +9,7 @@ from modules import files, permission, meta_file
 
 
 def _check_user_permission(user, action : permission.Permission, workflow=None, stage=None):
-  if not is_user_allowed(user, action, workflow, stage):
+  if not is_user_allowed(user.lower(), action, workflow, stage):
     error = Exception(f"User {user} does not have permission {action} (workflow: {workflow}, stage: {stage})")
     logging.exception(error, stack_info=True)
     raise error
@@ -75,13 +75,18 @@ def is_permission_allowed(current_permission, action : permission.Permission, wo
 
 
 
+
 def get_list_of_dependent_permissions(permissions : List[permission.Permission]) -> List[permission.Permission]:
 
   result = permissions
   
   for p in permissions:
-     if p in list(permission.PERMISSION_DEPENDENCIES.keys()):
-      result.extend(get_list_of_dependent_permissions(permission.PERMISSION_DEPENDENCIES[p]))
+    if p in list(permission.PERMISSION_DEPENDENCIES.keys()):
+      dps = get_list_of_dependent_permissions(permission.PERMISSION_DEPENDENCIES[p])
+
+      for dp in dps:
+        if dp not in result:
+          result.append(dp)
   
   return result
 
@@ -93,7 +98,7 @@ def check_user_permission(action: permission.Permission, workflow=None, stage=No
         
         def wrapper(*args, **kwargs):
             
-            user = meta_file.Meta_File.CURRENT_USER
+            user = meta_file.Meta_File.CURRENT_USER.lower()
             logging.debug(f"Check permission for user {user} and action {action} (workflow: {workflow}, stage: {stage})")
             logging.debug(f"{func.__name__=}, {args=}, {kwargs=}")
 

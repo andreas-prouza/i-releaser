@@ -633,38 +633,59 @@ function cancel_deployment(filename) {
     })
 
     swalWithBootstrapButtons.fire({
-    title: 'Are you sure?',
-    text: "You are going to cancel the deployment forever!",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, cancel',
-    cancelButtonText: 'No, ups!',
-    reverseButtons: true
-    }).then((result) => {
-    if (result.isConfirmed) {
-        postData("/api/cancel_deployment", { filename: filename }).then((data) => {
-            console.log(data); // JSON data parsed by `data.json()` call
-        });
-        swalWithBootstrapButtons.fire(
-        'Canceled!',
-        'This deployment has been canceled.',
-        'success'
-        ).then((result) => {
-                location.reload();
-        });
-    } else if (
-        /* Read more about handling dismissals below */
-        result.dismiss === Swal.DismissReason.cancel
-    ) {
-        swalWithBootstrapButtons.fire(
-        'Canceled',
-        'Your cancelation has been canceled :-)',
-        'error'
-        )
-    }
+        title: 'Are you sure?',
+        text: "You are going to cancel the deployment forever!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, cancel',
+        cancelButtonText: 'No, ups!',
+        reverseButtons: true
+        }).then((result) => {
+        if (result.isConfirmed) {
+            http_post("/api/cancel_deployment", { filename: filename })
+                .then((response) => {
+                    if (!response.ok) {
+                        if (response.status === 500) {
+                        return response.json().then((data) => {
+                            throw new Error(data.error || 'Unknown server error');
+                        });
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                        return;
+                    }
+                    console.log(response); // JSON data parsed by `response.json()` call
+                })
+                .then(() => {
+                        
+                    swalWithBootstrapButtons.fire(
+                    'Canceled!',
+                    'This deployment has been canceled.',
+                    'success'
+                    ).then((result) => {
+                            location.reload();
+                    });
+                })
+                .catch((error) => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message
+                    });
+                });
+        } else if (
+            /* Read more about handling dismissals below */
+            result.dismiss === Swal.DismissReason.cancel
+        ) {
+            swalWithBootstrapButtons.fire(
+            'Canceled',
+            'Your cancelation has been canceled :-)',
+            'error'
+            )
+        }
     })
     
 }
+
 
 
 async function set_source_ready_4_deployment(obj, filename, lib, name, type, checked) {

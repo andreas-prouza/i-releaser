@@ -195,13 +195,14 @@ async def show_details(request: Request, project: str, version: int):
         logging.debug(f"{os.getcwd()=}")
         logging.exception(e, stack_info=True)
         error = e
-        return http_functions.get_html_response(request, 'error.html', sidebar=get_sidebar_data(request), error=error) 
+        return http_functions.get_html_response(request, 'error.html', sidebar=get_sidebar_data(request), error=error)
 
 
 
 async def run_stage(request: Request):
     data = await request.json()
     result={'status': 'success'}
+    status=200
     logging.debug(f"Run stage-id {data['stage_id']} of {data['filename']} with option {data['option']}")
     session = request.state.session
 
@@ -223,8 +224,9 @@ async def run_stage(request: Request):
         logging.exception(e, stack_info=True)
         result['status'] = 'error'
         result['error'] = str(e)
+        status = 500
 
-    return http_functions.get_json_response(result)
+    return http_functions.get_json_response(result, status=status)
 
 
 
@@ -279,12 +281,17 @@ async def show_processing_history(request: Request):
 
 
 async def cancel_deployment(request: Request):
-    data = await request.json()
-    logging.debug(f"Cancel Deployment: {data['filename']}")
 
-    mf = meta_file.Meta_File.load_json_file(data['filename'])
-    action_type.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
-    mf.cancel_deployment()
+    try:
+        data = await request.json()
+        logging.debug(f"Cancel Deployment: {data['filename']}")
+        mf = meta_file.Meta_File.load_json_file(data['filename'])
+        action_type.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
+        mf.cancel_deployment()
+    except Exception as e:
+        logging.error("An error occured. Please check details!")
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response({'status': 'error', 'error': str(e)}, status=500)
 
     return http_functions.get_json_response({'status': 'success'})
     
@@ -314,6 +321,7 @@ async def create_deployment(request: Request, wf_name, commit=None, obj_list=Non
     logging.debug(f"Create Deployment: {wf_name=}, {commit=}, {obj_list=}")
     logging.debug(f'{os.path.realpath(os.path.dirname(__file__)+"/..")=}')
     result={}
+    status=200
 
     try:
         wf = workflow.Workflow(wf_name)
@@ -335,8 +343,9 @@ async def create_deployment(request: Request, wf_name, commit=None, obj_list=Non
     except Exception as e:
         logging.exception(e, stack_info=True)
         result={'status': 'error', 'error': str(e)}
+        status = 500
 
-    return http_functions.get_json_response(result)
+    return http_functions.get_json_response(result, status=status)
    
 
 
@@ -353,6 +362,7 @@ async def start_workflow(request: Request, wf_name: str):
     logging.debug(f"Create Deployment: {wf_name=}")
     logging.debug(f'{os.path.realpath(os.path.dirname(__file__)+"/..")=}')
     result={}
+    status = 200
 
     try:
         wf = workflow.Workflow(wf_name)
@@ -367,8 +377,9 @@ async def start_workflow(request: Request, wf_name: str):
     except Exception as e:
         logging.exception(e, stack_info=True)
         result={'status': 'error', 'error': str(e)}
+        status = 500
 
-    return http_functions.get_json_response(result)
+    return http_functions.get_json_response(result, status=status)
 
 
 
@@ -376,6 +387,7 @@ async def set_check_error(request: Request):
     data = await request.json()
     logging.debug(f"Set check error stage: {data['stage_id']}, action_id: {data['action_id']}, checked: {data['checked']}, filename: {data['filename']}")
     result={}
+    status = 200
     session = request.state.session
 
     try:
@@ -388,11 +400,12 @@ async def set_check_error(request: Request):
     except Exception as e:
         logging.exception(e, stack_info=True)
         result={'status': 'error', 'error': str(e)}
+        status = 500
 
     #mf.set_status(meta_file.Meta_file_status.READY)
     logging.debug(f"{result=}")
 
-    return http_functions.get_json_response(result)
+    return http_functions.get_json_response(result, status=status)
 
 
 
@@ -400,6 +413,7 @@ async def set_source_ready_4_deployment(request: Request):
     data = await request.json()
     logging.debug(f"Set source ready for deployment lib: {data['lib']}, name: {data['name']}, type: {data['type']}, checked: {data['checked']}, filename: {data['filename']}")
     result={}
+    status = 200
     
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
@@ -414,11 +428,12 @@ async def set_source_ready_4_deployment(request: Request):
     except Exception as e:
         logging.exception(e, stack_info=True)
         result={'status': 'error', 'error': str(e)}
+        status = 500
 
     #mf.set_status(meta_file.Meta_file_status.READY)
     logging.debug(f"{result=}")
 
-    return http_functions.get_json_response(result)
+    return http_functions.get_json_response(result, status=status)
 
 
 
@@ -430,10 +445,10 @@ async def get_stage_steps_html(request: Request):
     try:
         mf = meta_file.Meta_File.load_json_file(data['filename'])
         html = flowchart.generate_stage_steps_html(request, mf, mf.get_stage_by_id(int(data['stage_id'])))
-        return http_functions.get_json_response({'html': html})
+        return http_functions.get_json_response({'html': html}, status=200)
     except Exception as e:
         logging.exception(e, stack_info=True)
-        return http_functions.get_json_response({'error': str(e)})
+        return http_functions.get_json_response({'error': str(e)}, status=500)
 
 
 
