@@ -315,8 +315,6 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     <br/>
 </div>
 
-<script src="{{ url_for('static', path='assets/js/jquery.min.js') }}"></script>
-<script src="{{ url_for('static', path='assets/js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/chart.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/json.js') }}"></script>
@@ -420,7 +418,7 @@ function show_stage_steps(file_name, stage_id, stage_name) {
             last_show_stage_id=null;
             last_show_stage_name=null;
             current_meta_file=null;
-        });;
+        });
     });
 }
 
