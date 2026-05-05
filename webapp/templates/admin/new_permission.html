@@ -2,10 +2,18 @@
 <table>
   <tr><th>Name</th><td><input type="text" id="new_permission_name"></td></tr>
   <tr><th>Roles</th><td>
+    <table class="table">
+      <tr>
+      {% for role, role_permissions in role_permissions.items() %}
+      <th><label for="role_{{ loop.index }}">{{ role }}</label></th>
+      {% endfor %}
+      </tr>
+      <tr>
     {% for role, role_permissions in role_permissions.items() %}
-      <label for="role_{{ loop.index }}">{{ role }}</label>
-      <input type="checkbox" id="role_{{ loop.index }}" name="roles" value="{{ role }}">
+      <td><input class="new_roles" type="checkbox" id="role_{{ loop.index }}" name="roles" value="{{ role }}"></td>
     {% endfor %}
+      </tr>
+    </table>
     </td>
   </tr>
   <tr><th>General</th><td><input type="text" id="new_permission_general"></td></tr>

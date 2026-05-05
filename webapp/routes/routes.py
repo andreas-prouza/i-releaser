@@ -473,3 +473,23 @@ async def get_projects(request: Request):
             result[project][depl['status']] = result[project][depl['status']] + 1
 
     return http_functions.get_json_response(result)
+
+
+
+
+async def add_permission(request: Request, type: str, name: str, roles: List[str], general: List[str]):
+    logging.debug(f"Add permission of type {type} with name {name} for roles {roles}")
+    result = {"status": "success"}
+    status = 200
+
+    permission_execution = {
+        'user': user_permission.UserPermission.add_user_permission, 
+        'role': user_permission.UserPermission.add_role_permission
+    }
+
+    if type not in permission_execution:
+        return http_functions.get_json_response({'status': 'error', 'error': f"Unknown permission type '{type}'"}, status=400)
+    
+    permission_execution[type](name, roles)
+
+    return http_functions.get_json_response(result, status=status)

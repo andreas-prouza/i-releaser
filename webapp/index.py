@@ -131,6 +131,11 @@ app.add_api_route('/api/get_workflows', routes.get_workflows, methods=['GET'])
 app.add_api_route('/api/get_projects', routes.get_projects, methods=['GET'])
 
 
+########### Permissions
+
+app.add_api_route('/api/add_permission', routes.add_permission, methods=['POST'])
+
+
 
 
 #######################################################

@@ -145,6 +145,27 @@ class UserPermission:
 
 
   @staticmethod
+  def add_user_permission(name: str, role: list[str], general: list[str], workflows: dict):
+
+    UserPermission.check_reload()
+
+    if name.lower() in UserPermission.user_permissions.keys():
+      error = Exception(f"User {name} already exists, overwriting permissions")
+      logging.exception(error, stack_info=True)
+      raise error
+
+    UserPermission.user_permissions[name.lower()] = {
+      "roles": role,
+      "general": general,
+      "workflows": workflows
+    }
+    if name.lower() not in UserPermission.allowed_users:
+      UserPermission.allowed_users.append(name.lower())
+    UserPermission.save_permissions()
+  
+
+
+  @staticmethod
   def check_reload():
     
     current_time = time.time()

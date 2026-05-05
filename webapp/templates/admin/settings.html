@@ -128,7 +128,7 @@ Settings
 
             <h3>User</h3>
             
-            <button type="button" class="btn btn-primary" onclick="add_user_permission()">
+            <button type="button" class="btn btn-primary" onclick="show_add_user_permission()">
               <i class="fa-solid fa-plus"></i>
               Add new user
             </button>
@@ -176,7 +176,11 @@ Settings
       {% include 'admin/new_permission.html' %}
   {% endset %}
 
+  
+  
 {% block scripts %}
+<script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
+
 <script>
   function openTab(evt, tabName) {
     // Declare variables
@@ -199,13 +203,13 @@ Settings
     evt.currentTarget.className += " active";
   }
 
-  function add_user_permission() {
-    add_permission('user');
+  function show_add_user_permission() {
+    show_add_permission('user');
   }
 
 
 
-  function add_permission(type) {
+  function show_add_permission(type) {
       const html = {{ new_permission | tojson }};
       Swal.fire({
           title: `New ${type}`,
@@ -216,7 +220,47 @@ Settings
               table: 'table',
           }
       }).then((result) => {
+        if (result.isConfirmed) {
+          // Handle form submission here
+          add_permission(type);
+          console.log('Form submitted');
+          console.log(result);
+        }
       });
+  }
+
+
+
+  function add_permission(type) {
+    const name = document.getElementById(`new_permission_name`).value;
+    const general = document.getElementById(`new_permission_general`).value;
+    const workflows = document.getElementById(`new_permission_workflows`).value;
+
+    const roles = [];
+    document.querySelectorAll('.new_roles:checked').forEach((checkbox) => {
+      roles.push(checkbox.value);
+    });
+
+    console.log('Name:', name);
+    console.log('General:', general);
+    console.log('Workflows:', workflows);
+    console.log('Roles:', roles);
+
+    http_post('/admin/add_permission', {
+      type: type,
+      name: name,
+      general: general,
+      workflows: workflows,
+      roles: roles
+    }).then((response) => {
+      console.log('Permission added successfully:', response);
+      Swal.fire('Success', 'Permission added successfully', 'success').then(() => {
+        location.reload();
+      });
+    }).catch((error) => {
+      console.error('Error adding permission:', error);
+      Swal.fire('Error', 'Failed to add permission', 'error');
+    });
   }
 </script>
 {% endblock %}
