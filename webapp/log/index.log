@@ -1,0 +1,84 @@
+2026-05-07 17:59:13,326 (87384)|87384 DEBUG   index.py   <module>   (21): sys.path=['/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/etc', '/usr/lib/python313.zip', '/usr/lib/python3.13', '/usr/lib/python3.13/lib-dynload', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages', '/usr/lib/python3.13/site-packages', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser']
+2026-05-07 17:59:13,417 (87384)|87384 INFO    index.py   <module>   (146): Run WebApp from MAIN
+2026-05-07 17:59:13,470 (87384)|87384 DEBUG   selector_e __init__   (64): Using selector: EpollSelector
+2026-05-07 17:59:20,143 (87384)|87384 DEBUG   webmiddlew dispatch   (61): Now call handler for /
+2026-05-07 17:59:20,143 (87384)|87384 DEBUG   webmiddlew check_sess (90): sys.path=['/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/etc', '/usr/lib/python313.zip', '/usr/lib/python3.13', '/usr/lib/python3.13/lib-dynload', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages', '/usr/lib/python3.13/site-packages', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser']
+2026-05-07 17:59:20,143 (87384)|87384 DEBUG   webmiddlew check_sess (91): /
+2026-05-07 17:59:20,143 (87384)|87384 DEBUG   webmiddlew dispatch   (69): Session check result: None
+2026-05-07 17:59:20,145 (87384)|87384 DEBUG   routes.py  index      (40): ['/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/etc', '/usr/lib/python313.zip', '/usr/lib/python3.13', '/usr/lib/python3.13/lib-dynload', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages', '/usr/lib/python3.13/site-packages', '/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser']
+2026-05-07 17:59:20,145 (87384)|87384 DEBUG   routes.py  index      (41): Call index.html
+2026-05-07 17:59:20,145 (87384)|87384 DEBUG   user_permi wrapper    (102): Check permission for user prouza and action PermissionAction.READ (workflow: None, stage: None)
+2026-05-07 17:59:20,145 (87384)|87384 DEBUG   user_permi wrapper    (103): func.__name__='get_deployments', args=('/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/etc/deploy_version_test.json',), kwargs={}
+2026-05-07 17:59:20,145 (87384)|87384 DEBUG   user_permi is_user_al (32): Check if user prouza has permission PermissionAction.READ (workflow: None, stage: None)
+2026-05-07 17:59:20,145 (87384)|87384 DEBUG   user_permi is_user_al (34): user='prouza'; action=<PermissionAction.READ: 'read'>: <enum 'PermissionAction'>
+2026-05-07 17:59:20,146 (87384)|87384 DEBUG   user_permi convert_pe (208): user_permissions={'prouza': {'roles': ['admin'], 'general': ['read'], 'workflows': {'unit_test_permissions': {'general': ['deploy'], 'stages': {'uat': ['admin']}}, 'unit_test_permissions_admin': {'general': ['admin'], 'stages': {'uat': ['admin']}}}}, 'prouzat1': {'general': ['admin'], 'workflows': {'unit_test_permissions': {'general': ['read'], 'stages': {'uat': ['4-eyes_check']}}}}}
+2026-05-07 17:59:20,147 (87384)|87384 DEBUG   user_permi convert_pe (208): user_permissions={'admin': {'general': ['admin'], 'workflows': {'*': {'general': ['admin'], 'stages': {'*': ['admin']}}}}}
+2026-05-07 17:59:20,147 (87384)|87384 DEBUG   user_permi check_relo (195): Reloaded user permissions: {'prouza': {'roles': ['admin'], 'general': [<PermissionAction.READ: 'read'>], 'workflows': {'unit_test_permissions': {'general': [<PermissionAction.DEPLOY: 'deploy'>, <PermissionAction.READ: 'read'>], 'stages': {'uat': [<PermissionAction.ADMIN: 'admin'>, <PermissionAction.CANCEL_WORKFLOW: 'cancel_workflow'>, <PermissionAction.START_WORKFLOW: 'start_workflow'>, <PermissionAction.UPDATE: 'update'>, <PermissionAction.READ: 'read'>, <PermissionAction.DEPLOY: 'deploy'>, <PermissionAction.FOUR_EYES_CHECK: '4-eyes_check'>, <PermissionAction.CHANGE_CHECK_ERROR: 'change_check_error'>, <PermissionAction.RUN_WORKFLOW: 'run'>]}}, 'unit_test_permissions_admin': {'general': [<PermissionAction.ADMIN: 'admin'>, <PermissionAction.CANCEL_WORKFLOW: 'cancel_workflow'>, <PermissionAction.START_WORKFLOW: 'start_workflow'>, <PermissionAction.UPDATE: 'update'>, <PermissionAction.READ: 'read'>, <PermissionAction.DEPLOY: 'deploy'>, <PermissionAction.FOUR_EYES_CHECK: '4-eyes_check'>, <PermissionAction.CHANGE_CHECK_ERROR: 'change_check_error'>, <PermissionAction.RUN_WORKFLOW: 'run'>], 'stages': {'uat': [<PermissionAction.ADMIN: 'admin'>, <PermissionAction.CANCEL_WORKFLOW: 'cancel_workflow'>, <PermissionAction.START_WORKFLOW: 'start_workflow'>, <PermissionAction.UPDATE: 'update'>, <PermissionAction.READ: 'read'>, <PermissionAction.DEPLOY: 'deploy'>, <PermissionAction.FOUR_EYES_CHECK: '4-eyes_check'>, <PermissionAction.CHANGE_CHECK_ERROR: 'change_check_error'>, <PermissionAction.RUN_WORKFLOW: 'run'>]}}}}, 'prouzat1': {'general': [<PermissionAction.ADMIN: 'admin'>, <PermissionAction.CANCEL_WORKFLOW: 'cancel_workflow'>, <PermissionAction.START_WORKFLOW: 'start_workflow'>, <PermissionAction.UPDATE: 'update'>, <PermissionAction.READ: 'read'>, <PermissionAction.DEPLOY: 'deploy'>, <PermissionAction.FOUR_EYES_CHECK: '4-eyes_check'>, <PermissionAction.CHANGE_CHECK_ERROR: 'change_check_error'>, <PermissionAction.RUN_WORKFLOW: 'run'>], 'workflows': {'unit_test_permissions': {'general': [<PermissionAction.READ: 'read'>], 'stages': {'uat': [<PermissionAction.FOUR_EYES_CHECK: '4-eyes_check'>, <PermissionAction.READ: 'read'>, <PermissionAction.DEPLOY: 'deploy'>]}}}}}
+2026-05-07 17:59:20,147 (87384)|87384 DEBUG   user_permi check_relo (196): Reloaded role permissions: {'admin': {'general': [<PermissionAction.ADMIN: 'admin'>, <PermissionAction.CANCEL_WORKFLOW: 'cancel_workflow'>, <PermissionAction.START_WORKFLOW: 'start_workflow'>, <PermissionAction.UPDATE: 'update'>, <PermissionAction.READ: 'read'>, <PermissionAction.DEPLOY: 'deploy'>, <PermissionAction.FOUR_EYES_CHECK: '4-eyes_check'>, <PermissionAction.CHANGE_CHECK_ERROR: 'change_check_error'>, <PermissionAction.RUN_WORKFLOW: 'run'>], 'workflows': {'*': {'general': [<PermissionAction.ADMIN: 'admin'>, <PermissionAction.CANCEL_WORKFLOW: 'cancel_workflow'>, <PermissionAction.START_WORKFLOW: 'start_workflow'>, <PermissionAction.UPDATE: 'update'>, <PermissionAction.READ: 'read'>, <PermissionAction.DEPLOY: 'deploy'>, <PermissionAction.FOUR_EYES_CHECK: '4-eyes_check'>, <PermissionAction.CHANGE_CHECK_ERROR: 'change_check_error'>, <PermissionAction.RUN_WORKFLOW: 'run'>], 'stages': {'*': [<PermissionAction.ADMIN: 'admin'>, <PermissionAction.CANCEL_WORKFLOW: 'cancel_workflow'>, <PermissionAction.START_WORKFLOW: 'start_workflow'>, <PermissionAction.UPDATE: 'update'>, <PermissionAction.READ: 'read'>, <PermissionAction.DEPLOY: 'deploy'>, <PermissionAction.FOUR_EYES_CHECK: '4-eyes_check'>, <PermissionAction.CHANGE_CHECK_ERROR: 'change_check_error'>, <PermissionAction.RUN_WORKFLOW: 'run'>]}}}}}
+2026-05-07 17:59:20,147 (87384)|87384 DEBUG   user_permi is_user_al (43): User prouza has permission PermissionAction.READ (workflow: None, stage: None)
+2026-05-07 17:59:20,148 (87384)|87384 DEBUG   deploy_ver get_deploy (65): Deployment file: /home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/etc/deploy_version_test.json
+2026-05-07 17:59:20,148 (87384)|87384 DEBUG   deploy_ver get_deploy (66): Deployment file: /home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/etc/deploy_version_test.json
+2026-05-07 17:59:20,148 (87384)|87384 DEBUG   routes.py  index      (47): {'versions': {'last_deploy_version': 0}, 'deployments': []}
+2026-05-07 17:59:20,148 (87384)|87384 DEBUG   routes.py  index      (49): Send response
+2026-05-07 17:59:20,150 (87384)|87384 DEBUG   workflow.p get_workfl (210): len len(step_mapping)=18, len(workflow_dict["step_action"])=1
+2026-05-07 17:59:20,150 (87384)|87384 WARNING workflow.p get_all_wo (114): Use of old workflow file: /home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/etc/workflow.json. Migrate to single etc/workflows/*.json file for each workflow!
+2026-05-07 17:59:20,153 (87384)|87384 ERROR   webmiddlew dispatch   (75): Error in middleware: [Errno 2] No such file or directory: 'log/'
+Traceback (most recent call last):
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 148, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/anyio/streams/memory.py", line 117, in receive
+    return self.receive_nowait()
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/anyio/streams/memory.py", line 110, in receive_nowait
+    raise EndOfStream
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp/routes/webmiddleware.py", line 72, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 154, in call_next
+    raise app_exc
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 141, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp/routes/routes.py", line 52, in index
+    return http_functions.get_html_response(request, 'overview/list-deployments.html', project=project, sidebar=get_sidebar_data(request), deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv)
+                                                                                                                ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/andreas/projects/opensource/i-releaser-unit-tests/i-releaser/webapp/routes/routes.py", line 29, in get_sidebar_data
+    x['logs'] = os.listdir('log/')
+                ~~~~~~~~~~^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'log/'
+2026-05-07 17:59:20,163 (87384)|87384 DEBUG   webmiddlew dispatch   (83): Response send code: 500

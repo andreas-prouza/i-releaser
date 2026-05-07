@@ -144,5 +144,6 @@ app.add_api_route('/api/add_permission', routes.add_permission, methods=['POST']
 
 if __name__ == '__main__':
     logging.info("Run WebApp from MAIN")
+    os.environ["I_RELEASER_LOCAL_DEBUGGING"] = "True"
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

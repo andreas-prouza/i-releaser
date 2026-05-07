@@ -1,7 +1,10 @@
 from enum import Enum
+from typing import List, Dict, Optional
+from pydantic import BaseModel
 
 
-class Permission(Enum):
+
+class PermissionAction(Enum):
 
   ADMIN = 'admin'
   READ = 'read'
@@ -15,37 +18,52 @@ class Permission(Enum):
 
   
 PERMISSION_DEPENDENCIES = {
-  Permission.ADMIN: [
-    Permission.CANCEL_WORKFLOW, 
-    Permission.START_WORKFLOW, 
-    Permission.UPDATE, 
-    Permission.READ, 
-    Permission.DEPLOY, 
-    Permission.FOUR_EYES_CHECK, 
-    Permission.CHANGE_CHECK_ERROR, 
-    Permission.RUN_WORKFLOW
+  PermissionAction.ADMIN: [
+    PermissionAction.CANCEL_WORKFLOW, 
+    PermissionAction.START_WORKFLOW, 
+    PermissionAction.UPDATE, 
+    PermissionAction.READ, 
+    PermissionAction.DEPLOY, 
+    PermissionAction.FOUR_EYES_CHECK, 
+    PermissionAction.CHANGE_CHECK_ERROR, 
+    PermissionAction.RUN_WORKFLOW
     ],
-  Permission.DEPLOY: [
-    Permission.READ
+  PermissionAction.DEPLOY: [
+    PermissionAction.READ
     ],
-  Permission.FOUR_EYES_CHECK: [
-    Permission.READ, 
-    Permission.DEPLOY
+  PermissionAction.FOUR_EYES_CHECK: [
+    PermissionAction.READ, 
+    PermissionAction.DEPLOY
     ],
-  Permission.RUN_WORKFLOW: [
-    Permission.START_WORKFLOW, 
-    Permission.UPDATE
+  PermissionAction.RUN_WORKFLOW: [
+    PermissionAction.START_WORKFLOW, 
+    PermissionAction.UPDATE
     ],
-  Permission.UPDATE: [
-    Permission.READ
+  PermissionAction.UPDATE: [
+    PermissionAction.READ
     ],
-  Permission.START_WORKFLOW: [
-    Permission.UPDATE
+  PermissionAction.START_WORKFLOW: [
+    PermissionAction.UPDATE
     ],
-  Permission.CHANGE_CHECK_ERROR: [
-    Permission.UPDATE
+  PermissionAction.CHANGE_CHECK_ERROR: [
+    PermissionAction.UPDATE
     ],
-  Permission.CANCEL_WORKFLOW: [
-    Permission.UPDATE
+  PermissionAction.CANCEL_WORKFLOW: [
+    PermissionAction.UPDATE
     ]
 }
+
+
+
+
+class PermissionWorkflowStages(BaseModel):
+  stages: Dict[str, List[str]]
+
+class PermissionWorkflow(BaseModel):
+  general: Optional[List[str]]
+  stages: Optional[Dict[str, List[str]]]
+
+class Permissions(BaseModel):
+  roles: Optional[List[str]]
+  general: Optional[List[str]]
+  workflows: Optional[Dict[str, PermissionWorkflow]]

@@ -246,20 +246,26 @@ Settings
     console.log('Workflows:', workflows);
     console.log('Roles:', roles);
 
-    http_post('/admin/add_permission', {
+    http_post('/api/add_permission', {
       type: type,
       name: name,
       general: general,
       workflows: workflows,
       roles: roles
-    }).then((response) => {
+    }).then(async (response) => {
+      const data = await response.json()
+      console.log('Response:', data);
+  
+      if (!response.ok) {
+        throw new Error(data.error || 'Unknown error');
+      }
       console.log('Permission added successfully:', response);
       Swal.fire('Success', 'Permission added successfully', 'success').then(() => {
         location.reload();
       });
     }).catch((error) => {
       console.error('Error adding permission:', error);
-      Swal.fire('Error', 'Failed to add permission', 'error');
+      Swal.fire('Error', `<h4>Failed to add permission</h4><br/><code>${error.message}</code>`, 'error');
     });
   }
 </script>

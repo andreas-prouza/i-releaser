@@ -160,9 +160,9 @@ async def show_settings(request: Request):
     logging.debug("Send response")
     return http_functions.get_html_response(request, 'admin/settings.html', 
         sidebar=get_sidebar_data(request), 
-        allowed_users=user_permission.UserPermission.get_user_list(), 
-        user_permissions=user_permission.UserPermission.user_permissions,
-        role_permissions=user_permission.UserPermission.role_permissions,
+        allowed_users=user_permission.PermissionKonfig.get_user_list(), 
+        user_permissions=user_permission.PermissionKonfig.user_permissions,
+        role_permissions=user_permission.PermissionKonfig.role_permissions,
         default_project=global_cfg.C_DEFAULT_PROJECT, 
         port='????',
         path=Path(os.path.dirname(__file__)),
@@ -477,19 +477,25 @@ async def get_projects(request: Request):
 
 
 
-async def add_permission(request: Request, type: str, name: str, roles: List[str], general: List[str]):
-    logging.debug(f"Add permission of type {type} with name {name} for roles {roles}")
+async def add_permission(request: Request):
+    data = await request.json()
+    type: str = data['type']
+    name: str = data['name']
+    roles: List[str] = data['roles']
+    general: List[str] = data['general']
+    
+    logging.debug(f"Add permission of type {type} with name {name} for roles {roles}, {general=}")
     result = {"status": "success"}
     status = 200
 
     permission_execution = {
-        'user': user_permission.UserPermission.add_user_permission, 
-        'role': user_permission.UserPermission.add_role_permission
+        'user': user_permission.PermissionKonfig.add_user_permission, 
+        'role': user_permission.PermissionKonfig.add_role_permission
     }
 
     if type not in permission_execution:
         return http_functions.get_json_response({'status': 'error', 'error': f"Unknown permission type '{type}'"}, status=400)
     
-    permission_execution[type](name, roles)
+    permission_execution[type](name=name, role=roles, general=general, workflows={})
 
     return http_functions.get_json_response(result, status=status)

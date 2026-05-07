@@ -10,6 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/webapp",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/webapp:${workspaceFolder}/etc",
                 "I_RELEASER_WEBAPP_PATH": "${workspaceFolder}/webapp"
