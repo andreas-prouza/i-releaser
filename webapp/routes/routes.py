@@ -8,14 +8,14 @@ from fastapi.responses import JSONResponse, RedirectResponse
 # Custom modules
 from etc import constants, global_cfg
 
-from modules import action_type
+from modules import action_type, permissions
 from modules import deploy_version, meta_file
 from modules import workflow
 from modules.deploy_object import Deploy_Object
 
 from web_modules import http_functions
 from web_modules import flowchart, app_login
-from modules import user_permission
+from modules import permission_konfig
 
 
 def get_sidebar_data(request: Request):
@@ -160,9 +160,10 @@ async def show_settings(request: Request):
     logging.debug("Send response")
     return http_functions.get_html_response(request, 'admin/settings.html', 
         sidebar=get_sidebar_data(request), 
-        allowed_users=user_permission.PermissionKonfig.get_user_list(), 
-        user_permissions=user_permission.PermissionKonfig.user_permissions,
-        role_permissions=user_permission.PermissionKonfig.role_permissions,
+        permission_actions=permissions.PermissionAction,
+        allowed_users=permission_konfig.PermissionKonfig.get_user_list(), 
+        user_permissions=permission_konfig.PermissionKonfig.user_permissions,
+        role_permissions=permission_konfig.PermissionKonfig.role_permissions,
         default_project=global_cfg.C_DEFAULT_PROJECT, 
         port='????',
         path=Path(os.path.dirname(__file__)),
@@ -206,12 +207,12 @@ async def run_stage(request: Request):
     logging.debug(f"Run stage-id {data['stage_id']} of {data['filename']} with option {data['option']}")
     session = request.state.session
 
-    mf = meta_file.Meta_File.load_json_file(data['filename'])
+    mf: meta_file.Meta_File = meta_file.Meta_File.load_json_file(data['filename'])
 
     try:
         
         mf.set_status(meta_file.Meta_file_status.READY)
-        mf.current_user = session.get('current_user', None).upper()
+        mf.CURRENT_USER = session.get('current_user', None).upper()
 
         continue_run = True
         if data['option'] == 'run_all':
@@ -274,7 +275,7 @@ async def show_processing_history(request: Request):
     logging.debug(f"Get logs from: {data=}")
     logging.debug(f"Get logs from: {data['filename']=}")
 
-    mf = meta_file.Meta_File.load_json_file(data['filename'])
+    mf: meta_file.Meta_File = meta_file.Meta_File.load_json_file(data['filename'])
 
     return http_functions.get_json_response(mf.processing_users)
 
@@ -483,19 +484,20 @@ async def add_permission(request: Request):
     name: str = data['name']
     roles: List[str] = data['roles']
     general: List[str] = data['general']
+    perm: permissions.Permissions = permissions.Permissions(roles=roles, general=general, workflows={})
     
     logging.debug(f"Add permission of type {type} with name {name} for roles {roles}, {general=}")
     result = {"status": "success"}
     status = 200
 
     permission_execution = {
-        'user': user_permission.PermissionKonfig.add_user_permission, 
-        'role': user_permission.PermissionKonfig.add_role_permission
+        'user': permission_konfig.PermissionKonfig.add_user_permission, 
+        'role': permission_konfig.PermissionKonfig.add_role_permission
     }
 
     if type not in permission_execution:
         return http_functions.get_json_response({'status': 'error', 'error': f"Unknown permission type '{type}'"}, status=400)
     
-    permission_execution[type](name=name, role=roles, general=general, workflows={})
+    permission_execution[type](name=name, permission=perm)
 
     return http_functions.get_json_response(result, status=status)

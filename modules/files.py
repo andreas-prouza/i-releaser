@@ -1,6 +1,19 @@
+from enum import Enum
 import os, pathlib, json, logging
 import hashlib, mmap
 import time
+from dataclasses import is_dataclass, asdict
+
+
+
+class DataclassJSONEncoder(json.JSONEncoder):
+  def default(self, o):
+    if is_dataclass(o):
+      return asdict(o)
+    if isinstance(o, Enum):
+      return o.value
+    return super().default(o)
+
 
 
 
@@ -70,5 +83,5 @@ def writeJson(content, file):
   pathlib.Path(os.path.dirname(file)).mkdir(parents=True, exist_ok=True)
 
   with open(file, 'w') as json_file:
-    json.dump(content, json_file, indent=2, ensure_ascii=False)
+    json.dump(content, json_file, indent=2, ensure_ascii=False, cls=DataclassJSONEncoder)
 

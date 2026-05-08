@@ -2,7 +2,7 @@
 <table>
   <tr><th>Name</th><td><input type="text" id="new_permission_name"></td></tr>
   <tr><th>Roles</th><td>
-    <table class="table">
+    <table class="table border-right">
       <tr>
       {% for role, role_permissions in role_permissions.items() %}
       <th><label for="role_{{ loop.index }}">{{ role }}</label></th>
@@ -16,6 +16,20 @@
     </table>
     </td>
   </tr>
-  <tr><th>General</th><td><input type="text" id="new_permission_general"></td></tr>
-  <tr><th>Workflows</th><td><input type="text" id="new_permission_workflows"></td></tr>
+  <tr><th>General</th><td>
+    <table class="table border-right">
+      <tr>
+      {% for action in permission_actions %}
+       <td>{{ action.value }}</td>
+      {% endfor %}
+      </tr>
+      <tr>
+      {% for action in permission_actions %}
+        <td><input type="checkbox" class="new_general" id="general_{{ loop.index }}" name="general" value="{{ action.value }}"></td>
+      {% endfor %}
+      </tr>
+    </table>
+
+  </td></tr>
+  <tr><th>Workflows</th><td></td></tr>
 </table>

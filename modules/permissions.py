@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import List, Dict, Optional
-from pydantic import BaseModel
+from typing import Any, List, Dict, Optional
+from dataclasses import dataclass, field
 
 
 
@@ -8,13 +8,13 @@ class PermissionAction(Enum):
 
   ADMIN = 'admin'
   READ = 'read'
-  START_WORKFLOW = 'start_workflow'
+  START_WORKFLOW = 'start workflow'
   UPDATE = 'update'
   DEPLOY = 'deploy'
   RUN_WORKFLOW = 'run'
-  CHANGE_CHECK_ERROR = 'change_check_error'
-  FOUR_EYES_CHECK = '4-eyes_check'
-  CANCEL_WORKFLOW = 'cancel_workflow'
+  CHANGE_CHECK_ERROR = 'change check error'
+  FOUR_EYES_CHECK = '4-eyes check'
+  CANCEL_WORKFLOW = 'cancel workflow'
 
   
 PERMISSION_DEPENDENCIES = {
@@ -56,14 +56,26 @@ PERMISSION_DEPENDENCIES = {
 
 
 
-class PermissionWorkflowStages(BaseModel):
-  stages: Dict[str, List[str]]
+@dataclass
+class PermissionWorkflowStages:
+  stages: Dict[str, List[PermissionAction]]
 
-class PermissionWorkflow(BaseModel):
-  general: Optional[List[str]]
-  stages: Optional[Dict[str, List[str]]]
 
-class Permissions(BaseModel):
-  roles: Optional[List[str]]
-  general: Optional[List[str]]
-  workflows: Optional[Dict[str, PermissionWorkflow]]
+@dataclass
+class PermissionWorkflow:
+  general: List[PermissionAction] = field(default_factory=list)
+  stages: Dict[str, List[PermissionAction]] = field(default_factory=dict)
+
+
+@dataclass
+class Permissions:
+  roles: List[str] = field(default_factory=list)
+  general: List[PermissionAction] = field(default_factory=list)
+  workflows: Dict[str, PermissionWorkflow] = field(default_factory=dict)
+
+  def __post_init__(self):
+    # Check if the items in general are strings, and convert them if so
+    if self.general:
+      self.general = [
+        PermissionAction(action) if isinstance(action, str) else action for action in self.general
+      ]

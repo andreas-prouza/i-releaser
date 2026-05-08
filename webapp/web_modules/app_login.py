@@ -4,7 +4,7 @@ import datetime
 
 from fastapi import Request
 
-from modules import meta_file, user_permission
+from modules import meta_file, permission_konfig
 from etc import db_config, web_constants
 from pathlib import Path
 
@@ -30,7 +30,7 @@ def connect(request: Request, user, password):
       conn = pyodbc.connect(connection_string)
       conn.close()
 
-    if user not in [x.lower() for x in user_permission.PermissionKonfig.get_user_list()]:
+    if user not in [x.lower() for x in permission_konfig.PermissionKonfig.get_user_list()]:
       e = Exception(f"User '{user}' has no permission.")
       raise e
     
@@ -98,7 +98,7 @@ def is_key_valid(request: Request, auth_token):
 
   for user,key in keys.items():
     if key['key'] == hashed_key:
-      if user not in [x.lower() for x in user_permission.PermissionKonfig.get_user_list()]:
+      if user not in [x.lower() for x in permission_konfig.PermissionKonfig.get_user_list()]:
         e = Exception(f"User '{user}' has no permission.")
         raise e
       session['current_user'] = user

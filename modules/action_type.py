@@ -19,4 +19,5 @@ def create_action_log(action: Action_type, details: str|None=None, meta_file=Non
 
   user = mf.Meta_File.CURRENT_USER
 
-  meta_file.processing_users.append({'action': action.value, 'user': user, 'timestamp' : str(datetime.datetime.now()), 'stage': stage.name if stage else None, 'details': details})
+  if meta_file is not None:
+    meta_file.processing_users.append({'action': action.value, 'user': user, 'timestamp' : str(datetime.datetime.now()), 'stage': stage.name if stage else None, 'details': details})

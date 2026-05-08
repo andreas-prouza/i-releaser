@@ -52,6 +52,14 @@ Settings
     animation: fadeEffect 0.5s; /* Optional fade animation */
   }
 
+  .border-right th, .border-right td {
+    border-right: 2px solid #ccc; /* Adjust thickness and color here */
+  }
+  
+  .border-right th:last-child, .border-right td:last-child {
+    border-right: none;
+  }
+
   /* Fade in animation */
   @keyframes fadeEffect {
     from {opacity: 0;}
@@ -115,7 +123,7 @@ Settings
                         <td>
                           <table>
                             <tr><th>General</th><td>
-                            {% for general in role_permissions['general'] %}<code>{{ general }}</code>&nbsp;&nbsp;{% endfor %}
+                            {% for general in role_permissions.general %}<code>{{ general.value }}</code>&nbsp;&nbsp;{% endfor %}
                             </td></tr>
                             <tr><th>Workflows</th><td>
                             {% for workflow, workflow_permissions in role_permissions['workflows'].items() %}<code>{{ workflow }}</code>&nbsp;&nbsp;{% endfor %}
@@ -149,14 +157,40 @@ Settings
                         <td>
                           <table>
                             <tr><th>General</th><td>
-                            {% for general in user_permissions['general'] %}<code>{{ general }}</code>&nbsp;&nbsp;{% endfor %}
+                              <table class="table border-right">
+                                <tr>
+                                {% for action in permission_actions %}
+                                <td>{{ action.value }}</td>
+                                {% endfor %}
+                                </tr>
+                                <tr>
+                                {% for action in permission_actions %}
+                                  <td><input type="checkbox" {% if action in user_permissions.general %}checked{% endif %}></td>
+                                {% endfor %}
+                                </tr>
+                              </table>
                             </td></tr>
-                            <tr><th>Roles</th><td>
-                            {% for role in user_permissions['roles'] %}<code>{{ role }}</code>&nbsp;&nbsp;{% endfor %}
-                            </td></tr>
+                            <tr>
+                              <th>Roles</th>
+                              <td>
+                                <table class="table border-right">
+                                  <tr>
+                                    {% for role, role_permissions in role_permissions.items() %}
+                                     <th><label for="role_{{ loop.index }}">{{ role }}</label></th>
+                                    {% endfor %}
+                                  </tr>
+                                  <tr>
+                                    {% for role, role_permissions in role_permissions.items() %}
+                                      <td><input class="new_roles" type="checkbox" id="role_{{ loop.index }}" name="roles" value="{{ role }}" {% if role in user_permissions.roles %}checked{% endif %}></td>
+                                    {% endfor %}
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
                             <tr><th>Workflows</th><td>
-                            {% for workflow, workflow_permissions in user_permissions['workflows'].items() %}<code>{{ workflow }}</code>&nbsp;&nbsp;{% endfor %}
-                            </td></tr>
+                              {% for workflow, workflow_permissions in user_permissions['workflows'].items() %}<code>{{ workflow }}</code>&nbsp;&nbsp;{% endfor %}
+                              </td>
+                            </tr>
                           </table>
                         </td>
                     </tr>
@@ -233,24 +267,26 @@ Settings
 
   function add_permission(type) {
     const name = document.getElementById(`new_permission_name`).value;
-    const general = document.getElementById(`new_permission_general`).value;
-    const workflows = document.getElementById(`new_permission_workflows`).value;
 
     const roles = [];
     document.querySelectorAll('.new_roles:checked').forEach((checkbox) => {
       roles.push(checkbox.value);
     });
 
+    const general = [];
+    document.querySelectorAll('.new_general:checked').forEach((checkbox) => {
+      general.push(checkbox.value);
+    });
+
     console.log('Name:', name);
     console.log('General:', general);
-    console.log('Workflows:', workflows);
     console.log('Roles:', roles);
 
     http_post('/api/add_permission', {
       type: type,
       name: name,
       general: general,
-      workflows: workflows,
+      workflows: [],
       roles: roles
     }).then(async (response) => {
       const data = await response.json()

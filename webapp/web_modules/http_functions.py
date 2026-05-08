@@ -2,6 +2,7 @@
 import json, logging, os
 from datetime import datetime, date
 import decimal
+from typing import Union
 
 from fastapi import Request
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -25,7 +26,7 @@ class DateEncoder(json.JSONEncoder):
 
 
 
-def get_json_response(dict: dict, status: int=200) -> JSONResponse:
+def get_json_response(dict: Union[dict, list], status: int=200) -> JSONResponse:
 
     content = json.loads(json.dumps(dict, cls=DateEncoder))
     

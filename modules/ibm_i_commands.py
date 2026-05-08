@@ -5,14 +5,14 @@ import sys
 
 from io import StringIO
 
-from modules import meta_file, permission
+from modules import meta_file, permissions
 from modules import deploy_action as da
 from modules import run_history
 from modules import stages as s
 from modules import action_type
 from modules.cmd_status import Status as Cmd_Status
 
-from modules.user_permission import check_user_permission
+from modules.permission_konfig import check_user_permission
 from scripts import *
 
 
@@ -45,7 +45,7 @@ class IBM_i_commands:
 
 
 
-  @check_user_permission(permission.PermissionAction.RUN_WORKFLOW)
+  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_commands(self, stage: s.Stage, processing_step: str=None, continue_run=True) -> None:
 
     logging.debug(f"Run Commands for {stage.name=} ({stage.id}), {processing_step=}")
@@ -68,7 +68,7 @@ class IBM_i_commands:
 
 
 
-  @check_user_permission(permission.PermissionAction.RUN_WORKFLOW)
+  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def execute_action(self, stage: s.Stage, action: da.Deploy_Action, continue_run=True):
 
     executions = {
@@ -114,7 +114,7 @@ class IBM_i_commands:
 
 
 
-  @check_user_permission(permission.PermissionAction.RUN_WORKFLOW)
+  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_script_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
     
     #cmd='pre.pre_cmd'
@@ -181,7 +181,7 @@ class IBM_i_commands:
 
 
 
-  @check_user_permission(permission.PermissionAction.RUN_WORKFLOW)
+  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
     
     logging.debug(f"Run QSYS: {cmd=}")
@@ -196,7 +196,7 @@ class IBM_i_commands:
 
 
 
-  @check_user_permission(permission.PermissionAction.RUN_WORKFLOW)
+  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
       
       logging.debug(f"{cmd=}; {stage.build_dir=}; {os.getcwd()=}")
