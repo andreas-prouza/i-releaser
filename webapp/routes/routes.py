@@ -501,3 +501,22 @@ async def add_permission(request: Request):
     permission_execution[type](name=name, permission=perm)
 
     return http_functions.get_json_response(result, status=status)
+
+
+
+async def save_permissions(request: Request):
+    data = await request.json()
+
+    user_permissions = data.get('user_permissions', {})
+    permission_konfig.PermissionKonfig.convert_permissions('user', user_permissions)
+    for user, perm in user_permissions.items():
+        permission_konfig.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
+        permission_konfig.PermissionKonfig.user_permissions[user].roles = perm.roles
+    
+    permission_konfig.PermissionKonfig.save_permissions()
+    
+    result = {"status": "success"}
+    status = 200
+
+
+    return http_functions.get_json_response(result, status=status)

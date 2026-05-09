@@ -122,8 +122,8 @@ class PermissionKonfig:
   __file_hash = None
   
   allowed_users = []
-  role_permissions: Dict[str, permissions.Permissions] = {}
-  user_permissions: Dict[str, permissions.Permissions] = {}
+  role_permissions: Dict[str, permissions.Role] = {}
+  user_permissions: Dict[str, permissions.User] = {}
 
 
   @staticmethod
@@ -135,15 +135,15 @@ class PermissionKonfig:
 
 
   @staticmethod
-  def get_user_permissions(user) -> permissions.Permissions:
+  def get_user_permissions(user) -> permissions.User:
 
     PermissionKonfig.check_reload()
-    return PermissionKonfig.user_permissions.get(user.lower(), permissions.Permissions())
+    return PermissionKonfig.user_permissions.get(user.lower(), permissions.User())
   
 
 
   @staticmethod
-  def add_user_permission(name: str, permission: permissions.Permissions):
+  def add_user_permission(name: str, permission: permissions.User):
 
     PermissionKonfig.check_reload()
 
@@ -163,7 +163,7 @@ class PermissionKonfig:
 
 
   @staticmethod
-  def add_role_permission(name: str, permission: permissions.Permissions):
+  def add_role_permission(name: str, permission: permissions.Role):
 
     raise NotImplementedError("Adding role permissions is not implemented yet")
 
@@ -205,8 +205,8 @@ class PermissionKonfig:
       PermissionKonfig.role_permissions = data.get('roles', {})
 
       # Convert string permissions to PermissionAction objects
-      PermissionKonfig.convert_permissions(PermissionKonfig.user_permissions)
-      PermissionKonfig.convert_permissions(PermissionKonfig.role_permissions)
+      PermissionKonfig.convert_permissions('user', PermissionKonfig.user_permissions)
+      PermissionKonfig.convert_permissions('role', PermissionKonfig.role_permissions)
       logging.debug(f"Reloaded user permissions: {PermissionKonfig.user_permissions}")
       logging.debug(f"Reloaded role permissions: {PermissionKonfig.role_permissions}")
 
@@ -218,39 +218,69 @@ class PermissionKonfig:
 
 
   @staticmethod
-  def convert_permissions(user_permissions: dict):
+  def convert_permissions(type:str, user_permissions: dict):
 
     logging.debug(f"{user_permissions=}")
-    for user, perm in user_permissions.items():
+    for user, user_items in user_permissions.items():
+
+      perm = user_items.get('permissions', {})
 
       if 'general' in perm.keys():
         for gp in perm.get('general', []):
           if isinstance(gp, str):
-            user_permissions[user]['general'][perm['general'].index(gp)] = permissions.PermissionAction(gp)
-        user_permissions[user]['general'] = get_list_of_dependent_permissions(user_permissions[user]['general'])
+            user_permissions[user]['permissions']['general'][perm['general'].index(gp)] = permissions.PermissionAction(gp)
+        user_permissions[user]['permissions']['general'] = get_list_of_dependent_permissions(user_permissions[user]['permissions']['general'])
 
       for wf, wf_permissions in list(perm.get('workflows', {}).items()):
 
-        for stage, stage_permissions in list(user_permissions[user]['workflows'][wf].get('stages', {}).items()):
+        for stage, stage_permissions in list(user_permissions[user]['permissions']['workflows'][wf].get('stages', {}).items()):
 
-          for i, sp in enumerate(user_permissions[user]['workflows'][wf]['stages'][stage]):
+          for i, sp in enumerate(user_permissions[user]['permissions']['workflows'][wf]['stages'][stage]):
              if isinstance(sp, str):
-                user_permissions[user]['workflows'][wf]['stages'][stage][i] = permissions.PermissionAction(sp)
-          user_permissions[user]['workflows'][wf]['stages'][stage] = get_list_of_dependent_permissions(user_permissions[user]['workflows'][wf]['stages'][stage])
+                user_permissions[user]['permissions']['workflows'][wf]['stages'][stage][i] = permissions.PermissionAction(sp)
+          user_permissions[user]['permissions']['workflows'][wf]['stages'][stage] = get_list_of_dependent_permissions(user_permissions[user]['permissions']['workflows'][wf]['stages'][stage])
 
         if 'general' in wf_permissions.keys():
           for i, wfp in enumerate(wf_permissions.get('general', [])):
             if isinstance(wfp, str):
-              user_permissions[user]['workflows'][wf]['general'][i] = permissions.PermissionAction(wfp)
+              user_permissions[user]['permissions']['workflows'][wf]['general'][i] = permissions.PermissionAction(wfp)
 
-          user_permissions[user]['workflows'][wf]['general'] = get_list_of_dependent_permissions(user_permissions[user]['workflows'][wf]['general'])
+          user_permissions[user]['permissions']['workflows'][wf]['general'] = get_list_of_dependent_permissions(user_permissions[user]['permissions']['workflows'][wf]['general'])
 
       if 'general' in perm.keys():
         for i, gp in enumerate(perm.get('general', [])):
           if isinstance(gp, str):
-            user_permissions[user]['general'][i] = permissions.PermissionAction(gp)
+            user_permissions[user]['permissions']['general'][i] = permissions.PermissionAction(gp)
 
-        user_permissions[user]['general'] = get_list_of_dependent_permissions(user_permissions[user]['general'])
+        user_permissions[user]['permissions']['general'] = get_list_of_dependent_permissions(user_permissions[user]['permissions']['general'])
         
-      new_permi = permissions.Permissions(roles=perm.get('roles', []), general=perm.get('general', []), workflows=perm.get('workflows', {}))
+      new_permi = None
+
+      if type == 'user':
+        new_permi = permissions.User(
+                      roles=user_items.get('roles', []), 
+                      permissions=permissions.Permissions(
+                        general=perm.get('general', []), 
+                        workflows=perm.get('workflows', {})
+                      ),
+                      detailed_infos=permissions.DetailedInfos(
+                        description=user_items.get('detailed_infos', {}).get('description', ''),
+                        mail=user_items.get('detailed_infos', {}).get('mail', ''),
+                        extra=user_items.get('detailed_infos', {}).get('extra', {})
+                      )
+        )
+
+      if type == 'role':
+        new_permi = permissions.Role(
+                      permissions=permissions.Permissions(
+                        general=perm.get('general', []), 
+                        workflows=perm.get('workflows', {})
+                      ),
+                      detailed_infos=permissions.DetailedInfos(
+                        description=user_items.get('detailed_infos', {}).get('description', ''),
+                        mail=user_items.get('detailed_infos', {}).get('mail', ''),
+                        extra=user_items.get('detailed_infos', {}).get('extra', {})
+                      )
+        )
+
       user_permissions[user] = new_permi

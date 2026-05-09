@@ -69,7 +69,6 @@ class PermissionWorkflow:
 
 @dataclass
 class Permissions:
-  roles: List[str] = field(default_factory=list)
   general: List[PermissionAction] = field(default_factory=list)
   workflows: Dict[str, PermissionWorkflow] = field(default_factory=dict)
 
@@ -79,3 +78,25 @@ class Permissions:
       self.general = [
         PermissionAction(action) if isinstance(action, str) else action for action in self.general
       ]
+
+
+
+@dataclass
+class DetailedInfos:
+  description: str = field(default_factory=str)
+  mail: str = field(default_factory=str)
+  extra: Dict[str, Any] = field(default_factory=dict)
+
+
+
+@dataclass
+class User:
+  roles: List[str] = field(default_factory=list)
+  permissions: Permissions = field(default_factory=Permissions)
+  detailed_infos: DetailedInfos = field(default_factory=DetailedInfos)
+
+
+@dataclass
+class Role:
+  permissions: Permissions = field(default_factory=Permissions)
+  detailed_infos: DetailedInfos = field(default_factory=DetailedInfos)

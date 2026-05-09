@@ -1,6 +1,6 @@
 **/__pycache__
 *coverage*
-log/**
+**/log/**
 .pytest_cache
 .venv
 venv

@@ -134,6 +134,7 @@ app.add_api_route('/api/get_projects', routes.get_projects, methods=['GET'])
 ########### Permissions
 
 app.add_api_route('/api/add_permission', routes.add_permission, methods=['POST'])
+app.add_api_route('/api/save_permissions', routes.save_permissions, methods=['POST'])
 
 
 
