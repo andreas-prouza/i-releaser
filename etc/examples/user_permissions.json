@@ -1,45 +1,187 @@
 {
-  "roles": {
-    "admin": {
-      "general": ["admin"],
-      "workflows": {
-        "*": {
-          "general": ["admin"],
-          "stages": {
-            "*": ["admin"]
-          }
-        }
-      }
-    }
-  },
   "users": {
     "prouza": {
-      "roles": ["admin"],
-      "general": ["read"],
-      "workflows": {
-        "unit_test_permissions": {
-          "general": ["deploy"],
-          "stages": {
-              "uat": ["admin"]
+      "roles": [
+        "admin"
+      ],
+      "permissions": {
+        "general": [
+          "read",
+          "start workflow",
+          "run",
+          "change check error",
+          "update"
+        ],
+        "workflows": {
+          "unit_test_permissions": {
+            "general": [
+              "deploy",
+              "read"
+            ],
+            "stages": {
+              "uat": [
+                "admin",
+                "cancel workflow",
+                "start workflow",
+                "update",
+                "read",
+                "deploy",
+                "4-eyes check",
+                "change check error",
+                "run"
+              ]
             }
-        },
-        "unit_test_permissions_admin": {
-          "general": ["admin"],
-          "stages": {
-              "uat": ["admin"]
+          },
+          "unit_test_permissions_admin": {
+            "general": [
+              "admin",
+              "cancel workflow",
+              "start workflow",
+              "update",
+              "read",
+              "deploy",
+              "4-eyes check",
+              "change check error",
+              "run"
+            ],
+            "stages": {
+              "uat": [
+                "admin",
+                "cancel workflow",
+                "start workflow",
+                "update",
+                "read",
+                "deploy",
+                "4-eyes check",
+                "change check error",
+                "run"
+              ]
             }
+          }
         }
+      },
+      "detailed_infos": {
+        "description": "",
+        "mail": "",
+        "extra": {}
       }
     },
     "prouzat1": {
-      "general": ["admin"],
-      "workflows": {
-        "unit_test_permissions": {
-          "general": ["read"],
-          "stages": {
-              "uat": ["4-eyes_check"]
+      "roles": [],
+      "permissions": {
+        "general": [
+          "read",
+          "start workflow",
+          "update"
+        ],
+        "workflows": {
+          "unit_test_permissions": {
+            "general": [
+              "read"
+            ],
+            "stages": {
+              "uat": [
+                "4-eyes check",
+                "read",
+                "deploy"
+              ]
             }
+          }
         }
+      },
+      "detailed_infos": {
+        "description": "",
+        "mail": "",
+        "extra": {}
+      }
+    }
+  },
+  "roles": {
+    "admin": {
+      "permissions": {
+        "general": [
+          "read",
+          "start workflow",
+          "deploy",
+          "admin",
+          "update",
+          "cancel workflow",
+          "4-eyes check",
+          "change check error",
+          "run"
+        ],
+        "workflows": {
+          "unit_test_permissions": {
+            "general": [
+              "read",
+              "start workflow",
+              "deploy",
+              "admin",
+              "update",
+              "cancel workflow",
+              "4-eyes check",
+              "change check error",
+              "run"
+            ],
+            "stages": {
+              "uat": [
+                "4-eyes check",
+                "admin",
+                "read",
+                "deploy",
+                "cancel workflow",
+                "start workflow",
+                "update",
+                "change check error",
+                "run"
+              ]
+            }
+          },
+          "unit_test_permissions_admin": {
+            "general": [
+              "read",
+              "start workflow",
+              "deploy",
+              "admin",
+              "update",
+              "cancel workflow",
+              "4-eyes check",
+              "change check error",
+              "run"
+            ],
+            "stages": {
+              "uat": [
+                "4-eyes check",
+                "admin",
+                "read",
+                "deploy",
+                "cancel workflow",
+                "start workflow",
+                "update",
+                "change check error",
+                "run"
+              ]
+            }
+          }
+        }
+      },
+      "detailed_infos": {
+        "description": "",
+        "mail": "",
+        "extra": {}
+      }
+    },
+    "user": {
+      "permissions": {
+        "general": [
+          "read"
+        ],
+        "workflows": {}
+      },
+      "detailed_infos": {
+        "description": "",
+        "mail": "",
+        "extra": {}
       }
     }
   }
