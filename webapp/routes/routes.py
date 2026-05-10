@@ -521,6 +521,11 @@ async def save_permissions(request: Request, _ = Depends(permission_konfig.Requi
         permission_konfig.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
         permission_konfig.PermissionKonfig.user_permissions[user].roles = perm.roles
     
+    role_permissions = data.get('role_permissions', {})
+    permission_konfig.PermissionKonfig.convert_permissions('role', role_permissions)
+    for role, perm in role_permissions.items():
+        permission_konfig.PermissionKonfig.role_permissions[role].permissions.general = perm.permissions.general
+    
     permission_konfig.PermissionKonfig.save_permissions()
     
     result = {"status": "success"}
