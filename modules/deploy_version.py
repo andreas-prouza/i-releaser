@@ -107,7 +107,6 @@ class Deploy_Version:
 
 
     @staticmethod
-    @check_user_permission(permissions.PermissionAction.UPDATE)
     def update_deploy_status(project:str, version : int, status : meta_file.Meta_file_status, meta_file_name : str, commit : str):
 
       logging.debug(f"Update deployment status: {version=}, {status=}, {meta_file_name}, {commit}")

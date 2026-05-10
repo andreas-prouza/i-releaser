@@ -9,49 +9,11 @@ class PermissionAction(Enum):
   ADMIN = 'admin'
   READ = 'read'
   START_WORKFLOW = 'start workflow'
-  UPDATE = 'update'
   DEPLOY = 'deploy'
   RUN_WORKFLOW = 'run'
   CHANGE_CHECK_ERROR = 'change check error'
   FOUR_EYES_CHECK = '4-eyes check'
   CANCEL_WORKFLOW = 'cancel workflow'
-
-  
-PERMISSION_DEPENDENCIES = {
-  PermissionAction.ADMIN: [
-    PermissionAction.CANCEL_WORKFLOW, 
-    PermissionAction.START_WORKFLOW, 
-    PermissionAction.UPDATE, 
-    PermissionAction.READ, 
-    PermissionAction.DEPLOY, 
-    PermissionAction.FOUR_EYES_CHECK, 
-    PermissionAction.CHANGE_CHECK_ERROR, 
-    PermissionAction.RUN_WORKFLOW
-    ],
-  PermissionAction.DEPLOY: [
-    PermissionAction.READ
-    ],
-  PermissionAction.FOUR_EYES_CHECK: [
-    PermissionAction.READ, 
-    PermissionAction.DEPLOY
-    ],
-  PermissionAction.RUN_WORKFLOW: [
-    PermissionAction.START_WORKFLOW, 
-    PermissionAction.UPDATE
-    ],
-  PermissionAction.UPDATE: [
-    PermissionAction.READ
-    ],
-  PermissionAction.START_WORKFLOW: [
-    PermissionAction.UPDATE
-    ],
-  PermissionAction.CHANGE_CHECK_ERROR: [
-    PermissionAction.UPDATE
-    ],
-  PermissionAction.CANCEL_WORKFLOW: [
-    PermissionAction.UPDATE
-    ]
-}
 
 
 

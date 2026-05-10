@@ -8,9 +8,9 @@
         "general": [
           "read",
           "start workflow",
+          "deploy",
           "run",
-          "change check error",
-          "update"
+          "change check error"
         ],
         "workflows": {
           "unit_test_permissions": {
@@ -23,7 +23,6 @@
                 "admin",
                 "cancel workflow",
                 "start workflow",
-                "update",
                 "read",
                 "deploy",
                 "4-eyes check",
@@ -37,7 +36,6 @@
               "admin",
               "cancel workflow",
               "start workflow",
-              "update",
               "read",
               "deploy",
               "4-eyes check",
@@ -49,7 +47,6 @@
                 "admin",
                 "cancel workflow",
                 "start workflow",
-                "update",
                 "read",
                 "deploy",
                 "4-eyes check",
@@ -71,8 +68,7 @@
       "permissions": {
         "general": [
           "read",
-          "start workflow",
-          "update"
+          "start workflow"
         ],
         "workflows": {
           "unit_test_permissions": {
@@ -104,7 +100,6 @@
           "start workflow",
           "deploy",
           "admin",
-          "update",
           "cancel workflow",
           "4-eyes check",
           "change check error",
@@ -117,7 +112,6 @@
               "start workflow",
               "deploy",
               "admin",
-              "update",
               "cancel workflow",
               "4-eyes check",
               "change check error",
@@ -131,7 +125,6 @@
                 "deploy",
                 "cancel workflow",
                 "start workflow",
-                "update",
                 "change check error",
                 "run"
               ]
@@ -143,7 +136,6 @@
               "start workflow",
               "deploy",
               "admin",
-              "update",
               "cancel workflow",
               "4-eyes check",
               "change check error",
@@ -157,7 +149,6 @@
                 "deploy",
                 "cancel workflow",
                 "start workflow",
-                "update",
                 "change check error",
                 "run"
               ]

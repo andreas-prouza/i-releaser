@@ -15,7 +15,7 @@ from modules import meta_file
 from web_modules import app_login
 from web_modules import http_functions
 from web_modules import server_sessions
-from routes import routes
+import routes.routes as routes
 
 
 class FileSystemStore(SessionStore):
@@ -73,7 +73,11 @@ class WebMiddleware(BaseHTTPMiddleware):
 
         except Exception as e:
             logging.exception(f"Error in middleware: {e}", exc_info=True)
-            response = http_functions.get_json_response({ "error": str(e) })
+            accept: str = request.headers.get("accept") or ""
+            if '*/*' in accept or 'text/html' in accept:
+                response = http_functions.get_html_response(request, 'error.html', sidebar=routes.get_sidebar_data(request), error= str(e) )
+            else:
+                response = http_functions.get_json_response({ "error": str(e) })
             response.status_code = 500
 
         if hasattr(request.state, 'session'):

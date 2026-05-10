@@ -1,6 +1,7 @@
 import logging
 import time
 from typing import Dict, List
+from fastapi import Request
 
 from etc import constants, constants
 from modules import files, meta_file, permissions
@@ -37,15 +38,15 @@ def is_user_allowed(user, action : permissions.PermissionAction, workflow=None, 
     logging.info(f"{user=} is not in list: {PermissionKonfig.get_user_list()}")
     return False
 
-  current_permission: permissions.Permissions = PermissionKonfig.get_user_permissions(user)
+  current_permission: permissions.User = PermissionKonfig.get_user_permissions(user)
 
-  if is_permission_allowed(current_permission, action, workflow, stage):
+  if is_permission_allowed(current_permission.permissions, action, workflow, stage):
     logging.debug(f"User {user} has permission {action} (workflow: {workflow}, stage: {stage})")
     return True
 
   for role in current_permission.roles:
-    role_permission = PermissionKonfig.role_permissions.get(role, permissions.Permissions())
-    if is_permission_allowed(role_permission, action, workflow, stage):
+    role_permission = PermissionKonfig.role_permissions.get(role, permissions.Role())
+    if is_permission_allowed(role_permission.permissions, action, workflow, stage):
       logging.debug(f"User {user} has permission {action} through role {role} (workflow: {workflow}, stage: {stage})")
       return True
     
@@ -76,21 +77,6 @@ def is_permission_allowed(current_permission: permissions.Permissions, action : 
 
 
 
-def get_list_of_dependent_permissions(permissionAction : List[permissions.PermissionAction]) -> List[permissions.PermissionAction]:
-
-  result = permissionAction
-  
-  for p in permissionAction:
-    if p in list(permissions.PERMISSION_DEPENDENCIES.keys()):
-      dps = get_list_of_dependent_permissions(permissions.PERMISSION_DEPENDENCIES[p])
-
-      for dp in dps:
-        if dp not in result:
-          result.append(dp)
-  
-  return result
-
-
 
 def check_user_permission(action: permissions.PermissionAction, workflow=None, stage=None):
     
@@ -113,12 +99,32 @@ def check_user_permission(action: permissions.PermissionAction, workflow=None, s
 
 
 
+class RequirePermission:
+    def __init__(self, action: permissions.PermissionAction, workflow=None, stage=None):
+        self.action = action
+        self.workflow = workflow
+        self.stage = stage
+
+    def __call__(self, request: Request):
+        user = meta_file.Meta_File.CURRENT_USER.lower() if meta_file.Meta_File.CURRENT_USER else None
+        
+        logging.debug(f"Check permission for user {user} and action {self.action} (workflow: {self.workflow}, stage: {self.stage})")
+        
+        # If the user doesn't have permission, raise an HTTPException here
+        _check_user_permission(user, self.action, self.workflow, self.stage)
+        
+        # You can optionally return the user if you need it in the route
+        return user
+
+
+
+
 
 class PermissionKonfig:
 
 
   __last_loaded = 0
-  __reload_interval = 60
+  __reload_interval = 2
   __file_hash = None
   
   allowed_users = []
@@ -143,7 +149,7 @@ class PermissionKonfig:
 
 
   @staticmethod
-  def add_user_permission(name: str, permission: permissions.User):
+  def add_user_permission(name: str, roles: List[str], general: List[permissions.PermissionAction], workflows: Dict[str, permissions.PermissionWorkflow], description='', mail='', extra={}):
 
     PermissionKonfig.check_reload()
 
@@ -152,7 +158,8 @@ class PermissionKonfig:
       logging.exception(error, stack_info=True)
       raise error
 
-    PermissionKonfig.user_permissions[name.lower()] = permission
+    perm: permissions.Permissions = permissions.Permissions(general=general, workflows=workflows)
+    PermissionKonfig.user_permissions[name.lower()] = permissions.User(permissions=perm, roles=roles)
     if name.lower() not in PermissionKonfig.allowed_users:
       PermissionKonfig.allowed_users.append(name.lower())
       
@@ -229,7 +236,6 @@ class PermissionKonfig:
         for gp in perm.get('general', []):
           if isinstance(gp, str):
             user_permissions[user]['permissions']['general'][perm['general'].index(gp)] = permissions.PermissionAction(gp)
-        user_permissions[user]['permissions']['general'] = get_list_of_dependent_permissions(user_permissions[user]['permissions']['general'])
 
       for wf, wf_permissions in list(perm.get('workflows', {}).items()):
 
@@ -238,21 +244,16 @@ class PermissionKonfig:
           for i, sp in enumerate(user_permissions[user]['permissions']['workflows'][wf]['stages'][stage]):
              if isinstance(sp, str):
                 user_permissions[user]['permissions']['workflows'][wf]['stages'][stage][i] = permissions.PermissionAction(sp)
-          user_permissions[user]['permissions']['workflows'][wf]['stages'][stage] = get_list_of_dependent_permissions(user_permissions[user]['permissions']['workflows'][wf]['stages'][stage])
 
         if 'general' in wf_permissions.keys():
           for i, wfp in enumerate(wf_permissions.get('general', [])):
             if isinstance(wfp, str):
               user_permissions[user]['permissions']['workflows'][wf]['general'][i] = permissions.PermissionAction(wfp)
 
-          user_permissions[user]['permissions']['workflows'][wf]['general'] = get_list_of_dependent_permissions(user_permissions[user]['permissions']['workflows'][wf]['general'])
-
       if 'general' in perm.keys():
         for i, gp in enumerate(perm.get('general', [])):
           if isinstance(gp, str):
             user_permissions[user]['permissions']['general'][i] = permissions.PermissionAction(gp)
-
-        user_permissions[user]['permissions']['general'] = get_list_of_dependent_permissions(user_permissions[user]['permissions']['general'])
         
       new_permi = None
 

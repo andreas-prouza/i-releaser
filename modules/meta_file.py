@@ -157,7 +157,6 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.UPDATE)
     def set_status(self, status, update_meta_file=True):
 
       logging.debug(f"Set status to {status}")
@@ -395,7 +394,6 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.UPDATE)
     def check_stage_finish(self, stage: s.Stage) -> None:
 
       logging.debug("Check if stage has been finished")
@@ -648,7 +646,6 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.UPDATE)
     def write_meta_file(self, update_time: bool=True, loop: int=0):
 
       if update_time:
@@ -702,7 +699,6 @@ class Meta_File:
 
 
     
-    @check_user_permission(permissions.PermissionAction.UPDATE)
     def import_objects_from_config_file(self):
       """
       1. Import object list

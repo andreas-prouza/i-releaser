@@ -357,8 +357,9 @@ Settings
         icon: "error",
         title: "Failed to save permission",
         html: `<h4>Failed to save permission</h4><br/><code>${error.message}</code>`,
-        showConfirmButton: false,
-        timer: 1000
+        showConfirmButton: true
+      }).then(() => {
+        location.reload();
       });
     });
   }
