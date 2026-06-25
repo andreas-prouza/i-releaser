@@ -10,5 +10,6 @@ python-multipart
 itsdangerous
 starsessions
 aiofiles
+watchdog
 
 jinja2

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 # Custom modules
 from etc import constants, global_cfg
 
-from modules import action_type, permissions
+from modules import action_type, files, permissions
 from modules import deploy_version, meta_file
 from modules import workflow
 from modules.deploy_object import Deploy_Object
@@ -47,12 +47,25 @@ async def index(request: Request, _ = Depends(permission_konfig.RequirePermissio
     project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
 
     dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
-    logging.debug(dv)
     dv = dv['deployments']
+
+    for d in dv:
+        mf: dict = files.getJson(d['meta_file'], retry=True)
+        d['workflow'] = mf.get('general', {}).get('workflow', {}).get('name', None)
+        timestamp = d.get('timestamp', None)
+        d['timestamp'] = str(timestamp).split('.')[0] if timestamp is not None else None
+        del(d['meta_file'])
+        
+
     logging.debug("Send response")
     
     #current_user=session['current_user'], 
-    return http_functions.get_html_response(request, 'overview/list-deployments.html', project=project, sidebar=get_sidebar_data(request), deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', deployments=dv) 
+    return http_functions.get_html_response(request, 
+                                'overview/list-deployments.html', 
+                                project=project, 
+                                sidebar=get_sidebar_data(request), 
+                                deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', 
+                                deployments=dv) 
 
 
 

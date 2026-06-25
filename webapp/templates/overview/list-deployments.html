@@ -16,7 +16,15 @@
 
 {% block content %}
 
-  <h1>Project: <code>{{ project }}</code></h1>
+  <h1>Workflows</h1> 
+  
+  Project: 
+  <select>
+    {% for pr in sidebar['projects'] %}
+      <option value="{{ pr }}" {% if pr == project %}selected{% endif %}>{{ pr }}</option>
+    {% endfor %}
+  </select>
+
 
   <!-- /.box-header -->
   <table id="deployments"
