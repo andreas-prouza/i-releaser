@@ -16,14 +16,23 @@
 
 {% block content %}
 
-  <h1>Workflows</h1> 
-  
-  Project: 
-  <select>
-    {% for pr in sidebar['projects'] %}
-      <option value="{{ pr }}" {% if pr == project %}selected{% endif %}>{{ pr }}</option>
-    {% endfor %}
-  </select>
+  <h1>Workflows <code>{{ project }}</code></h1> 
+
+  {% set btn_colors = [
+      'btn-primary', 
+      'btn-success', 
+      'btn-info', 
+      'btn-warning', 
+      'btn-danger', 
+      'btn-secondary', 
+      'btn-dark'
+  ] %}
+
+  <div class="btn-group" role="group">
+  {% for pr in sidebar['projects'] %}
+    <button type="button" class="btn {{ loop.cycle('btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger') }} mb-2">{{ pr }}</button>
+  {% endfor %}
+  </div>
 
 
   <!-- /.box-header -->
