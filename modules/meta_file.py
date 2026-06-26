@@ -20,8 +20,8 @@ from modules import workflow as wf
 from modules import deploy_version as dv
 from modules.cmd_status import Status as Cmd_Status
 from modules import meta_file_history as mfh
-from modules.permission_konfig import check_user_permission
-
+from modules.permission_config import check_user_permission
+from modules import meta_file_db
 
 
 class StageNotReadyException(Exception):
@@ -51,7 +51,7 @@ class Meta_File:
     It's the main controller
     """
 
-    @check_user_permission(permissions.PermissionAction.READ)
+
     def __init__(self, project: str|None=None, workflow_name : str|None=None, workflow=None, file_name=None, 
                 object_list=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, 
                 deploy_version : int|None=None, processed_stages: s.Stage_List_list=None, open_stages: s.Stage_List_list=None, 
@@ -538,43 +538,46 @@ class Meta_File:
 
 
     @staticmethod
+    def _load_json_file_internal(file_name: str) -> 'Meta_File':
+        logging.debug(f"Load meta file {file_name}")
+
+        meta_file_json=files.getJson(file_name, retry=True)
+        
+        #workflow = wf.Workflow(name=meta_file_json['general']['workflow']['name'])
+        workflow = wf.Workflow(dict=meta_file_json['general']['workflow'])
+        meta_file = Meta_File(workflow=meta_file_json['general']['workflow'],
+                                project=meta_file_json['general']['project'],
+                                deploy_version=meta_file_json['general']['deploy_version'],
+                                status=meta_file_json['general']['status'],
+                                file_name=f"{meta_file_json['general']['file_name']}",
+                                create_time=meta_file_json['general']['create_time'],
+                                update_time=meta_file_json['general']['update_time'],
+                                processed_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['processed_stages']),
+                                open_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['open_stages']),
+                                object_list=meta_file_json['general']['object_list'],
+                                processing_users=meta_file_json.get('processing_users', []),
+                                custom_data=meta_file_json.get('custom_data', {}),
+                                imported_from_dict=True
+                                )
+        meta_file.commit=meta_file_json['general']['commit']
+        meta_file.release_branch=meta_file_json['general']['release_branch']
+
+        meta_file.set_deploy_objects(meta_file_json['objects'])
+        meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
+        meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
+        meta_file.set_deploy_remote_lib(meta_file_json['deploy_libs']['remote_lib'])
+        #meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
+        
+        meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
+
+        #meta_file.write_meta_file()
+
+        return meta_file
+
+    @staticmethod
     @check_user_permission(permissions.PermissionAction.READ)
     def load_json_file(file_name: str) -> 'Meta_File':
-
-      logging.debug(f"Load meta file {file_name}")
-
-      meta_file_json=files.getJson(file_name, retry=True)
-      
-      #workflow = wf.Workflow(name=meta_file_json['general']['workflow']['name'])
-      workflow = wf.Workflow(dict=meta_file_json['general']['workflow'])
-      meta_file = Meta_File(workflow=meta_file_json['general']['workflow'],
-                            project=meta_file_json['general']['project'],
-                            deploy_version=meta_file_json['general']['deploy_version'],
-                            status=meta_file_json['general']['status'],
-                            file_name=f"{meta_file_json['general']['file_name']}",
-                            create_time=meta_file_json['general']['create_time'],
-                            update_time=meta_file_json['general']['update_time'],
-                            processed_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['processed_stages']),
-                            open_stages=s.Stage_List_list(workflow=workflow,iterable=meta_file_json['general']['open_stages']),
-                            object_list=meta_file_json['general']['object_list'],
-                            processing_users=meta_file_json.get('processing_users', []),
-                            custom_data=meta_file_json.get('custom_data', {}),
-                            imported_from_dict=True
-                            )
-      meta_file.commit=meta_file_json['general']['commit']
-      meta_file.release_branch=meta_file_json['general']['release_branch']
-
-      meta_file.set_deploy_objects(meta_file_json['objects'])
-      meta_file.set_deploy_main_lib(meta_file_json['deploy_libs']['main_lib'])
-      meta_file.set_deploy_backup_lib(meta_file_json['deploy_libs']['backup_lib'])
-      meta_file.set_deploy_remote_lib(meta_file_json['deploy_libs']['remote_lib'])
-      #meta_file.actions.add_actions_from_list(meta_file_json['deploy_cmds'])
-      
-      meta_file.run_history.add_historys_from_list(meta_file_json['run_history'])
-
-      #meta_file.write_meta_file()
-
-      return meta_file
+        return Meta_File._load_json_file_internal(file_name)
 
 
 
@@ -601,7 +604,6 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.READ)
     def get_all_data_as_dict(self) -> dict:
 
       dict = {}
@@ -658,8 +660,8 @@ class Meta_File:
       logging.debug(f"Save meta file to {self.file_name}")
       
       try:
-        with open(self.file_name, 'w') as file:
-          json.dump(self.get_all_data_as_dict(), file, default=str, indent=4)
+        files.writeJson(self.get_all_data_as_dict(), self.file_name)
+        meta_file_db.upsert_meta_file(self)
       except Exception as err:
         logging.exception(err, stack_info=True)
         if loop < 3:
@@ -726,22 +728,22 @@ class Meta_File:
 
       logging.debug(f"File: {self.object_list}")
 
-      with open(self.object_list, "r") as file:
-        for line in file:
-          logging.debug(f"Import object: {line}")
-          tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
-          logging.debug(f"{tmp=}")
-          prod_lib = tmp[1]
-          dev_lib = tmp[2]
-          target_obj = tmp[3]
-          obj_type = tmp[4]
-          obj_attr = tmp[5]
-          logging.debug(f"{prod_lib=}")
-          logging.debug(f"{dev_lib=}")
-          logging.debug(f"{target_obj=}")
+      file = files.readFile(self.object_list).splitlines()
+      for line in file:
+        logging.debug(f"Import object: {line}")
+        tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
+        logging.debug(f"{tmp=}")
+        prod_lib = tmp[1]
+        dev_lib = tmp[2]
+        target_obj = tmp[3]
+        obj_type = tmp[4]
+        obj_attr = tmp[5]
+        logging.debug(f"{prod_lib=}")
+        logging.debug(f"{dev_lib=}")
+        logging.debug(f"{target_obj=}")
 
-          obj = do.Deploy_Object(lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr)
-          self.add_deploy_object(obj)
+        obj = do.Deploy_Object(lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr)
+        self.add_deploy_object(obj)
       
       self.load_actions_from_json(constants.C_OBJECT_COMMANDS)
       self.write_meta_file()
@@ -757,8 +759,7 @@ class Meta_File:
     def load_actions_from_json(self, file: str):
       obj_cmds = []
 
-      with open(file, "r") as file:
-        obj_cmds = json.load(file)
+      obj_cmds = files.getJson(file)
 
       for oc in obj_cmds:
         self.deploy_objects.add_object_action_from_dict(dict=oc, workflow=self.workflow)

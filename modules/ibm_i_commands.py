@@ -12,7 +12,7 @@ from modules import stages as s
 from modules import action_type
 from modules.cmd_status import Status as Cmd_Status
 
-from modules.permission_konfig import check_user_permission
+from modules.permission_config import check_user_permission
 from scripts import *
 
 

@@ -1,7 +1,7 @@
 import json
 
 from etc import constants
-from modules import workflow, meta_file
+from modules import files, workflow, meta_file
 
 
 
@@ -31,9 +31,7 @@ class Deploy_Checks:
        raise Exception('No stage was given to check')
 
     version_file = constants.C_DEPLOY_VERSION.format(project=self.project)
-
-    with open(version_file, "r") as file:
-        versions_config = json.load(file)
+    versions_config = files.getJson(version_file)
 
     deployments = versions_config['deployments']
     deployments_sorted = sorted(deployments, key=lambda x: x['version'])

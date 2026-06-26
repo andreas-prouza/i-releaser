@@ -8,14 +8,14 @@ from fastapi.responses import JSONResponse, RedirectResponse
 # Custom modules
 from etc import constants, global_cfg
 
-from modules import action_type, files, permissions
+from modules import action_type, files, meta_file_db, permissions
 from modules import deploy_version, meta_file
 from modules import workflow
 from modules.deploy_object import Deploy_Object
 
 from web_modules import http_functions
 from web_modules import flowchart, app_login
-from modules import permission_konfig
+from modules import permission_config
 
 
 
@@ -38,7 +38,7 @@ def get_sidebar_data(request: Request):
 
 
 
-async def index(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def index(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     
     logging.debug(sys.path)
     logging.debug('Call index.html')
@@ -49,12 +49,18 @@ async def index(request: Request, _ = Depends(permission_konfig.RequirePermissio
     dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
     dv = dv['deployments']
 
+    logging.debug(f"Deployments: {dv=}")
     for d in dv:
-        mf: dict = files.getJson(d['meta_file'], retry=True)
-        d['workflow'] = mf.get('general', {}).get('workflow', {}).get('name', None)
         timestamp = d.get('timestamp', None)
         d['timestamp'] = str(timestamp).split('.')[0] if timestamp is not None else None
+        meta_file = d['meta_file']
         del(d['meta_file'])
+
+        mf: dict = meta_file_db.get_meta_file(meta_file)
+        if mf is None:
+            logging.error(f"Meta file {meta_file} not found!")
+            continue
+        d['workflow'] = mf.get('general', {}).get('workflow', {}).get('name', None)
         
 
     logging.debug("Send response")
@@ -70,7 +76,7 @@ async def index(request: Request, _ = Depends(permission_konfig.RequirePermissio
 
 
 
-async def list_deployments(request: Request, project: str, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def list_deployments(request: Request, project: str, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
     logging.debug(dv)
     dv = dv['deployments']
@@ -78,7 +84,7 @@ async def list_deployments(request: Request, project: str, _ = Depends(permissio
 
 
 
-async def select_project(request: Request, project: str, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def select_project(request: Request, project: str, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
 
     available_projects = workflow.Workflow.get_all_projects()
     if (project not in available_projects):
@@ -92,15 +98,15 @@ async def select_project(request: Request, project: str, _ = Depends(permission_
 
 
 
-async def show_log(request: Request, log: str, number_of_lines: int=100, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def show_log(request: Request, log: str, number_of_lines: int=100, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
 
     logging.debug(f"Read log file {log=}")
 
     data = []
-    with open(f"log/{log}") as file:
-        data = file.readlines()[-number_of_lines:]
-        logging.debug(f"reverse data")
-        data = list(reversed(data))
+    file = files.readFile(f"log/{log}").splitlines()
+    data = file[-number_of_lines:]
+    logging.debug(f"reverse data")
+    data = list(reversed(data))
 
     logging.debug("Send response")
     return http_functions.get_html_response(request, 'admin/log.html', sidebar=get_sidebar_data(request), logfile=log, content=data, number_of_lines=number_of_lines) 
@@ -160,7 +166,7 @@ async def logout(request: Request):
 
 
 
-async def show_workflows(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.ADMIN))):
+async def show_workflows(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.ADMIN))):
 
     logging.debug('Call workflows')
 
@@ -172,7 +178,7 @@ async def show_workflows(request: Request, _ = Depends(permission_konfig.Require
 
 
 
-async def show_settings(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.ADMIN))):
+async def show_settings(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.ADMIN))):
 
     logging.debug('Call settings')
     keys=app_login.get_user_keys()
@@ -181,9 +187,9 @@ async def show_settings(request: Request, _ = Depends(permission_konfig.RequireP
     return http_functions.get_html_response(request, 'admin/settings.html', 
         sidebar=get_sidebar_data(request), 
         permission_actions=permissions.PermissionAction,
-        allowed_users=permission_konfig.PermissionKonfig.get_user_list(), 
-        user_permissions=permission_konfig.PermissionKonfig.user_permissions,
-        role_permissions=permission_konfig.PermissionKonfig.role_permissions,
+        allowed_users=permission_config.PermissionKonfig.get_user_list(), 
+        user_permissions=permission_config.PermissionKonfig.user_permissions,
+        role_permissions=permission_config.PermissionKonfig.role_permissions,
         default_project=global_cfg.C_DEFAULT_PROJECT, 
         port='????',
         path=Path(os.path.dirname(__file__)),
@@ -192,7 +198,7 @@ async def show_settings(request: Request, _ = Depends(permission_konfig.RequireP
 
 
 
-async def show_details(request: Request, project: str, version: int, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def show_details(request: Request, project: str, version: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     logging.debug(f'Show details of {project=}, {version=}')
     logging.debug(request.form)
 
@@ -220,7 +226,7 @@ async def show_details(request: Request, project: str, version: int, _ = Depends
 
 
 
-async def run_stage(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
+async def run_stage(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
     data = await request.json()
     result={'status': 'success'}
     status=200
@@ -251,7 +257,7 @@ async def run_stage(request: Request, _ = Depends(permission_konfig.RequirePermi
 
 
 
-async def get_meta_file_json(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def get_meta_file_json(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     data = await request.json()
     logging.debug(f"Get logs from: {data=}")
 
@@ -260,9 +266,7 @@ async def get_meta_file_json(request: Request, _ = Depends(permission_konfig.Req
 
     logging.debug(f"Get logs from: {data['filename']=}")
 
-    meta_file = {}
-    with open (data['filename'], "r") as file:
-        meta_file_json=json.load(file)
+    meta_file_json=files.getJson(data['filename'], retry=True)
 
     #mf_json = json.dumps(meta_file_json, default=str, indent=4)
 
@@ -270,7 +274,7 @@ async def get_meta_file_json(request: Request, _ = Depends(permission_konfig.Req
     
 
 
-async def get_action_log(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def get_action_log(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     data = await request.json()
     logging.debug(f"Get logs from: {data=}")
     logging.debug(f"Get logs from: {data['filename']=}, {data['stage_id']=}, {data['action_id']=}, {data['history_element']=}")
@@ -290,7 +294,7 @@ async def get_action_log(request: Request, _ = Depends(permission_konfig.Require
 
 
 
-async def show_processing_history(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def show_processing_history(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     data = await request.json()
     logging.debug(f"Get logs from: {data=}")
     logging.debug(f"Get logs from: {data['filename']=}")
@@ -301,7 +305,7 @@ async def show_processing_history(request: Request, _ = Depends(permission_konfi
 
 
 
-async def cancel_deployment(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.CANCEL_WORKFLOW))):
+async def cancel_deployment(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.CANCEL_WORKFLOW))):
 
     try:
         data = await request.json()
@@ -318,7 +322,7 @@ async def cancel_deployment(request: Request, _ = Depends(permission_konfig.Requ
     
 
 
-async def create_deployment(request: Request, wf_name, commit=None, obj_list=None, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.START_WORKFLOW))):
+async def create_deployment(request: Request, wf_name, commit=None, obj_list=None, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.START_WORKFLOW))):
     """
     Creates a new deployment for a given workflow, commit, and the name of the list of objects.
     This function checks if a deployment already exists for the specified commit and workflow.
@@ -372,7 +376,7 @@ async def create_deployment(request: Request, wf_name, commit=None, obj_list=Non
 
 
 
-async def start_workflow(request: Request, wf_name: str, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.START_WORKFLOW))):
+async def start_workflow(request: Request, wf_name: str, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.START_WORKFLOW))):
     """
     Starts a workflow with the given parameters.
     """
@@ -403,7 +407,7 @@ async def start_workflow(request: Request, wf_name: str, _ = Depends(permission_
 
 
 
-async def set_check_error(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
+async def set_check_error(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
     data = await request.json()
     logging.debug(f"Set check error stage: {data['stage_id']}, action_id: {data['action_id']}, checked: {data['checked']}, filename: {data['filename']}")
     result={}
@@ -429,7 +433,7 @@ async def set_check_error(request: Request, _ = Depends(permission_konfig.Requir
 
 
 
-async def set_source_ready_4_deployment(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
+async def set_source_ready_4_deployment(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
     data = await request.json()
     logging.debug(f"Set source ready for deployment lib: {data['lib']}, name: {data['name']}, type: {data['type']}, checked: {data['checked']}, filename: {data['filename']}")
     result={}
@@ -458,7 +462,7 @@ async def set_source_ready_4_deployment(request: Request, _ = Depends(permission
 
 
 
-async def get_stage_steps_html(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def get_stage_steps_html(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     
     data = await request.json()
     logging.debug(f"Get html for stage steps: {data['stage_id']}, filename: {data['filename']}")
@@ -474,7 +478,7 @@ async def get_stage_steps_html(request: Request, _ = Depends(permission_konfig.R
 
 
 
-async def get_workflows(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def get_workflows(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
 
     wfs = workflow.Workflow.get_all_workflows_json()
     return http_functions.get_json_response(wfs)
@@ -482,7 +486,7 @@ async def get_workflows(request: Request, _ = Depends(permission_konfig.RequireP
 
 
 
-async def get_projects(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.READ))):
+async def get_projects(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
 
     result = {}
     projects = workflow.Workflow.get_all_projects()
@@ -500,7 +504,7 @@ async def get_projects(request: Request, _ = Depends(permission_konfig.RequirePe
 
 
 
-async def add_permission(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.ADMIN))):
+async def add_permission(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.ADMIN))):
     data = await request.json()
     type: str = data['type']
     name: str = data['name']
@@ -512,8 +516,8 @@ async def add_permission(request: Request, _ = Depends(permission_konfig.Require
     status = 200
 
     permission_execution = {
-        'user': permission_konfig.PermissionKonfig.add_user_permission, 
-        'role': permission_konfig.PermissionKonfig.add_role_permission
+        'user': permission_config.PermissionKonfig.add_user_permission, 
+        'role': permission_config.PermissionKonfig.add_role_permission
     }
 
     if type not in permission_execution:
@@ -525,21 +529,21 @@ async def add_permission(request: Request, _ = Depends(permission_konfig.Require
 
 
 
-async def save_permissions(request: Request, _ = Depends(permission_konfig.RequirePermission(permissions.PermissionAction.ADMIN))):
+async def save_permissions(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.ADMIN))):
     data = await request.json()
 
     user_permissions = data.get('user_permissions', {})
-    permission_konfig.PermissionKonfig.convert_permissions('user', user_permissions)
+    permission_config.PermissionKonfig.convert_permissions('user', user_permissions)
     for user, perm in user_permissions.items():
-        permission_konfig.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
-        permission_konfig.PermissionKonfig.user_permissions[user].roles = perm.roles
+        permission_config.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
+        permission_config.PermissionKonfig.user_permissions[user].roles = perm.roles
     
     role_permissions = data.get('role_permissions', {})
-    permission_konfig.PermissionKonfig.convert_permissions('role', role_permissions)
+    permission_config.PermissionKonfig.convert_permissions('role', role_permissions)
     for role, perm in role_permissions.items():
-        permission_konfig.PermissionKonfig.role_permissions[role].permissions.general = perm.permissions.general
+        permission_config.PermissionKonfig.role_permissions[role].permissions.general = perm.permissions.general
     
-    permission_konfig.PermissionKonfig.save_permissions()
+    permission_config.PermissionKonfig.save_permissions()
     
     result = {"status": "success"}
     status = 200

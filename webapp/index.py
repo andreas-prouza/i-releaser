@@ -13,6 +13,7 @@ base_dir = os.path.realpath(os.path.dirname(__file__)+"/..")
 sys.path.append(base_dir)
 
 from etc import logger_config
+from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI
@@ -22,12 +23,23 @@ logging.debug(f"{sys.path=}")
 
 # Custom modules
 from routes import routes, initial
+from web_modules import initial_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Context manager to handle startup and shutdown events.
+    """
+    initial_db.search_and_store_meta_files()
+    yield
+    # Add shutdown logic here if needed
 
 
 #######################################################
 # Set FastAPI configuration
 #######################################################
-app: FastAPI = initial.setup_fastapi()
+app: FastAPI = initial.setup_fastapi(lifespan=lifespan)
 
 
 

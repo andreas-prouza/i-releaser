@@ -11,9 +11,9 @@ from routes import webmiddleware
 
 
 
-def setup_fastapi() -> FastAPI:
+def setup_fastapi(lifespan=None) -> FastAPI:
     
-    app: FastAPI = FastAPI()
+    app: FastAPI = FastAPI(lifespan=lifespan)
     setup_session_middleware(app)
 
     service_path = os.getenv("I_RELEASER_WEBAPP_PATH", "")

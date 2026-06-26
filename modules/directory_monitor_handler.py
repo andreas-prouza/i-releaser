@@ -1,6 +1,13 @@
 import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import logging
+import threading
+
+# Configure logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 class DirectoryMonitorHandler(FileSystemEventHandler):
     """
@@ -9,30 +16,36 @@ class DirectoryMonitorHandler(FileSystemEventHandler):
     
     def on_created(self, event):
         if event.is_directory:
-            print(f"📁 Directory Created: {event.src_path}")
+            logging.info(f"📁 Directory Created: {event.src_path}")
         else:
-            print(f"📄 File Created: {event.src_path}")
+            logging.info(f"📄 File Created: {event.src_path}")
 
     def on_modified(self, event):
         if event.is_directory:
-            print(f"📁 Directory Modified: {event.src_path}")
+            logging.info(f"📁 Directory Modified: {event.src_path}")
         else:
-            print(f"📄 File Modified: {event.src_path}")
+            logging.info(f"📄 File Modified: {event.src_path}")
 
     def on_deleted(self, event):
         if event.is_directory:
-            print(f"❌ Directory Deleted: {event.src_path}")
+            logging.info(f"❌ Directory Deleted: {event.src_path}")
         else:
-            print(f"❌ File Deleted: {event.src_path}")
+            logging.info(f"❌ File Deleted: {event.src_path}")
 
+def start_monitoring(path):
+    event_handler = DirectoryMonitorHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path, recursive=True)
+    observer.start()
+    logging.info(f"Started monitoring directory: {path}")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
 
-# # 2. Initialize the event handler and the observer
-#    event_handler = DirectoryMonitorHandler()
-#    observer = Observer()
-#
-#    # 3. Schedule the observer to watch the directory
-#    # Set recursive=True to monitor all subdirectories as well
-#    observer.schedule(event_handler, path_to_watch, recursive=True)
-#
-#    # 4. Start the observer thread
-#    observer.start()
+def start_monitoring_in_thread(path):
+    monitor_thread = threading.Thread(target=start_monitoring, args=(path,))
+    monitor_thread.daemon = True
+    monitor_thread.start()

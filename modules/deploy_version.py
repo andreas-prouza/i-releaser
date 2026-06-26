@@ -6,9 +6,9 @@ import logging
 # from pydantic import validate_arguments
 
 from etc import constants
-from modules import meta_file, permissions
+from modules import files, meta_file, permissions
 from operator import itemgetter
-from modules.permission_konfig import check_user_permission
+from modules.permission_config import check_user_permission
 
 class DeploymentExistException(Exception):
     pass
@@ -51,8 +51,7 @@ class Deploy_Version:
 
       versions_config['deployments'] = sorted(versions_config['deployments'], key=lambda d: d['version'], reverse=True)
 
-      with open(version_file, 'w') as file:
-          json.dump(versions_config, file, default=str, indent=2)
+      files.writeJson(versions_config, version_file)
 
       return version
 
@@ -65,8 +64,7 @@ class Deploy_Version:
       logging.debug(f"Deployment file: {version_file}")
       logging.debug(f"Deployment file: {os.path.abspath(version_file)}")
       if os.path.isfile(version_file):
-        with open(version_file, "r") as file:
-            return json.load(file)
+        return files.getJson(version_file)
         
       return {"versions": {"last_deploy_version": 0}, "deployments": []}
 
@@ -132,8 +130,7 @@ class Deploy_Version:
 
       logging.debug(f"Write {version_file}")
 
-      with open(version_file, 'w') as file:
-          json.dump(versions_config, file, default=str, indent=2)
+      files.writeJson(versions_config, version_file)
 
 
 
