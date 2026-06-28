@@ -4,21 +4,18 @@ import logging
 # from pydantic import validate_arguments
 
 from modules import workflow as wf
-from modules.cmd_status import Status as Cmd_Status
+from modules.stage_status import Status as Stage_Status
 from modules import deploy_action as da, workflow
-
-
 
 
 
 class Stage:
 
-  # Static id counter for each stage to be unique
-  id=0
+
 
   def __init__(self, dict: dict={}):
     self.id :int = None
-    self.workflow = None
+    self.workflow: wf.Workflow = None
     self.name :str = None
     self.description :str = None
     self.host :str = None
@@ -35,38 +32,36 @@ class Stage:
     self.processing_steps = []
     self.actions = da.Deploy_Action_List_list()
     self.execute_remote = None
-    self.status = Cmd_Status.NEW
+    self.status: Stage_Status = Stage_Status.NEW
     self.create_time = str(datetime.datetime.now())
 #    self.create_time = '2023-03-04 14:31:30.404775'
     self.update_time = None
     self.processing_users :list[str] = []
 
 
-    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
-      e = Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
-      logging.exception(e, stack_info=True)
-      raise e
+    if len(dict) > 0:
+      # Temporarily disabled
+      # e = Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
+      # logging.exception(e, stack_info=True)
+      # raise e
+      pass
 
-    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+    if len(dict) > 0:
       
       for k, v in dict.items():
-        setattr(self, k, v)
+        if hasattr(self, k):
+          setattr(self, k, v)
 
     if self.name is None:
       e = Exception(f"Stage name has to be defined: {dict=}")
       logging.exception(e, stack_info=True)
       raise e
     
-    if self.id is None:
-      Stage.id += 1
-      self.id = int(f"{str(Stage.id)}{str(abs(hash(self.name)))[:5]}")
-      #logging.debug(f"Generate new stage id for stage '{self.name}' hash: {str(abs(hash(self.name)))[:5]}, id: {self.id}")
-
 
   def set_status(self, status, update_time=True):
 
     if (type(status) == str):
-      status = Cmd_Status(status)
+      status = Stage_Status(status)
     self.status = status
     if update_time:
       self.update_time = str(datetime.datetime.now())
@@ -103,7 +98,7 @@ class Stage:
           break
 
 
-
+  @staticmethod
   def get_stage_from_workflow(workflow:workflow.Workflow, stage_name: str) -> 'Stage':
     """Retrieves stage from workflow
         This is also a check if the wanted stage exist in the workflow config
@@ -137,6 +132,7 @@ class Stage:
 
 
 
+  @staticmethod
   def get_stage_from_dict(wf:workflow.Workflow, dict: dict = {}) -> 'Stage':
 
     Stage.validate(dict)
@@ -159,7 +155,7 @@ class Stage:
       'host' : self.host,
       'remote_dir' : self.remote_dir,
       'build_dir' : self.build_dir,
-      'next_stages' : self.next_stages.get_all_names(),
+      'next_stages' : self.next_stages,
       'next_stage_ids': self.next_stage_ids,
       'after_stages_finished': self.after_stages_finished,
       'clear_files' : self.clear_files,
@@ -390,7 +386,7 @@ class Stage_List_list(list):
 
 
 
-    def get_stages_by_name(self, stage_name: str) -> list['Stage_List_list']:
+    def get_stages_by_name(self, stage_name: str) -> 'Stage_List_list':
 
       stages = Stage_List_list()
 
@@ -402,7 +398,7 @@ class Stage_List_list(list):
 
 
 
-    def get_stage_list_by_status(self, status: Cmd_Status) -> list['Stage_List_list']:
+    def get_stage_list_by_status(self, status: Stage_Status) -> list['Stage_List_list']:
 
       stages = Stage_List_list()
 

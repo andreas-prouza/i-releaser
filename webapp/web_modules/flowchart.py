@@ -1,8 +1,7 @@
 import logging
 
 from fastapi import Request
-from modules import meta_file, stages, deploy_action
-from modules.cmd_status import Status as Cmd_Status
+from modules import meta_file, stage_status, stages, deploy_action
 import base64
 from web_modules import http_functions
 
@@ -19,11 +18,12 @@ div_column_end=f'</div><!-- col end -->\n'
 
 btn_class_list = {
   'None': 'btn-secondary',
-  Cmd_Status.NEW.value: 'btn-info',
-  Cmd_Status.FAILED.value: 'btn-danger',
-  Cmd_Status.FINISHED.value: 'btn-success',
-  Cmd_Status.IN_PREPERATION.value: 'btn-dark',
-  Cmd_Status.IN_PROCESS.value: 'btn-secondary',
+  stage_status.Status.NEW.value: 'btn-info',
+  stage_status.Status.READY.value: 'btn-primary',
+  stage_status.Status.FAILED.value: 'btn-danger',
+  stage_status.Status.FINISHED.value: 'btn-success',
+  stage_status.Status.IN_PREPERATION.value: 'btn-dark',
+  stage_status.Status.IN_PROCESS.value: 'btn-secondary',
   }
 
 flow_stages=[]
@@ -59,13 +59,13 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
 def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
-  if stage.status not in [Cmd_Status.FAILED, Cmd_Status.NEW]:
+  if stage.status not in [stage_status.Status.FAILED, stage_status.Status.READY]:
     return ''
 
   global btn_class_list
 
   btn_class = btn_class_list['None']
-  return f'<br/><img class="run" src="/static/assets/img/run-green.png" onclick="runStage(\'{mf.file_name}\', \'{stage.id}\', \'{stage.name}\')">'
+  return f'<br/><img class="run" src="/static/assets/img/run-green.png" onclick="runStage(\'{mf.project}\', \'{mf.deploy_version}\', \'{stage.id}\', \'{stage.name}\')">'
 
 
 
@@ -105,7 +105,7 @@ def generate_stage_steps_html(request: Request, mf: meta_file.Meta_File, stage :
     return ''
 
   html_actions = http_functions.get_html_response(request, 'overview/details/stage-actions-details.html', 
-                                  file_name=mf.file_name, 
+                                  meta_file_id=mf.id,
                                   stage=stage.get_dict(), 
                                   cmds=actions, 
                                   run_stage_button=generate_run_button(mf=mf, 
@@ -123,7 +123,10 @@ def generate_stage_steps_html(request: Request, mf: meta_file.Meta_File, stage :
 
 def generate_steps(request: Request, mf: meta_file.Meta_File, stage : stages.Stage):
 
-  html = http_functions.get_html_response(request, 'overview/details/stage-actions.html', file_name=mf.file_name, stage_id=stage.id, stage_name=stage.name).body.decode()
+  html = http_functions.get_html_response(request, 'overview/details/stage-actions.html', 
+                                          meta_file_id=mf.id,
+                                          stage_id=stage.id, 
+                                          stage_name=stage.name).body.decode()
 
   return html
 
@@ -169,7 +172,7 @@ def get_flow_stage(request: Request, mf: meta_file.Meta_File, stage : stages.Sta
   # This stage
   html=div_column
   html+= generate_stage_button(mf, stage)
-  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.id in mf.open_stages.get_all_ids(): #??????? stage.name??
+  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.id in mf.get_open_stages().get_all_ids(): #??????? stage.name??
     html+= generate_run_button(mf, stage)
 
   if len(stage.processing_steps) > 0:

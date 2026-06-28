@@ -190,6 +190,7 @@ class Workflow:
 
 
 
+
   @staticmethod
   def get_workflow_steps_mapping(workflow_dict: dict) -> List[dict]:
     """

@@ -21,3 +21,4 @@ logs/**
 **/custom_templates/**
 test/*.http
 etc/*.db
+metaxx/**

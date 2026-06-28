@@ -6,11 +6,13 @@ from fastapi import Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 # Custom modules
-from etc import constants, global_cfg
+import etc.constants as constants
+import etc.global_cfg as global_cfg
 
-from modules import action_type, files, meta_file_db, permissions
+from modules import action_type, files, permissions
 from modules import deploy_version, meta_file
 from modules import workflow
+from modules.db import meta_file_data
 from modules.deploy_object import Deploy_Object
 
 from web_modules import http_functions
@@ -46,22 +48,20 @@ async def index(request: Request, _ = Depends(permission_config.RequirePermissio
 
     project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
 
-    dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
-    dv = dv['deployments']
+    dv = deploy_version.Deploy_Version.get_deployments(project)
 
-    logging.debug(f"Deployments: {dv=}")
-    for d in dv:
-        timestamp = d.get('timestamp', None)
-        d['timestamp'] = str(timestamp).split('.')[0] if timestamp is not None else None
-        meta_file = d['meta_file']
-        del(d['meta_file'])
+    deployments: list = []
+    for d in dv['deployments']:
+        deployments.append({
+            'version': d.get('version', None),
+            'status': d.get('status', None),
+            'workflow': d.get('workflow_name', None),
+            'create_time': str(d.get('create_time', None)).split('.')[0] if d.get('create_time', None) is not None else None,
+            'update_time': str(d.get('update_time', None)).split('.')[0] if d.get('update_time', None) is not None else None,
+            'meta_file_id': d.get('meta_file_id', None)
+        })
 
-        mf: dict = meta_file_db.get_meta_file(meta_file)
-        if mf is None:
-            logging.error(f"Meta file {meta_file} not found!")
-            continue
-        d['workflow'] = mf.get('general', {}).get('workflow', {}).get('name', None)
-        
+    logging.debug(f"Deployments: {deployments=}")
 
     logging.debug("Send response")
     
@@ -70,14 +70,14 @@ async def index(request: Request, _ = Depends(permission_config.RequirePermissio
                                 'overview/list-deployments.html', 
                                 project=project, 
                                 sidebar=get_sidebar_data(request), 
-                                deploy_version_file=f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json', 
-                                deployments=dv) 
+                                deployment_details=dv['deployments'],
+                                deployments=deployments) 
 
 
 
 
 async def list_deployments(request: Request, project: str, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
-    dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
+    dv = deploy_version.Deploy_Version.get_deployments(project)
     logging.debug(dv)
     dv = dv['deployments']
     return JSONResponse(content=dv)
@@ -198,8 +198,8 @@ async def show_settings(request: Request, _ = Depends(permission_config.RequireP
 
 
 
-async def show_details(request: Request, project: str, version: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
-    logging.debug(f'Show details of {project=}, {version=}')
+async def show_details(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
+    logging.debug(f'Show details of {meta_file_id=}')
     logging.debug(request.form)
 
     error = ''
@@ -207,15 +207,12 @@ async def show_details(request: Request, project: str, version: int, _ = Depends
     mf_json = None
 
     try:
-        dv = deploy_version.Deploy_Version.get_deployment(project, version)
-        logging.debug(f"{dv=}")
-        mf = meta_file.Meta_File.load_json_file(dv['meta_file'])
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
         flow = flowchart.get_flowchar_html(request, mf)
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
-        progress = (len(mf.workflow.stages) - len(mf.open_stages)) / len(mf.workflow.stages)
+        progress = (len(mf.workflow.stages) - len(mf.get_open_stages())) / len(mf.workflow.stages)
         progress = progress * 100
-        logging.debug(dv)
         return http_functions.get_html_response(request, 'overview/show-deployment.html', sidebar=get_sidebar_data(request), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script']) 
 
     except Exception as e:
@@ -230,10 +227,10 @@ async def run_stage(request: Request, _ = Depends(permission_config.RequirePermi
     data = await request.json()
     result={'status': 'success'}
     status=200
-    logging.debug(f"Run stage-id {data['stage_id']} of {data['filename']} with option {data['option']}")
+    logging.debug(f"Run stage-id {data['stage_id']} of {data['project']}/{data['version']} with option {data['option']}")
     session = request.state.session
 
-    mf: meta_file.Meta_File = meta_file.Meta_File.load_json_file(data['filename'])
+    mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(data['meta_file_id'])
 
     try:
         
@@ -257,29 +254,27 @@ async def run_stage(request: Request, _ = Depends(permission_config.RequirePermi
 
 
 
-async def get_meta_file_json(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
-    data = await request.json()
-    logging.debug(f"Get logs from: {data=}")
 
-    if 'filename' not in data.keys():
-        return http_functions.get_json_response({'error': "Key 'filename' not in request"}, status=401)
+async def get_meta_file_json(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
+    logging.debug(f"Get meta file from: {meta_file_id=}")
 
-    logging.debug(f"Get logs from: {data['filename']=}")
+    mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+    if not mf:
+        return http_functions.get_json_response({'error': f"Meta file for ID {meta_file_id} not found"}, status=404)
 
-    meta_file_json=files.getJson(data['filename'], retry=True)
 
     #mf_json = json.dumps(meta_file_json, default=str, indent=4)
 
-    return http_functions.get_json_response(meta_file_json)
+    return http_functions.get_json_response(mf.get_all_data_as_dict())
     
 
 
-async def get_action_log(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
+async def get_action_log(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     data = await request.json()
     logging.debug(f"Get logs from: {data=}")
-    logging.debug(f"Get logs from: {data['filename']=}, {data['stage_id']=}, {data['action_id']=}, {data['history_element']=}")
+    logging.debug(f"Get logs from: {meta_file_id=}, {data['stage_id']=}, {data['action_id']=}, {data['history_element']=}")
 
-    mf = meta_file.Meta_File.load_json_file(data['filename'])
+    mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
 
     if data['stage_id'] is None:
         return http_functions.get_json_response({"stdout" : mf.run_history.get_list()[data['history_element']]['log']})
@@ -294,23 +289,20 @@ async def get_action_log(request: Request, _ = Depends(permission_config.Require
 
 
 
-async def show_processing_history(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
-    data = await request.json()
-    logging.debug(f"Get logs from: {data=}")
-    logging.debug(f"Get logs from: {data['filename']=}")
+async def show_processing_history(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
+    logging.debug(f"Get processing history from: {meta_file_id=}")
 
-    mf: meta_file.Meta_File = meta_file.Meta_File.load_json_file(data['filename'])
+    mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
 
     return http_functions.get_json_response(mf.processing_users)
 
 
 
-async def cancel_deployment(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.CANCEL_WORKFLOW))):
+async def cancel_deployment(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.CANCEL_WORKFLOW))):
 
     try:
-        data = await request.json()
-        logging.debug(f"Cancel Deployment: {data['filename']}")
-        mf = meta_file.Meta_File.load_json_file(data['filename'])
+        logging.debug(f"Cancel Deployment: {meta_file_id=}")
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
         action_type.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
         mf.cancel_deployment()
     except Exception as e:
@@ -358,7 +350,8 @@ async def create_deployment(request: Request, wf_name, commit=None, obj_list=Non
         if existing_version is not None and meta_file.Meta_file_status(existing_version['status']) != meta_file.Meta_file_status.CANCELED:
             return http_functions.get_json_response({'status': 'error', 'error': f"Given commit is already used in deployment version {existing_version['version']} with status '{existing_version['status']}'"}, status=401)
 
-        mf = meta_file.Meta_File(workflow_name=wf_name, object_list=obj_list)
+        mf: meta_file.Meta_File = meta_file_data.create_new_meta_file(workflow_name=wf_name, object_list=obj_list)
+        #mf = meta_file.Meta_File(workflow_name=wf_name, object_list=obj_list)
         action_type.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
 
         mf.commit = commit
@@ -392,7 +385,7 @@ async def start_workflow(request: Request, wf_name: str, _ = Depends(permission_
         wf = workflow.Workflow(wf_name)
         logging.debug(f"Workflow: {wf}")
  
-        mf = meta_file.Meta_File(workflow_name=wf_name, custom_data=params)
+        mf = meta_file_data.create_new_meta_file(workflow_name=wf_name, custom_data=params)
         action_type.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
 
         mf.set_status(meta_file.Meta_file_status.READY)
@@ -407,20 +400,20 @@ async def start_workflow(request: Request, wf_name: str, _ = Depends(permission_
 
 
 
-async def set_check_error(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
+async def set_check_error(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
     data = await request.json()
-    logging.debug(f"Set check error stage: {data['stage_id']}, action_id: {data['action_id']}, checked: {data['checked']}, filename: {data['filename']}")
+    logging.debug(f"Set check error stage: {data['stage_id']}, action_id: {data['action_id']}, checked: {data['checked']}, {project=}, {version=}")
     result={}
     status = 200
     session = request.state.session
 
     try:
-        mf = meta_file.Meta_File.load_json_file(data['filename'])
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
         if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
             raise Exception(f"Can't change step check because deployment is already {mf.status.value}.")
 
         mf.set_action_check(int(data['stage_id']), int(data['action_id']), data['checked'], session['current_user'])
-        mf.write_meta_file()
+        mf.save()
     except Exception as e:
         logging.exception(e, stack_info=True)
         result={'status': 'error', 'error': str(e)}
@@ -433,14 +426,14 @@ async def set_check_error(request: Request, _ = Depends(permission_config.Requir
 
 
 
-async def set_source_ready_4_deployment(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
+async def set_source_ready_4_deployment(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
     data = await request.json()
-    logging.debug(f"Set source ready for deployment lib: {data['lib']}, name: {data['name']}, type: {data['type']}, checked: {data['checked']}, filename: {data['filename']}")
+    logging.debug(f"Set source ready for deployment lib: {data['lib']}, name: {data['name']}, type: {data['type']}, checked: {data['checked']}, {meta_file_id=}")
     result={}
     status = 200
     
     try:
-        mf = meta_file.Meta_File.load_json_file(data['filename'])
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
         
         if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
             raise Exception(f"Can't change object status because deployment is already {mf.status.value}.")
@@ -448,7 +441,7 @@ async def set_source_ready_4_deployment(request: Request, _ = Depends(permission
         action_type.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set object {data['lib']}/{data['name']}({data['type']}) ready={data['checked']}", meta_file=mf)
         obj: Deploy_Object = mf.deploy_objects.get_deploy_object(data['lib'], data['name'], data['type'])
         obj.ready = data['checked']
-        mf.write_meta_file()
+        mf.save()
     except Exception as e:
         logging.exception(e, stack_info=True)
         result={'status': 'error', 'error': str(e)}
@@ -462,14 +455,14 @@ async def set_source_ready_4_deployment(request: Request, _ = Depends(permission
 
 
 
-async def get_stage_steps_html(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
+async def get_stage_steps_html(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     
     data = await request.json()
-    logging.debug(f"Get html for stage steps: {data['stage_id']}, filename: {data['filename']}")
+    logging.debug(f"Get html for stage steps: {data['stage_id']}, {meta_file_id=}")
 
     try:
-        mf = meta_file.Meta_File.load_json_file(data['filename'])
-        html = flowchart.generate_stage_steps_html(request, mf, mf.get_stage_by_id(int(data['stage_id'])))
+        mf_obj: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+        html = flowchart.generate_stage_steps_html(request, mf_obj, mf_obj.get_stage_by_id(int(data['stage_id'])))
         return http_functions.get_json_response({'html': html}, status=200)
     except Exception as e:
         logging.exception(e, stack_info=True)
@@ -493,7 +486,7 @@ async def get_projects(request: Request, _ = Depends(permission_config.RequirePe
 
     for project in projects:
         result[project] = {}
-        dv = deploy_version.Deploy_Version.get_deployments(f'{constants.C_LOCAL_BASE_DIR}/etc/deploy_version_{project}.json')
+        dv = deploy_version.Deploy_Version.get_deployments(project)
         for depl in dv['deployments']:
             if depl['status'] not in result[project]:
                 result[project][depl['status']] = 0

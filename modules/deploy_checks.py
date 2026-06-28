@@ -24,31 +24,6 @@ class Deploy_Checks:
 
 
 
-  def check_stage_run(self, stage:str=None):
-    
-
-    if stage is None:
-       raise Exception('No stage was given to check')
-
-    version_file = constants.C_DEPLOY_VERSION.format(project=self.project)
-    versions_config = files.getJson(version_file)
-
-    deployments = versions_config['deployments']
-    deployments_sorted = sorted(deployments, key=lambda x: x['version'])
-
-    for deployment in deployments_sorted:
-       if deployment['status'] == meta_file.Meta_file_status.FINISHED:
-          continue
-       if deployment['version'] < self.version:
-          mf = meta_file.Meta_File.load_json_file(deployment['meta_file'])
-          self.is_stage_open(mf, stage)
-          
-
-    version = versions_config['versions']['last_deploy_version'] + 1
-    versions_config['versions']['last_deploy_version'] = version
-
-
-
 
   def is_stage_open(self, meta_file_obj:meta_file.Meta_File, stage:str):
     

@@ -1,10 +1,9 @@
-
 import logging
 from enum import Enum
 
 from modules import run_history as rh
 from modules.cmd_status import Status as Cmd_Status
-#import traceback
+from modules import deploy_action_run_history as darh
 
 
 
@@ -57,7 +56,7 @@ class Deploy_Action:
     self.status = status
     self.run_in_new_job = run_in_new_job
     self.execute_remote = execute_remote
-    self.run_history = rh.Run_History_List_list()
+    self.run_history = darh.Deploy_Action_Run_History_List()
     self.check_error = check_error
     self.sub_actions = Deploy_Action_List_list()
 
@@ -69,8 +68,27 @@ class Deploy_Action:
     if stage is not None and type(stage) != str:
       raise Exception("Stage is not a string!")
 
+    if dict is not None:
+      #logging.debug(f"Action dict: {dict}")
+      #logging.debug(f"Self dict: {self.__dict__}")
+      #if len(self.__dict__) != len(dict):
+      #  raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
+      
+      for key in dict:
+        if key == 'stage_name':
+          self.__setattr__('stage', dict[key])
+        elif hasattr(self, key):
+          self.__setattr__(key, dict[key])
+      
+      if 'run_history' in dict:
+        self.run_history = darh.Deploy_Action_Run_History_List()
+        for rh_item in dict['run_history']:
+          self.run_history.append(darh.Deploy_Action_Run_History(dict=rh_item))
+
     if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
-      raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
+      # Temporarily disabled
+      # raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
+      pass
 
     if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
       
@@ -80,6 +98,12 @@ class Deploy_Action:
 
       self.validate()
 
+    if self.status is not None and type(self.status) != Cmd_Status:
+      self.status = Cmd_Status(self.status)
+
+    if self.environment is not None and type(self.environment) != Command_Type:
+      self.environment = Command_Type(self.environment)
+      
     if self.id is None:
       self.id = Deploy_Action.get_next_id()
 
@@ -103,9 +127,9 @@ class Deploy_Action:
     if self.cmd is None:
       raise Exception('Command is not allowed to be None')
 
-    if type(self.run_history) != rh.Run_History_List_list:
+    if type(self.run_history) != darh.Deploy_Action_Run_History_List:
       run_history_list = self.run_history
-      self.run_history = rh.Run_History_List_list()
+      self.run_history = darh.Deploy_Action_Run_History_List()
       self.run_history.add_historys_from_list(run_history_list)
 
     if self.sub_actions is None:

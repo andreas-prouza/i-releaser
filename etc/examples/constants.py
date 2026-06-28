@@ -2,7 +2,6 @@ import os
 
 C_LOCAL_BASE_DIR = f'{os.path.realpath(os.path.dirname(__file__)+"/..")}'
 
-C_DEPLOY_VERSION = f'{C_LOCAL_BASE_DIR}/etc/deploy_version_{{project}}.json'
 C_WORKFLOW = f'{C_LOCAL_BASE_DIR}/etc/workflow.json'
 C_WORKFLOWS_DIR = f'{C_LOCAL_BASE_DIR}/etc/workflows'
 C_OBJECT_COMMANDS = f'{C_LOCAL_BASE_DIR}/etc/object_commands.json'

@@ -83,7 +83,7 @@
                 return response.json();
             })
             .then((data) => {
-                window.open(`/show_details/${data.meta_file.general.project}/${data.meta_file.general.deploy_version}`,'_self');
+                window.open(`/show_details/${data.meta_file.general.id}`,'_self');
             })
             .catch((error) => {
                 Swal.fire({

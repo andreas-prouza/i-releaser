@@ -19,10 +19,10 @@ def get_objects_from_origin(meta_file: mf.Meta_File, stage_obj: s.Stage, action:
     dv = deploy_version.Deploy_Version.get_deployment(project, version)
     logging.debug(f"{dv=}")
 
-    mf_orig = mf.Meta_File.load_json_file(dv['meta_file'])
+    mf_orig = mf.Meta_File.load(project, version)
 
     action_type.create_action_log(action=action_type.Action_type.CUSTOM_ACTION, details=f"Rollback of deployment started in Project {meta_file.project}, Version {meta_file.deploy_version}", meta_file=mf_orig, stage=stage_obj)
-    mf_orig.write_meta_file()
+    mf_orig.save()
 
     meta_file.deploy_objects = mf_orig.deploy_objects
 
@@ -47,7 +47,7 @@ def restore_objects(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Depl
     dv = deploy_version.Deploy_Version.get_deployment(project, version)
     logging.debug(f"{dv=}")
 
-    mf_orig = mf.Meta_File.load_json_file(dv['meta_file'])
+    mf_orig = mf.Meta_File.load(project, version)
 
     last_added_action = action
     cmd = ibm_i_commands.IBM_i_commands(meta_file)
@@ -78,7 +78,7 @@ def restore_objects(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Depl
         cmd.execute_action(stage=stage_obj, action=last_added_action)
 
     action_type.create_action_log(action=action_type.Action_type.CUSTOM_ACTION, details=f"Rollback of deployment completed in Project {meta_file.project}, Version {meta_file.deploy_version}", meta_file=mf_orig, stage=stage_obj)
-    mf_orig.write_meta_file()
+    mf_orig.save()
 
     meta_file.deploy_objects.set_objects_status(Obj_Status.RESTORED)
-    meta_file.write_meta_file()
+    meta_file.save()
