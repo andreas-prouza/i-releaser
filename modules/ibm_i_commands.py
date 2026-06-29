@@ -12,6 +12,7 @@ from modules import stages as s
 from modules import action_type
 from modules.cmd_status import Status as Cmd_Status
 
+from modules.db import processing_user_data, run_history_data
 from modules.permission_config import check_user_permission
 from scripts import *
 
@@ -50,7 +51,7 @@ class IBM_i_commands:
 
     logging.debug(f"Run Commands for {stage.name=} ({stage.id}), {processing_step=}")
 
-    action_type.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage)
+    processing_user_data.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage)
     stage.set_status('in process')
 
     # Execute all from stage
@@ -62,7 +63,7 @@ class IBM_i_commands:
     
     # should be set on a higher level because of multiple processing_steps to run
     #self.meta_file.open_stages.get_stage(stage).set_status('finished')
-    self.meta_file.write_meta_file()
+    self.meta_file.save()
 
     #iconv -f IBM-1252 -t utf-8 './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' > './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp && mv './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' 
 
@@ -93,22 +94,22 @@ class IBM_i_commands:
     except Exception as e:
     
       logging.exception(e, stack_info=True)
-      rh = run_history.Run_History()
+      rh = run_history_data.create_new_run_history(action_id=action.id)
       rh.status = Cmd_Status.FAILED
       rh.stderr = str(e)
 
     #time.sleep(0.02)
-    action.run_history.add_history(rh)
+    action.run_history.append(rh)
 
     action.status = rh.status
 
     if rh.status == Cmd_Status.FAILED and action.check_error:
       stage.set_status(rh.status)
-      self.meta_file.write_meta_file()
+      self.meta_file.save()
       logging.exception(f"Error in action {action.sequence} of stage {stage.name}: {rh.stderr}")
       raise Command_Exception(rh.stderr)
       
-    self.meta_file.write_meta_file()
+    self.meta_file.save()
 
 
 
@@ -126,7 +127,7 @@ class IBM_i_commands:
     if len(obj) != 2:
       raise Command_Exception(f"Command '{cmd}' has not the correct format: 'filename.function_name' (without '.py' in filename)")
     
-    rh = run_history.Run_History()
+    rh = run_history_data.create_new_run_history(action_id=action.id)
 
     stdout_orig = sys.stdout
     stdout_new = StringIO()
@@ -209,7 +210,7 @@ class IBM_i_commands:
       stdout = stdout.decode('utf-8')
       stderr = stderr.decode('utf-8')
 
-      rh = run_history.Run_History()
+      rh = run_history_data.create_new_run_history(action_id=action.id)
       
       rh.stdout = stdout
       rh.stderr = stderr

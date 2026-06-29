@@ -13,13 +13,14 @@ import threading
 # from pydantic import validate_arguments
 
 from etc import constants, logger_config
-from modules import action_type, deploy_action as da, files, permissions
+from modules import action_type, deploy_action as da, files, permissions, stage_status
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
 from modules import deploy_version as dv
 from modules.cmd_status import Status as Cmd_Status
 from modules import meta_file_history as mfh
+from modules.db import meta_file_history_data as mfhd, processing_user_data
 from modules.permission_config import check_user_permission
 
 from modules.meta_file_status import Meta_file_status
@@ -42,22 +43,21 @@ class Meta_File:
 
 
     def __init__(self, project: str|None=None, workflow_name : str|None=None, workflow=None, 
-                object_list=None, create_time=None, update_time=None, status :Meta_file_status=Meta_file_status.NEW, 
-                deploy_version : int|None=None, deploy_version_id : int|None=None, stages: s.Stage_List_list=s.Stage_List_list(),
-                processing_users: list=[], custom_data: dict={},
+                object_list=None, create_time=None, update_time=None, status :Meta_file_status=None, 
+                deploy_version : int|None=None, deploy_version_id : int|None=None, stages: s.Stage_List_list=None,
+                processing_users: list=None, custom_data: dict=None,
                 id: int|None=None):
 
       #logging.debug(f"{sys.path=}")
 
       self.id: int = id
-      self.stages: s.Stage_List_list = stages
+      self.stages: s.Stage_List_list = stages or s.Stage_List_list()
       self.current_running_stage = None
-      self.status: Meta_file_status = status
+      self.status: Meta_file_status = status or Meta_file_status.NEW
+
       self.backup_deploy_lib = None
       self.main_deploy_lib = None
       self.remote_deploy_lib = None
-      self.create_date = None
-      self.create_time = None
       self.commit = None
       self.release_branch = None
       self.project: str = project
@@ -65,21 +65,19 @@ class Meta_File:
       self.deploy_version_id: int = deploy_version_id
       self.object_list: str = object_list
       self.run_history: mfh.Meta_File_History_List_list = mfh.Meta_File_History_List_list()
-      self.activate_history()
-      self.processing_users: list = processing_users
-      if self.processing_users is None:
-        self.processing_users = []
-
-      self.custom_data = custom_data
-
+      self.processing_users: list = processing_users or []
+      self.custom_data = custom_data or {}
         
       self.update_time = update_time
       self.create_time = create_time
 
       if self.create_time == None:
         self.create_time = str(datetime.datetime.now())
+        self.update_time = self.create_time
 
       self.create_date = re.sub(" .*", '', self.create_time)
+
+      self.meta_dir: str = constants.C_META_DIR.format(project=project, create_date=self.create_date, deploy_version=deploy_version)
         
       self.workflow = wf.Workflow(name=workflow_name, dict=workflow)
       #logging.debug(f"Meta Workflow: {self.workflow.get_dict()}")
@@ -102,11 +100,8 @@ class Meta_File:
       #logging.debug(f"0. Number of histories: {len(self.run_history)}")
 
       stdout_new = StringIO()
-      history = mfh.Meta_File_History(log=stdout_new)
-      self.run_history.add_history(history)
-
-      #logging.debug(f"1. Number of histories: {len(self.run_history)}")
-
+      history: mfh.Meta_File_History = mfhd.create_new_meta_file_history(log=stdout_new, meta_file_id=self.id)
+      self.run_history.append(history)
 
       hdl = logging.StreamHandler(stream=stdout_new)
       hdl.setFormatter(logging.root.handlers[0].formatter)
@@ -152,7 +147,7 @@ class Meta_File:
       stage = self.get_open_stages().get_stage(stage_id)
       stage.actions.set_action_check(action_id, check)
 
-      action_type.create_action_log(action_type.Action_type.SET_CHECK_ERROR, details=f"Set check error to {check} for action id {action_id}", meta_file=self, stage=stage)
+      processing_user_data.create_action_log(action_type.Action_type.SET_CHECK_ERROR, details=f"Set check error to {check} for action id {action_id}", meta_file=self, stage=stage)
       self.save()
 
 
@@ -165,7 +160,7 @@ class Meta_File:
           from_stage (s.Stage): Current finished stage
       """
       logging.debug(f"Set next stage from '{from_stage.name}' (ID: {from_stage.id})")
-      next_stages = from_stage.get_next_stages_name()
+      next_stages = from_stage.next_stages
 
       logging.debug(f"Next stages: {next_stages=}")
 
@@ -179,6 +174,7 @@ class Meta_File:
         if len(existing_stages) > 0:
           for es in existing_stages:
             logging.debug(f"Stage ({next_stage}) already processed: {es.id}")
+            es.status = stage_status.Status.READY
             from_stage.next_stage_ids.append(es.id)
             es.from_stage_id.append(from_stage.id)
           continue
@@ -203,7 +199,7 @@ class Meta_File:
     def get_open_stages(self) -> s.Stage_List_list:
       open_stages = s.Stage_List_list()
       for stage in self.stages:
-        if stage.status not in [Cmd_Status.FINISHED, Cmd_Status.FAILED]:
+        if stage.status not in [stage_status.Status.FINISHED]:
           open_stages.append(stage)
       return open_stages
 
@@ -211,7 +207,7 @@ class Meta_File:
     def get_processed_stages(self) -> s.Stage_List_list:
       processed_stages = s.Stage_List_list()
       for stage in self.stages:
-        if stage.status in [Cmd_Status.FINISHED, Cmd_Status.FAILED]:
+        if stage.status in [stage_status.Status.FINISHED]:
           processed_stages.append(stage)
       return processed_stages
 
@@ -383,9 +379,9 @@ class Meta_File:
           # if stage is not completed, don't set the FINISHED status.
           return
 
-      stage.status = Cmd_Status.FINISHED
+      stage.status = stage_status.Status.FINISHED
 
-      logging.info(f"Stage {stage.name} ({stage.id}) has been finished. Setting next stage(s) {stage.next_stages.get_all_names()}")
+      logging.info(f"Stage {stage.name} ({stage.id}) has been finished. Setting next stage(s) {stage.next_stages}")
       self.set_next_stage(stage)
 
 
@@ -545,6 +541,7 @@ class Meta_File:
                          'release_branch':  self.release_branch,
                          'create_time':     self.create_time,
                          'update_time':     self.update_time,
+                         'meta_dir':        self.meta_dir,
                          'status':          self.status.value,
                          'object_list':     self.object_list,
                          'processed_stages':  self.get_processed_stages().get_dict(),
@@ -578,29 +575,6 @@ class Meta_File:
 
 
 
-    def write_meta_file(self, update_time: bool=True, loop: int=0):
-
-      if update_time:
-        self.update_time = str(datetime.datetime.now())
-
-      file_dir = os.path.dirname(os.path.realpath(self.file_name))
-      if not os.path.isdir(file_dir):
-        os.makedirs(file_dir)
-
-      logging.debug(f"Save meta file to {self.file_name}")
-      
-      try:
-        files.writeJson(self.get_all_data_as_dict(), self.file_name)
-      except Exception as err:
-        logging.exception(err, stack_info=True)
-        if loop < 3:
-          datetime.time.sleep(1)
-          self.write_meta_file(update_time=update_time, loop=loop+1)
-        else:
-          raise err
-
-
-
     
     def add_object_from_meta_structure(self, objects: list[str], object_type: str):
 
@@ -626,7 +600,7 @@ class Meta_File:
       for obj_type in obj_list:
           self.add_object_from_meta_structure(obj_list[obj_type].split(' '), obj_type)
 
-      #self.write_meta_file()
+      #self.save()
 
 
     
@@ -676,9 +650,6 @@ class Meta_File:
       
       self.load_actions_from_json(constants.C_OBJECT_COMMANDS)
       self.save()
-
-      #config_file_name = os.path.basename(self.object_list)
-      #path = os.path.dirname(os.path.realpath(self.file_name))
 
       #os.rename(self.object_list, f"{path}/{self.deploy_version}_{config_file_name}")
 

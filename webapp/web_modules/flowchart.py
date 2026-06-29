@@ -59,13 +59,29 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
 def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
+  if mf.status not in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] or stage.id not in mf.get_open_stages().get_all_ids():
+    return ''
   if stage.status not in [stage_status.Status.FAILED, stage_status.Status.READY]:
     return ''
 
   global btn_class_list
 
   btn_class = btn_class_list['None']
-  return f'<br/><img class="run" src="/static/assets/img/run-green.png" onclick="runStage(\'{mf.project}\', \'{mf.deploy_version}\', \'{stage.id}\', \'{stage.name}\')">'
+  return f'<br/><img class="run" title="Run Stage" src="/static/assets/img/run-green.png" onclick="run_stage({mf.id}, {stage.id}, \'{stage.name}\')">'
+
+
+
+def generate_reset_button(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  if mf.status != meta_file.Meta_file_status.IN_PROCESS or stage.id not in mf.get_open_stages().get_all_ids():
+    return ''
+  if stage.status not in [stage_status.Status.IN_PREPERATION, stage_status.Status.IN_PROCESS, stage_status.Status.PREPARE]:
+    return ''
+
+  global btn_class_list
+
+  btn_class = btn_class_list['None']
+  return f'<br/><img class="run" title="Reset Stage" src="/static/assets/img/undo.png" onclick="reset_stage_status({mf.id}, {stage.id})">'
 
 
 
@@ -105,11 +121,12 @@ def generate_stage_steps_html(request: Request, mf: meta_file.Meta_File, stage :
     return ''
 
   html_actions = http_functions.get_html_response(request, 'overview/details/stage-actions-details.html', 
-                                  meta_file_id=mf.id,
-                                  stage=stage.get_dict(), 
-                                  cmds=actions, 
-                                  run_stage_button=generate_run_button(mf=mf, 
-                                  stage=stage)).body.decode()
+                                    meta_file_id=mf.id,
+                                    stage=stage.get_dict(), 
+                                    cmds=actions, 
+                                    run_stage_button=generate_run_button(mf=mf, stage=stage),
+                                    reset_stage_button=generate_reset_button(mf=mf, stage=stage)
+                                  ).body.decode()
   #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
   html_actions=html_actions.replace('\n', '')
@@ -172,8 +189,8 @@ def get_flow_stage(request: Request, mf: meta_file.Meta_File, stage : stages.Sta
   # This stage
   html=div_column
   html+= generate_stage_button(mf, stage)
-  if mf.status in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] and stage.id in mf.get_open_stages().get_all_ids(): #??????? stage.name??
-    html+= generate_run_button(mf, stage)
+  html+= generate_run_button(mf, stage)
+  html+= generate_reset_button(mf, stage)
 
   if len(stage.processing_steps) > 0:
     html+= generate_steps(request, mf, stage)
@@ -209,48 +226,10 @@ def get_flowchar_html(request: Request, mf: meta_file.Meta_File):
   for fc in flow_connection:
     java_script+=f'\n  connectItems({fc["from"]}, {fc["to"]}, "{fc["direction_from"]}", "{fc["direction_to"]}");'
 
-  #let Start = document.getElementById("Start");
-  #let button2 = document.getElementById("button2");
-  #let button3 = document.getElementById("button3");
-  #let End = document.getElementById("End");
-
-  #connectItems(Start, button2, "right", "top");
-  #connectItems(Start, button3, "bottom", "left");
-  #connectItems(Start, End, "right", "top");
-  #connectItems(button2, End, "bottom", "left");
-  #connectItems(button3, End, "bottom", "left");
-
   return {'html': html, 'java_script': java_script}
 
 
 
-
-# root=>start: Root
-# e=>end: End
-# start=>parallel: Start
-# uat=>operation: UAT
-# archive=>operation: Archive
-# 
-# root->start
-# start(path1, left,bottom)->uat
-# start(path2, right,top)->archive
-# 
-# uat->e
-# archive->e
-
-        
-#START=>parallel: START
-#UAT_TEST=>operation: User Acceptance Tests
-#ARCHIV_TEST=>operation: Tests Archiv
-#ARCHIV_TEST2=>operation: Tests Archiv 2
-#PROD_TEST=>operation: Production
-#END=>end: Finished
-#
-#START(path1@an1,right)->UAT_TEST
-#START(path2@an2,bottom)->ARCHIV_TEST
-#START(path3@an3,left)->ARCHIV_TEST2
-#ARCHIV_TEST->END
-#UAT_TEST->END
 
 def get_flowchart_text(request: Request, mf: meta_file.Meta_File):
 

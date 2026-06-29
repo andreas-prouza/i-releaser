@@ -66,7 +66,7 @@ def save_objects_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da
     cmd = ibm_i_commands.IBM_i_commands(meta_file)
 
     clear_files = stage_obj.clear_files
-    deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+    deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
     last_added_action = action
 
     for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib(ready=True):

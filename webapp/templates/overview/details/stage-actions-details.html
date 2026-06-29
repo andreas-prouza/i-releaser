@@ -11,6 +11,7 @@
       {% if stage['status'] == 'in process' %}btn-secondary{% endif %}
       ">{{ stage['status'] }}</button>
       {{ run_stage_button | safe }} 
+      {{ reset_stage_button | safe }} 
     </td>
   </tr>
   <tr>

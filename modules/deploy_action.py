@@ -3,7 +3,6 @@ from enum import Enum
 
 from modules import run_history as rh
 from modules.cmd_status import Status as Cmd_Status
-from modules import deploy_action_run_history as darh
 
 
 
@@ -44,19 +43,19 @@ class Deploy_Action:
   id :int = 0
 
 
-  def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=Cmd_Status.NEW,  
-    environment: Command_Type=Command_Type.QSYS, stage: str=None, processing_step: str=None, 
+  def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=None,  
+    environment: Command_Type=None, stage: str=None, processing_step: str=None, 
     check_error: bool=True, dict: dict=None, id: int=None, run_in_new_job: bool=False, execute_remote: bool=None):
 
     self.id :int = id
     self.sequence :int = sequence
-    self.environment :Command_Type = environment
+    self.environment :Command_Type = environment or Command_Type.QSYS
     self.cmd :str = cmd
     self.stage = stage
-    self.status = status
+    self.status = status or Cmd_Status.NEW
     self.run_in_new_job = run_in_new_job
     self.execute_remote = execute_remote
-    self.run_history = darh.Deploy_Action_Run_History_List()
+    self.run_history = rh.Run_History_List_list()
     self.check_error = check_error
     self.sub_actions = Deploy_Action_List_list()
 
@@ -81,9 +80,9 @@ class Deploy_Action:
           self.__setattr__(key, dict[key])
       
       if 'run_history' in dict:
-        self.run_history = darh.Deploy_Action_Run_History_List()
+        self.run_history = rh.Run_History_List_list()
         for rh_item in dict['run_history']:
-          self.run_history.append(darh.Deploy_Action_Run_History(dict=rh_item))
+          self.run_history.append(rh.Run_History(dict=rh_item))
 
     if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
       # Temporarily disabled
@@ -127,9 +126,9 @@ class Deploy_Action:
     if self.cmd is None:
       raise Exception('Command is not allowed to be None')
 
-    if type(self.run_history) != darh.Deploy_Action_Run_History_List:
+    if type(self.run_history) != rh.Run_History_List_list:
       run_history_list = self.run_history
-      self.run_history = darh.Deploy_Action_Run_History_List()
+      self.run_history = rh.Run_History_List_list()
       self.run_history.add_historys_from_list(run_history_list)
 
     if self.sub_actions is None:

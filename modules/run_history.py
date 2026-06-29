@@ -22,8 +22,10 @@ class Run_History:
 
 
 
-  def __init__(self, status: Cmd_Status=Cmd_Status.NEW, stdout: str=None, stderr: str=None, create_time=None, dict: dict={}):
-    self.status = status
+  def __init__(self, id:int=None, action_id:int=None, status: Cmd_Status=None, stdout: str=None, stderr: str=None, create_time=None, dict: dict=None):
+    self.id:int = id
+    self.action_id:int = action_id
+    self.status = status or Cmd_Status.NEW
     self.stdout = stdout # Run in these stages
     self.stderr = stderr
     self.create_time = create_time
@@ -32,7 +34,7 @@ class Run_History:
         self.create_time = str(datetime.datetime.now())
         #self.create_time = '2023-03-04 14:31:30.404775'
 
-    if len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+    if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
       for k, v in dict.items():
         setattr(self, k, v)
 
@@ -42,6 +44,8 @@ class Run_History:
 
   def get_dict(self) -> dict:
     return {
+      'id': self.id,
+      'action_id': self.action_id,
       'create_time': self.create_time,
       'status': self.status.value,
       'stdout': self.stdout,

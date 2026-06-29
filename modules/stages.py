@@ -13,7 +13,7 @@ class Stage:
 
 
 
-  def __init__(self, dict: dict={}):
+  def __init__(self, dict: dict=None):
     self.id :int = None
     self.workflow: wf.Workflow = None
     self.name :str = None
@@ -39,14 +39,14 @@ class Stage:
     self.processing_users :list[str] = []
 
 
-    if len(dict) > 0:
+    if dict is not None and len(dict) > 0:
       # Temporarily disabled
       # e = Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
       # logging.exception(e, stack_info=True)
       # raise e
       pass
 
-    if len(dict) > 0:
+    if dict is not None and len(dict) > 0:
       
       for k, v in dict.items():
         if hasattr(self, k):
@@ -65,6 +65,9 @@ class Stage:
     self.status = status
     if update_time:
       self.update_time = str(datetime.datetime.now())
+    
+    from modules.db import stage_data
+    stage_data.save_stage(stage=self)
 #    self.update_time = '2023-03-04 14:31:30.404775'
 
 
@@ -141,7 +144,6 @@ class Stage:
 
     stage.set_status(stage.status, False)
     stage.actions = da.Deploy_Action_List_list(stage.actions)
-    stage.next_stages = Stage_List_list(wf, stage.next_stages)
 
     return stage
 
@@ -183,16 +185,6 @@ class Stage:
 
 
 
-  def get_next_stages_name(self) -> list[str]:
-
-    new_next_stages = []
-    
-    for next_stage in self.next_stages:
-      new_next_stages.append(next_stage.name)
-
-    return new_next_stages
-
-
 
   def validate(stage_dict: dict) -> None:
 
@@ -227,12 +219,12 @@ class Stage:
   def __eq__(self, other):
     #logging.debug('equals 2 stages')
  #   other.next_stages !!! ist das Problem
-    if (self.id, self.description, self.host, self.remote_dir, self.build_dir, self.next_stages.get_all_names(), self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions, self.after_stages_finished, self.execute_remote) == \
-       (other.id, other.description, other.host, other.remote_dir, other.build_dir, other.next_stages.get_all_names(), other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions, other.after_stages_finished, other.execute_remote):
+    if (self.id, self.description, self.host, self.remote_dir, self.build_dir, self.next_stages, self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions, self.after_stages_finished, self.execute_remote) == \
+       (other.id, other.description, other.host, other.remote_dir, other.build_dir, other.next_stages, other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions, other.after_stages_finished, other.execute_remote):
       return True
 
-    logging.warning(f"{self.id} - {self.description} - {self.host} - {self.remote_dir} - {self.build_dir} - {self.next_stages.get_all_names()} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=} - {self.execute_remote=}")
-    logging.warning(f"{other.id} - {other.description} - {other.host} - {other.remote_dir} - {other.build_dir} - {other.next_stages.get_all_names()} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=} - {other.execute_remote=}")
+    logging.warning(f"{self.id} - {self.description} - {self.host} - {self.remote_dir} - {self.build_dir} - {self.next_stages} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=} - {self.execute_remote=}")
+    logging.warning(f"{other.id} - {other.description} - {other.host} - {other.remote_dir} - {other.build_dir} - {other.next_stages} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=} - {other.execute_remote=}")
 
     return False
 

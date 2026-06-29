@@ -18,7 +18,7 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
     actions = stage_obj.actions
 
     clear_files = stage_obj.clear_files
-    deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+    deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
     last_added_action = action
     cmd = ibm_i_commands.IBM_i_commands(meta_file)
 
@@ -83,4 +83,4 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
       cmd.execute_action(stage=stage_obj, action=last_added_action)
 
     meta_file.deploy_objects.set_objects_status(Obj_Status.RESTORED)
-    meta_file.write_meta_file()
+    meta_file.save()

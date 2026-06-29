@@ -3,7 +3,7 @@ import logging
 from typing import List
 
 from etc import constants
-from modules import files, stages
+from modules import files
 import glob
 
 
@@ -34,7 +34,7 @@ class Workflow:
   name: str|None
   
 
-  def __init__(self, name: str|None=None, dict: dict|None={}):
+  def __init__(self, name: str|None=None, dict: dict|None=None):
 
     self.name = name.lower() if name else None
     self.object_commands = []
@@ -225,6 +225,7 @@ class Workflow:
     if 'stages' not in workflow_dict.keys() or len(workflow_dict['stages']) == 0:
       raise Exception(f"No stage definition for workflow {workflow_dict['name']} in file {wf_file}!")
 
+    from modules import stages
     stages.Stage_List_list.validate_items(workflow_dict['stages'])
 
     for key in workflow_dict.keys():

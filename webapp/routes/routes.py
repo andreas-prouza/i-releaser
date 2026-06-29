@@ -9,10 +9,10 @@ from fastapi.responses import JSONResponse, RedirectResponse
 import etc.constants as constants
 import etc.global_cfg as global_cfg
 
-from modules import action_type, files, permissions
+from modules import action_type, files, permissions, stage_status
 from modules import deploy_version, meta_file
 from modules import workflow
-from modules.db import meta_file_data
+from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data
 from modules.deploy_object import Deploy_Object
 
 from web_modules import http_functions
@@ -223,14 +223,13 @@ async def show_details(request: Request, meta_file_id: int, _ = Depends(permissi
 
 
 
-async def run_stage(request: Request, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
-    data = await request.json()
+async def run_stage(request: Request, meta_file_id: int, stage_id: int, option: str, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
     result={'status': 'success'}
     status=200
-    logging.debug(f"Run stage-id {data['stage_id']} of {data['project']}/{data['version']} with option {data['option']}")
+    logging.debug(f"Run stage-id {stage_id} of meta_file_id {meta_file_id} with option {option=}")
     session = request.state.session
 
-    mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(data['meta_file_id'])
+    mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
 
     try:
         
@@ -238,10 +237,10 @@ async def run_stage(request: Request, _ = Depends(permission_config.RequirePermi
         mf.CURRENT_USER = session.get('current_user', None).upper()
 
         continue_run = True
-        if data['option'] == 'run_all':
+        if option == 'run_all':
             continue_run = False
 
-        mf.run_current_stage_as_thread(int(data['stage_id']), continue_run=continue_run)
+        mf.run_current_stage_as_thread(stage_id, continue_run=continue_run)
 
     except Exception as e:
         logging.error("An error occured. Please check details!")
@@ -269,20 +268,26 @@ async def get_meta_file_json(request: Request, meta_file_id: int, _ = Depends(pe
     
 
 
-async def get_action_log(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
-    data = await request.json()
-    logging.debug(f"Get logs from: {data=}")
-    logging.debug(f"Get logs from: {meta_file_id=}, {data['stage_id']=}, {data['action_id']=}, {data['history_element']=}")
+async def get_activity_log(request: Request, id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
+    
+    logging.debug(f"Get logs from: {id=}")
+    
+    history = meta_file_history_data.get_run_history_by_id(id)
+    if history:
+        return http_functions.get_json_response(history.get_dict())
 
-    mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+    return http_functions.get_json_response({})
+    
 
-    if data['stage_id'] is None:
-        return http_functions.get_json_response({"stdout" : mf.run_history.get_list()[data['history_element']]['log']})
 
-    for action in mf.get_actions(stage_id=int(data['stage_id']), action_id=int(data['action_id']), include_subactions=True):
-        logging.debug(f"Action logs: {action}")
-        if len(action.run_history) > data['history_element']:
-            return http_functions.get_json_response(action.run_history[data['history_element']].get_dict())
+
+async def get_action_log(request: Request, id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
+    
+    logging.debug(f"Get logs from: {id=}")
+    
+    history = run_history_data.get_run_history_by_id(id)
+    if history:
+        return http_functions.get_json_response(history.get_dict())
 
     return http_functions.get_json_response({})
     
@@ -292,9 +297,9 @@ async def get_action_log(request: Request, meta_file_id: int, _ = Depends(permis
 async def show_processing_history(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     logging.debug(f"Get processing history from: {meta_file_id=}")
 
-    mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+    pud: list = processing_user_data.get_processing_user_by_meta_id(meta_file_id)
 
-    return http_functions.get_json_response(mf.processing_users)
+    return http_functions.get_json_response(pud)
 
 
 
@@ -303,8 +308,49 @@ async def cancel_deployment(request: Request, meta_file_id: int, _ = Depends(per
     try:
         logging.debug(f"Cancel Deployment: {meta_file_id=}")
         mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
-        action_type.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
+        processing_user_data.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
         mf.cancel_deployment()
+    except Exception as e:
+        logging.error("An error occured. Please check details!")
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response({'status': 'error', 'error': str(e)}, status=500)
+
+    return http_functions.get_json_response({'status': 'success'})
+    
+
+
+async def reset_stage_status(request: Request, meta_file_id: int, stage_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.CANCEL_WORKFLOW))):
+
+    try:
+        logging.debug(f"Reset Stage Status: {meta_file_id=}, {stage_id=}")
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+        processing_user_data.create_action_log(action=action_type.Action_type.RESET_STAGE_STATUS, meta_file=mf)
+        mf.stages.get_stage(stage_id).set_status(stage_status.Status.READY)
+        mf.set_status(meta_file.Meta_file_status.READY)
+
+    except Exception as e:
+        logging.error("An error occured. Please check details!")
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response({'status': 'error', 'error': str(e)}, status=500)
+
+    return http_functions.get_json_response({'status': 'success'})
+    
+
+
+async def reset_deployment_status(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.CANCEL_WORKFLOW))):
+
+    try:
+        logging.debug(f"Reset Deployment Status: {meta_file_id=}")
+        
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+        processing_user_data.create_action_log(action=action_type.Action_type.RESET_DEPLOYMENT_STATUS, meta_file=mf)
+
+        for stage in mf.get_open_stages():
+            if stage.status == stage_status.Status.IN_PROCESS:
+                stage.set_status(stage_status.Status.READY)
+
+        mf.set_status(meta_file.Meta_file_status.READY)
+
     except Exception as e:
         logging.error("An error occured. Please check details!")
         logging.exception(e, stack_info=True)
@@ -352,7 +398,7 @@ async def create_deployment(request: Request, wf_name, commit=None, obj_list=Non
 
         mf: meta_file.Meta_File = meta_file_data.create_new_meta_file(workflow_name=wf_name, object_list=obj_list)
         #mf = meta_file.Meta_File(workflow_name=wf_name, object_list=obj_list)
-        action_type.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
+        processing_user_data.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
 
         mf.commit = commit
         mf.set_status(meta_file.Meta_file_status.READY)
@@ -386,7 +432,7 @@ async def start_workflow(request: Request, wf_name: str, _ = Depends(permission_
         logging.debug(f"Workflow: {wf}")
  
         mf = meta_file_data.create_new_meta_file(workflow_name=wf_name, custom_data=params)
-        action_type.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
+        processing_user_data.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
 
         mf.set_status(meta_file.Meta_file_status.READY)
         result={'status': 'success', 'meta_file': mf.get_all_data_as_dict()}
@@ -400,9 +446,8 @@ async def start_workflow(request: Request, wf_name: str, _ = Depends(permission_
 
 
 
-async def set_check_error(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
-    data = await request.json()
-    logging.debug(f"Set check error stage: {data['stage_id']}, action_id: {data['action_id']}, checked: {data['checked']}, {project=}, {version=}")
+async def set_check_error(request: Request, meta_file_id: int, stage_id: int, action_id: int, checked: bool, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.RUN_WORKFLOW))):
+    logging.debug(f"Set check error action_id: {action_id}, checked: {checked}")
     result={}
     status = 200
     session = request.state.session
@@ -412,7 +457,7 @@ async def set_check_error(request: Request, meta_file_id: int, _ = Depends(permi
         if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
             raise Exception(f"Can't change step check because deployment is already {mf.status.value}.")
 
-        mf.set_action_check(int(data['stage_id']), int(data['action_id']), data['checked'], session['current_user'])
+        mf.set_action_check(stage_id, action_id, checked, session['current_user'])
         mf.save()
     except Exception as e:
         logging.exception(e, stack_info=True)
@@ -438,7 +483,7 @@ async def set_source_ready_4_deployment(request: Request, meta_file_id: int, _ =
         if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
             raise Exception(f"Can't change object status because deployment is already {mf.status.value}.")
         
-        action_type.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set object {data['lib']}/{data['name']}({data['type']}) ready={data['checked']}", meta_file=mf)
+        processing_user_data.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set object {data['lib']}/{data['name']}({data['type']}) ready={data['checked']}", meta_file=mf)
         obj: Deploy_Object = mf.deploy_objects.get_deploy_object(data['lib'], data['name'], data['type'])
         obj.ready = data['checked']
         mf.save()
@@ -455,14 +500,13 @@ async def set_source_ready_4_deployment(request: Request, meta_file_id: int, _ =
 
 
 
-async def get_stage_steps_html(request: Request, meta_file_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
+async def get_stage_steps_html(request: Request, meta_file_id: int, stage_id: int, _ = Depends(permission_config.RequirePermission(permissions.PermissionAction.READ))):
     
-    data = await request.json()
-    logging.debug(f"Get html for stage steps: {data['stage_id']}, {meta_file_id=}")
+    logging.debug(f"Get html for stage steps: {stage_id}, {meta_file_id=}")
 
     try:
         mf_obj: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
-        html = flowchart.generate_stage_steps_html(request, mf_obj, mf_obj.get_stage_by_id(int(data['stage_id'])))
+        html = flowchart.generate_stage_steps_html(request, mf_obj, mf_obj.get_stage_by_id(stage_id))
         return http_functions.get_json_response({'html': html}, status=200)
     except Exception as e:
         logging.exception(e, stack_info=True)

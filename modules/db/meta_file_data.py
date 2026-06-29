@@ -1,3 +1,4 @@
+import datetime
 from io import StringIO
 import sqlite3
 import json
@@ -38,6 +39,7 @@ def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_
     )
 
     add_meta_file(meta_file)
+    meta_file.activate_history()
 
     for stage_dict in workflow.stages:
         new_stage: s.Stage = stage_data.create_stage(meta_file_id=meta_file.id, name=stage_dict['name'], workflow=workflow)
@@ -103,18 +105,25 @@ def _load_stages_and_actions(c: sqlite3.Cursor, meta_file_id: int) -> s.Stage_Li
         stages.append(stage_obj)
     return stages
 
-def _load_processing_users(c: sqlite3.Cursor, meta_file_id: int) -> list:
-    c.execute("SELECT * FROM processing_users WHERE meta_file_id = ?", (meta_file_id,))
-    return [dict(row) for row in c.fetchall()]
+
+
 
 def _load_run_history(c: sqlite3.Cursor, meta_file_id: int) -> mfh.Meta_File_History_List_list:
+
     c.execute("SELECT * FROM run_history WHERE meta_file_id = ?", (meta_file_id,))
     run_history_rows = c.fetchall()
     run_history = mfh.Meta_File_History_List_list()
-    for row in run_history_rows:
-        run_history.add_history(mfh.Meta_File_History(create_time=row['create_time'], log=row['log']))
-    return run_history
 
+    for row in run_history_rows:
+        
+        if row['log'] is None or len(row['log']) == 0:
+            c.execute("DELETE FROM run_history WHERE id = ?", (row['id'],))
+            c.connection.commit()
+            continue
+
+        run_history.add_history(mfh.Meta_File_History(id=row['id'], meta_file_id=row['meta_file_id'], create_time=row['create_time'], log=row['log']))
+
+    return run_history
 
 
 
@@ -160,7 +169,6 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
     workflow = _load_workflow_definition(c, meta_file_id)
     deploy_objects = _load_deploy_objects(c, meta_file_id)
     stages = _load_stages_and_actions(c, meta_file_id)
-    processing_users = _load_processing_users(c, meta_file_id)
     run_history = _load_run_history(c, meta_file_id)
 
     meta_file = mf.Meta_File(
@@ -175,7 +183,6 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
         deploy_version=meta_file_row['deploy_version'],
         deploy_version_id=meta_file_row['deploy_version_id'],
         stages=stages,
-        processing_users=processing_users,
         custom_data=json.loads(meta_file_row['custom_data'])
     )
     meta_file.deploy_objects = deploy_objects
@@ -185,8 +192,10 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
     meta_file.set_deploy_main_lib(meta_file_row['main_lib'])
     meta_file.set_deploy_backup_lib(meta_file_row['backup_lib'])
     meta_file.set_deploy_remote_lib(meta_file_row['remote_lib'])
+    meta_file.activate_history()
 
     return meta_file
+
 
 
 def _save_workflow_definition(c: sqlite3.Cursor, meta_file_id: int, workflow: wf.Workflow):
@@ -199,6 +208,8 @@ def _save_workflow_definition(c: sqlite3.Cursor, meta_file_id: int, workflow: wf
             c.execute("INSERT INTO workflow_definitions (meta_file_id, definition) VALUES (?, ?)",
                       (meta_file_id, json.dumps(workflow.get_dict())))
 
+
+
 def _save_deploy_objects(c: sqlite3.Cursor, meta_file_id: int, deploy_objects: do.Deploy_Object_List):
     c.execute("DELETE FROM objects WHERE meta_file_id = ?", (meta_file_id,))
     for obj in deploy_objects:
@@ -210,56 +221,22 @@ def _save_deploy_objects(c: sqlite3.Cursor, meta_file_id: int, deploy_objects: d
             obj.source_file, obj.ready, obj.backup_name, json.dumps([a.get_dict() for a in obj.actions])
         ))
 
-def _save_stages_and_actions(c: sqlite3.Cursor, meta_file_id: int, meta_file: mf.Meta_File):
-    c.execute("DELETE FROM stages WHERE meta_file_id = ?", (meta_file_id,))
-    for stage in meta_file.stages:
-        c.execute('''
-            INSERT INTO stages (meta_file_id, name, description, status, next_stages, next_stage_ids, 
-                              after_stages_finished, processing_steps, lib_mapping)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            meta_file_id, stage.name, stage.description, stage.status.value,
-            json.dumps(stage.next_stages.get_all_names()), json.dumps(stage.next_stage_ids),
-            json.dumps(stage.after_stages_finished), json.dumps(stage.processing_steps),
-            json.dumps(stage.lib_mapping)
-        ))
-        stage_db_id = c.lastrowid
 
-        c.execute("DELETE FROM actions WHERE stage_id = ?", (stage_db_id,))
-        for action in stage.actions:
-            c.execute('''
-                INSERT INTO actions (stage_id, sequence, cmd, status, stage_name, processing_step, environment, run_in_new_job, execute_remote, check_error)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                stage_db_id, action.sequence, action.cmd, action.status.value, stage.name, action.processing_step,
-                action.environment.value, action.run_in_new_job, action.execute_remote, action.check_error
-            ))
-            action_db_id = c.lastrowid
 
-            c.execute("DELETE FROM action_run_history WHERE action_id = ?", (action_db_id,))
-            for history in action.run_history:
-                c.execute('''
-                    INSERT INTO action_run_history (action_id, start_time, end_time, rc, log)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (
-                    action_db_id, history.start_time, history.end_time, history.rc, history.log
-                ))
 
-def _save_processing_users(c: sqlite3.Cursor, meta_file_id: int, processing_users: list):
-    c.execute("DELETE FROM processing_users WHERE meta_file_id = ?", (meta_file_id,))
-    for user in processing_users:
-        c.execute("INSERT INTO processing_users (meta_file_id, user, timestamp) VALUES (?, ?, ?)",
-                  (meta_file_id, user['user'], user['timestamp']))
-
-def _save_run_history(c: sqlite3.Cursor, meta_file_id: int, run_history: mfh.Meta_File_History_List_list):
-    c.execute("DELETE FROM run_history WHERE meta_file_id = ?", (meta_file_id,))
+def _save_run_history(c: sqlite3.Cursor, run_history: mfh.Meta_File_History_List_list):
+    
     for history in run_history:
         log = history.log
         if type(log) == StringIO:
             log = log.getvalue()
-        c.execute("INSERT INTO run_history (meta_file_id, create_time, log) VALUES (?, ?, ?)",
-                  (meta_file_id, history.create_time, log))
 
+        if len(log) == 0:
+            c.execute("DELETE FROM run_history WHERE id = ?", (history.id,))
+        else:
+            c.execute("UPDATE run_history SET log = ? WHERE id = ?",
+                    (log, history.id))
+        
 
 
 def save_meta_file(meta_file: mf.Meta_File):
@@ -269,7 +246,6 @@ def save_meta_file(meta_file: mf.Meta_File):
     """
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
-
 
         c.execute('''
             UPDATE meta_files 
@@ -283,11 +259,10 @@ def save_meta_file(meta_file: mf.Meta_File):
             meta_file.id
         ))
 
-        _save_workflow_definition(c, meta_file.id, meta_file.workflow)
         _save_deploy_objects(c, meta_file.id, meta_file.deploy_objects)
-        _save_stages_and_actions(c, meta_file.id, meta_file)
-        _save_processing_users(c, meta_file.id, meta_file.processing_users)
-        _save_run_history(c, meta_file.id, meta_file.run_history)
+        stage_data.save_stages(meta_file.stages, c)
+        _save_run_history(c, meta_file.run_history)
+        _save_workflow_definition(c, meta_file.id, meta_file.workflow)
 
         conn.commit()
     logging.info(f"Meta file for project {meta_file.project} version {meta_file.deploy_version} saved to database.")
@@ -304,15 +279,18 @@ def add_meta_file(meta_file: mf.Meta_File):
 
         c.execute('''
             INSERT INTO meta_files (project, deploy_version_id, commit_hash, release_branch, create_time, 
+                                    meta_dir,
                                     update_time, status, object_list, main_lib, remote_lib, backup_lib, custom_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             meta_file.project, meta_file.deploy_version_id, meta_file.commit, meta_file.release_branch,
-            meta_file.create_time, meta_file.update_time, meta_file.status.value,
+            meta_file.create_time, meta_file.meta_dir, meta_file.update_time, meta_file.status.value,
             json.dumps(meta_file.object_list), meta_file.main_deploy_lib, meta_file.remote_deploy_lib,
             meta_file.backup_deploy_lib, json.dumps(meta_file.custom_data)
         ))
         meta_file.id = c.lastrowid
+
+        _save_workflow_definition(c, meta_file.id, meta_file.workflow)
 
         conn.commit()
     logging.info(f"Meta file for project {meta_file.project} version {meta_file.deploy_version} saved to database.")

@@ -173,13 +173,17 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             {% if deployment_dict['general']['status'] == 'in process' %}btn-secondary{% endif %}
             ">{{ deployment_dict['general']['status'] }} </button>
             {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new', 'in process'] %}
-            <img class="run" src="{{ url_for('static', path='assets/img/cancel.png') }}" 
-            onclick="cancel_deployment('{{ deployment_dict['general']['project'] }}', '{{ deployment_dict['general']['deploy_version'] }}')">
+                <img class="run" title="Cancel deployment" src="{{ url_for('static', path='assets/img/cancel.png') }}" 
+                onclick="cancel_deployment({{ deployment_dict['general']['id'] }})">
+            {% endif %}
+            {% if deployment_dict['general']['status'] in ['new', 'in process'] %}
+                <img class="run" title="Reset deployment status" src="{{ url_for('static', path='assets/img/undo.png') }}" 
+                onclick="reset_deployment_status({{ deployment_dict['general']['id'] }})">
             {% endif %}
             {% include 'custom_templates/deployment_status.html' ignore missing %}
         </h3>
         <div style="position: absolute; bottom: 0; right: 100px;">
-            <a onclick="show_processing_history('{{ deployment_dict['general']['project'] }}', '{{ deployment_dict['general']['deploy_version'] }}')" title="Show history">
+            <a class="run" onclick="show_processing_history({{ deployment_dict['general']['id'] }})" title="Show history">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-clock-history" viewBox="0 0 16 16">
                 <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z" fill="#198754"/>
                 <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"  fill="#0dcaf0"/>
@@ -191,12 +195,21 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     </div>
     <table class="table table-striped table-bordered">
         <tr>
-            <th>Created</th><td> {{ deployment_dict['general']['create_time'] }}</td>
-            <th>Deployment lib (from)</th><td>{{ deployment_dict['deploy_libs']['main_lib'] }}</td>
+            <th>Id</th><td> {{ deployment_dict['general']['id'] }}</td>
+            <th>Directory</th><td colspan="2">{{ deployment_dict['general']['meta_dir'] }}</td>
         </tr>
         <tr>
+            <th>Created</th><td> {{ deployment_dict['general']['create_time'] }}</td>
             <th>Last update</th><td> {{ deployment_dict['general']['update_time'] }}</td>
-            <th>Backup lib (to)</th><td>{{ deployment_dict['deploy_libs']['backup_lib'] }}</td>
+        </tr>
+        <tr>
+            <td colspan="5">
+                <table class="table table-bordered"><tr>
+                <th>Deployment lib (from)</th><td>{{ deployment_dict['deploy_libs']['main_lib'] }}</td>
+                <th>Backup lib (to)</th><td>{{ deployment_dict['deploy_libs']['backup_lib'] }}</td>
+                <th>Remote lib (to)</th><td>{{ deployment_dict['deploy_libs']['remote_lib'] }}</td>
+                </tr></table>
+            </td>
         </tr>
         {% if deployment_dict.get('custom_data') %}
         <tr>
@@ -300,7 +313,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
         <tr>
             <td>{{ history['create_time'] }}</td>
             <td><img src="{{ url_for('static', path='assets/img/log.png') }}" 
-                onclick="showLog('info', '{{ deployment_dict['general']['project'] }}', '{{ deployment_dict['general']['deploy_version'] }}', null, null, {{loop.index-1}})"></td>
+                onclick="showLog({{ history['id'] }})"></td>
         </tr>
         {% endfor %}
     </table>
@@ -396,9 +409,8 @@ function show_stage_steps(meta_file_id, stage_id, stage_name) {
     last_show_stage_id = stage_id;
     last_show_stage_name = stage_name;
     current_meta_file_id = meta_file_id;
-    current_version = version;
 
-    postData(`/api/get_stage_steps_html/${meta_file_id}`, { stage_id: stage_id }).then((data) => {
+    http_getData(`/api/get_stage_steps_html/${meta_file_id}/${stage_id}`).then((data) => {
         console.log(data); 
         html = data['html'];
         
@@ -420,10 +432,10 @@ function show_stage_steps(meta_file_id, stage_id, stage_name) {
 
 
 
-function showLog(type, project, version, stage_id, action_id, history_element) {
+function showActionLog(type, id) {
     let html = '';
 
-    postData(`/api/get_action_log/${project}/${version}`, { stage_id: stage_id, action_id: action_id, history_element: history_element }).then((data) => {
+    http_getData(`/api/get_action_log/${id}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         html = data['stdout'];
         if (type == 'error'){
@@ -456,10 +468,45 @@ function showLog(type, project, version, stage_id, action_id, history_element) {
 }
 
 
-function show_processing_history(project, version) {
+
+function showLog(id) {
     let html = '';
 
-    postData(`/api/show_processing_history/${project}/${version}`, {}).then((data) => {
+    http_getData(`/api/get_activity_log/${id}`).then((data) => {
+        console.log(data); // JSON data parsed by `data.json()` call
+        html = data['log'];
+
+        html = html.replaceAll("&", '&amp;');
+        html = html.replaceAll("<", '&lt;');	 
+        html = html.replaceAll(">", '&gt;');     
+        html = html.replaceAll("\"", '&quot;');  
+        html = html.replaceAll("\'", '&#39;');   
+        
+        html = html.replaceAll('\\n', '\n');
+        html = html.replaceAll(/(.*) +([A-Z]+) +([^ ]+ +[^ ]+ +\([0-9]+\)): (.*)/g, "<tr><td style='white-space: nowrap;'>$1</td><td style='white-space: nowrap;'>$2</td><td style='white-space: nowrap;'>$3</td><td>$4</td></tr>");   
+        html = '<table class="table table-striped table-bordered w-auto">' + html + '</table>';
+
+        Swal.fire({
+            icon: 'info',
+            title: 'Log',
+            html: '<pre class="logs">'+html+'</pre>',
+            width: 'auto',
+            customClass: {
+                popup: 'logs'
+            }
+        }).then((result) => {
+            if (stage_id != null && last_show_stage_id != null) {
+                show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
+            }
+        });
+    });
+}
+
+
+function show_processing_history(meta_file_id) {
+    let html = '';
+
+    http_getData(`/api/show_processing_history/${meta_file_id}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         
         let tableRows = data.map(item => {
@@ -522,7 +569,7 @@ function show_json(project, version) {
 
 
 
-async function runStage(project, version, stage_id, stage_name) {
+async function run_stage(meta_file_id, stage_id, stage_name) {
 
     Swal.fire({
         icon: 'question',
@@ -537,7 +584,7 @@ async function runStage(project, version, stage_id, stage_name) {
         showCancelButton: true,
         showLoaderOnConfirm: true,
         preConfirm: (option) => {
-            return postData(`/api/run_stage/${project}/${version}`, { stage_id: stage_id, option: option})
+            return http_getData(`/api/run_stage/${meta_file_id}/${stage_id}/${option}`)
             .then(response => {
                 console.log(response);
                 return response;
@@ -578,32 +625,14 @@ async function runStage(project, version, stage_id, stage_name) {
         }
     })
 }
-/*
-    postData("/api/run_stage", { stage: stage, filename: filename }).then((data) => {
-        console.log(data); // JSON data parsed by `data.json()` call
-        if (data.length > 0) {
-            Swal.fire({
-            icon: 'error',
-            title: 'Error during RUN',
-            html: '<pre class="logs">'+data+'</pre>',
-            width: 'auto',
-            customClass: {
-                popup: 'logs'
-            }
-            }).then((result) => {
-                location.reload();
-            });
-        }
-        else {
-            location.reload();
-        }
-    });
-    */
 
 
 
-function set_check_error(obj, project, version, stage_id, action_id, checked) {
-    postData(`/api/set_check_error/${project}/${version}`, { stage_id: stage_id, action_id: action_id, checked: checked }).then((data) => {
+
+
+
+function set_check_error(obj, meta_file_id, stage_id, action_id, checked) {
+    http_getData(`/api/set_check_error/${meta_file_id}/${stage_id}/${action_id}/${checked}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         if (data['status'] == 'error') {
             obj.checked = !checked;
@@ -615,6 +644,8 @@ function set_check_error(obj, project, version, stage_id, action_id, checked) {
         }
     });
 }
+
+
 
 function cancel_deployment(meta_file_id) {
 
@@ -673,6 +704,130 @@ function cancel_deployment(meta_file_id) {
             swalWithBootstrapButtons.fire(
             'Canceled',
             'Your cancelation has been canceled :-)',
+            'error'
+            )
+        }
+    })
+    
+}
+
+
+
+
+
+function reset_stage_status(meta_file_id, stage_id) {
+
+    const swalWithBootstrapButtons = Swal.mixin({
+    customClass: {
+        confirmButton: 'btn btn-success',
+        cancelButton: 'btn btn-danger'
+    },
+    buttonsStyling: false
+    })
+
+    swalWithBootstrapButtons.fire({
+        title: 'Are you sure?',
+        text: "You are going to reset the stage status!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, reset',
+        cancelButtonText: 'No, ups!',
+        reverseButtons: true
+        }).then((result) => {
+        if (result.isConfirmed) {
+            http_getData(`/api/reset_stage_status/${meta_file_id}/${stage_id}`)
+                .then((response) => {
+                    console.log(response);
+                    if (response['status'] !== 'success') {
+                        throw new Error(`HTTP error! status: ${response['status']}`);
+                        return;
+                    }
+                })
+                .then(() => {
+                        
+                    swalWithBootstrapButtons.fire(
+                    'Reset!',
+                    'The stage status has been reset.',
+                    'success'
+                    ).then((result) => {
+                            location.reload();
+                    });
+                })
+                .catch((error) => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message
+                    });
+                });
+        } else if (
+            /* Read more about handling dismissals below */
+            result.dismiss === Swal.DismissReason.cancel
+        ) {
+            swalWithBootstrapButtons.fire(
+            'Canceled',
+            'Your reset has been canceled :-)',
+            'error'
+            )
+        }
+    })
+    
+}
+
+
+
+function reset_deployment_status(meta_file_id) {
+
+    const swalWithBootstrapButtons = Swal.mixin({
+    customClass: {
+        confirmButton: 'btn btn-success',
+        cancelButton: 'btn btn-danger'
+    },
+    buttonsStyling: false
+    })
+
+    swalWithBootstrapButtons.fire({
+        title: 'Are you sure?',
+        text: "You are going to reset the deployment status!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, reset',
+        cancelButtonText: 'No, ups!',
+        reverseButtons: true
+        }).then((result) => {
+        if (result.isConfirmed) {
+            http_getData(`/api/reset_deployment_status/${meta_file_id}`)
+                .then((response) => {
+                    console.log(response);
+                    if (response['status'] !== 'success') {
+                        throw new Error(`HTTP error! status: ${response['status']}`);
+                        return;
+                    }
+                })
+                .then(() => {
+                        
+                    swalWithBootstrapButtons.fire(
+                    'Reset!',
+                    'The deployment status has been reset.',
+                    'success'
+                    ).then((result) => {
+                            location.reload();
+                    });
+                })
+                .catch((error) => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message
+                    });
+                });
+        } else if (
+            /* Read more about handling dismissals below */
+            result.dismiss === Swal.DismissReason.cancel
+        ) {
+            swalWithBootstrapButtons.fire(
+            'Canceled',
+            'Your reset has been canceled :-)',
             'error'
             )
         }

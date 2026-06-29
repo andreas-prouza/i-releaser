@@ -75,7 +75,7 @@ class Deploy_Version:
                                 MAX(dv.version) OVER (partition by dv.project) as last_deploy_version,
                                 wd.name as workflow_name, wd.default_project
                            FROM deploy_versions dv
-                           left join meta_files mf on dv.id = mf.deploy_version_id
+                           inner join meta_files mf on dv.id = mf.deploy_version_id
                            left join workflow_definitions wd on mf.id = wd.meta_file_id
                            WHERE dv.project = ? ORDER BY dv.version DESC
                            """, (project,))

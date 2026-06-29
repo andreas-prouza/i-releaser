@@ -129,7 +129,6 @@ def create_tables(db_path=DB_FILE):
                 sequence INTEGER,
                 cmd TEXT,
                 status TEXT,
-                stage_name TEXT,
                 processing_step TEXT,
                 environment TEXT,
                 run_in_new_job BOOLEAN,

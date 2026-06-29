@@ -14,7 +14,7 @@
   <td>
     <label class="switch">
       <input type="checkbox" {% if cmd['check_error'] %}checked{% endif %}
-        onchange="set_check_error(this, {{ meta_file_id }}, '{{ stage.id }}', {{ cmd['id'] }}, this.checked)">
+        onchange="set_check_error(this, {{ meta_file_id }}, {{ stage.id }}, {{ cmd['id'] }}, this.checked)">
       <span class="slider round"></span>
     </label>
   </td>
@@ -44,9 +44,9 @@
           </button>
         </td>
         <td>{% if history['stdout'] != '' %}<img src="{{ url_for('static', path='assets/img/log.png') }}"
-            onclick="showLog('info', {{ meta_file_id }}, '{{ stage.id }}', {{ cmd['id'] }}, {{loop.index-1}})">&nbsp;{% endif %}
+            onclick="showActionLog('info', {{ history['id'] }})">&nbsp;{% endif %}
           {% if history['stderr'] != '' %}<img src="{{ url_for('static', path='assets/img/error-log.png') }}"
-            onclick="showLog('error', {{ meta_file_id }}, '{{ stage.id }}', {{ cmd['id'] }}, {{loop.index-1}})">{% endif %}</td>
+            onclick="showActionLog('error', {{ history['id'] }})">{% endif %}</td>
       </tr>
       {% endfor %}
     </table>

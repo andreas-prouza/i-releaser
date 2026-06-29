@@ -30,13 +30,14 @@ class Deploy_Object:
   """
 
 
-  def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict={}):
+  def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict=None):
 
+    self.id = None
     self.ready = True
     self.deploy_status = Obj_Status.NEW
     self.actions = da.Deploy_Action_List_list()
 
-    if len(dict) > 0:
+    if dict is not None and len(dict) > 0:
 
       self.ready = dict.get('ready', True)
       self.prod_lib = dict['obj_prod_lib'].lower()
@@ -65,6 +66,7 @@ class Deploy_Object:
 
   def get_dict(self) -> dict:
     return {
+      'id' : self.id,
       'ready' : self.ready,
       'obj_lib' : self.lib,
       'obj_prod_lib' : self.prod_lib,

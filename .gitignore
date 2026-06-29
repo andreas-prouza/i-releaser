@@ -22,3 +22,4 @@ logs/**
 test/*.http
 etc/*.db
 metaxx/**
+var/**

@@ -66,9 +66,9 @@ def create_deployment_request(args):
 
   mf = meta_file.Meta_File(workflow_name=args.workflow, object_list=args.object_file_list)
   mf.set_status(meta_file.Meta_file_status.READY)
-  mf.write_meta_file()
+  mf.save()
   
-  logging.debug(f"New request created: {mf.deploy_version=}, {mf.file_name=}")
+  logging.debug(f"New request created: {mf.deploy_version=}")
 
   if args.info_output is not None:
     save_info(mf)

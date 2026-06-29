@@ -1,4 +1,2 @@
 <br/>
-<a onclick="show_stage_steps({{ meta_file_id }}, '{{ stage_id }}', '{{ stage_name }}')">
-  <img style="width: 40px;" src="{{ url_for('static', path='assets/img/inspect.png') }}">
-</a>
+  <img class="run" title="Open details" style="width: 40px;" src="{{ url_for('static', path='assets/img/inspect.png') }}" onclick="show_stage_steps({{ meta_file_id }}, {{ stage_id }}, '{{ stage_name }}')">

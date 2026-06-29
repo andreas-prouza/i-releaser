@@ -22,7 +22,7 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
 
     last_action = action
     meta_file.deploy_objects.set_objects_status(Obj_Status.IN_BACKUP)
-    deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+    deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
 
     for lib in meta_file.deploy_objects.get_lib_list_from_prod():
 
@@ -57,4 +57,4 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
 
 
     meta_file.deploy_objects.set_objects_status(Obj_Status.BACKUPED)
-    meta_file.write_meta_file()
+    meta_file.save()
