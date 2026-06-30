@@ -1,5 +1,5 @@
 
-async function http_getData(url = "") {
+async function http_getData(url = "", accept="application/json") {
   // Default options are marked with *
   const response = await fetch(url, {
     method: "GET", // *GET, POST, PUT, DELETE, etc.
@@ -7,7 +7,10 @@ async function http_getData(url = "") {
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
     credentials: "same-origin", // include, *same-origin, omit
     redirect: "follow", // manual, *follow, error
-    referrerPolicy: "no-referrer" // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+    referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+    headers: {
+      "Accept": accept
+    }
   });
   return response.json(); // parses JSON response into native JavaScript objects
 }

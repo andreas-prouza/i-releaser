@@ -141,10 +141,11 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.CHANGE_CHECK_ERROR)
+    #@check_user_permission(permissions.PermissionAction.CHANGE_CHECK_ERROR)
     def set_action_check(self, stage_id: int, action_id: int, check: bool, current_user: str) -> None:
-      
       stage = self.get_open_stages().get_stage(stage_id)
+
+      check_user_permission(permissions.PermissionAction.CHANGE_CHECK_ERROR, workflow=self.workflow.name, stage=stage.name)
       stage.actions.set_action_check(action_id, check)
 
       processing_user_data.create_action_log(action_type.Action_type.SET_CHECK_ERROR, details=f"Set check error to {check} for action id {action_id}", meta_file=self, stage=stage)
@@ -152,7 +153,7 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def set_next_stage(self, from_stage: s.Stage):
       """Add next stages to open_stages list
 
@@ -257,7 +258,7 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def run_current_stages(self) -> None:
 
       for open_stage_id in self.get_open_stages().get_all_ids():
@@ -265,7 +266,7 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def run_current_stage_as_thread(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> threading.Thread:
 
       logging.debug(f"Start deployment check")
@@ -308,7 +309,7 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def run_current_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> None:
       """Run given stage
 
@@ -512,7 +513,7 @@ class Meta_File:
 
 
 
-    @check_user_permission(permissions.PermissionAction.CANCEL_WORKFLOW)
+    #@check_user_permission(permissions.PermissionAction.CANCEL_WORKFLOW)
     def cancel_deployment(self):
       self.set_status(Meta_file_status.CANCELED)
       logging.info('Deployment has been canceled!')
@@ -522,7 +523,7 @@ class Meta_File:
 
     # Load meta file based on its version number
     @staticmethod
-    @check_user_permission(permissions.PermissionAction.READ)
+    #@check_user_permission(permissions.PermissionAction.READ)
     def load_version(project:str, version: int) -> 'Meta_File':
 
       from modules.db import meta_file_data

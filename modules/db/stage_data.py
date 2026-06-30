@@ -117,6 +117,46 @@ def get_stages(meta_file_id: int) -> s.Stage_List_list:
 
 
 
+
+def get_stage(stage_id: int) -> s.Stage | None:
+
+    stage_obj = None
+    
+    with app_sqlite.get_db_connection() as conn:
+
+        c = conn.cursor()
+        c.execute("SELECT * FROM stages WHERE id = ?", (stage_id,))
+        stage_rows = c.fetchall()
+        stages = s.Stage_List_list()
+        
+        row = stage_rows[0] if stage_rows else None
+        if row is None:
+            return None
+        stage_dict = dict(row)
+        stage_dict['next_stages'] = json.loads(stage_dict['next_stages'])
+        stage_dict['next_stage_ids'] = json.loads(stage_dict['next_stage_ids'])
+        stage_dict['after_stages_finished'] = json.loads(stage_dict['after_stages_finished'])
+        stage_dict['processing_steps'] = json.loads(stage_dict['processing_steps'])
+        stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping'])
+        stage_dict['status'] = Stage_Status(stage_dict['status'])
+        
+        c.execute("SELECT * FROM actions WHERE stage_id = ?", (stage_id,))
+        action_rows = c.fetchall()
+        actions = da.Deploy_Action_List_list()
+        for action_row in action_rows:
+            action_dict = dict(action_row)
+            c.execute("SELECT * FROM action_run_history WHERE action_id = ?", (action_row['id'],))
+            history_rows = c.fetchall()
+            action_dict['run_history'] = [dict(hr) for hr in history_rows]
+            actions.add_action(da.Deploy_Action(dict=action_dict))
+        stage_dict['actions'] = actions
+        
+        stage_obj = s.Stage(dict=stage_dict)
+
+    return stage_obj
+
+
+
 def save_stages(stages: s.Stage_List_list, cursor: sqlite3.Cursor=None):
     
     for stage in stages:

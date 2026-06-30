@@ -403,6 +403,19 @@ var last_show_stage_name = null;
 var current_meta_file_id = null;
 
 
+function show_http_error(error, reload=false) {
+ 
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error
+    }).then(()=>{
+        if (reload) {
+            location.reload();
+        }
+    })
+}
+
 
 function show_stage_steps(meta_file_id, stage_id, stage_name) {
 
@@ -412,6 +425,12 @@ function show_stage_steps(meta_file_id, stage_id, stage_name) {
 
     http_getData(`/api/get_stage_steps_html/${meta_file_id}/${stage_id}`).then((data) => {
         console.log(data); 
+        
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
+
         html = data['html'];
         
         Swal.fire({
@@ -437,6 +456,12 @@ function showActionLog(type, id) {
 
     http_getData(`/api/get_action_log/${id}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
+
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
+
         html = data['stdout'];
         if (type == 'error'){
             html = data['stderr'];
@@ -474,6 +499,12 @@ function showLog(id) {
 
     http_getData(`/api/get_activity_log/${id}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
+        
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
+
         html = data['log'];
 
         html = html.replaceAll("&", '&amp;');
@@ -508,6 +539,11 @@ function show_processing_history(meta_file_id) {
 
     http_getData(`/api/show_processing_history/${meta_file_id}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
+        
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
         
         let tableRows = data.map(item => {
             return `<tr>
@@ -586,7 +622,13 @@ async function run_stage(meta_file_id, stage_id, stage_name) {
         preConfirm: (option) => {
             return http_getData(`/api/run_stage/${meta_file_id}/${stage_id}/${option}`)
             .then(response => {
+                
                 console.log(response);
+                if (response['status'] == 'error') {
+                    show_http_error(response['message'], true);
+                    return false;
+                }
+                console.log("input");
                 return response;
             });
         },
@@ -614,13 +656,9 @@ async function run_stage(meta_file_id, stage_id, stage_name) {
                 return;
             }
             else {
-                Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: result.value.error
-                    }).then(()=>{
-                        location.reload();
-                    })
+                console.log("Error 2");
+                show_http_error(result.value.error, true);
+                return;
             }
         }
     })
@@ -636,11 +674,7 @@ function set_check_error(obj, meta_file_id, stage_id, action_id, checked) {
         console.log(data); // JSON data parsed by `data.json()` call
         if (data['status'] == 'error') {
             obj.checked = !checked;
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data['error']
-            })
+            show_http_error(data['message']);
         }
     });
 }
@@ -691,11 +725,7 @@ function cancel_deployment(meta_file_id) {
                     });
                 })
                 .catch((error) => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: error.message
-                    });
+                    show_http_error(error.message);
                 });
         } else if (
             /* Read more about handling dismissals below */
@@ -739,7 +769,7 @@ function reset_stage_status(meta_file_id, stage_id) {
                 .then((response) => {
                     console.log(response);
                     if (response['status'] !== 'success') {
-                        throw new Error(`HTTP error! status: ${response['status']}`);
+                        show_http_error(`HTTP error! status: ${response['message']}`, true);
                         return;
                     }
                 })
@@ -754,11 +784,7 @@ function reset_stage_status(meta_file_id, stage_id) {
                     });
                 })
                 .catch((error) => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: error.message
-                    });
+                    show_http_error(error.message, true);
                 });
         } else if (
             /* Read more about handling dismissals below */
@@ -800,7 +826,7 @@ function reset_deployment_status(meta_file_id) {
                 .then((response) => {
                     console.log(response);
                     if (response['status'] !== 'success') {
-                        throw new Error(`HTTP error! status: ${response['status']}`);
+                        show_http_error(`HTTP error! status: ${response['message']}`, true);
                         return;
                     }
                 })
@@ -815,11 +841,7 @@ function reset_deployment_status(meta_file_id) {
                     });
                 })
                 .catch((error) => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: error.message
-                    });
+                    show_http_error(error.message, true);
                 });
         } else if (
             /* Read more about handling dismissals below */
@@ -843,12 +865,7 @@ async function set_source_ready_4_deployment(obj, project, version, lib, name, t
         if (data['status'] == 'error') {
             obj.checked = !checked;
             console.log(data); // JSON data parsed by `data.json()` call
-            await Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data['error']
-            });
-            throw new Error(data['error']);
+            show_http_error(data['message'], true);
         }
     });
 }

@@ -6,7 +6,7 @@ import json
 import aiofiles
 
 from fastapi import Request
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starsessions import SessionStore
 
@@ -77,7 +77,7 @@ class WebMiddleware(BaseHTTPMiddleware):
             if '*/*' in accept or 'text/html' in accept:
                 response = http_functions.get_html_response(request, 'error.html', sidebar=routes.get_sidebar_data(request), error= str(e) )
             else:
-                response = http_functions.get_json_response({ "error": str(e) })
+                response = http_functions.get_json_response_error(str(e))
             response.status_code = 500
 
         if hasattr(request.state, 'session'):
@@ -89,7 +89,7 @@ class WebMiddleware(BaseHTTPMiddleware):
         return response
 
 
-    async def check_session(self, request: Request) -> None | JSONResponse | HTMLResponse:
+    async def check_session(self, request: Request) -> None | JSONResponse | HTMLResponse | RedirectResponse:
 
         logging.debug(f"{sys.path=}")
         logging.debug(request.url.path)
@@ -123,7 +123,7 @@ class WebMiddleware(BaseHTTPMiddleware):
             if app_login.is_key_valid(request, auth_token):
                 meta_file.Meta_File.CURRENT_USER = request.state.session.get('current_user', None)
                 return
-            return http_functions.get_json_response({'Error': 'Your authentication-token is not permitted'}, status=401)
+            return http_functions.get_json_response_error('Your authentication-token is not permitted', status=401)
 
         #logging.debug("Not logged in")
         # Not logged in
@@ -145,4 +145,9 @@ class WebMiddleware(BaseHTTPMiddleware):
             
         logging.debug(f"User not authenticated, redirect to login: {request.state.session.__dict__=}")
 
-        return await routes.login(request)
+        accept: str = request.headers.get("accept") or ""
+        if '*/*' in accept or 'text/html' in accept:
+            return await routes.login(request)
+        
+        return http_functions.get_json_response_error('You are not logged in', status=401)
+

@@ -5,20 +5,26 @@ from fastapi import Request
 
 from etc import constants, constants
 from modules import files, meta_file, permissions
+from modules.db import stage_data
 
 
 
 
-def _check_user_permission(user, action : permissions.PermissionAction, workflow=None, stage=None):
-  if not is_user_allowed(user.lower(), action, workflow, stage):
-    error = Exception(f"User {user} does not have permission {action} (workflow: {workflow}, stage: {stage})")
-    logging.exception(error, stack_info=True)
-    raise error
+
+def check_user_permission(action : permissions.PermissionAction, workflow:str|None =None, stage:str|None = None, stage_id:int|None =None):
+
+  user = meta_file.Meta_File.CURRENT_USER.lower() if meta_file.Meta_File.CURRENT_USER else None
+
+  if not is_user_allowed(user, action, workflow, stage, stage_id):
+      error = Exception(f"User {user} does not have permission {action} (workflow: {workflow}, stage: {stage or stage_id})")
+      logging.exception(error, stack_info=True)
+      raise error
 
 
 
 
-def is_user_allowed(user, action : permissions.PermissionAction, workflow=None, stage=None):
+
+def is_user_allowed(user, action : permissions.PermissionAction, workflow:str|None =None, stage:str|None =None, stage_id:int|None =None):
   
   if user is None:
     logging.warning("User is None")
@@ -27,12 +33,13 @@ def is_user_allowed(user, action : permissions.PermissionAction, workflow=None, 
   user = user.lower()
   if workflow is not None:
     workflow = workflow.lower()
-  if stage is not None:
-    stage = stage.lower()
 
-  logging.debug(f"Check if user {user} has permission {action} (workflow: {workflow}, stage: {stage})")
+  if stage is None and stage_id is not None:
+    stage_obj = stage_data.get_stage(stage_id)
+    stage = stage_obj.name if stage_obj is not None else None
+    
 
-  logging.debug(f"{user=}; {action=}: {type(action)}")
+  logging.debug(f"Check if user {user} has permission {action} ({workflow=}, {stage or stage_id=})")
 
   if user not in PermissionKonfig.get_user_list():
     logging.info(f"{user=} is not in list: {PermissionKonfig.get_user_list()}")
@@ -61,60 +68,21 @@ def is_permission_allowed(current_permission: permissions.Permissions, action : 
     return True
 
   if workflow is not None and workflow in current_permission.workflows:
-    current_wf = current_permission.workflows[workflow]
+    current_wf: dict = current_permission.workflows[workflow]
 
-    if action in current_wf.general:
+    if permissions.PermissionAction(action) in current_wf['general']:
       return True
 
-    if stage is not None and stage in current_wf.stages:
-      current_stage = current_wf.stages[stage]
+    if stage is not None and stage.lower() in current_wf['stages']:
+      current_stage = current_wf['stages'][stage.lower()]
 
-      if action in current_stage:
+      if permissions.PermissionAction(action) in current_stage:
         return True
 
   return False
 
 
 
-
-
-def check_user_permission(action: permissions.PermissionAction, workflow=None, stage=None):
-    
-    def decorator(func):
-        
-        def wrapper(*args, **kwargs):
-            
-            user = meta_file.Meta_File.CURRENT_USER.lower() if meta_file.Meta_File.CURRENT_USER else None
-            logging.debug(f"Check permission for user {user} and action {action} (workflow: {workflow}, stage: {stage})")
-            logging.debug(f"{func.__name__=}, {args=}, {kwargs=}")
-
-            _check_user_permission(user, action, workflow, stage)
-
-            return func(*args, **kwargs)
-        
-        return wrapper
-    
-    return decorator
-
-
-
-
-class RequirePermission:
-    def __init__(self, action: permissions.PermissionAction, workflow=None, stage=None):
-        self.action = action
-        self.workflow = workflow
-        self.stage = stage
-
-    def __call__(self, request: Request):
-        user = meta_file.Meta_File.CURRENT_USER.lower() if meta_file.Meta_File.CURRENT_USER else None
-        
-        logging.debug(f"Check permission for user {user} and action {self.action} (workflow: {self.workflow}, stage: {self.stage})")
-        
-        # If the user doesn't have permission, raise an HTTPException here
-        _check_user_permission(user, self.action, self.workflow, self.stage)
-        
-        # You can optionally return the user if you need it in the route
-        return user
 
 
 
