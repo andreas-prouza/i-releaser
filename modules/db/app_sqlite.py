@@ -23,6 +23,10 @@ def get_db_connection(db_path=DB_FILE):
 def create_tables(db_path=DB_FILE):
     """Creates all necessary tables in the SQLite database if they don't exist."""
 
+    db_dir = os.path.dirname(os.path.abspath(db_path))
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
     with get_db_connection(db_path) as conn:
         c = conn.cursor()
 
