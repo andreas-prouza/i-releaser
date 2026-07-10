@@ -108,6 +108,7 @@ def create_tables(db_path=DB_FILE):
                 name TEXT,
                 description TEXT,
                 host TEXT,
+                base_dir TEXT,
                 remote_dir TEXT,
                 build_dir TEXT,
                 next_stages TEXT,
@@ -124,12 +125,30 @@ def create_tables(db_path=DB_FILE):
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
         ''')
+        
+        # Deploy objects table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS deploy_objects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                meta_file_id INTEGER,
+                prod_lib TEXT,
+                lib TEXT,
+                name TEXT,
+                type TEXT,
+                attribute TEXT,
+                deploy_status TEXT,
+                ready BOOLEAN,
+                FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
+            )
+        ''')
 
         # Actions table
         c.execute('''
             CREATE TABLE IF NOT EXISTS actions (
                 id INTEGER PRIMARY KEY,
                 stage_id INTEGER,
+                deploy_object_id INTEGER,
+                action_id INTEGER,
                 sequence INTEGER,
                 cmd TEXT,
                 status TEXT,
@@ -138,7 +157,9 @@ def create_tables(db_path=DB_FILE):
                 run_in_new_job BOOLEAN,
                 execute_remote BOOLEAN,
                 check_error BOOLEAN,
-                FOREIGN KEY (stage_id) REFERENCES stages (id)
+                FOREIGN KEY (stage_id) REFERENCES stages (id),
+                FOREIGN KEY (deploy_object_id) REFERENCES deploy_objects (id),
+                FOREIGN KEY (action_id) REFERENCES actions (id)
             )
         ''')
 
@@ -152,23 +173,6 @@ def create_tables(db_path=DB_FILE):
                 stdout TEXT,
                 stderr TEXT,
                 FOREIGN KEY (action_id) REFERENCES actions (id)
-            )
-        ''')
-        
-        # Objects table
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS objects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                meta_file_id INTEGER,
-                prod_lib TEXT,
-                lib TEXT,
-                name TEXT,
-                type TEXT,
-                attribute TEXT,
-                deploy_status TEXT,
-                ready BOOLEAN,
-                actions TEXT,
-                FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
         ''')
 

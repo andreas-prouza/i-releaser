@@ -67,6 +67,7 @@ class Deploy_Version:
         Retrieves all deployments for a given project from the SQLite database.
         """
         logging.debug(f"Getting deployments for project: {project}")
+        
         with app_sqlite.get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""

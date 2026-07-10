@@ -4,7 +4,7 @@ import sqlite3
 import json
 import logging
 from etc import constants
-from modules.db import app_sqlite
+from modules.db import actions_data, app_sqlite
 from modules import meta_file as mf
 from modules import stages as s
 from modules.stage_status import Status as Stage_Status
@@ -14,7 +14,7 @@ from modules import workflow as wf
 from modules import meta_file_history as mfh
 from modules import deploy_version as dv
 from modules.meta_file_status import Meta_file_status
-from modules.db import stage_data
+from modules.db import stage_data, deploy_object_data
 
 
 
@@ -53,26 +53,10 @@ def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_
 
 
 
-
 def _load_workflow_definition(c: sqlite3.Cursor, meta_file_id: int) -> wf.Workflow | None:
     c.execute("SELECT * FROM workflow_definitions WHERE meta_file_id = ?", (meta_file_id,))
     workflow_row = c.fetchone()
     return wf.Workflow(dict=json.loads(workflow_row['definition'])) if workflow_row else None
-
-def _load_deploy_objects(c: sqlite3.Cursor, meta_file_id: int) -> do.Deploy_Object_List:
-    c.execute("SELECT * FROM objects WHERE meta_file_id = ?", (meta_file_id,))
-    object_rows = c.fetchall()
-    deploy_objects = do.Deploy_Object_List()
-    for row in object_rows:
-        obj_dict = dict(row)
-        obj_dict['obj_prod_lib'] = obj_dict.pop('prod_lib')
-        obj_dict['obj_lib'] = obj_dict.pop('lib')
-        obj_dict['obj_name'] = obj_dict.pop('name')
-        obj_dict['obj_type'] = obj_dict.pop('type')
-        obj_dict['obj_attribute'] = obj_dict.pop('attribute')
-        obj_dict['actions'] = json.loads(obj_dict['actions'])
-        deploy_objects.append(do.Deploy_Object(dict=obj_dict))
-    return deploy_objects
 
 
 
@@ -89,19 +73,11 @@ def _load_stages_and_actions(c: sqlite3.Cursor, meta_file_id: int) -> s.Stage_Li
         stage_dict['processing_steps'] = json.loads(stage_dict['processing_steps'])
         stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping'])
         stage_dict['status'] = Stage_Status(stage_dict['status'])
-        
-        c.execute("SELECT * FROM actions WHERE stage_id = ?", (row['id'],))
-        action_rows = c.fetchall()
-        actions = da.Deploy_Action_List_list()
-        for action_row in action_rows:
-            action_dict = dict(action_row)
-            c.execute("SELECT * FROM action_run_history WHERE action_id = ?", (action_row['id'],))
-            history_rows = c.fetchall()
-            action_dict['run_history'] = [dict(hr) for hr in history_rows]
-            actions.add_action(da.Deploy_Action(dict=action_dict))
-        stage_dict['actions'] = actions
-        
+
         stage_obj = s.Stage(dict=stage_dict)
+        
+        stage_obj.actions = actions_data.get_actions(stage_id=row['id'])
+        
         stages.append(stage_obj)
     return stages
 
@@ -167,16 +143,17 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
     meta_file_id = meta_file_row['id']
 
     workflow = _load_workflow_definition(c, meta_file_id)
-    deploy_objects = _load_deploy_objects(c, meta_file_id)
+    deploy_objects = deploy_object_data.get_deploy_objects(meta_file_id)
     stages = _load_stages_and_actions(c, meta_file_id)
     run_history = _load_run_history(c, meta_file_id)
 
     meta_file = mf.Meta_File(
         id=meta_file_id,
         project=meta_file_row['project'],
+        meta_dir=meta_file_row['meta_dir'],
         workflow_name=workflow.name if workflow else None,
         workflow=workflow.get_dict() if workflow else None,
-        object_list=json.loads(meta_file_row['object_list']),
+        object_list=meta_file_row['object_list'],
         create_time=meta_file_row['create_time'],
         update_time=meta_file_row['update_time'],
         status=mf.Meta_file_status(meta_file_row['status']),
@@ -209,17 +186,6 @@ def _save_workflow_definition(c: sqlite3.Cursor, meta_file_id: int, workflow: wf
                       (meta_file_id, json.dumps(workflow.get_dict())))
 
 
-
-def _save_deploy_objects(c: sqlite3.Cursor, meta_file_id: int, deploy_objects: do.Deploy_Object_List):
-    c.execute("DELETE FROM objects WHERE meta_file_id = ?", (meta_file_id,))
-    for obj in deploy_objects:
-        c.execute('''
-            INSERT INTO objects (meta_file_id, prod_lib, lib, name, type, attribute, source_file, ready, backup_name, actions)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            meta_file_id, obj.obj_prod_lib, obj.obj_lib, obj.obj_name, obj.obj_type, obj.obj_attribute,
-            obj.source_file, obj.ready, obj.backup_name, json.dumps([a.get_dict() for a in obj.actions])
-        ))
 
 
 
@@ -254,12 +220,12 @@ def save_meta_file(meta_file: mf.Meta_File):
             WHERE id = ?
         ''', (
             meta_file.commit, meta_file.release_branch, meta_file.create_time, meta_file.update_time,
-            meta_file.status.value, json.dumps(meta_file.object_list), meta_file.main_deploy_lib,
+            meta_file.status.value, meta_file.object_list, meta_file.main_deploy_lib,
             meta_file.remote_deploy_lib, meta_file.backup_deploy_lib, json.dumps(meta_file.custom_data),
             meta_file.id
         ))
 
-        _save_deploy_objects(c, meta_file.id, meta_file.deploy_objects)
+        deploy_object_data.save_deploy_objects(meta_file.deploy_objects, c)
         stage_data.save_stages(meta_file.stages, c)
         _save_run_history(c, meta_file.run_history)
         _save_workflow_definition(c, meta_file.id, meta_file.workflow)
@@ -285,7 +251,7 @@ def add_meta_file(meta_file: mf.Meta_File):
         ''', (
             meta_file.project, meta_file.deploy_version_id, meta_file.commit, meta_file.release_branch,
             meta_file.create_time, meta_file.meta_dir, meta_file.update_time, meta_file.status.value,
-            json.dumps(meta_file.object_list), meta_file.main_deploy_lib, meta_file.remote_deploy_lib,
+            meta_file.object_list, meta_file.main_deploy_lib, meta_file.remote_deploy_lib,
             meta_file.backup_deploy_lib, json.dumps(meta_file.custom_data)
         ))
         meta_file.id = c.lastrowid

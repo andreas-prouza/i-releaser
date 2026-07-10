@@ -125,7 +125,7 @@ app.add_api_route('/api/get_action_log/{id}', routes.get_action_log, methods=['G
 app.add_api_route('/api/show_processing_history/{meta_file_id}', routes.show_processing_history, methods=['GET'])
 
 
-app.add_api_route('/api/cancel_deployment/{meta_file_id}', routes.cancel_deployment, methods=['POST'])
+app.add_api_route('/api/cancel_deployment/{meta_file_id}', routes.cancel_deployment, methods=['GET'])
 
 app.add_api_route('/api/reset_stage_status/{meta_file_id}/{stage_id}', routes.reset_stage_status, methods=['GET'])
 app.add_api_route('/api/reset_deployment_status/{meta_file_id}', routes.reset_deployment_status, methods=['GET'])

@@ -4,6 +4,7 @@ import logging
 import sys
 
 from io import StringIO
+from contextlib import redirect_stdout, redirect_stderr
 
 from modules import meta_file, permissions
 from modules import deploy_action as da
@@ -129,33 +130,51 @@ class IBM_i_commands:
     
     rh = run_history_data.create_new_run_history(action_id=action.id)
 
-    stdout_orig = sys.stdout
     stdout_new = StringIO()
-    sys.stdout = stdout_new
-    stderr_orig = sys.stderr
-    sys.stderr = stderr_new = StringIO()
+    stderr_new = StringIO()
 
     hdl = logging.StreamHandler(stream=stdout_new)
-    logging.getLogger().addHandler(hdl)
-    
+    root_logger = logging.getLogger()
+
+    # 1. Save the original logging level so we can restore it later
+    original_level = root_logger.getEffectiveLevel()
+
+    # 2. Force the root logger to accept DEBUG and INFO messages
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.addHandler(hdl)
+
     try:
-      func = getattr(globals()[obj[0]], obj[1])
-      logging.info(f"Run {str(func)}")
 
-      func(self.meta_file, stage, action)
-      rh.status = Cmd_Status.FINISHED
+      # Safely redirect stdout and stderr using context managers
+      with redirect_stdout(stdout_new), redirect_stderr(stderr_new):
 
-    except Exception as e:
-      print(str(e), file=sys.stderr)
-      logging.exception(e, stack_info=True)
-      rh.status = Cmd_Status.FAILED
+        try:
+          func = getattr(globals()[obj[0]], obj[1])
+          logging.info(f"Run {str(func)}")
 
-    rh.stdout = stdout_new.getvalue()
-    rh.stderr = stderr_new.getvalue()
-    
-    sys.stdout = stdout_orig
-    sys.stderr = stderr_orig
-    logging.getLogger().removeHandler(hdl)
+          func(self.meta_file, stage, action)
+          rh.status = Cmd_Status.FINISHED
+
+        except Exception as e:
+          print(str(e), file=sys.stderr)
+          logging.exception(e, stack_info=True)
+          rh.status = Cmd_Status.FAILED
+
+        finally:
+            # Capture the values while the buffers are still in scope
+            rh.stdout = stdout_new.getvalue()
+            rh.stderr = stderr_new.getvalue()
+
+    finally:
+        # Guarantee the log handler is removed even if a catastrophic error occurs.
+        # (stdout and stderr are automatically restored when the `with` block exits)
+        root_logger.removeHandler(hdl)
+        # Restore the original logging level
+        root_logger.setLevel(original_level)
+
+        # Optional: clean up buffers from memory
+        stdout_new.close()
+        stderr_new.close()
 
     return rh
 

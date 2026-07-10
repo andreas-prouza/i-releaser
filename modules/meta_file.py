@@ -12,7 +12,7 @@ import threading
 
 # from pydantic import validate_arguments
 
-from etc import constants, logger_config
+from etc import constants
 from modules import action_type, deploy_action as da, files, permissions, stage_status
 from modules import deploy_object as do
 from modules import stages as s
@@ -21,6 +21,7 @@ from modules import deploy_version as dv
 from modules.cmd_status import Status as Cmd_Status
 from modules import meta_file_history as mfh
 from modules.db import meta_file_history_data as mfhd, processing_user_data
+from modules.db import deploy_object_data
 from modules.permission_config import check_user_permission
 
 from modules.meta_file_status import Meta_file_status
@@ -46,7 +47,7 @@ class Meta_File:
                 object_list=None, create_time=None, update_time=None, status :Meta_file_status=None, 
                 deploy_version : int|None=None, deploy_version_id : int|None=None, stages: s.Stage_List_list=None,
                 processing_users: list=None, custom_data: dict=None,
-                id: int|None=None):
+                id: int|None=None, meta_dir: str|None=None):
 
       #logging.debug(f"{sys.path=}")
 
@@ -77,7 +78,12 @@ class Meta_File:
 
       self.create_date = re.sub(" .*", '', self.create_time)
 
-      self.meta_dir: str = constants.C_META_DIR.format(project=project, create_date=self.create_date, deploy_version=deploy_version)
+      self.meta_dir: str = meta_dir
+      if self.meta_dir is None:
+        self.meta_dir = constants.C_META_DIR.format(project=project, create_date=self.create_date, deploy_version=deploy_version)
+
+      if os.path.exists(self.meta_dir) is False:
+        os.makedirs(self.meta_dir, exist_ok=True)
         
       self.workflow = wf.Workflow(name=workflow_name, dict=workflow)
       #logging.debug(f"Meta Workflow: {self.workflow.get_dict()}")
@@ -111,10 +117,14 @@ class Meta_File:
 
     def save(self, update_meta_file=True):
         """Saves the current state of the meta file to the database."""
-        if update_meta_file:
-            self.update_time = str(datetime.datetime.now())
-            from modules.db import meta_file_data
-            meta_file_data.save_meta_file(self)
+        if not update_meta_file:
+          logging.warning("Update meta file is set to False. Meta file will not be saved")
+          return
+            
+        self.update_time = str(datetime.datetime.now())
+        from modules.db import meta_file_data
+        meta_file_data.save_meta_file(self)
+        
 
     def set_status(self, status, update_meta_file=True):
 
@@ -415,38 +425,36 @@ class Meta_File:
 
 
     
-    def add_deploy_object(self, object: type[do.Deploy_Object]):
+    def add_deploy_object(self, object: do.Deploy_Object):
 
       self.deploy_objects.add_object(object)
 
 
 
     
-    def is_backup_name_already_in_use(self, obj_lib: str, obj_name: str, backup_name: str, obj_type: str):
+    def is_backup_name_already_in_use(self, lib: str, name: str, backup_name: str, type: str):
       """
       Parameters
       ----------
-      obj_lib : str
+      lib : str
           Library name from asking object
-      obj_name : str
+      name : str
           Object name from asking object
       backup_name : str, optional
           Suggested backup name which needs to be checked for uniqueness  
+      type : str
+          Object type from asking object
       ----------
       """
 
       for lib in self.deploy_objects:
         for obj in self.deploy_objects[lib]:
           # Check if back-up name is already in use
-          if obj['obj_type'] == obj_type and obj.get('backup_name', '') == backup_name:
+          if obj['type'] == type and obj.get('backup_name', '') == backup_name:
             return True
           
           # Check if back-up name is already used as object name
-          if (not (lib == obj_lib and 
-                  obj['obj_type'] == obj_type and 
-                  obj['obj_name'] == obj_name) and 
-             obj['obj_type'] == obj_type and 
-             obj['obj_name'] == backup_name):
+          if not (lib == lib and obj['type'] == type and obj['name'] == name) and obj['type'] == type and obj['name'] == backup_name:
             return True
 
       return False
@@ -646,7 +654,7 @@ class Meta_File:
         logging.debug(f"{dev_lib=}")
         logging.debug(f"{target_obj=}")
 
-        obj = do.Deploy_Object(lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr)
+        obj: do.Deploy_Object = deploy_object_data.create_deploy_object(self.id, lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr)
         self.add_deploy_object(obj)
       
       self.load_actions_from_json(constants.C_OBJECT_COMMANDS)

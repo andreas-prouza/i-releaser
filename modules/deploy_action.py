@@ -40,14 +40,15 @@ class Deploy_Action:
     * ``False``: Execution will be done on local system
   """
 
-  id :int = 0
-
 
   def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=None,  
     environment: Command_Type=None, stage: str=None, processing_step: str=None, 
-    check_error: bool=True, dict: dict=None, id: int=None, run_in_new_job: bool=False, execute_remote: bool=None):
+    check_error: bool=True, dict_data: dict=None, id: int|None=None, run_in_new_job: bool=False, execute_remote: bool=None):
 
-    self.id :int = id
+    self.id :int|None = id
+    self.stage_id :int|None = None
+    self.action_id :int|None = None
+    self.deploy_object_id :int|None = None
     self.sequence :int = sequence
     self.environment :Command_Type = environment or Command_Type.QSYS
     self.cmd :str = cmd
@@ -67,33 +68,22 @@ class Deploy_Action:
     if stage is not None and type(stage) != str:
       raise Exception("Stage is not a string!")
 
-    if dict is not None:
-      #logging.debug(f"Action dict: {dict}")
+    if dict_data is not None:
+      #logging.debug(f"Action dict: {dict_data}")
       #logging.debug(f"Self dict: {self.__dict__}")
-      #if len(self.__dict__) != len(dict):
-      #  raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
+      #if len(self.__dict__) != len(dict_data):
+      #  raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict_data=}")
       
-      for key in dict:
+      for key in dict_data:
         if key == 'stage_name':
-          self.__setattr__('stage', dict[key])
+          setattr(self, 'stage', dict_data[key])
         elif hasattr(self, key):
-          self.__setattr__(key, dict[key])
+          setattr(self, key, dict_data[key])
       
-      if 'run_history' in dict:
+      if 'run_history' in dict_data:
         self.run_history = rh.Run_History_List_list()
-        for rh_item in dict['run_history']:
+        for rh_item in dict_data['run_history']:
           self.run_history.append(rh.Run_History(dict=rh_item))
-
-    if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) > 0 and len(dict) > 0:
-      # Temporarily disabled
-      # raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
-      pass
-
-    if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
-      
-      for k, v in dict.items():
-
-        setattr(self, k, v)
 
       self.validate()
 
@@ -103,20 +93,11 @@ class Deploy_Action:
     if self.environment is not None and type(self.environment) != Command_Type:
       self.environment = Command_Type(self.environment)
       
-    if self.id is None:
-      self.id = Deploy_Action.get_next_id()
 
-
-  def get_next_id() -> int:
-    Deploy_Action.id += 1
-    return Deploy_Action.id
 
 
   def validate(self):
 
-    if self.stage is None:
-      raise Exception('No Stage defined')
-    
     if self.processing_step is None:
       raise Exception('No processing step defined')
     
@@ -143,11 +124,11 @@ class Deploy_Action:
 
 
 
-  def get_action_from_dict(dict: dict={}):
+  def get_action_from_dict(dict_data: dict={}):
 
     action = Deploy_Action()
 
-    for k, v in dict.items():
+    for k, v in dict_data.items():
       setattr(action, k, v)
 
     if action.id == None:
@@ -163,6 +144,9 @@ class Deploy_Action:
   def get_dict(self) -> dict:
     return {
       'id': self.id,
+      'stage_id': self.stage_id,
+      'action_id': self.action_id,
+      'deploy_object_id': self.deploy_object_id,
       'sequence': self.sequence, 
       'cmd': self.cmd,
       'status': self.status.value,
@@ -288,7 +272,7 @@ class Deploy_Action_List_list(list):
   def add_actions_from_dict(self, dict_input: dict) -> None:
 
     #logging.debug(f'Add actions from {type(dict_input)}')
-    action = Deploy_Action(dict=dict_input)
+    action = Deploy_Action(dict_data=dict_input)
     self.add_action(action)
 
 

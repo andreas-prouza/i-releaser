@@ -181,6 +181,9 @@ async def show_workflows(request: Request):
 async def show_settings(request: Request):
 
     logging.debug('Call settings')
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
     keys=app_login.get_user_keys()
 
     logging.debug("Send response")
@@ -208,6 +211,8 @@ async def show_details(request: Request, meta_file_id: int):
 
     try:
         mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+        permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
+
         flow = flowchart.get_flowchar_html(request, mf)
         mf_dict = mf.get_all_data_as_dict()
         mf_json = json.dumps(mf_dict, default=str, indent=4)
@@ -230,11 +235,11 @@ async def run_stage(request: Request, meta_file_id: int, stage_id: int, option: 
     session = request.state.session
 
     mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=mf.get_stage_by_id(stage_id).name)
 
     try:
         
         mf.set_status(meta_file.Meta_file_status.READY)
-        mf.CURRENT_USER = session.get('current_user', None).upper()
 
         continue_run = True
         if option == 'run_all':
@@ -256,6 +261,8 @@ async def get_meta_file_json(request: Request, meta_file_id: int):
     logging.debug(f"Get meta file from: {meta_file_id=}")
 
     mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
+
     if not mf:
         return http_functions.get_json_response_error(f"Meta file for ID {meta_file_id} not found", status=404)
 
@@ -306,7 +313,10 @@ async def cancel_deployment(request: Request, meta_file_id: int):
     try:
         logging.debug(f"Cancel Deployment: {meta_file_id=}")
         mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+        permission_config.check_user_permission(permissions.PermissionAction.CANCEL_WORKFLOW, mf.workflow.name)
         processing_user_data.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
+
         mf.cancel_deployment()
     except Exception as e:
         logging.error("An error occured. Please check details!")
@@ -322,7 +332,10 @@ async def reset_stage_status(request: Request, meta_file_id: int, stage_id: int)
     try:
         logging.debug(f"Reset Stage Status: {meta_file_id=}, {stage_id=}")
         mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+        permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=mf.get_stage_by_id(stage_id).name)
         processing_user_data.create_action_log(action=action_type.Action_type.RESET_STAGE_STATUS, meta_file=mf)
+
         mf.stages.get_stage(stage_id).set_status(stage_status.Status.READY)
         mf.set_status(meta_file.Meta_file_status.READY)
 
@@ -341,6 +354,8 @@ async def reset_deployment_status(request: Request, meta_file_id: int):
         logging.debug(f"Reset Deployment Status: {meta_file_id=}")
         
         mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+        permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name)
         processing_user_data.create_action_log(action=action_type.Action_type.RESET_DEPLOYMENT_STATUS, meta_file=mf)
 
         for stage in mf.get_open_stages():
@@ -385,6 +400,8 @@ async def create_deployment(request: Request, wf_name, commit=None, obj_list=Non
     status=200
 
     try:
+        permission_config.check_user_permission(permissions.PermissionAction.START_WORKFLOW, wf_name)
+
         wf = workflow.Workflow(wf_name)
         logging.debug(f"Workflow: {wf}")
         existing_version = deploy_version.Deploy_Version.get_deployment_by_commit(project=wf.default_project, commit=commit)
@@ -425,6 +442,8 @@ async def start_workflow(request: Request, wf_name: str):
     status = 200
 
     try:
+        permission_config.check_user_permission(permissions.PermissionAction.START_WORKFLOW, wf_name)
+
         wf = workflow.Workflow(wf_name)
         logging.debug(f"Workflow: {wf}")
  
@@ -475,6 +494,8 @@ async def set_source_ready_4_deployment(request: Request, meta_file_id: int):
     
     try:
         mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+        permission_config.check_user_permission(permissions.PermissionAction.FOUR_EYES_CHECK, mf.workflow.name, stage=mf.get_stage_by_id(data['stage_id']).name)
         
         if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
             raise Exception(f"Can't change object status because deployment is already {mf.status.value}.")
@@ -501,6 +522,8 @@ async def get_stage_steps_html(request: Request, meta_file_id: int, stage_id: in
 
     try:
         mf_obj: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+        permission_config.check_user_permission(permissions.PermissionAction.READ, mf_obj.workflow.name)
+
         html = flowchart.generate_stage_steps_html(request, mf_obj, mf_obj.get_stage_by_id(stage_id))
         return http_functions.get_json_response({'html': html}, status=200)
     except Exception as e:
@@ -552,33 +575,47 @@ async def add_permission(request: Request):
         'role': permission_config.PermissionKonfig.add_role_permission
     }
 
-    if type not in permission_execution:
-        return http_functions.get_json_response_error(f"Unknown permission type '{type}'", status=400)
-    
-    permission_execution[type](name=name, roles=roles, general=[permissions.PermissionAction(action) for action in general], workflows={})
+    try:
+        permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+        if type not in permission_execution:
+            return http_functions.get_json_response_error(f"Unknown permission type '{type}'", status=400)
+        
+        permission_execution[type](name=name, roles=roles, general=[permissions.PermissionAction(action) for action in general], workflows={})
+
+    except Exception as e:
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response_error(str(e))
 
     return http_functions.get_json_response(result, status=status)
 
 
 
 async def save_permissions(request: Request):
-    data = await request.json()
 
-    user_permissions = data.get('user_permissions', {})
-    permission_config.PermissionKonfig.convert_permissions('user', user_permissions)
-    for user, perm in user_permissions.items():
-        permission_config.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
-        permission_config.PermissionKonfig.user_permissions[user].roles = perm.roles
-    
-    role_permissions = data.get('role_permissions', {})
-    permission_config.PermissionKonfig.convert_permissions('role', role_permissions)
-    for role, perm in role_permissions.items():
-        permission_config.PermissionKonfig.role_permissions[role].permissions.general = perm.permissions.general
-    
-    permission_config.PermissionKonfig.save_permissions()
+    try:
+        permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+        data = await request.json()
+
+        user_permissions = data.get('user_permissions', {})
+        permission_config.PermissionKonfig.convert_permissions('user', user_permissions)
+        for user, perm in user_permissions.items():
+            permission_config.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
+            permission_config.PermissionKonfig.user_permissions[user].roles = perm.roles
+        
+        role_permissions = data.get('role_permissions', {})
+        permission_config.PermissionKonfig.convert_permissions('role', role_permissions)
+        for role, perm in role_permissions.items():
+            permission_config.PermissionKonfig.role_permissions[role].permissions.general = perm.permissions.general
+        
+        permission_config.PermissionKonfig.save_permissions()
+
+    except Exception as e:
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response_error(str(e))
     
     result = {"status": "success"}
     status = 200
-
 
     return http_functions.get_json_response(result, status=status)
