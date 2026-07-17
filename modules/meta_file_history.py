@@ -23,13 +23,13 @@ class Meta_File_History:
     self.create_time = create_time
     self.meta_file_id = meta_file_id
 
-    if self.create_time == None:
-        self.create_time = str(datetime.datetime.now())
-        #self.create_time = '2023-03-04 14:31:30.404775'
-
     if dict is not None and len(dict) > 0 and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
       for k, v in dict.items():
         setattr(self, k, v)
+
+    if self.create_time == None:
+        self.create_time = str(datetime.datetime.now())
+
 
 
   def get_dict(self) -> dict:

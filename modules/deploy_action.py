@@ -62,18 +62,8 @@ class Deploy_Action:
 
     self.processing_step = processing_step
 
-    if self.environment is not None and type(self.environment) != Command_Type:
-      raise Exception(f"Environment has type {type(self.environment)} instead of Command_Type")
-
-    if stage is not None and type(stage) != str:
-      raise Exception("Stage is not a string!")
-
     if dict_data is not None:
-      #logging.debug(f"Action dict: {dict_data}")
-      #logging.debug(f"Self dict: {self.__dict__}")
-      #if len(self.__dict__) != len(dict_data):
-      #  raise Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict_data=}")
-      
+
       for key in dict_data:
         if key == 'stage_name':
           setattr(self, 'stage', dict_data[key])
@@ -87,6 +77,12 @@ class Deploy_Action:
 
       self.validate()
 
+    if self.environment is not None and type(self.environment) != Command_Type:
+      raise Exception(f"Environment has type {type(self.environment)} instead of Command_Type")
+
+    if stage is not None and type(stage) != str:
+      raise Exception("Stage is not a string!")
+    
     if self.status is not None and type(self.status) != Cmd_Status:
       self.status = Cmd_Status(self.status)
 

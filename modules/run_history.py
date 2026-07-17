@@ -23,6 +23,7 @@ class Run_History:
 
 
   def __init__(self, id:int=None, action_id:int=None, status: Cmd_Status=None, stdout: str=None, stderr: str=None, create_time=None, dict: dict=None):
+
     self.id:int = id
     self.action_id:int = action_id
     self.status = status or Cmd_Status.NEW
@@ -30,15 +31,16 @@ class Run_History:
     self.stderr = stderr
     self.create_time = create_time
 
-    if self.create_time == None:
-        self.create_time = str(datetime.datetime.now())
-        #self.create_time = '2023-03-04 14:31:30.404775'
-
     if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
       for k, v in dict.items():
         setattr(self, k, v)
 
-    self.status = Cmd_Status(self.status)
+    if self.create_time == None:
+        self.create_time = str(datetime.datetime.now())
+        #self.create_time = '2023-03-04 14:31:30.404775'
+
+    if isinstance(self.status, str):
+      self.status = Cmd_Status(self.status)
 
 
 

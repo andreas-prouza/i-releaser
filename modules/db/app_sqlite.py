@@ -32,6 +32,16 @@ def create_tables(db_path=DB_FILE):
 
 
         c.execute("""
+            CREATE TABLE IF NOT EXISTS app_info (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                version TEXT NOT NULL,
+                data TEXT NOT NULL,
+                start_time timestamp default CURRENT_TIMESTAMP
+            );
+            """)
+
+
+        c.execute("""
             CREATE TABLE IF NOT EXISTS deploy_versions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 project TEXT NOT NULL,
@@ -51,8 +61,8 @@ def create_tables(db_path=DB_FILE):
                 meta_dir TEXT,
                 commit_hash TEXT,
                 release_branch TEXT,
-                create_time TEXT,
-                update_time TEXT,
+                create_time timestamp,
+                update_time timestamp,
                 status TEXT,
                 object_list TEXT,
                 main_lib TEXT,
@@ -94,7 +104,7 @@ def create_tables(db_path=DB_FILE):
             CREATE TABLE IF NOT EXISTS run_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 meta_file_id INTEGER,
-                create_time TEXT,
+                create_time timestamp,
                 log TEXT,
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
@@ -120,8 +130,8 @@ def create_tables(db_path=DB_FILE):
                 lib_replacement_necessary BOOLEAN,
                 lib_mapping TEXT,
                 status TEXT,
-                create_time TEXT,
-                update_time TEXT,
+                create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
         ''')

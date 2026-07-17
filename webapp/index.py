@@ -23,7 +23,7 @@ logging.debug(f"{sys.path=}")
 
 # Custom modules
 from routes import routes, initial
-from modules.db import app_sqlite
+from modules.db import app_info_data, app_sqlite
 
 
 
@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI):
     """
     # Initialize databases and tables
     app_sqlite.create_tables()
+    app_info_data.add_app_info()
     
     yield
     # Add shutdown logic here if needed
@@ -109,7 +110,8 @@ app.add_api_route('/workflows', routes.show_workflows, methods=['GET', 'POST'])
 app.add_api_route('/settings', routes.show_settings, methods=['GET', 'POST'])
 
 
-app.add_api_route('/show_details/{meta_file_id}', routes.show_details, methods=['GET', 'POST'])
+app.add_api_route('/show_details/{meta_file_id}', routes.show_details_by_id, methods=['GET', 'POST'])
+app.add_api_route('/show_details/{project}/{version}', routes.show_details, methods=['GET', 'POST'])
 
 
 app.add_api_route('/api/run_stage/{meta_file_id}/{stage_id}/{option}', routes.run_stage, methods=['GET'])

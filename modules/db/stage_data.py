@@ -28,8 +28,8 @@ def _add_stage(meta_file_id: int, stage: s.Stage):
         c = conn.cursor()
         c.execute('''
             INSERT INTO stages (meta_file_id, name, description, host, base_dir, remote_dir, status, build_dir, next_stages, next_stage_ids, 
-                                after_stages_finished, clear_files, lib_replacement_necessary, lib_mapping, processing_steps, execute_remote)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                after_stages_finished, clear_files, lib_replacement_necessary, lib_mapping, processing_steps, execute_remote, create_time, update_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
         ''', (
             meta_file_id, stage.name, stage.description, stage.host, stage.base_dir, stage.remote_dir, stage.status.value, stage.build_dir,
             json.dumps(stage.next_stages), json.dumps(stage.next_stage_ids),
@@ -70,8 +70,8 @@ def get_stages(meta_file_id: int) -> s.Stage_List_list:
             stage_dict['status'] = Stage_Status(stage_dict['status'])
             
             stage_dict['actions'] = actions_data.get_actions(stage_id=row['id'])
-            
             stage_obj = s.Stage(dict=stage_dict)
+            
             stages.append(stage_obj)
     return stages
 
@@ -101,9 +101,9 @@ def get_stage(stage_id: int) -> s.Stage | None:
         stage_dict['status'] = Stage_Status(stage_dict['status'])
         
         stage_dict['actions'] = actions_data.get_actions(stage_id=row['id'])
-        
-        stage_obj = s.Stage(dict=stage_dict)
 
+        stage_obj = s.Stage(dict=stage_dict)
+        
     return stage_obj
 
 
@@ -132,11 +132,11 @@ def save_stage(stage: s.Stage, cursor: sqlite3.Cursor=None):
 def _save_stage(stage: s.Stage, cursor: sqlite3.Cursor):
 
     cursor.execute('''
-        update stages set status = ?, next_stages = ?, next_stage_ids = ?, after_stages_finished = ?
+        update stages set status = ?, next_stages = ?, next_stage_ids = ?, after_stages_finished = ?, lib_mapping = ?, update_time = ?
         WHERE id = ?
     ''', (
         stage.status.value, json.dumps(stage.next_stages), json.dumps(stage.next_stage_ids),
-        json.dumps(stage.after_stages_finished), 
+        json.dumps(stage.after_stages_finished), json.dumps(stage.lib_mapping), stage.update_time,
         stage.id
     ))
 

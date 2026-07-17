@@ -106,10 +106,10 @@ def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor):
 
     for history in action.run_history:
         cursor.execute('''
-            update action_run_history set create_time = ?, status = ?, stdout = ?, stderr = ?
+            update action_run_history set action_id = ?, create_time = ?, status = ?, stdout = ?, stderr = ?
             WHERE id = ?
         ''', (
-            history.create_time, history.status.value, history.stdout, history.stderr,
+            action.id, history.create_time, history.status.value, history.stdout, history.stderr,
             history.id
         ))
 

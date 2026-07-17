@@ -61,7 +61,7 @@ def get_html_response(request: Request, template: str, **kwargs) -> HTMLResponse
     templates.env.filters["get_type"] = lambda v: type(v).__name__
 
     return templates.TemplateResponse(
-        request=request, name=template, context={**kwargs}
+        request=request, name=template, context={**kwargs, "now": datetime.now()}
     )
 
 

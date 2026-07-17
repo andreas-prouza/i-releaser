@@ -60,29 +60,6 @@ def _load_workflow_definition(c: sqlite3.Cursor, meta_file_id: int) -> wf.Workfl
 
 
 
-def _load_stages_and_actions(c: sqlite3.Cursor, meta_file_id: int) -> s.Stage_List_list:
-    c.execute("SELECT * FROM stages WHERE meta_file_id = ?", (meta_file_id,))
-    stage_rows = c.fetchall()
-    stages = s.Stage_List_list()
-    
-    for row in stage_rows:
-        stage_dict = dict(row)
-        stage_dict['next_stages'] = json.loads(stage_dict['next_stages'])
-        stage_dict['next_stage_ids'] = json.loads(stage_dict['next_stage_ids'])
-        stage_dict['after_stages_finished'] = json.loads(stage_dict['after_stages_finished'])
-        stage_dict['processing_steps'] = json.loads(stage_dict['processing_steps'])
-        stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping'])
-        stage_dict['status'] = Stage_Status(stage_dict['status'])
-
-        stage_obj = s.Stage(dict=stage_dict)
-        
-        stage_obj.actions = actions_data.get_actions(stage_id=row['id'])
-        
-        stages.append(stage_obj)
-    return stages
-
-
-
 
 def _load_run_history(c: sqlite3.Cursor, meta_file_id: int) -> mfh.Meta_File_History_List_list:
 
@@ -144,7 +121,7 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
 
     workflow = _load_workflow_definition(c, meta_file_id)
     deploy_objects = deploy_object_data.get_deploy_objects(meta_file_id)
-    stages = _load_stages_and_actions(c, meta_file_id)
+    stages = stage_data.get_stages(meta_file_id)
     run_history = _load_run_history(c, meta_file_id)
 
     meta_file = mf.Meta_File(

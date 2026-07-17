@@ -17,8 +17,8 @@ scripts/*.json
 logs/**
 **/build/**
 **/sessions
-**/custom/**
-**/custom_templates/**
+#**/custom/**
+#**/custom_templates/**
 test/*.http
 etc/*.db
 metaxx/**

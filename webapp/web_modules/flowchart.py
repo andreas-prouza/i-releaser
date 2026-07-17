@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 
 from fastapi import Request
 from modules import meta_file, stage_status, stages, deploy_action
@@ -76,6 +77,9 @@ def generate_reset_button(mf: meta_file.Meta_File, stage : stages.Stage):
   if mf.status != meta_file.Meta_file_status.IN_PROCESS or stage.id not in mf.get_open_stages().get_all_ids():
     return ''
   if stage.status not in [stage_status.Status.IN_PREPERATION, stage_status.Status.IN_PROCESS, stage_status.Status.PREPARE]:
+    return ''
+  
+  if stage.update_time > datetime.now() - timedelta(minutes=1):
     return ''
 
   global btn_class_list

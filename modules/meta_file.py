@@ -69,18 +69,22 @@ class Meta_File:
       self.processing_users: list = processing_users or []
       self.custom_data = custom_data or {}
         
-      self.update_time = update_time
-      self.create_time = create_time
+      self.update_time: datetime.datetime = update_time or datetime.datetime.now()
+      self.create_time: datetime.datetime = create_time or datetime.datetime.now()
+
+      if isinstance(self.update_time, str):
+        self.update_time = datetime.datetime.fromisoformat(self.update_time)
+
+      if isinstance(self.create_time, str):
+        self.create_time = datetime.datetime.fromisoformat(self.create_time)
 
       if self.create_time == None:
-        self.create_time = str(datetime.datetime.now())
+        self.create_time = datetime.datetime.now()
         self.update_time = self.create_time
-
-      self.create_date = re.sub(" .*", '', self.create_time)
 
       self.meta_dir: str = meta_dir
       if self.meta_dir is None:
-        self.meta_dir = constants.C_META_DIR.format(project=project, create_date=self.create_date, deploy_version=deploy_version)
+        self.meta_dir = constants.C_META_DIR.format(project=project, create_date=str(self.create_time.date()), deploy_version=deploy_version)
 
       if os.path.exists(self.meta_dir) is False:
         os.makedirs(self.meta_dir, exist_ok=True)
@@ -95,9 +99,9 @@ class Meta_File:
 
       self.release_branch = constants.C_GIT_BRANCH_RELEASE.replace('{deploy_version}', str(self.deploy_version)).replace('{project}', self.project)
 
-      self.set_deploy_main_lib(f"d{str(self.deploy_version).zfill(9)}")
-      self.set_deploy_backup_lib(f"b{str(self.deploy_version).zfill(9)}")
-      self.set_deploy_remote_lib(f"r{str(self.deploy_version).zfill(9)}")
+      self.set_deploy_main_lib(f"d{str(self.id).zfill(9)}")
+      self.set_deploy_backup_lib(f"b{str(self.id).zfill(9)}")
+      self.set_deploy_remote_lib(f"r{str(self.id).zfill(9)}")
 
 
 
@@ -121,7 +125,7 @@ class Meta_File:
           logging.warning("Update meta file is set to False. Meta file will not be saved")
           return
             
-        self.update_time = str(datetime.datetime.now())
+        self.update_time = datetime.datetime.now()
         from modules.db import meta_file_data
         meta_file_data.save_meta_file(self)
         
@@ -427,7 +431,9 @@ class Meta_File:
     
     def add_deploy_object(self, object: do.Deploy_Object):
 
-      self.deploy_objects.add_object(object)
+      new_obj: do.Deploy_Object = deploy_object_data.create_deploy_object(meta_file_id=self.id, lib=object.lib, prod_lib=object.prod_lib, name=object.name, type=object.type, attribute=object.attribute)
+      self.deploy_objects.add_object(new_obj)
+
 
 
 
@@ -461,10 +467,10 @@ class Meta_File:
 
 
 
-    def set_deploy_objects(self, objects: list[dict]):
+    def set_deploy_objects(self, objects: do.Deploy_Object_List):
 
       for obj in objects:
-        self.add_deploy_object(do.Deploy_Object(dict=obj))
+        self.add_deploy_object(obj)
 
 
 
@@ -562,7 +568,7 @@ class Meta_File:
                             }
       #dict['deploy_cmds'] = self.get_actions_as_dict()
       dict['processing_users'] = self.processing_users
-      dict['objects'] = self.deploy_objects.get_objectjs_as_dict()
+      dict['objects'] = self.deploy_objects.get_objects_as_dict()
       dict['run_history'] = self.run_history.get_list()
       dict['custom_data'] = self.custom_data
       logging.debug(f"Number of histories: {len(self.run_history)}")

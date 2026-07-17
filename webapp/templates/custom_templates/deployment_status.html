@@ -1,0 +1,57 @@
+{% if deployment_dict['general']['status'] == 'finished' and deployment_dict['general']['workflow']['name'] in ['obi_deploy_2_test'] %}
+  <img class="run" src="{{ url_for('static', path='assets/img/undo.png') }}" 
+    onclick="rollback_deployment('{{ deployment_dict['general']['project'] }}', {{ deployment_dict['general']['deploy_version'] }})">
+{% endif %}
+
+
+{% if deployment_dict['general']['workflow']['name'] == 'rollback_deployment' %}
+  &nbsp;&nbsp;&nbsp;&nbsp;Rollback of deployment: <a href="/show_details/{{ deployment_dict['custom_data']['project'] }}/{{ deployment_dict['custom_data']['version'] }}">{{ deployment_dict['custom_data']['project'] }} - {{ deployment_dict['custom_data']['version'] }}</a>
+{% endif %}
+
+
+<script>
+
+  function rollback_deployment(project, deploy_version){
+
+      const swalWithBootstrapButtons = Swal.mixin({
+          customClass: {
+              confirmButton: 'btn btn-success',
+              cancelButton: 'btn btn-danger'
+          },
+          buttonsStyling: false
+      })
+
+      swalWithBootstrapButtons.fire({
+          title: 'Are you sure?',
+          html: "Do you want to <u><b>rollback</b></u> this deployment?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, rollback',
+          cancelButtonText: 'No, cancel',
+          reverseButtons: true
+          }).then((result) => {
+          if (result.isConfirmed) {
+              http_getData(`/api/start_workflow/rollback_deployment?project=${project}&version=${deploy_version}`).then((data) => {
+                  console.log(data); // JSON data parsed by `data.json()` call
+                  window.open(`/show_details/${data.meta_file.general.id}`,'_self');
+              });
+              swalWithBootstrapButtons.fire(
+              'Rollback started!',
+              'Rollback workflow has been initiated.',
+              'success'
+              ).then((result) => {
+                      location.reload();
+              });
+          } else if (
+              /* Read more about handling dismissals below */
+              result.dismiss === Swal.DismissReason.cancel
+          ) {
+              swalWithBootstrapButtons.fire(
+              'Canceled',
+              'Your rollback has been canceled :-)',
+              'error'
+              )
+          }
+      })
+  }
+</script>

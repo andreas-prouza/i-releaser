@@ -18,7 +18,7 @@ from modules.deploy_object import Deploy_Object
 from web_modules import http_functions
 from web_modules import flowchart, app_login
 from modules import permission_config
-
+from modules.object_status import Status as Obj_Status
 
 
 
@@ -201,7 +201,17 @@ async def show_settings(request: Request):
 
 
 
-async def show_details(request: Request, meta_file_id: int):
+async def show_details(request: Request, project: str, version: int):
+
+    meta: meta_file.Meta_File|None = deploy_version.Deploy_Version.get_deployment(project, version)
+    if meta is None:
+        return http_functions.get_html_response(request, 'error.html', sidebar=get_sidebar_data(request), error=f"Deployment for project '{project}' and version '{version}' not found.")
+    
+    return await show_details_by_id(request, meta.id)
+
+
+
+async def show_details_by_id(request: Request, meta_file_id: int):
     logging.debug(f'Show details of {meta_file_id=}')
     logging.debug(request.form)
 
@@ -495,13 +505,15 @@ async def set_source_ready_4_deployment(request: Request, meta_file_id: int):
     try:
         mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
 
-        permission_config.check_user_permission(permissions.PermissionAction.FOUR_EYES_CHECK, mf.workflow.name, stage=mf.get_stage_by_id(data['stage_id']).name)
-        
         if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
-            raise Exception(f"Can't change object status because deployment is already {mf.status.value}.")
+            raise Exception(f"Can't change object status because deployment is already in status '{mf.status.value}'.")
         
         processing_user_data.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set object {data['lib']}/{data['name']}({data['type']}) ready={data['checked']}", meta_file=mf)
         obj: Deploy_Object = mf.deploy_objects.get_deploy_object(data['lib'], data['name'], data['type'])
+        
+        if obj.deploy_status == Obj_Status.FINISHED:
+            raise Exception(f"Can't change object status because object is already in status '{obj.deploy_status.value}'.")
+        
         obj.ready = data['checked']
         mf.save()
     except Exception as e:

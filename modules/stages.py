@@ -28,14 +28,13 @@ class Stage:
     self.from_stage_id :list[int]= []
     self.clear_files = None
     self.lib_replacement_necessary = None
-    self.lib_mapping = []
+    self.lib_mapping = {}
     self.processing_steps = []
     self.actions = da.Deploy_Action_List_list()
     self.execute_remote = None
     self.status: Stage_Status = Stage_Status.NEW
-    self.create_time = str(datetime.datetime.now())
-#    self.create_time = '2023-03-04 14:31:30.404775'
-    self.update_time = None
+    self.create_time: datetime.datetime = datetime.datetime.now()
+    self.update_time: datetime.datetime = datetime.datetime.now()
     self.processing_users :list[str] = []
 
 
@@ -52,6 +51,12 @@ class Stage:
         if hasattr(self, k):
           setattr(self, k, v)
 
+    if isinstance(self.create_time, str):
+      self.create_time = datetime.datetime.fromisoformat(self.create_time)
+
+    if isinstance(self.update_time, str):
+      self.update_time = datetime.datetime.fromisoformat(self.update_time)
+
     if self.name is None:
       e = Exception(f"Stage name has to be defined: {dict=}")
       logging.exception(e, stack_info=True)
@@ -64,7 +69,7 @@ class Stage:
       status = Stage_Status(status)
     self.status = status
     if update_time:
-      self.update_time = str(datetime.datetime.now())
+      self.update_time = datetime.datetime.now()
     
     from modules.db import stage_data
     stage_data.save_stage(stage=self)

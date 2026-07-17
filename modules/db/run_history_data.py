@@ -71,10 +71,10 @@ def add_run_history(run_history_obj: run_history.Run_History):
         c = conn.cursor()
 
         c.execute('''
-            INSERT INTO action_run_history (action_id, create_time)
-            VALUES (?, ?)
+            INSERT INTO action_run_history (action_id, status, create_time)
+            VALUES (?, ?, ?)
         ''', (
-            run_history_obj.action_id, run_history_obj.create_time
+            run_history_obj.action_id, run_history_obj.status.value, run_history_obj.create_time
         ))
         run_history_obj.id = c.lastrowid
 

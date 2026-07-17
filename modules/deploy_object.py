@@ -126,7 +126,7 @@ class Deploy_Object_List(list):
 
   def add_objects(self, objects: 'Deploy_Object_List'):
     
-    self = self + objects.get_objectjs_as_list()
+    self.extend(objects.get_objects_as_list())
 
 
   def add_object(self, objects: Deploy_Object):
@@ -143,13 +143,13 @@ class Deploy_Object_List(list):
 
 
 
-  def get_objectjs_as_list(self) -> list[Deploy_Object]:
+  def get_objects_as_list(self) -> list[Deploy_Object]:
     #self.sort_objects()
     return self
 
 
 
-  def get_objectjs_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]: 
+  def get_objects_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]: 
 
     #self.sort_objects()
     objs = []

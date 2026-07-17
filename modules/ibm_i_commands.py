@@ -61,10 +61,6 @@ class IBM_i_commands:
       actions = stage.actions.get_actions(processing_step)
       self.execute_action(stage, actions[i], continue_run)
       i += 1
-    
-    # should be set on a higher level because of multiple processing_steps to run
-    #self.meta_file.open_stages.get_stage(stage).set_status('finished')
-    self.meta_file.save()
 
     #iconv -f IBM-1252 -t utf-8 './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' > './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp && mv './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' 
 

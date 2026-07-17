@@ -6,7 +6,7 @@ import logging
 # from pydantic import validate_arguments
 
 from modules import meta_file
-from modules.db import app_sqlite
+from modules.db import app_sqlite, meta_file_data
 from modules.meta_file_status import Meta_file_status
 import logging
 
@@ -163,7 +163,7 @@ class Deploy_Version:
 
 
     @staticmethod
-    def get_deployment(project:str, version : int):
+    def get_deployment(project:str, version : int) -> meta_file.Meta_File | None:
         """
         Retrieves a specific deployment by its version number from the SQLite database.
         """
@@ -174,11 +174,11 @@ class Deploy_Version:
         
         with app_sqlite.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT details FROM deploy_versions WHERE project = ? AND version = ?", (project, version))
+            cursor.execute("SELECT m.id as meta_file_id, dv.details FROM deploy_versions dv LEFT JOIN meta_files m ON dv.id = m.deploy_version_id WHERE dv.project = ? AND dv.version = ?", (project, version))
             row = cursor.fetchone()
 
             if row:
-                return json.loads(row['details'])
+                return meta_file_data.get_meta_file_by_id(row['meta_file_id'])
 
         err = Exception(f"Couldn't find deployment version {version}: {project=}") 
         logging.exception(err, stack_info=True)
