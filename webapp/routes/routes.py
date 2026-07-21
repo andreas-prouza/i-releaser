@@ -10,7 +10,7 @@ import etc.constants as constants
 import etc.global_cfg as global_cfg
 
 from modules import action_type, files, permissions, stage_status
-from modules import deploy_version, meta_file
+from modules import deploy_version, meta_file, deploy_object
 from modules import workflow
 from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data
 from modules.deploy_object import Deploy_Object
@@ -225,6 +225,13 @@ async def show_details_by_id(request: Request, meta_file_id: int):
 
         flow = flowchart.get_flowchar_html(request, mf)
         mf_dict = mf.get_all_data_as_dict()
+        
+        # Layer the objects based on dependencies
+        layered_objects = mf.deploy_objects.get_layered_objects()
+        
+        # Convert the layered objects to dictionaries for the template
+        mf_dict['objects'] = [layer.get_objects_as_dict() for layer in layered_objects]
+        
         mf_json = json.dumps(mf_dict, default=str, indent=4)
         progress = (len(mf.workflow.stages) - len(mf.get_open_stages())) / len(mf.workflow.stages)
         progress = progress * 100

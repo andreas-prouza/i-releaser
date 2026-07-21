@@ -37,6 +37,7 @@ class Deploy_Object:
     self.ready = True
     self.deploy_status = Obj_Status.NEW
     self.actions = da.Deploy_Action_List_list()
+    self.depends_on = Deploy_Object_List()
 
     if dict is not None and len(dict) > 0:
 
@@ -54,6 +55,10 @@ class Deploy_Object:
         for action in dict['actions']:
           self.actions.add_actions_from_dict(action)
           #self.actions.add_action(da.Deploy_Action(dict_data=action))
+      
+      if len(dict.get('depends_on', [])) > 0:
+        for obj in dict['depends_on']:
+          self.depends_on.add_object(Deploy_Object(dict=obj))
       return
  
     self.prod_lib = prod_lib.lower()
@@ -77,17 +82,18 @@ class Deploy_Object:
       'type' : self.type,
       'attribute' : self.attribute,
       'deploy_status' : self.deploy_status.value,
-      'actions' : self.actions.get_actions_as_dict()
+      'actions' : self.actions.get_actions_as_dict(),
+      'depends_on' : self.depends_on.get_objects_as_dict()
     }
 
 
   def __eq__(self, o):
-    if (self.ready, self.lib, self.prod_lib, self.name, self.type, self.attribute, self.deploy_status, self.actions) == \
-       (o.ready, o.lib, o.prod_lib, o.name, o.type, o.attribute, o.deploy_status, o.actions):
+    if (self.ready, self.lib, self.prod_lib, self.name, self.type, self.attribute, self.deploy_status, self.actions, self.depends_on) == \
+       (o.ready, o.lib, o.prod_lib, o.name, o.type, o.attribute, o.deploy_status, o.actions, o.depends_on):
       return True
 
-    logging.warning(f"{self.ready} - {self.lib} - {self.prod_lib} - {self.name} - {self.type} - {self.attribute} - {self.deploy_status} - {self.actions}")
-    logging.warning(f"{o.ready} - {o.lib} - {o.prod_lib} - {o.name} - {o.type} - {o.attribute} - {o.deploy_status} - {o.actions}")
+    logging.warning(f"{self.ready} - {self.lib} - {self.prod_lib} - {self.name} - {self.type} - {self.attribute} - {self.deploy_status} - {self.actions} - {self.depends_on}")
+    logging.warning(f"{o.ready} - {o.lib} - {o.prod_lib} - {o.name} - {o.type} - {o.attribute} - {o.deploy_status} - {o.actions} - {o.depends_on}")
 
     return False
   
@@ -302,6 +308,69 @@ class Deploy_Object_List(list):
     for o in self:
       if o.ready:
         o.deploy_status = status
+
+
+
+  def get_layered_objects(self) -> list['Deploy_Object_List']:
+    """
+    Organizes the list of deployment objects into layers based on their dependencies.
+
+    Returns:
+        A list of Deploy_Object_List, where each list is a layer.
+    """
+    
+    # Create a dictionary for quick lookup of objects by their properties
+    objects_dict = {(obj.lib, obj.name, obj.type): obj for obj in self}
+    
+    # Initialize layers
+    layers: list[Deploy_Object_List] = []
+    
+    # Set of processed objects
+    processed_objects = set()
+    
+    while len(processed_objects) < len(self):
+        current_layer = Deploy_Object_List()
+        
+        for obj in self:
+            obj_key = (obj.lib, obj.name, obj.type)
+            
+            if obj_key in processed_objects:
+                continue
+            
+            # Check if all dependencies are met
+            dependencies_met = True
+            if obj.depends_on:
+                for dep in obj.depends_on:
+                    dep_key = (dep.lib, dep.name, dep.type)
+                    if dep_key not in processed_objects:
+                        dependencies_met = False
+                        break
+            
+            if dependencies_met:
+                current_layer.append(obj)
+        
+        if not current_layer:
+            # Break to avoid infinite loop in case of circular dependencies
+            # You might want to add more sophisticated error handling here
+            logging.error("Circular dependency detected or missing dependencies.")
+            
+            # Add remaining objects to a final layer to at least display them
+            remaining_objects = Deploy_Object_List()
+            for obj in self:
+                if (obj.lib, obj.name, obj.type) not in processed_objects:
+                    remaining_objects.append(obj)
+
+            if remaining_objects:
+                layers.append(remaining_objects)
+            break
+
+        layers.append(current_layer)
+        
+        for obj in current_layer:
+            processed_objects.add((obj.lib, obj.name, obj.type))
+            
+    return layers
+
 
 
 
