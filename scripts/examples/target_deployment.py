@@ -18,7 +18,7 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
     actions = stage_obj.actions
 
     clear_files = stage_obj.clear_files
-    deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+    deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
     last_added_action = action
     cmd = ibm_i_commands.IBM_i_commands(meta_file)
 
@@ -68,8 +68,8 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
       includes = ''
       
       for obj in meta_file.deploy_objects.get_obj_list_by_lib(lib['lib']):
-        obj_name = obj.name.replace('$', '\\$')
-        includes += f" (*INCLUDE {obj_name} {obj.type})"
+        name = obj.name.replace('$', '\\$')
+        includes += f" (*INCLUDE {name} *{obj.type})"
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
         #cmd=f"RSTLIB SAVLIB({lib['lib']}) DEV(*SAVF) SAVF({meta_file.remote_deploy_lib}/{lib['lib']}) SELECT({includes}) RSTLIB({restore_to_lib})", 
@@ -83,4 +83,4 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
       cmd.execute_action(stage=stage_obj, action=last_added_action)
 
     meta_file.deploy_objects.set_objects_status(Obj_Status.RESTORED)
-    meta_file.write_meta_file()
+    meta_file.save()

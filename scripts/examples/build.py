@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.realpath(os.path.dirname(__file__) + '/..'))
 from etc import logger_config
 
 from etc import constants
-from modules import meta_file as mf, stages as s
+from modules import meta_file as mf, stages as s, files
 from modules.object_status import Status as Obj_Status
 from modules import deploy_action as da
 
@@ -68,13 +68,19 @@ def load_object_list(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Dep
 
   logging.debug(f"{meta_file.object_list=}")
   
+  if build_dir is None:
+    raise Exception(f"Build directory is not set for stage {stage_obj.name}")
+  
+  if not os.path.isdir(build_dir):
+    raise Exception(f"Build directory {build_dir} does not exist for stage {stage_obj.name}")
+
   if meta_file.object_list is None:
     meta_file.object_list = os.path.join(build_dir, constants.C_OBJECT_LIST)
 
   logging.debug(f"{meta_file.object_list=}")
 
   meta_file.import_objects_from_config_file()
-  meta_file.write_meta_file()
+  meta_file.save()
 
 
 
@@ -130,30 +136,30 @@ def update_compiled_object_status(meta_file: mf.Meta_File, stage_obj: s.Stage, a
 
   build_dir = stage_obj.build_dir
 
-  with open(f"{build_dir}/{constants.C_COMPILED_OBJECT_LIST}", "r") as file:
+  file = files.readFile(f"{build_dir}/{constants.C_COMPILED_OBJECT_LIST}")
 
-    for compiled in file:
+  for compiled in file:
 
-      if compiled == '':
-        continue
+    if compiled == '':
+      continue
 
-      logging.debug(f"Import object: {compiled}")
-      tmp = compiled.lower().rstrip('\r\n').rstrip('\n').split('|')
-      obj=tmp[0]
-      crt_date=tmp[1]
-      prod_lib = obj.split("/")[0]
-      prod_obj = obj.split("/")[1].split('.')
+    logging.debug(f"Import object: {compiled}")
+    tmp = compiled.lower().rstrip('\r\n').rstrip('\n').split('|')
+    obj=tmp[0]
+    crt_date=tmp[1]
+    prod_lib = obj.split("/")[0]
+    prod_obj = obj.split("/")[1].split('.')
 
-      if len(prod_obj) < 3:
-        logging.warning(f"Object has less than 3 attributes. Will be skipped. {prod_obj=}")
-        continue
+    if len(prod_obj) < 3:
+      logging.warning(f"Object has less than 3 attributes. Will be skipped. {prod_obj=}")
+      continue
 
-      do = meta_file.deploy_objects.get_prod_object(prod_lib=prod_lib, obj_name=prod_obj[0], obj_type=prod_obj[2])
-      do.deploy_status = Obj_Status.FINISHED
-      
-      logging.debug(f"{do.get_dict()}")
+    do = meta_file.deploy_objects.get_prod_object(prod_lib=prod_lib, name=prod_obj[0], type=prod_obj[2])
+    do.deploy_status = Obj_Status.FINISHED
+    
+    logging.debug(f"{do.get_dict()}")
 
-  meta_file.write_meta_file()
+  meta_file.save()
 
 
 
@@ -193,7 +199,7 @@ def reset_git_repo(build_dir):
 
 def save_build_output(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
 
-  deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+  deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
 
   build_dir = stage_obj.build_dir
   save_dir=os.path.join(deployment_dir, 'outputs', datetime.datetime.now().strftime('%F %T.%f')[:-3])

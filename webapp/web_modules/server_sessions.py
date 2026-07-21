@@ -1,3 +1,4 @@
+from modules import files
 import json
 import logging
 import os
@@ -52,8 +53,7 @@ def load_json_file(filepath: str) -> dict:
 
     for i in range(5):  
         try:
-            with open(filepath, 'r') as f:
-                return json.load(f)
+            return files.getJson(filepath, retry=True)
         except (IOError, json.JSONDecodeError) as e:
             logging.error(f"Error loading JSON file {filepath}: {e}")
             time.sleep(0.1)
@@ -71,8 +71,7 @@ def save_session(session_id: str, data: dict):
         "session-data": data
     }
     try:
-        with open(session_file, 'w') as f:
-            json.dump(session_data, f, indent=4)
+        files.writeJson(session_data, session_file)
     except IOError as e:
         logging.error(f"Could not write to session file {session_file}: {e}")
 

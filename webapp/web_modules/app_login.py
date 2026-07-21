@@ -4,7 +4,7 @@ import datetime
 
 from fastapi import Request
 
-from modules import meta_file, permission_konfig
+from modules import files, meta_file, permission_config
 from etc import db_config, web_constants
 from pathlib import Path
 
@@ -30,7 +30,7 @@ def connect(request: Request, user, password):
       conn = pyodbc.connect(connection_string)
       conn.close()
 
-    if user not in [x.lower() for x in permission_konfig.PermissionKonfig.get_user_list()]:
+    if user not in [x.lower() for x in permission_config.PermissionKonfig.get_user_list()]:
       e = Exception(f"User '{user}' has no permission.")
       raise e
     
@@ -54,11 +54,9 @@ def get_user_keys():
   if not Path(web_constants.C_KEYS_FILE).exists():
     return {}
   
-  with open(web_constants.C_KEYS_FILE) as f:
-    keys = json.load(f)
-    return keys
+  keys = files.getJson(web_constants.C_KEYS_FILE, retry=True)
+  return keys
   
-  return {}
 
 
 
@@ -77,8 +75,7 @@ def generate_new_user_key(request: Request):
 
   logging.debug(f"{keys=}")
 
-  with open(web_constants.C_KEYS_FILE, 'w') as file:
-    json.dump(keys, file, default=str, indent=2)
+  files.writeJson(keys, web_constants.C_KEYS_FILE)
   
   return hash_obj.hexdigest()
 
@@ -98,7 +95,7 @@ def is_key_valid(request: Request, auth_token):
 
   for user,key in keys.items():
     if key['key'] == hashed_key:
-      if user not in [x.lower() for x in permission_konfig.PermissionKonfig.get_user_list()]:
+      if user not in [x.lower() for x in permission_config.PermissionKonfig.get_user_list()]:
         e = Exception(f"User '{user}' has no permission.")
         raise e
       session['current_user'] = user
@@ -118,5 +115,4 @@ def drop_user_key(request: Request):
 
   logging.debug(f"{keys=}")
 
-  with open(web_constants.C_KEYS_FILE, 'w') as file:
-    json.dump(keys, file, default=str, indent=2)
+  files.writeJson(keys, web_constants.C_KEYS_FILE)

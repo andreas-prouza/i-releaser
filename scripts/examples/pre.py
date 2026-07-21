@@ -11,4 +11,4 @@ def pre_cmd(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Actio
             SELECT((*INCLUDE TEST *PGM) (*INCLUDE TEST *FILE)) 
     """
 
-    logging.info(f"This is a user defined pre function: {meta_file.file_name=}, {stage_obj.get_dict()=}, {action.get_dict()=}")
+    logging.info(f"This is a user defined pre function: {meta_file.meta_dir=}, {stage_obj.get_dict()=}, {action.get_dict()=}")

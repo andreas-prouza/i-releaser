@@ -146,8 +146,6 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 
 <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
 
-  <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
-
 <div class="box box-info">
 
     <form>
@@ -173,13 +171,17 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             {% if deployment_dict['general']['status'] == 'in process' %}btn-secondary{% endif %}
             ">{{ deployment_dict['general']['status'] }} </button>
             {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new', 'in process'] %}
-            <img class="run" src="{{ url_for('static', path='assets/img/cancel.png') }}" 
-            onclick="cancel_deployment('{{ deployment_dict['general']['file_name'] }}')">
+                <img class="run" title="Cancel deployment" src="{{ url_for('static', path='assets/img/cancel.png') }}" 
+                onclick="cancel_deployment({{ deployment_dict['general']['id'] }})">
+            {% endif %}
+            {% if deployment_dict['general']['status'] in ['new', 'in process'] and (now - deployment_dict['general']['update_time']).total_seconds() > 60 %}
+                <img class="run" title="Reset deployment status" src="{{ url_for('static', path='assets/img/undo.png') }}" 
+                onclick="reset_deployment_status({{ deployment_dict['general']['id'] }})">
             {% endif %}
             {% include 'custom_templates/deployment_status.html' ignore missing %}
         </h3>
         <div style="position: absolute; bottom: 0; right: 100px;">
-            <a onclick="show_processing_history('{{ deployment_dict['general']['file_name'] }}')" title="Show history">
+            <a class="run" onclick="show_processing_history({{ deployment_dict['general']['id'] }})" title="Show history">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-clock-history" viewBox="0 0 16 16">
                 <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z" fill="#198754"/>
                 <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"  fill="#0dcaf0"/>
@@ -191,17 +193,20 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     </div>
     <table class="table table-striped table-bordered">
         <tr>
+            <th>Id</th><td> {{ deployment_dict['general']['id'] }}</td>
+            <th>Directory</th><td colspan="2">{{ deployment_dict['general']['meta_dir'] }}</td>
+        </tr>
+        <tr>
             <th>Created</th><td> {{ deployment_dict['general']['create_time'] }}</td>
-            <th>Deployment lib (from)</th><td>{{ deployment_dict['deploy_libs']['main_lib'] }}</td>
-        </tr>
-        <tr>
             <th>Last update</th><td> {{ deployment_dict['general']['update_time'] }}</td>
-            <th>Backup lib (to)</th><td>{{ deployment_dict['deploy_libs']['backup_lib'] }}</td>
         </tr>
         <tr>
-            <th>File name</th>
-            <td colspan="3">
-                <button type="button" class="btn btn-link" onclick="show_json('{{ deployment_dict['general']['file_name'] }}')">{{ deployment_dict['general']['file_name'] }}</button>
+            <td colspan="5">
+                <table class="table table-bordered"><tr>
+                <th>Deployment lib (from)</th><td>{{ deployment_dict['deploy_libs']['main_lib'] }}</td>
+                <th>Backup lib (to)</th><td>{{ deployment_dict['deploy_libs']['backup_lib'] }}</td>
+                <th>Remote lib (to)</th><td>{{ deployment_dict['deploy_libs']['remote_lib'] }}</td>
+                </tr></table>
             </td>
         </tr>
         {% if deployment_dict.get('custom_data') %}
@@ -269,19 +274,20 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             <td>
                 <label class="switch">
                     <input type="checkbox" class="obj-checkbox" {% if object['ready'] %}checked{% endif %}
-                        data-file="{{ deployment_dict['general']['file_name'] }}"
-                        data-lib="{{ object['obj_lib'] }}"
-                        data-name="{{ object['obj_name'] }}"
-                        data-type="{{ object['obj_type'] }}"
-                        onchange="set_source_ready_4_deployment(this, '{{ deployment_dict['general']['file_name'] }}', '{{ object['obj_lib'] }}', '{{ object['obj_name'] }}', '{{ object['obj_type'] }}', this.checked)">
+                        data-project="{{ deployment_dict['general']['project'] }}"
+                        data-version="{{ deployment_dict['general']['deploy_version'] }}"
+                        data-lib="{{ object['lib'] }}"
+                        data-name="{{ object['name'] }}"
+                        data-type="{{ object['type'] }}"
+                        onchange="set_source_ready_4_deployment(this, {{ deployment_dict['general']['id'] }}, '{{ object['lib'] }}', '{{ object['name'] }}', '{{ object['type'] }}', this.checked)">
                     <span class="slider round"></span>
                 </label>
             </td>
-            <td>{{ object['obj_prod_lib'] }}</td>
-            <td>{{ object['obj_lib'] }}</td>
-            <td>{{ object['obj_name'] }}</td>
-            <td>{{ object['obj_type'] }}</td>
-            <td>{{ object['obj_attribute'] }}</td>
+            <td>{{ object['prod_lib'] }}</td>
+            <td>{{ object['lib'] }}</td>
+            <td>{{ object['name'] }}</td>
+            <td>{{ object['type'] }}</td>
+            <td>{{ object['attribute'] }}</td>
             <td><button type="button" class="btn  
                 {% if object['deploy_status'] == 'finished' %}btn-success{% endif %}
                 {% if object['deploy_status'] == 'failed' %}btn-danger{% endif %}
@@ -305,7 +311,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
         <tr>
             <td>{{ history['create_time'] }}</td>
             <td><img src="{{ url_for('static', path='assets/img/log.png') }}" 
-                onclick="showLog('info', '{{ deployment_dict['general']['file_name'] }}', null, null, {{loop.index-1}})"></td>
+                onclick="showLog({{ history['id'] }})"></td>
         </tr>
         {% endfor %}
     </table>
@@ -315,14 +321,13 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     <br/>
 </div>
 
-<script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
-<script src="{{ url_for('static', path='assets/js/chart.js') }}"></script>
-<script src="{{ url_for('static', path='assets/js/json.js') }}"></script>
-
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-resizable.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-filter-control.min.js') }}"></script>
 
+<script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
+<script src="{{ url_for('static', path='assets/js/chart.js') }}"></script>
+<script src="{{ url_for('static', path='assets/js/json.js') }}"></script>
 
 <script type="text/javascript">
 
@@ -372,6 +377,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     })(document)
 
 
+
 function print_flow_connections() {
 
     let flow_parent = document.getElementById("flow_parent");
@@ -392,18 +398,38 @@ function print_flow_connections() {
 
 var last_show_stage_id = null;
 var last_show_stage_name = null;
-var current_meta_file = null;
+var current_meta_file_id = null;
+
+
+function show_http_error(error, reload=false) {
+ 
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error
+    }).then(()=>{
+        if (reload) {
+            location.reload();
+        }
+    })
+}
 
 
 
-function show_stage_steps(file_name, stage_id, stage_name) {
+function show_stage_steps(meta_file_id, stage_id, stage_name) {
 
     last_show_stage_id = stage_id;
     last_show_stage_name = stage_name;
-    current_meta_file = file_name;
+    current_meta_file_id = meta_file_id;
 
-    postData("/api/get_stage_steps_html", { stage_id: stage_id, filename: file_name }).then((data) => {
+    http_getData(`/api/get_stage_steps_html/${meta_file_id}/${stage_id}`).then((data) => {
         console.log(data); 
+        
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
+
         html = data['html'];
         
         Swal.fire({
@@ -417,18 +443,24 @@ function show_stage_steps(file_name, stage_id, stage_name) {
         }).then((result) => {
             last_show_stage_id=null;
             last_show_stage_name=null;
-            current_meta_file=null;
+            current_meta_file_id=null;
         });
     });
 }
 
 
 
-function showLog(type, file_name, stage_id, action_id, history_element) {
+function showActionLog(type, id) {
     let html = '';
 
-    postData("/api/get_action_log", { stage_id: stage_id, filename: file_name, action_id: action_id, history_element: history_element }).then((data) => {
+    http_getData(`/api/get_action_log/${id}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
+
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
+
         html = data['stdout'];
         if (type == 'error'){
             html = data['stderr'];
@@ -452,19 +484,65 @@ function showLog(type, file_name, stage_id, action_id, history_element) {
                 popup: 'logs'
             }
         }).then((result) => {
-            if (stage_id != null && last_show_stage_id != null) {
-                show_stage_steps(current_meta_file, last_show_stage_id, last_show_stage_name);
+            if (last_show_stage_id != null) {
+                show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
             }
         });
     });
 }
 
 
-function show_processing_history(file_name) {
+
+function showLog(id) {
     let html = '';
 
-    postData("/api/show_processing_history", { filename: file_name }).then((data) => {
+    http_getData(`/api/get_activity_log/${id}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
+        
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
+
+        html = data['log'];
+
+        html = html.replaceAll("&", '&amp;');
+        html = html.replaceAll("<", '&lt;');	 
+        html = html.replaceAll(">", '&gt;');     
+        html = html.replaceAll("\"", '&quot;');  
+        html = html.replaceAll("\'", '&#39;');   
+        
+        html = html.replaceAll('\\n', '\n');
+        html = html.replaceAll(/(.*) +([A-Z]+) +([^ ]+ +[^ ]+ +\([0-9]+\)): (.*)/g, "<tr><td style='white-space: nowrap;'>$1</td><td style='white-space: nowrap;'>$2</td><td style='white-space: nowrap;'>$3</td><td>$4</td></tr>");   
+        html = '<table class="table table-striped table-bordered w-auto">' + html + '</table>';
+
+        Swal.fire({
+            icon: 'info',
+            title: 'Log',
+            html: '<pre class="logs">'+html+'</pre>',
+            width: 'auto',
+            customClass: {
+                popup: 'logs'
+            }
+        }).then((result) => {
+            if (stage_id != null && last_show_stage_id != null) {
+                show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
+            }
+        });
+    });
+}
+
+
+function show_processing_history(meta_file_id) {
+    let html = '';
+
+    http_getData(`/api/show_processing_history/${meta_file_id}`).then((data) => {
+        console.log(data); // JSON data parsed by `data.json()` call
+        
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
         
         let tableRows = data.map(item => {
             return `<tr>
@@ -505,9 +583,9 @@ function show_processing_history(file_name) {
 
 
 
-function show_json(file_name) {
+function show_json(project, version) {
     
-    postData("/api/get_meta_file_json", { filename: file_name }).then((data) => {
+    postData(`/api/get_meta_file_json/${project}/${version}`, {}).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         data = JSON.stringify(data, null, 2);
         data = syntaxHighlight(data);
@@ -526,7 +604,7 @@ function show_json(file_name) {
 
 
 
-async function runStage(filename, stage_id, stage_name) {
+async function run_stage(meta_file_id, stage_id, stage_name) {
 
     Swal.fire({
         icon: 'question',
@@ -541,9 +619,15 @@ async function runStage(filename, stage_id, stage_name) {
         showCancelButton: true,
         showLoaderOnConfirm: true,
         preConfirm: (option) => {
-            return postData("/api/run_stage", { stage_id: stage_id, filename: filename, option: option})
+            return http_getData(`/api/run_stage/${meta_file_id}/${stage_id}/${option}`)
             .then(response => {
+                
                 console.log(response);
+                if (response['status'] == 'error') {
+                    show_http_error(response['message'], true);
+                    return false;
+                }
+                console.log("input");
                 return response;
             });
         },
@@ -562,7 +646,7 @@ async function runStage(filename, stage_id, stage_name) {
                     timer: 1500
                 }).then(()=>{
                     if (last_show_stage_id != null) {
-                        show_stage_steps(current_meta_file, last_show_stage_id, last_show_stage_name);
+                        show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
                     }
                     else {
                         location.reload();
@@ -571,56 +655,32 @@ async function runStage(filename, stage_id, stage_name) {
                 return;
             }
             else {
-                Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: result.value.error
-                    }).then(()=>{
-                        location.reload();
-                    })
+                console.log("Error 2");
+                show_http_error(result.value.error, true);
+                return;
             }
         }
     })
 }
-/*
-    postData("/api/run_stage", { stage: stage, filename: filename }).then((data) => {
-        console.log(data); // JSON data parsed by `data.json()` call
-        if (data.length > 0) {
-            Swal.fire({
-            icon: 'error',
-            title: 'Error during RUN',
-            html: '<pre class="logs">'+data+'</pre>',
-            width: 'auto',
-            customClass: {
-                popup: 'logs'
-            }
-            }).then((result) => {
-                location.reload();
-            });
-        }
-        else {
-            location.reload();
-        }
-    });
-    */
 
 
 
-function set_check_error(obj, filename, stage_id, action_id, checked) {
-    postData("/api/set_check_error", { stage_id: stage_id, filename: filename, action_id: action_id, checked: checked }).then((data) => {
+
+
+
+function set_check_error(obj, meta_file_id, stage_id, action_id, checked) {
+    http_getData(`/api/set_check_error/${meta_file_id}/${stage_id}/${action_id}/${checked}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         if (data['status'] == 'error') {
             obj.checked = !checked;
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data['error']
-            })
+            show_http_error(data['message']);
         }
     });
 }
 
-function cancel_deployment(filename) {
+
+
+function cancel_deployment(meta_file_id) {
 
     const swalWithBootstrapButtons = Swal.mixin({
     customClass: {
@@ -640,35 +700,23 @@ function cancel_deployment(filename) {
         reverseButtons: true
         }).then((result) => {
         if (result.isConfirmed) {
-            http_post("/api/cancel_deployment", { filename: filename })
+            http_getData(`/api/cancel_deployment/${meta_file_id}`)
                 .then((response) => {
-                    if (!response.ok) {
-                        if (response.status === 500) {
-                        return response.json().then((data) => {
-                            throw new Error(data.error || 'Unknown server error');
-                        });
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    console.log(response); // JSON data parsed by `response.json()` call
+                    if (response['status'] !== 'success') {
+                        show_http_error(response['message']);
                         return;
                     }
-                    console.log(response); // JSON data parsed by `response.json()` call
-                })
-                .then(() => {
-                        
                     swalWithBootstrapButtons.fire(
-                    'Canceled!',
-                    'This deployment has been canceled.',
-                    'success'
+                        'Canceled!',
+                        'This deployment has been canceled.',
+                        'success'
                     ).then((result) => {
-                            location.reload();
+                                location.reload();
                     });
                 })
                 .catch((error) => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: error.message
-                    });
+                    show_http_error(error.message);
                 });
         } else if (
             /* Read more about handling dismissals below */
@@ -686,18 +734,127 @@ function cancel_deployment(filename) {
 
 
 
-async function set_source_ready_4_deployment(obj, filename, lib, name, type, checked) {
 
-    await postData("/api/set_source_ready_4_deployment", { lib: lib, name: name, type: type, filename: filename, checked: checked }).then(async (data) => {
+
+function reset_stage_status(meta_file_id, stage_id) {
+
+    const swalWithBootstrapButtons = Swal.mixin({
+    customClass: {
+        confirmButton: 'btn btn-success',
+        cancelButton: 'btn btn-danger'
+    },
+    buttonsStyling: false
+    })
+
+    swalWithBootstrapButtons.fire({
+        title: 'Are you sure?',
+        text: "You are going to reset the stage status!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, reset',
+        cancelButtonText: 'No, ups!',
+        reverseButtons: true
+        }).then((result) => {
+        if (result.isConfirmed) {
+            http_getData(`/api/reset_stage_status/${meta_file_id}/${stage_id}`)
+                .then((response) => {
+                    console.log(response);
+                    if (response['status'] !== 'success') {
+                        show_http_error(`HTTP error! status: ${response['message']}`, true);
+                        return;
+                    }
+                })
+                .then(() => {
+                        
+                    swalWithBootstrapButtons.fire(
+                    'Reset!',
+                    'The stage status has been reset.',
+                    'success'
+                    ).then((result) => {
+                            location.reload();
+                    });
+                })
+                .catch((error) => {
+                    show_http_error(error.message, true);
+                });
+        } else if (
+            /* Read more about handling dismissals below */
+            result.dismiss === Swal.DismissReason.cancel
+        ) {
+            swalWithBootstrapButtons.fire(
+            'Canceled',
+            'Your reset has been canceled :-)',
+            'error'
+            )
+        }
+    })
+    
+}
+
+
+
+function reset_deployment_status(meta_file_id) {
+
+    const swalWithBootstrapButtons = Swal.mixin({
+    customClass: {
+        confirmButton: 'btn btn-success',
+        cancelButton: 'btn btn-danger'
+    },
+    buttonsStyling: false
+    })
+
+    swalWithBootstrapButtons.fire({
+        title: 'Are you sure?',
+        text: "You are going to reset the deployment status!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, reset',
+        cancelButtonText: 'No, ups!',
+        reverseButtons: true
+        }).then((result) => {
+        if (result.isConfirmed) {
+            http_getData(`/api/reset_deployment_status/${meta_file_id}`)
+                .then((response) => {
+                    console.log(response);
+                    console.log('Hier 1');
+                    if (response['status'] !== 'success') {
+                        console.log('Hier 2');
+                        show_http_error(`HTTP error! status: ${response['message']}`, true);
+                        return;
+                    }
+
+                    console.log('Hier 3');
+                    swalWithBootstrapButtons.fire(
+                    'Reset!',
+                    'The deployment status has been reset.',
+                    'success'
+                    ).then((result) => {
+                            location.reload();
+                    });
+                })
+                .catch((error) => {
+                    show_http_error(error.message, true);
+                });
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+            swalWithBootstrapButtons.fire(
+            'Canceled',
+            'Your reset has been canceled :-)',
+            'error'
+            )
+        }
+    })
+    
+}
+
+
+
+async function set_source_ready_4_deployment(obj, meta_file_id, lib, name, type, checked) {
+
+    await postData(`/api/set_source_ready_4_deployment/${meta_file_id}`, { lib: lib, name: name, type: type, checked: checked }).then(async (data) => {
         if (data['status'] == 'error') {
             obj.checked = !checked;
             console.log(data); // JSON data parsed by `data.json()` call
-            await Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data['error']
-            });
-            throw new Error(data['error']);
+            show_http_error(data['message'], true);
         }
     });
 }
@@ -715,7 +872,7 @@ async function toggleAll(masterCheckbox) {
     const allData = $table.bootstrapTable('getData');
     console.log(allData);
 
-    const fileName = '{{ deployment_dict['general']['file_name'] }}';
+    const meta_file_id = '{{ deployment_dict['general']['id'] }}';
 
     for (const cb of allData) {
         console.log(`${cb.name}: ${cb.ready.toString().includes('checked=""')}`);
@@ -729,7 +886,7 @@ async function toggleAll(masterCheckbox) {
             const type = cb.type;
             // Trigger your backend update function
             try {
-                await set_source_ready_4_deployment(cb, fileName, lib, name, type, newState);
+                await set_source_ready_4_deployment(cb, meta_file_id, lib, name, type, newState);
                 // 3. Update the HTML string manually for the table refresh
                 if (newState) {
                     cb.ready = cb.ready.replace('<input type="checkbox"', '<input type="checkbox" checked=""');

@@ -4,13 +4,14 @@
     <th>Description</th><td>{{ stage['description'] }} </td>
     <th class="nowrap">Status</th>
     <td class="nowrap">
-      <button type="button" onClick="show_stage_steps(current_meta_file, last_show_stage_id, last_show_stage_name);" class="btn  
+      <button type="button" onClick="show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);" class="btn  
       {% if stage['status'] == 'finished' %}btn-success{% endif %}
       {% if stage['status'] == 'failed' %}btn-danger{% endif %}
       {% if stage['status'] == 'new' %}btn-info{% endif %}
       {% if stage['status'] == 'in process' %}btn-secondary{% endif %}
       ">{{ stage['status'] }}</button>
       {{ run_stage_button | safe }} 
+      {{ reset_stage_button | safe }} 
     </td>
   </tr>
   <tr>
@@ -63,7 +64,7 @@
 
 
       {% if 'sub_actions' in action.keys() and action['sub_actions']|length > 0 %}
-        <tr><td>&nbsp;</td><td colspan="6">
+        <tr><td>&nbsp;</td><td colspan="7">
           <table class="table table-striped table-bordered">
             <thead class="nowrap">
               <th>Sequence</th>

@@ -22,13 +22,13 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
 
     last_action = action
     meta_file.deploy_objects.set_objects_status(Obj_Status.IN_BACKUP)
-    deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+    deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
 
     for lib in meta_file.deploy_objects.get_lib_list_from_prod():
 
         for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib):
-            obj_name = obj.name.replace('$', '\\$')
-            includes += f" (*INCLUDE {obj_name} *{obj.type})"
+            name = obj.name.replace('$', '\\$')
+            includes += f" (*INCLUDE {name} *{obj.type})"
 
         last_action = action.sub_actions.add_action(da.Deploy_Action(
             cmd=f"SAVLIB LIB({lib}) DEV(*SAVF) SAVF({meta_file.backup_deploy_lib}/{lib}) CLEAR(*ALL) SELECT({includes}) DTACPR(*HIGH)", 
@@ -57,4 +57,4 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
 
 
     meta_file.deploy_objects.set_objects_status(Obj_Status.BACKUPED)
-    meta_file.write_meta_file()
+    meta_file.save()

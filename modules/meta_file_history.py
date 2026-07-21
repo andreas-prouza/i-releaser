@@ -17,23 +17,26 @@ class Meta_File_History:
 
 
 
-  def __init__(self, log: StringIO=None, create_time=None, dict: dict={}):
+  def __init__(self, id:int=None, log: StringIO=None, create_time=None, meta_file_id: int=None, dict: dict=None):
+    self.id: int = id
     self.log = log
     self.create_time = create_time
+    self.meta_file_id = meta_file_id
+
+    if dict is not None and len(dict) > 0 and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+      for k, v in dict.items():
+        setattr(self, k, v)
 
     if self.create_time == None:
         self.create_time = str(datetime.datetime.now())
-        #self.create_time = '2023-03-04 14:31:30.404775'
 
-    if len(dict) > 0 and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
-      for k, v in dict.items():
-        setattr(self, k, v)
 
 
   def get_dict(self) -> dict:
 
     dict={'create_time': self.create_time}
     dict['log']= self.log
+    dict['id']= self.id
     if type(self.log) == StringIO:
       dict['log']= self.log.getvalue()
     return dict
@@ -78,7 +81,7 @@ class Meta_File_History_List_list(list):
 
 
 
-    def add_history(self, history: type[Meta_File_History]=None) -> None:
+    def add_history(self, history: Meta_File_History=None) -> None:
       if type(history) != Meta_File_History:
         raise Exception(f"Parameter type {type(history)} does not match Meta_File_History")
 

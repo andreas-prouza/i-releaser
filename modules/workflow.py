@@ -3,7 +3,7 @@ import logging
 from typing import List
 
 from etc import constants
-from modules import stages
+from modules import files
 import glob
 
 
@@ -34,7 +34,7 @@ class Workflow:
   name: str|None
   
 
-  def __init__(self, name: str|None=None, dict: dict|None={}):
+  def __init__(self, name: str|None=None, dict: dict|None=None):
 
     self.name = name.lower() if name else None
     self.object_commands = []
@@ -81,11 +81,9 @@ class Workflow:
   @staticmethod
   def get_default_step_mapping() -> List[dict]|None:
 
-    with open(constants.C_DEFAULT_STEP_ACTION, "r") as file:
-      step_mapping_json = json.load(file)
-      return step_mapping_json
-    
-    return None
+    step_mapping_json = files.getJson(constants.C_DEFAULT_STEP_ACTION)
+    return step_mapping_json
+  
 
 
   @staticmethod
@@ -113,8 +111,7 @@ class Workflow:
     warnings.warn(f"Use of old workflow file: {os.path.abspath(constants.C_WORKFLOW)}. Migrate to single etc/workflows/*.json file for each workflow!", DeprecationWarning, stacklevel=2)
     logging.warning(f"Use of old workflow file: {os.path.abspath(constants.C_WORKFLOW)}. Migrate to single etc/workflows/*.json file for each workflow!")
 
-    with open(constants.C_WORKFLOW, "r") as file:
-      workflows_json = json.load(file)
+    workflows_json = files.getJson(constants.C_WORKFLOW, retry=True)
 
     return workflows_json
 
@@ -146,16 +143,14 @@ class Workflow:
 
       try:
 
-        with open(wf_file, "r") as file:
+        json_data = files.getJson(wf_file, retry=True, use_cache=True)
 
-          json_data = json.load(file)
+        if not isinstance(json_data, dict):
+            raise Exception(f"Workflow file contains a {type(json_data)} instead of dict.")
 
-          if not isinstance(json_data, dict):
-              raise Exception(f"Workflow file contains a {type(json_data)} instead of dict.")
+        Workflow.validate_workflow(json_data, wf_file)
 
-          Workflow.validate_workflow(json_data, wf_file)
-
-          workflows_json.append(json_data)
+        workflows_json.append(json_data)
 
       except Exception as e:
 
@@ -195,6 +190,7 @@ class Workflow:
 
 
 
+
   @staticmethod
   def get_workflow_steps_mapping(workflow_dict: dict) -> List[dict]:
     """
@@ -229,6 +225,7 @@ class Workflow:
     if 'stages' not in workflow_dict.keys() or len(workflow_dict['stages']) == 0:
       raise Exception(f"No stage definition for workflow {workflow_dict['name']} in file {wf_file}!")
 
+    from modules import stages
     stages.Stage_List_list.validate_items(workflow_dict['stages'])
 
     for key in workflow_dict.keys():

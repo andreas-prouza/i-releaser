@@ -4,6 +4,7 @@ import logging
 import sys
 
 from io import StringIO
+from contextlib import redirect_stdout, redirect_stderr
 
 from modules import meta_file, permissions
 from modules import deploy_action as da
@@ -12,7 +13,8 @@ from modules import stages as s
 from modules import action_type
 from modules.cmd_status import Status as Cmd_Status
 
-from modules.permission_konfig import check_user_permission
+from modules.db import processing_user_data, run_history_data
+from modules.permission_config import check_user_permission
 from scripts import *
 
 
@@ -45,12 +47,12 @@ class IBM_i_commands:
 
 
 
-  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_commands(self, stage: s.Stage, processing_step: str=None, continue_run=True) -> None:
 
     logging.debug(f"Run Commands for {stage.name=} ({stage.id}), {processing_step=}")
 
-    action_type.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage)
+    processing_user_data.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage)
     stage.set_status('in process')
 
     # Execute all from stage
@@ -59,16 +61,12 @@ class IBM_i_commands:
       actions = stage.actions.get_actions(processing_step)
       self.execute_action(stage, actions[i], continue_run)
       i += 1
-    
-    # should be set on a higher level because of multiple processing_steps to run
-    #self.meta_file.open_stages.get_stage(stage).set_status('finished')
-    self.meta_file.write_meta_file()
 
     #iconv -f IBM-1252 -t utf-8 './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' > './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp && mv './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' 
 
 
 
-  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def execute_action(self, stage: s.Stage, action: da.Deploy_Action, continue_run=True):
 
     executions = {
@@ -93,28 +91,28 @@ class IBM_i_commands:
     except Exception as e:
     
       logging.exception(e, stack_info=True)
-      rh = run_history.Run_History()
+      rh = run_history_data.create_new_run_history(action_id=action.id)
       rh.status = Cmd_Status.FAILED
       rh.stderr = str(e)
 
     #time.sleep(0.02)
-    action.run_history.add_history(rh)
+    action.run_history.append(rh)
 
     action.status = rh.status
 
     if rh.status == Cmd_Status.FAILED and action.check_error:
       stage.set_status(rh.status)
-      self.meta_file.write_meta_file()
+      self.meta_file.save()
       logging.exception(f"Error in action {action.sequence} of stage {stage.name}: {rh.stderr}")
       raise Command_Exception(rh.stderr)
       
-    self.meta_file.write_meta_file()
+    self.meta_file.save()
 
 
 
 
 
-  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_script_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
     
     #cmd='pre.pre_cmd'
@@ -126,35 +124,53 @@ class IBM_i_commands:
     if len(obj) != 2:
       raise Command_Exception(f"Command '{cmd}' has not the correct format: 'filename.function_name' (without '.py' in filename)")
     
-    rh = run_history.Run_History()
+    rh = run_history_data.create_new_run_history(action_id=action.id)
 
-    stdout_orig = sys.stdout
     stdout_new = StringIO()
-    sys.stdout = stdout_new
-    stderr_orig = sys.stderr
-    sys.stderr = stderr_new = StringIO()
+    stderr_new = StringIO()
 
     hdl = logging.StreamHandler(stream=stdout_new)
-    logging.getLogger().addHandler(hdl)
-    
+    root_logger = logging.getLogger()
+
+    # 1. Save the original logging level so we can restore it later
+    original_level = root_logger.getEffectiveLevel()
+
+    # 2. Force the root logger to accept DEBUG and INFO messages
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.addHandler(hdl)
+
     try:
-      func = getattr(globals()[obj[0]], obj[1])
-      logging.info(f"Run {str(func)}")
 
-      func(self.meta_file, stage, action)
-      rh.status = Cmd_Status.FINISHED
+      # Safely redirect stdout and stderr using context managers
+      with redirect_stdout(stdout_new), redirect_stderr(stderr_new):
 
-    except Exception as e:
-      print(str(e), file=sys.stderr)
-      logging.exception(e, stack_info=True)
-      rh.status = Cmd_Status.FAILED
+        try:
+          func = getattr(globals()[obj[0]], obj[1])
+          logging.info(f"Run {str(func)}")
 
-    rh.stdout = stdout_new.getvalue()
-    rh.stderr = stderr_new.getvalue()
-    
-    sys.stdout = stdout_orig
-    sys.stderr = stderr_orig
-    logging.getLogger().removeHandler(hdl)
+          func(self.meta_file, stage, action)
+          rh.status = Cmd_Status.FINISHED
+
+        except Exception as e:
+          print(str(e), file=sys.stderr)
+          logging.exception(e, stack_info=True)
+          rh.status = Cmd_Status.FAILED
+
+        finally:
+            # Capture the values while the buffers are still in scope
+            rh.stdout = stdout_new.getvalue()
+            rh.stderr = stderr_new.getvalue()
+
+    finally:
+        # Guarantee the log handler is removed even if a catastrophic error occurs.
+        # (stdout and stderr are automatically restored when the `with` block exits)
+        root_logger.removeHandler(hdl)
+        # Restore the original logging level
+        root_logger.setLevel(original_level)
+
+        # Optional: clean up buffers from memory
+        stdout_new.close()
+        stderr_new.close()
 
     return rh
 
@@ -181,7 +197,7 @@ class IBM_i_commands:
 
 
 
-  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
     
     logging.debug(f"Run QSYS: {cmd=}")
@@ -196,7 +212,7 @@ class IBM_i_commands:
 
 
 
-  @check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
       
       logging.debug(f"{cmd=}; {stage.build_dir=}; {os.getcwd()=}")
@@ -209,7 +225,7 @@ class IBM_i_commands:
       stdout = stdout.decode('utf-8')
       stderr = stderr.decode('utf-8')
 
-      rh = run_history.Run_History()
+      rh = run_history_data.create_new_run_history(action_id=action.id)
       
       rh.stdout = stdout
       rh.stderr = stderr

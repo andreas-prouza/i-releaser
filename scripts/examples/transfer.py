@@ -18,7 +18,7 @@ def set_cmd_transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, acti
     """
 
     actions = stage_obj.actions
-    deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+    deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
 
     cmd = f"scp -rp {deployment_dir} {stage_obj.host}:{stage_obj.remote_dir}"
     actions.add_action_cmd(
@@ -41,7 +41,7 @@ def transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.D
     """
 
     actions = stage_obj.actions
-    deployment_dir = os.path.dirname(os.path.realpath(meta_file.file_name))
+    deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
     meta_file.deploy_objects.set_objects_status(Obj_Status.IN_TRANSVER)
 
     cmd = ibm_i_commands.IBM_i_commands(meta_file)

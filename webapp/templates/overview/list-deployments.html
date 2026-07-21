@@ -16,7 +16,24 @@
 
 {% block content %}
 
-  <h1>Project: <code>{{ project }}</code></h1>
+  <h1>Workflows <code>{{ project }}</code></h1> 
+
+  {% set btn_colors = [
+      'btn-primary', 
+      'btn-success', 
+      'btn-info', 
+      'btn-warning', 
+      'btn-danger', 
+      'btn-secondary', 
+      'btn-dark'
+  ] %}
+
+  <div class="btn-group" role="group">
+  {% for pr in sidebar['projects'] %}
+    <button type="button" class="btn {{ loop.cycle('btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger') }} mb-2">{{ pr }}</button>
+  {% endfor %}
+  </div>
+
 
   <!-- /.box-header -->
   <table id="deployments"
@@ -44,11 +61,12 @@
       </thead>
       <tbody>
         {% for row in deployments %}
+          {% set deployments_index = loop.index0 %}
         <tr>
             {% for key, value in row.items() %}
             <td style="white-space: nowrap;">
                 {% if key == 'status' %}
-                    <a href="/show_details/{{ project }}/{{ row['version'] }}">
+                    <a href="/show_details/{{ deployment_details[deployments_index]['id'] }}">
                     <button type="button" class="btn 
                         {% if value == 'finished' %}btn-success{% endif %}
                         {% if value == 'failed' %}btn-danger{% endif %}

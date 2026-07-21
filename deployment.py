@@ -52,7 +52,7 @@ os.chdir(os.path.realpath(os.path.dirname(__file__)))
 #################################################################
 
 from etc import logger_config, constants
-from modules import meta_file, deploy_version
+from modules import meta_file, deploy_version, files
 
 #################################################################
 
@@ -66,9 +66,9 @@ def create_deployment_request(args):
 
   mf = meta_file.Meta_File(workflow_name=args.workflow, object_list=args.object_file_list)
   mf.set_status(meta_file.Meta_file_status.READY)
-  mf.write_meta_file()
+  mf.save()
   
-  logging.debug(f"New request created: {mf.deploy_version=}, {mf.file_name=}")
+  logging.debug(f"New request created: {mf.deploy_version=}")
 
   if args.info_output is not None:
     save_info(mf)
@@ -95,9 +95,7 @@ def save_info(mf: meta_file.Meta_File):
   if not os.path.isdir(file_dir):
       os.makedirs(file_dir)
 
-  with open(args.info_output, 'w') as file:
-      json.dump(mf.get_all_data_as_dict(), file, default=str, indent=4)
-
+  files.writeJson(mf.get_all_data_as_dict(), args.info_output)
 
 
 action = {

@@ -13,6 +13,7 @@ base_dir = os.path.realpath(os.path.dirname(__file__)+"/..")
 sys.path.append(base_dir)
 
 from etc import logger_config
+from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI
@@ -22,12 +23,28 @@ logging.debug(f"{sys.path=}")
 
 # Custom modules
 from routes import routes, initial
+from modules.db import app_info_data, app_sqlite
+
+
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Context manager to handle startup and shutdown events.
+    """
+    # Initialize databases and tables
+    app_sqlite.create_tables()
+    app_info_data.add_app_info()
+    
+    yield
+    # Add shutdown logic here if needed
 
 
 #######################################################
 # Set FastAPI configuration
 #######################################################
-app: FastAPI = initial.setup_fastapi()
+app: FastAPI = initial.setup_fastapi(lifespan=lifespan)
 
 
 
@@ -93,21 +110,27 @@ app.add_api_route('/workflows', routes.show_workflows, methods=['GET', 'POST'])
 app.add_api_route('/settings', routes.show_settings, methods=['GET', 'POST'])
 
 
+app.add_api_route('/show_details/{meta_file_id}', routes.show_details_by_id, methods=['GET', 'POST'])
 app.add_api_route('/show_details/{project}/{version}', routes.show_details, methods=['GET', 'POST'])
 
 
-app.add_api_route('/api/run_stage', routes.run_stage, methods=['POST'])
+app.add_api_route('/api/run_stage/{meta_file_id}/{stage_id}/{option}', routes.run_stage, methods=['GET'])
 
 
-app.add_api_route('/api/get_meta_file_json', routes.get_meta_file_json, methods=['POST'])
+app.add_api_route('/api/get_meta_file_json/{meta_file_id}', routes.get_meta_file_json, methods=['POST'])
 
 
 
-app.add_api_route('/api/get_action_log', routes.get_action_log, methods=['POST'])
-app.add_api_route('/api/show_processing_history', routes.show_processing_history, methods=['POST'])
+app.add_api_route('/api/get_activity_log/{id}', routes.get_activity_log, methods=['GET'])
+app.add_api_route('/api/get_action_log/{id}', routes.get_action_log, methods=['GET'])
+
+app.add_api_route('/api/show_processing_history/{meta_file_id}', routes.show_processing_history, methods=['GET'])
 
 
-app.add_api_route('/api/cancel_deployment', routes.cancel_deployment, methods=['POST'])
+app.add_api_route('/api/cancel_deployment/{meta_file_id}', routes.cancel_deployment, methods=['GET'])
+
+app.add_api_route('/api/reset_stage_status/{meta_file_id}/{stage_id}', routes.reset_stage_status, methods=['GET'])
+app.add_api_route('/api/reset_deployment_status/{meta_file_id}', routes.reset_deployment_status, methods=['GET'])
 
 
 app.add_api_route('/api/create_deployment/{wf_name}/{commit}/{obj_list}', routes.create_deployment, methods=['GET'])
@@ -116,13 +139,13 @@ app.add_api_route('/api/create_deployment/{wf_name}', routes.create_deployment, 
  
 
 
-app.add_api_route('/api/set_check_error', routes.set_check_error, methods=['POST'])
+app.add_api_route('/api/set_check_error/{meta_file_id}/{stage_id}/{action_id}/{checked}', routes.set_check_error, methods=['GET'])
 
 
-app.add_api_route('/api/set_source_ready_4_deployment', routes.set_source_ready_4_deployment, methods=['POST'])
+app.add_api_route('/api/set_source_ready_4_deployment/{meta_file_id}', routes.set_source_ready_4_deployment, methods=['POST'])
 
 
-app.add_api_route('/api/get_stage_steps_html', routes.get_stage_steps_html, methods=['POST'])
+app.add_api_route('/api/get_stage_steps_html/{meta_file_id}/{stage_id}', routes.get_stage_steps_html, methods=['GET'])
 
 
 app.add_api_route('/api/get_workflows', routes.get_workflows, methods=['GET'])

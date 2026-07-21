@@ -30,26 +30,30 @@ class Deploy_Object:
   """
 
 
-  def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict={}):
+  def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict=None):
 
+    self.id: int|None = None
+    self.meta_file_id: int|None = None
     self.ready = True
     self.deploy_status = Obj_Status.NEW
     self.actions = da.Deploy_Action_List_list()
 
-    if len(dict) > 0:
+    if dict is not None and len(dict) > 0:
 
+      self.id = dict.get('id', None)
+      self.meta_file_id = dict.get('meta_file_id', None)
       self.ready = dict.get('ready', True)
-      self.prod_lib = dict['obj_prod_lib'].lower()
-      self.lib = dict['obj_lib'].lower()
-      self.name = dict['obj_name'].lower()
-      self.type = dict['obj_type'].lower()
-      self.attribute = dict['obj_attribute'].lower()
+      self.prod_lib = dict['prod_lib'].lower()
+      self.lib = dict['lib'].lower()
+      self.name = dict['name'].lower()
+      self.type = dict['type'].lower()
+      self.attribute = dict['attribute'].lower()
       self.deploy_status = Obj_Status(dict['deploy_status'])
 
-      if len(dict['actions']) > 0:
+      if len(dict.get('actions', [])) > 0:
         for action in dict['actions']:
           self.actions.add_actions_from_dict(action)
-          #self.actions.add_action(da.Deploy_Action(dict=action))
+          #self.actions.add_action(da.Deploy_Action(dict_data=action))
       return
  
     self.prod_lib = prod_lib.lower()
@@ -65,12 +69,13 @@ class Deploy_Object:
 
   def get_dict(self) -> dict:
     return {
+      'id' : self.id,
       'ready' : self.ready,
-      'obj_lib' : self.lib,
-      'obj_prod_lib' : self.prod_lib,
-      'obj_name' : self.name,
-      'obj_type' : self.type,
-      'obj_attribute' : self.attribute,
+      'lib' : self.lib,
+      'prod_lib' : self.prod_lib,
+      'name' : self.name,
+      'type' : self.type,
+      'attribute' : self.attribute,
       'deploy_status' : self.deploy_status.value,
       'actions' : self.actions.get_actions_as_dict()
     }
@@ -121,7 +126,7 @@ class Deploy_Object_List(list):
 
   def add_objects(self, objects: 'Deploy_Object_List'):
     
-    self = self + objects.get_objectjs_as_list()
+    self.extend(objects.get_objects_as_list())
 
 
   def add_object(self, objects: Deploy_Object):
@@ -138,13 +143,13 @@ class Deploy_Object_List(list):
 
 
 
-  def get_objectjs_as_list(self) -> list[Deploy_Object]:
+  def get_objects_as_list(self) -> list[Deploy_Object]:
     #self.sort_objects()
     return self
 
 
 
-  def get_objectjs_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]: 
+  def get_objects_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]: 
 
     #self.sort_objects()
     objs = []
@@ -207,29 +212,29 @@ class Deploy_Object_List(list):
 
 
 
-  def get_prod_object(self, prod_lib: str, obj_name: str, obj_type: str, ready: bool=None) -> Deploy_Object:
+  def get_prod_object(self, prod_lib: str, name: str, type: str, ready: bool=None) -> Deploy_Object|None:
     for o in self:
-      if o.prod_lib == prod_lib and o.type == obj_type and o.name == obj_name and (o.ready == ready or ready is None):
+      if o.prod_lib == prod_lib and o.type == type and o.name == name and (o.ready == ready or ready is None):
         return o
-    logging.warning(f"No prod object found for {prod_lib=}, {obj_name=}, {obj_type=}")
+    logging.warning(f"No prod object found for {prod_lib=}, {name=}, {type=}")
     return None
 
 
-  def get_deploy_object(self, obj_lib: str, obj_name: str, obj_type: str) -> Deploy_Object:
+  def get_deploy_object(self, lib: str, name: str, type: str) -> Deploy_Object|None:
     for o in self:
-      if o.lib == obj_lib and o.type == obj_type and o.name == obj_name:
+      if o.lib == lib and o.type == type and o.name == name:
         return o
-    logging.warning(f"No deploy object found for {obj_lib=}, {obj_name=}, {obj_type=}")
+    logging.warning(f"No deploy object found for {lib=}, {name=}, {type=}")
     return None
 
 
 
-  def add_object_action(self, obj_lib: str, obj_name: str, obj_type: str, action: type[da.Deploy_Action]):
+  def add_object_action(self, lib: str, name: str, type: str, action: type[da.Deploy_Action]):
 
     if type(action) == str:
       action = da.Deploy_Action(cmd=action)
 
-    obj = self.get_prod_object(obj_lib, obj_name, obj_type)
+    obj = self.get_prod_object(lib, name, type)
     obj.actions.add_action(action)
 
 
@@ -248,7 +253,7 @@ class Deploy_Object_List(list):
 
   def add_object_action_from_dict(self, dict: dict, workflow: workflow.Workflow):
     
-    obj = self.get_prod_object(dict['obj_lib'], dict['obj_name'], dict['obj_type'])
+    obj = self.get_prod_object(dict.get('lib', ''), dict.get('name', ''), dict.get('type', ''))
     
     if obj is None:
       return
@@ -263,7 +268,7 @@ class Deploy_Object_List(list):
       del a['stages']
       
       for stage in stages:
-        action = da.Deploy_Action(dict=a, stage=stage['name'])
+        action = da.Deploy_Action(dict_data=a, stage=stage['name'])
         obj.actions.add_action(action)
 
 
