@@ -1,13 +1,9 @@
 import datetime
-import json
 import configparser
 import logging
-import re
 import os
-import sys
 from io import StringIO
 
-from enum import Enum
 import threading
 
 # from pydantic import validate_arguments
@@ -99,9 +95,8 @@ class Meta_File:
 
       self.release_branch = constants.C_GIT_BRANCH_RELEASE.replace('{deploy_version}', str(self.deploy_version)).replace('{project}', self.project)
 
-      self.set_deploy_main_lib(f"d{str(self.id).zfill(9)}")
-      self.set_deploy_backup_lib(f"b{str(self.id).zfill(9)}")
-      self.set_deploy_remote_lib(f"r{str(self.id).zfill(9)}")
+      if self.id is not None:
+        self.set_libs()
 
 
 
@@ -401,8 +396,6 @@ class Meta_File:
 
 
 
-
-     #@validate_arguments
     def check_deployment_finish(self) -> None:
 
       if self.get_open_stages() is None or len(self.get_open_stages()) == 0:
@@ -411,28 +404,23 @@ class Meta_File:
 
 
 
-     #@validate_arguments
-    def set_deploy_main_lib(self, library: str):
-      self.main_deploy_lib = library.lower()
-
-
-
-     #@validate_arguments
-    def set_deploy_backup_lib(self, library: str):
-      self.backup_deploy_lib = library.lower()
-
-
-     #@validate_arguments
-    def set_deploy_remote_lib(self, library: str):
-      self.remote_deploy_lib = library.lower()
+    def set_libs(self):
+      self.main_deploy_lib = f"d{str(self.id).zfill(9)}"
+      self.backup_deploy_lib = f"b{str(self.id).zfill(9)}"
+      self.remote_deploy_lib = f"r{str(self.id).zfill(9)}"
 
 
 
     
     def add_deploy_object(self, object: do.Deploy_Object):
 
-      new_obj: do.Deploy_Object = deploy_object_data.create_deploy_object(meta_file_id=self.id, lib=object.lib, prod_lib=object.prod_lib, name=object.name, type=object.type, attribute=object.attribute)
+      if object.id is not None:
+        self.deploy_objects.add_object(object)
+        return
+      
+      new_obj: do.Deploy_Object = deploy_object_data.create_deploy_object(meta_file_id=self.id, level=object.level, lib=object.lib, prod_lib=object.prod_lib, name=object.name, type=object.type, attribute=object.attribute)
       self.deploy_objects.add_object(new_obj)
+
 
 
 
@@ -628,8 +616,8 @@ class Meta_File:
          These actions will be added in set_next_stage function
       """
       '''
-      {constant:prod_obj} | {lib on production system} | {lib on source system} | {object to be saved}
-      prod_obj|prouzalib|prouzadev|testlog_test|prouzalib/qrpglesrc/testlog_test.rpgle.pgm
+      {level} | {lib on production system} | {lib on source system} | {object to be saved}
+      1|prouzalib|prouzadev|testlog_test|prouzalib/qrpglesrc/testlog_test.rpgle.pgm
       '''
 
       self.deploy_objects = do.Deploy_Object_List()
@@ -651,6 +639,7 @@ class Meta_File:
         logging.debug(f"Import object: {line}")
         tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
         logging.debug(f"{tmp=}")
+        level = int(tmp[0])
         prod_lib = tmp[1]
         dev_lib = tmp[2]
         target_obj = tmp[3]
@@ -660,9 +649,11 @@ class Meta_File:
         logging.debug(f"{dev_lib=}")
         logging.debug(f"{target_obj=}")
 
-        obj: do.Deploy_Object = deploy_object_data.create_deploy_object(self.id, lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr)
+        obj: do.Deploy_Object = deploy_object_data.create_deploy_object(self.id, level=level, lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr)
         self.add_deploy_object(obj)
-      
+
+      logging.info(f"Imported {len(self.deploy_objects)} objects from {self.object_list}")
+
       self.load_actions_from_json(constants.C_OBJECT_COMMANDS)
       self.save()
 
