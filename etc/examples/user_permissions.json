@@ -1,16 +1,13 @@
 {
   "users": {
     "prouza": {
-      "roles": [
-        "admin"
-      ],
+      "roles": ["admin"],
       "permissions": {
         "general": [
           "read",
           "start workflow",
-          "deploy",
-          "run",
-          "change check error"
+                "change check error",
+          "deploy"
         ],
         "workflows": {
           "unit_test_permissions": {
@@ -31,19 +28,17 @@
               ]
             }
           },
-          "unit_test_permissions_admin": {
+          "simple_wf": {
             "general": [
-              "admin",
               "cancel workflow",
               "start workflow",
               "read",
               "deploy",
               "4-eyes check",
-              "change check error",
               "run"
             ],
             "stages": {
-              "uat": [
+              "starts": [
                 "admin",
                 "cancel workflow",
                 "start workflow",
@@ -96,14 +91,14 @@
     "admin": {
       "permissions": {
         "general": [
+          "admin",
           "read",
           "start workflow",
           "deploy",
-          "admin",
-          "cancel workflow",
-          "4-eyes check",
+          "run",
           "change check error",
-          "run"
+          "4-eyes check",
+          "cancel workflow"
         ],
         "workflows": {
           "unit_test_permissions": {
@@ -165,7 +160,9 @@
     "user": {
       "permissions": {
         "general": [
-          "read"
+          "start workflow",
+          "run",
+          "change check error"
         ],
         "workflows": {}
       },

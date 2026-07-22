@@ -3,9 +3,9 @@ from modules.db import actions_data, app_sqlite
 from modules import deploy_object as do
 
 
-def create_deploy_object(meta_file_id: int, lib: str, prod_lib: str, name: str, type: str, attribute: str) -> do.Deploy_Object:
+def create_deploy_object(meta_file_id: int, level: int, lib: str, prod_lib: str, name: str, type: str, attribute: str) -> do.Deploy_Object:
     
-    deploy_object: do.Deploy_Object = do.Deploy_Object(lib=lib, prod_lib=prod_lib, name=name, type=type, attribute=attribute)
+    deploy_object: do.Deploy_Object = do.Deploy_Object(level=level, lib=lib, prod_lib=prod_lib, name=name, type=type, attribute=attribute)
     deploy_object.meta_file_id = meta_file_id
     
     _add_deploy_object(meta_file_id=meta_file_id, deploy_object=deploy_object)
@@ -27,10 +27,10 @@ def _add_deploy_object(meta_file_id: int, deploy_object: do.Deploy_Object):
 
         c = conn.cursor()
         c.execute('''
-            INSERT INTO deploy_objects (meta_file_id, prod_lib, lib, name, type, attribute, deploy_status, ready)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO deploy_objects (meta_file_id, level, prod_lib, lib, name, type, attribute, deploy_status, ready)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            meta_file_id, deploy_object.prod_lib, deploy_object.lib, deploy_object.name, deploy_object.type,
+            meta_file_id, deploy_object.level, deploy_object.prod_lib, deploy_object.lib, deploy_object.name, deploy_object.type,
             deploy_object.attribute, deploy_object.deploy_status.value, deploy_object.ready
         ))
 
@@ -52,7 +52,7 @@ def get_deploy_objects(meta_file_id: int) -> do.Deploy_Object_List:
     with app_sqlite.get_db_connection() as conn:
 
         c = conn.cursor()
-        c.execute("SELECT * FROM deploy_objects WHERE meta_file_id = ?", (meta_file_id,))
+        c.execute("SELECT * FROM deploy_objects WHERE meta_file_id = ? order by level", (meta_file_id,))
         object_rows = c.fetchall()
         objects: do.Deploy_Object_List = do.Deploy_Object_List()
         
@@ -110,10 +110,10 @@ def save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor=N
 def _save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor):
     cursor.execute('''
         UPDATE deploy_objects 
-        SET prod_lib = ?, lib = ?, name = ?, type = ?, attribute = ?, deploy_status = ?, ready = ?
+        SET level = ?, prod_lib = ?, lib = ?, name = ?, type = ?, attribute = ?, deploy_status = ?, ready = ?
         WHERE id = ?
     ''', (
-        deploy_object.prod_lib, deploy_object.lib, deploy_object.name, deploy_object.type,
+        deploy_object.level, deploy_object.prod_lib, deploy_object.lib, deploy_object.name, deploy_object.type,
         deploy_object.attribute, deploy_object.deploy_status.value, deploy_object.ready,
         deploy_object.id
     ))

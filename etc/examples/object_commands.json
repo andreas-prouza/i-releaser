@@ -1,8 +1,8 @@
 [
   {
-    "lib": "prouzalib",
-    "name": "date",
-    "type": "srvpgm",
+    "obj_lib": "prouzalib",
+    "obj_name": "date",
+    "obj_type": "srvpgm",
     "actions": [
         {
             "sequence": 0,
@@ -20,12 +20,11 @@
             "check_error": false
         }
     ]
-    
   },
   {
-    "lib": "prouza2",
-    "name": "testlog",
-    "type": "pgm",
+    "obj_lib": "prouza2",
+    "obj_name": "testlog",
+    "obj_type": "pgm",
     "actions": [
       {
           "sequence": 0,

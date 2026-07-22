@@ -141,6 +141,7 @@ def create_tables(db_path=DB_FILE):
             CREATE TABLE IF NOT EXISTS deploy_objects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 meta_file_id INTEGER,
+                level INTEGER,
                 prod_lib TEXT,
                 lib TEXT,
                 name TEXT,

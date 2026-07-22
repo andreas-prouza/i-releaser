@@ -228,10 +228,7 @@ async def show_details_by_id(request: Request, meta_file_id: int):
         
         # Layer the objects based on dependencies
         layered_objects = mf.deploy_objects.get_layered_objects()
-        
-        # Convert the layered objects to dictionaries for the template
-        mf_dict['objects'] = [layer.get_objects_as_dict() for layer in layered_objects]
-        
+
         mf_json = json.dumps(mf_dict, default=str, indent=4)
         progress = (len(mf.workflow.stages) - len(mf.get_open_stages())) / len(mf.workflow.stages)
         progress = progress * 100

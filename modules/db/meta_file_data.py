@@ -1,15 +1,10 @@
-import datetime
 from io import StringIO
 import sqlite3
 import json
 import logging
-from etc import constants
-from modules.db import actions_data, app_sqlite
+from modules.db import  app_sqlite
 from modules import meta_file as mf
 from modules import stages as s
-from modules.stage_status import Status as Stage_Status
-from modules import deploy_object as do
-from modules import deploy_action as da
 from modules import workflow as wf
 from modules import meta_file_history as mfh
 from modules import deploy_version as dv
@@ -143,9 +138,9 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
     meta_file.run_history = run_history
     meta_file.commit = meta_file_row['commit_hash']
     meta_file.release_branch = meta_file_row['release_branch']
-    meta_file.set_deploy_main_lib(meta_file_row['main_lib'])
-    meta_file.set_deploy_backup_lib(meta_file_row['backup_lib'])
-    meta_file.set_deploy_remote_lib(meta_file_row['remote_lib'])
+    meta_file.main_deploy_lib = meta_file_row['main_lib']
+    meta_file.backup_deploy_lib = meta_file_row['backup_lib']
+    meta_file.remote_deploy_lib = meta_file_row['remote_lib']
     meta_file.activate_history()
 
     return meta_file
@@ -223,15 +218,15 @@ def add_meta_file(meta_file: mf.Meta_File):
         c.execute('''
             INSERT INTO meta_files (project, deploy_version_id, commit_hash, release_branch, create_time, 
                                     meta_dir,
-                                    update_time, status, object_list, main_lib, remote_lib, backup_lib, custom_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    update_time, status, object_list, custom_data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             meta_file.project, meta_file.deploy_version_id, meta_file.commit, meta_file.release_branch,
             meta_file.create_time, meta_file.meta_dir, meta_file.update_time, meta_file.status.value,
-            meta_file.object_list, meta_file.main_deploy_lib, meta_file.remote_deploy_lib,
-            meta_file.backup_deploy_lib, json.dumps(meta_file.custom_data)
+            meta_file.object_list, json.dumps(meta_file.custom_data)
         ))
         meta_file.id = c.lastrowid
+        meta_file.set_libs()
 
         _save_workflow_definition(c, meta_file.id, meta_file.workflow)
 

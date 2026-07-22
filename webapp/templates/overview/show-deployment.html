@@ -262,6 +262,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                     <span class="slider round"></span>
                 </label>
             </th>
+            <th data-field="level" data-sortable="true" data-filter-control="select" data-filter-control-container="#level_filter">Level</th>
             <th data-field="prod_lib" data-sortable="true" data-filter-control="input" data-filter-control-container="#prod_lib_filter">Prod Lib</th>
             <th data-field="target_lib" data-sortable="true" data-filter-control="input" data-filter-control-container="#target_lib_filter">Target Lib</th>
             <th data-field="name" data-sortable="true" data-filter-control="input" data-filter-control-container="#name_filter">Name</th>
@@ -269,11 +270,17 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             <th data-field="attribute" data-sortable="true" data-filter-control="select" data-filter-control-container="#attribute_filter">Attribute</th>
             <th data-field="status" data-sortable="true" data-filter-control="select" data-filter-control-container="#status_filter">Status</th>
         </thead>
-        {% for layer in deployment_dict['objects'] %}
-            <tr>
-                <td colspan="7" style="background-color: #e0e0e0; text-align: center; font-weight: bold;">Layer {{ loop.index }}</td>
-            </tr>
-            {% for object in layer %}
+        {% set ns = namespace(prev_level=-1) %}
+
+        {% for object in deployment_dict['objects'] %}
+
+            {% if ns.prev_level < 0 or ns.prev_level != object['level'] %}
+
+                {% set ns.prev_level = object['level'] %}
+                <tr>
+                    <td colspan="8" style="background-color: #e0e0e0; text-align: center; font-weight: bold;">Level {{ object['level'] }}</td>
+                </tr>
+            {% endif %}
             <tr>
                 <td>
                     <label class="switch">
@@ -287,6 +294,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                         <span class="slider round"></span>
                     </label>
                 </td>
+                <td>{{ object['level'] }}</td>
                 <td>{{ object['prod_lib'] }}</td>
                 <td>{{ object['lib'] }}</td>
                 <td>{{ object['name'] }}</td>
@@ -299,7 +307,6 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                     {% if object['deploy_status'] == 'in process' %}btn-secondary{% endif %}
                     ">{{ object['deploy_status'] }}</button></td>
             </tr>
-            {% endfor %}
         {% endfor %}
     </table>
 

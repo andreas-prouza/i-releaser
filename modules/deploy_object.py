@@ -30,10 +30,11 @@ class Deploy_Object:
   """
 
 
-  def __init__(self, prod_lib='', lib='', name='', type='', attribute='', dict=None):
+  def __init__(self, level=0, prod_lib='', lib='', name='', type='', attribute='', dict=None):
 
     self.id: int|None = None
     self.meta_file_id: int|None = None
+    self.level: int = level
     self.ready = True
     self.deploy_status = Obj_Status.NEW
     self.actions = da.Deploy_Action_List_list()
@@ -43,6 +44,7 @@ class Deploy_Object:
 
       self.id = dict.get('id', None)
       self.meta_file_id = dict.get('meta_file_id', None)
+      self.level = dict.get('level', None)
       self.ready = dict.get('ready', True)
       self.prod_lib = dict['prod_lib'].lower()
       self.lib = dict['lib'].lower()
@@ -75,6 +77,8 @@ class Deploy_Object:
   def get_dict(self) -> dict:
     return {
       'id' : self.id,
+      'meta_file_id' : self.meta_file_id,
+      'level' : self.level,
       'ready' : self.ready,
       'lib' : self.lib,
       'prod_lib' : self.prod_lib,
