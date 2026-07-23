@@ -215,9 +215,9 @@ class IBM_i_commands:
   #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
       
-      logging.debug(f"{cmd=}; {stage.build_dir=}; {os.getcwd()=}")
+      logging.debug(f"{cmd=}; {stage.build_dir=}; {action.cwd=}; {os.getcwd()=}")
 
-      s=subprocess.run(cmd, stdout=subprocess.PIPE, cwd=stage.build_dir, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
+      s=subprocess.run(cmd, stdout=subprocess.PIPE, cwd=action.cwd or stage.build_dir, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
 
       stdout = s.stdout
       stderr = s.stderr

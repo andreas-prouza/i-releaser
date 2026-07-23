@@ -47,12 +47,12 @@ def _add_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, stage_id: int|
     cursor.execute('''
         INSERT INTO actions (stage_id, deploy_object_id, action_id, sequence, cmd, status, 
                                 processing_step, environment, run_in_new_job, 
-                                execute_remote, check_error)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                execute_remote, check_error, cwd)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
     ''', (
         stage_id, deploy_object_id, action_id, action.sequence, action.cmd, action.status.value,
         action.processing_step, action.environment.value, action.run_in_new_job,
-        action.execute_remote, action.check_error
+        action.execute_remote, action.check_error, action.cwd
     ))
     action_db_id = cursor.lastrowid
     
@@ -87,10 +87,10 @@ def save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor|None=None, stag
 
 def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor):
     cursor.execute('''
-        update actions set sequence = ?, cmd = ?, status = ?, processing_step = ?, environment = ?, run_in_new_job = ?, execute_remote = ?, check_error = ?
+        update actions set sequence = ?, cmd = ?, status = ?, processing_step = ?, environment = ?, run_in_new_job = ?, execute_remote = ?, check_error = ?, cwd = ?
         WHERE id = ?
     ''', (
-        action.sequence, action.cmd, action.status.value, action.processing_step, action.environment.value, action.run_in_new_job, action.execute_remote, action.check_error, 
+        action.sequence, action.cmd, action.status.value, action.processing_step, action.environment.value, action.run_in_new_job, action.execute_remote, action.check_error, action.cwd,
         action.id
     ))
     

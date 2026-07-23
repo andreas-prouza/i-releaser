@@ -275,6 +275,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             <th data-field="name" data-sortable="true" data-filter-control="input" data-filter-control-container="#name_filter">Name</th>
             <th data-field="type" data-sortable="true" data-filter-control="select" data-filter-control-container="#type_filter">Type</th>
             <th data-field="attribute" data-sortable="true" data-filter-control="select" data-filter-control-container="#attribute_filter">Attribute</th>
+            <th data-field="source_only" data-sortable="true" data-filter-control="select" data-filter-control-container="#source_only_filter">Source Only</th>
             <th data-field="status" data-sortable="true" data-filter-control="select" data-filter-control-container="#status_filter">Status</th>
         </thead>
         {% set ns = namespace(prev_level=-1) %}
@@ -285,7 +286,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 
                 {% set ns.prev_level = object['level'] %}
                 <tr>
-                    <td colspan="8" style="background-color: #e0e0e0; text-align: center; font-weight: bold;">Level {{ object['level'] }}</td>
+                    <td colspan="9" style="background-color: #e0e0e0; text-align: center; font-weight: bold;">Level {{ object['level'] }}</td>
                 </tr>
             {% endif %}
             <tr>
@@ -307,6 +308,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                 <td>{{ object['name'] }}</td>
                 <td>{{ object['type'] }}</td>
                 <td>{{ object['attribute'] }}</td>
+                <td>{{ object['source_only'] }}</td>
                 <td><button type="button" class="btn  
                     {% if object['deploy_status'] == 'finished' %}btn-success{% endif %}
                     {% if object['deploy_status'] == 'failed' %}btn-danger{% endif %}

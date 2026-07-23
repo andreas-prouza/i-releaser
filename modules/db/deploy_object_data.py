@@ -1,12 +1,12 @@
-import json
+import json, logging
 import sqlite3
 from modules.db import actions_data, app_sqlite
 from modules import deploy_object as do
 
 
-def create_deploy_object(meta_file_id: int, level: int, lib: str, prod_lib: str, name: str, type: str, attribute: str) -> do.Deploy_Object:
+def create_deploy_object(meta_file_id: int, level: int, lib: str, prod_lib: str, name: str, type: str, attribute: str, source: str='', source_only: bool=False) -> do.Deploy_Object:
     
-    deploy_object: do.Deploy_Object = do.Deploy_Object(level=level, lib=lib, prod_lib=prod_lib, name=name, type=type, attribute=attribute)
+    deploy_object: do.Deploy_Object = do.Deploy_Object(level=level, lib=lib, prod_lib=prod_lib, name=name, type=type, attribute=attribute, source=source, source_only=source_only)
     deploy_object.meta_file_id = meta_file_id
     
     _add_deploy_object(meta_file_id=meta_file_id, deploy_object=deploy_object)
@@ -20,7 +20,7 @@ def _add_deploy_object(meta_file_id: int, deploy_object: do.Deploy_Object):
     Adds a deploy object to the database for the given meta_file_id.
 
     Args:
-        c (sqlite3.Cursor): Database cursor.
+        c (sqlite3.Cursor, optional): Database cursor. If not provided, a new connection will be used.
         meta_file_id (int): ID of the meta file.
         deploy_object (do.Deploy_Object): Deploy object to be added.
     """
@@ -28,11 +28,11 @@ def _add_deploy_object(meta_file_id: int, deploy_object: do.Deploy_Object):
 
         c = conn.cursor()
         c.execute('''
-            INSERT INTO deploy_objects (meta_file_id, level, prod_lib, lib, name, type, attribute, deploy_status, ready)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO deploy_objects (meta_file_id, level, prod_lib, lib, name, type, attribute, deploy_status, ready, source, source_only)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             meta_file_id, deploy_object.level, deploy_object.prod_lib, deploy_object.lib, deploy_object.name, deploy_object.type,
-            deploy_object.attribute, deploy_object.deploy_status.value, deploy_object.ready
+            deploy_object.attribute, deploy_object.deploy_status.value, deploy_object.ready, deploy_object.source, deploy_object.source_only
         ))
 
         deploy_object_db_id = c.lastrowid
@@ -61,7 +61,8 @@ def get_deploy_objects(meta_file_id: int) -> do.Deploy_Object_List:
             object_dict = dict(row)
             object_dict['deploy_status'] = do.Obj_Status(object_dict['deploy_status'])
             object_dict['depends_on'] = json.loads(object_dict['depends_on'])
-            
+            object_dict['source'] = object_dict['source']
+            object_dict['source_only'] = object_dict['source_only']
             object_obj: do.Deploy_Object = do.Deploy_Object(dict=object_dict)
             object_obj.actions = actions_data.get_actions(deploy_object_id=object_obj.id)
             objects.append(object_obj)
@@ -112,14 +113,15 @@ def save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor=N
 def _save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor):
     cursor.execute('''
         UPDATE deploy_objects 
-        SET level = ?, prod_lib = ?, lib = ?, name = ?, type = ?, attribute = ?, deploy_status = ?, ready = ?, depends_on = ?, source = ?
+        SET level = ?, prod_lib = ?, lib = ?, name = ?, type = ?, attribute = ?, deploy_status = ?, ready = ?, depends_on = ?, source = ?, source_only = ?
         WHERE id = ?
     ''', (
         deploy_object.level, deploy_object.prod_lib, deploy_object.lib, deploy_object.name, deploy_object.type,
         deploy_object.attribute, deploy_object.deploy_status.value, deploy_object.ready,
-        json.dumps(deploy_object.depends_on.get_objects_as_list_of_dict()), deploy_object.source,
+        json.dumps(deploy_object.depends_on.get_objects_as_list_of_dict()), deploy_object.source, deploy_object.source_only,
         deploy_object.id
     ))
+    logging.debug(f"Saved deploy object {deploy_object.get_dict()=}")
 
     for action in deploy_object.actions:
         actions_data.save_action(action, cursor, deploy_object_id=deploy_object.id)

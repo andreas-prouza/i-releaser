@@ -151,6 +151,7 @@ def create_tables(db_path=DB_FILE):
                 ready BOOLEAN,
                 depends_on TEXT,
                 source TEXT,
+                source_only BOOLEAN,
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
         ''')
@@ -170,6 +171,7 @@ def create_tables(db_path=DB_FILE):
                 run_in_new_job BOOLEAN,
                 execute_remote BOOLEAN,
                 check_error BOOLEAN,
+                cwd TEXT,
                 FOREIGN KEY (stage_id) REFERENCES stages (id),
                 FOREIGN KEY (deploy_object_id) REFERENCES deploy_objects (id),
                 FOREIGN KEY (action_id) REFERENCES actions (id)

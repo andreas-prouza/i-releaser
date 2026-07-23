@@ -30,7 +30,7 @@ class Deploy_Object:
   """
 
 
-  def __init__(self, level=0, prod_lib='', lib='', name='', type='', attribute='', source:str|None=None, dict=None):
+  def __init__(self, level=0, prod_lib='', lib='', name='', type='', attribute='', source:str|None=None, source_only: bool=False, dict=None):
 
     self.id: int|None = None
     self.meta_file_id: int|None = None
@@ -40,6 +40,7 @@ class Deploy_Object:
     self.actions = da.Deploy_Action_List_list()
     self.depends_on = Deploy_Object_List()
     self.source: str|None = source
+    self.source_only: bool = source_only
 
     if dict is not None and len(dict) > 0:
 
@@ -53,6 +54,7 @@ class Deploy_Object:
       self.type = dict['type'].lower()
       self.attribute = dict['attribute'].lower()
       self.source = dict.get('source', None)
+      self.source_only = dict.get('source_only', False)
       self.deploy_status = Obj_Status(dict['deploy_status'])
 
       if len(dict.get('actions', [])) > 0:
@@ -90,7 +92,8 @@ class Deploy_Object:
       'deploy_status' : self.deploy_status.value,
       'actions' : self.actions.get_actions_as_dict(),
       'depends_on' : self.depends_on.get_objects_as_list_of_dict(),
-      'source' : self.source
+      'source' : self.source,
+      'source_only' : self.source_only
     }
 
 
@@ -187,11 +190,11 @@ class Deploy_Object_List(list):
     return libs
 
 
-  def get_lib_list_with_prod_lib(self, ready: bool=None) -> list[dict]:
+  def get_lib_list_with_prod_lib(self, ready: bool=None, objects_only: bool=False) -> list[dict]:
     libs = []
     lib_list = []
     for o in self:
-      if (ready is None or o.ready == ready) and o.lib not in lib_list:
+      if (ready is None or o.ready == ready) and (not objects_only or objects_only and not o.source_only) and o.lib not in lib_list:
         lib_list.append(o.lib)
         libs.append({'lib' : o.lib, 'prod_lib': o.prod_lib})
     return libs
@@ -215,11 +218,20 @@ class Deploy_Object_List(list):
     return objs
 
 
-
-  def get_obj_list_by_prod_lib(self, lib, ready: bool=None) -> list[Deploy_Object]:
+  def get_obj_list_sorted_by_level(self, ready: bool=None) -> list[Deploy_Object]:
     objs = []
     for o in self:
-      if o.prod_lib == lib and (o.ready == ready or ready is None):
+      if o.ready == ready or ready is None:
+        objs.append(o)
+    objs.sort(key=lambda x: x.level)
+    return objs
+
+
+
+  def get_obj_list_by_prod_lib(self, lib, ready: bool=None, objects_only: bool=False) -> list[Deploy_Object]:
+    objs = []
+    for o in self:
+      if o.prod_lib == lib and (o.ready == ready or ready is None) and (not objects_only or objects_only and not o.source_only):
         objs.append(o)
     return objs
 

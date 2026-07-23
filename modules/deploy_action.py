@@ -43,7 +43,7 @@ class Deploy_Action:
 
   def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=None,  
     environment: Command_Type=None, stage: str=None, processing_step: str=None, 
-    check_error: bool=True, dict_data: dict=None, id: int|None=None, run_in_new_job: bool=False, execute_remote: bool=None):
+    check_error: bool=True, dict_data: dict=None, id: int|None=None, run_in_new_job: bool=False, execute_remote: bool=None, cwd: str=None):
 
     self.id :int|None = id
     self.stage_id :int|None = None
@@ -59,6 +59,7 @@ class Deploy_Action:
     self.run_history = rh.Run_History_List_list()
     self.check_error = check_error
     self.sub_actions = Deploy_Action_List_list()
+    self.cwd = cwd
 
     self.processing_step = processing_step
 
@@ -154,7 +155,8 @@ class Deploy_Action:
       'execute_remote': self.execute_remote,
       'run_history': self.run_history.get_list(),
       'sub_actions': self.sub_actions.get_list(),
-      'check_error': self.check_error
+      'check_error': self.check_error,
+      'cwd': self.cwd
       }
 
 
