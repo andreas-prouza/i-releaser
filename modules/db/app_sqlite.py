@@ -149,6 +149,8 @@ def create_tables(db_path=DB_FILE):
                 attribute TEXT,
                 deploy_status TEXT,
                 ready BOOLEAN,
+                depends_on TEXT,
+                source TEXT,
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
         ''')

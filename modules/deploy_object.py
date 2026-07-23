@@ -30,7 +30,7 @@ class Deploy_Object:
   """
 
 
-  def __init__(self, level=0, prod_lib='', lib='', name='', type='', attribute='', dict=None):
+  def __init__(self, level=0, prod_lib='', lib='', name='', type='', attribute='', source:str|None=None, dict=None):
 
     self.id: int|None = None
     self.meta_file_id: int|None = None
@@ -39,6 +39,7 @@ class Deploy_Object:
     self.deploy_status = Obj_Status.NEW
     self.actions = da.Deploy_Action_List_list()
     self.depends_on = Deploy_Object_List()
+    self.source: str|None = source
 
     if dict is not None and len(dict) > 0:
 
@@ -51,6 +52,7 @@ class Deploy_Object:
       self.name = dict['name'].lower()
       self.type = dict['type'].lower()
       self.attribute = dict['attribute'].lower()
+      self.source = dict.get('source', None)
       self.deploy_status = Obj_Status(dict['deploy_status'])
 
       if len(dict.get('actions', [])) > 0:
@@ -87,7 +89,8 @@ class Deploy_Object:
       'attribute' : self.attribute,
       'deploy_status' : self.deploy_status.value,
       'actions' : self.actions.get_actions_as_dict(),
-      'depends_on' : self.depends_on.get_objects_as_dict()
+      'depends_on' : self.depends_on.get_objects_as_list_of_dict(),
+      'source' : self.source
     }
 
 
@@ -159,7 +162,7 @@ class Deploy_Object_List(list):
 
 
 
-  def get_objects_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]: 
+  def get_objects_as_list_of_dict(self, processing_step: str=None, stage: str=None) -> list[dict]: 
 
     #self.sort_objects()
     objs = []

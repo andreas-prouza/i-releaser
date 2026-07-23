@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from modules.db import actions_data, app_sqlite
 from modules import deploy_object as do
@@ -59,6 +60,7 @@ def get_deploy_objects(meta_file_id: int) -> do.Deploy_Object_List:
         for row in object_rows:
             object_dict = dict(row)
             object_dict['deploy_status'] = do.Obj_Status(object_dict['deploy_status'])
+            object_dict['depends_on'] = json.loads(object_dict['depends_on'])
             
             object_obj: do.Deploy_Object = do.Deploy_Object(dict=object_dict)
             object_obj.actions = actions_data.get_actions(deploy_object_id=object_obj.id)
@@ -110,11 +112,12 @@ def save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor=N
 def _save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor):
     cursor.execute('''
         UPDATE deploy_objects 
-        SET level = ?, prod_lib = ?, lib = ?, name = ?, type = ?, attribute = ?, deploy_status = ?, ready = ?
+        SET level = ?, prod_lib = ?, lib = ?, name = ?, type = ?, attribute = ?, deploy_status = ?, ready = ?, depends_on = ?, source = ?
         WHERE id = ?
     ''', (
         deploy_object.level, deploy_object.prod_lib, deploy_object.lib, deploy_object.name, deploy_object.type,
         deploy_object.attribute, deploy_object.deploy_status.value, deploy_object.ready,
+        json.dumps(deploy_object.depends_on.get_objects_as_list_of_dict()), deploy_object.source,
         deploy_object.id
     ))
 

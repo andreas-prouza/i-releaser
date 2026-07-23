@@ -556,7 +556,7 @@ class Meta_File:
                             }
       #dict['deploy_cmds'] = self.get_actions_as_dict()
       dict['processing_users'] = self.processing_users
-      dict['objects'] = self.deploy_objects.get_objects_as_dict()
+      dict['objects'] = self.deploy_objects.get_objects_as_list_of_dict()
       dict['run_history'] = self.run_history.get_list()
       dict['custom_data'] = self.custom_data
       logging.debug(f"Number of histories: {len(self.run_history)}")
