@@ -475,6 +475,39 @@ async def start_workflow(request: Request, wf_name: str):
 
 
 
+
+async def start_workflow_post(request: Request, wf_name: str, custom_data: dict = {}):
+    """
+    Starts a workflow with the given parameters.
+    """
+
+    logging.info(f"Starting workflow with parameters: {len(custom_data)} items")
+    
+    logging.debug(f"Create Deployment: {wf_name=}")
+    logging.debug(f'{os.path.realpath(os.path.dirname(__file__)+"/..")=}')
+    result={}
+    status = 200
+
+    try:
+        permission_config.check_user_permission(permissions.PermissionAction.START_WORKFLOW, wf_name)
+
+        wf = workflow.Workflow(wf_name)
+        logging.debug(f"Workflow: {wf}")
+ 
+        mf = meta_file_data.create_new_meta_file(workflow_name=wf_name, custom_data=custom_data)
+        processing_user_data.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
+
+        mf.set_status(meta_file.Meta_file_status.READY)
+        result={'status': 'success', 'meta_file': mf.get_all_data_as_dict()}
+
+    except Exception as e:
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response_error(str(e))
+
+    return http_functions.get_json_response(result, status=status)
+
+
+
 async def set_check_error(request: Request, meta_file_id: int, stage_id: int, action_id: int, checked: bool):
     logging.debug(f"Set check error action_id: {action_id}, checked: {checked}")
     result={}

@@ -86,8 +86,8 @@ app.add_api_route('/log/{log}', routes.show_log, methods=['GET'])
 app.add_api_route('/log/{log}/{number_of_lines}', routes.show_log, methods=['GET', 'POST'])
 
 
-
 app.add_api_route('/api/start_workflow/{wf_name}', routes.start_workflow, methods=['GET'])
+app.add_api_route('/api/start_workflow/{wf_name}', routes.start_workflow_post, methods=['POST'])
 
 app.add_api_route('/login', routes.login, methods=['GET', 'POST'])
 
