@@ -10,6 +10,8 @@ unit-tests/output
 **/*.pid
 etc/*.json
 etc/*.py
+etc/*.db
+etc/workflows
 webapp/etc/*.json
 webapp/etc/*.py
 scripts/*.py
@@ -20,6 +22,5 @@ logs/**
 **/custom/**
 **/custom_templates/**
 test/*.http
-etc/*.db
 metaxx/**
 var/**
