@@ -150,6 +150,7 @@ def create_tables(db_path=DB_FILE):
                 deploy_status TEXT,
                 ready BOOLEAN,
                 depends_on TEXT,
+                properties TEXT,
                 source TEXT,
                 source_only BOOLEAN,
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)

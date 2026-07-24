@@ -418,7 +418,7 @@ class Meta_File:
         self.deploy_objects.add_object(object)
         return
       
-      new_obj: do.Deploy_Object = deploy_object_data.create_deploy_object(meta_file_id=self.id, level=object.level, lib=object.lib, prod_lib=object.prod_lib, name=object.name, type=object.type, attribute=object.attribute, source=object.source, source_only=object.source_only)
+      new_obj: do.Deploy_Object = deploy_object_data.create_deploy_object(meta_file_id=self.id, object=object)
       self.deploy_objects.add_object(new_obj)
 
 

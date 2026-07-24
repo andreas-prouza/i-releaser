@@ -30,7 +30,7 @@ class Deploy_Object:
   """
 
 
-  def __init__(self, level=0, prod_lib='', lib='', name='', type='', attribute='', source:str|None=None, source_only: bool=False, dict=None):
+  def __init__(self, level=0, prod_lib='', lib='', name='', type='', attribute='', source:str|None=None, source_only: bool=False, properties: dict|None=None, dict_data=None):
 
     self.id: int|None = None
     self.meta_file_id: int|None = None
@@ -41,30 +41,32 @@ class Deploy_Object:
     self.depends_on = Deploy_Object_List()
     self.source: str|None = source
     self.source_only: bool = source_only
+    self.properties: dict|None = properties
 
-    if dict is not None and len(dict) > 0:
+    if dict_data is not None and len(dict_data) > 0:
 
-      self.id = dict.get('id', None)
-      self.meta_file_id = dict.get('meta_file_id', None)
-      self.level = dict.get('level', None)
-      self.ready = dict.get('ready', True)
-      self.prod_lib = dict['prod_lib'].lower()
-      self.lib = dict['lib'].lower()
-      self.name = dict['name'].lower()
-      self.type = dict['type'].lower()
-      self.attribute = dict['attribute'].lower()
-      self.source = dict.get('source', None)
-      self.source_only = dict.get('source_only', False)
-      self.deploy_status = Obj_Status(dict['deploy_status'])
+      self.id = dict_data.get('id', None)
+      self.meta_file_id = dict_data.get('meta_file_id', None)
+      self.level = dict_data.get('level', None)
+      self.ready = dict_data.get('ready', True)
+      self.prod_lib = dict_data['prod_lib'].lower()
+      self.lib = dict_data['lib'].lower()
+      self.name = dict_data['name'].lower()
+      self.type = dict_data['type'].lower()
+      self.attribute = dict_data['attribute'].lower()
+      self.source = dict_data.get('source', None)
+      self.source_only = dict_data.get('source_only', False)
+      self.deploy_status = Obj_Status(dict_data['deploy_status'])
+      self.properties = dict_data.get('properties', {})
 
-      if len(dict.get('actions', [])) > 0:
-        for action in dict['actions']:
+      if len(dict_data.get('actions', [])) > 0:
+        for action in dict_data['actions']:
           self.actions.add_actions_from_dict(action)
           #self.actions.add_action(da.Deploy_Action(dict_data=action))
       
-      if len(dict.get('depends_on', [])) > 0:
-        for obj in dict['depends_on']:
-          self.depends_on.add_object(Deploy_Object(dict=obj))
+      if len(dict_data.get('depends_on', [])) > 0:
+        for obj in dict_data['depends_on']:
+          self.depends_on.add_object(Deploy_Object(dict_data=obj))
       return
  
     self.prod_lib = prod_lib.lower()
@@ -93,7 +95,8 @@ class Deploy_Object:
       'actions' : self.actions.get_actions_as_dict(),
       'depends_on' : self.depends_on.get_objects_as_list_of_dict(),
       'source' : self.source,
-      'source_only' : self.source_only
+      'source_only' : self.source_only,
+      'properties' : self.properties
     }
 
 
@@ -245,21 +248,21 @@ class Deploy_Object_List(list):
     return None
 
 
-  def get_deploy_object(self, lib: str, name: str, type: str) -> Deploy_Object|None:
+  def get_deploy_object(self, lib: str, prod_lib: str, name: str, type: str) -> Deploy_Object|None:
     for o in self:
-      if o.lib == lib and o.type == type and o.name == name:
+      if o.lib == lib and o.prod_lib == prod_lib and o.type == type and o.name == name:
         return o
-    logging.warning(f"No deploy object found for {lib=}, {name=}, {type=}")
+    logging.warning(f"No deploy object found for {lib=}, {prod_lib=}, {name=}, {type=}")
     return None
 
 
 
-  def add_object_action(self, lib: str, name: str, type: str, action: type[da.Deploy_Action]):
+  def add_object_action(self, lib: str, prod_lib: str, name: str, type: str, action: type[da.Deploy_Action]):
 
     if type(action) == str:
       action = da.Deploy_Action(cmd=action)
 
-    obj = self.get_prod_object(lib, name, type)
+    obj = self.get_prod_object(lib, prod_lib, name, type)
     obj.actions.add_action(action)
 
 
