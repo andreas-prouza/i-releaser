@@ -194,6 +194,7 @@ async def show_settings(request: Request):
         user_permissions=permission_config.PermissionKonfig.user_permissions,
         role_permissions=permission_config.PermissionKonfig.role_permissions,
         default_project=global_cfg.C_DEFAULT_PROJECT, 
+        workflows=workflow.Workflow.get_all_workflows_json(),
         port='????',
         path=Path(os.path.dirname(__file__)),
         keys=keys
