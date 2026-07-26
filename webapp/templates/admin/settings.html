@@ -199,8 +199,58 @@ Settings
                                 </table>
                               </td>
                             </tr>
-                            <tr><th>Workflows</th><td>
-                              {% for workflow, workflow_permissions in permissions.workflows.items() %}<code>{{ workflow }}</code>&nbsp;&nbsp;{% endfor %}
+                            <tr><th>Workflows</th></tr>
+                            <tr><td>&nbsp;</td><td>
+                              {% for workflow, workflow_permissions in permissions.workflows.items() %}
+                                <h4>{{ workflow }}</h4>
+                                <table class="table zebra">
+                                  <tr>
+                                    <th>General</th>
+                                    <td>
+                                      <table class="table border-right table-striped thick-outer-border">
+                                        <tr>
+                                          {% for action in permission_actions %}
+                                          <td>{{ action.value }}</td>
+                                          {% endfor %}
+                                          </tr>
+                                          <tr>
+                                          {% for action in permission_actions %}
+                                            <td><input type="checkbox" onchange="save_permissions()" class="user-{{user}}-workflow-general" data-workflow="{{ workflow }}" data-value="{{ action.value }}" {% if action in workflow_permissions['general'] %}checked{% endif %}></td>
+                                          {% endfor %}
+                                        </tr>
+                                      </table>
+                                  </tr>
+                                  <tr><th>Stages</th>
+                                    <td>
+                                      <table class="table zebra">
+                                      {% for stage, stage_permissions in workflow_permissions['stages'].items() %}
+                                      <tr>
+                                        <th>{{ stage }}</th>
+                                        <td>
+                                          <table class="table border-right table-striped thick-outer-border">
+                                            <tr>
+                                              {% for action in permission_actions %}
+                                              <td>{{ action.value }}</td>
+                                              {% endfor %}
+                                              </tr>
+                                              <tr>
+                                              {% for action in permission_actions %}
+                                                <td><input type="checkbox" onchange="save_permissions()" 
+                                                            class="user-{{user}}-workflow-{{ workflow }}-stage" 
+                                                            data-workflow="{{ workflow }}" data-stage="{{ stage }}" 
+                                                            data-value="{{ action.value }}" 
+                                                            {% if action in stage_permissions %}checked{% endif %}></td>
+                                              {% endfor %}
+                                            </tr>
+                                          </table>
+                                        </td>
+                                      </tr>
+                                      {% endfor %}
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </table>
+                              {% endfor %}
                               </td>
                             </tr>
                           </table>
@@ -336,10 +386,34 @@ Settings
         roles.push(checkbox.dataset.value);
       });
 
+      const workflows = {};
+      document.querySelectorAll(`.user-${user}-workflow-general:checked`).forEach((checkbox) => {
+        const workflowName = checkbox.dataset.workflow;
+        /*const stage = checkbox.dataset.stage;*/
+        const stages = {};
+        document.querySelectorAll(`.user-${user}-workflow-${workflowName}-stage:checked`).forEach((checkbox2) => {
+          const stageName = checkbox2.dataset.stage;
+          if (!stages[stageName]) {
+            stages[stageName] = [];
+          }
+          stages[stageName].push(checkbox2.dataset.value);
+        });
+        if (!workflows[workflowName]) {
+          workflows[workflowName] = {
+            general: [],
+            stages: stages
+          };
+        }
+        /*workflows[workflowName].stages[stage] = true;*/
+        workflows[workflowName].general.push(checkbox.dataset.value);
+      });
+      console.log('User:', user, 'Workflow:', workflows);
+
       user_permissions[user] = {
         roles: roles,
         permissions: {
-          general: general
+          general: general,
+          workflows: workflows
         }
       };
     });

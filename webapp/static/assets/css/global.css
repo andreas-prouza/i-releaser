@@ -69,3 +69,32 @@ div.blueTable {
 .divTableHeading { display: table-header-group;}
 .divTableFoot { display: table-footer-group;}
 .divTableBody { display: table-row-group;}
+
+
+
+.thick-outer-border {
+	/* This creates the thick outer border */
+	border: 5px solid black; 
+	
+	/* Collapses double borders into a single clean line */
+	border-collapse: collapse; 
+	width: 100%;
+}
+
+/* Optional: Add thinner borders inside for the individual cells */
+.thick-outer-border th,
+.thick-outer-border td {
+	border: 1px solid gray;
+	padding: 10px;
+	text-align: left;
+}
+
+/* Selects every even row (2, 4, 6...) */
+.zebra tr:nth-child(even) {
+  background-color: #f2f2f2; /* Light gray */
+}
+
+/* Selects every odd row (1, 3, 5...) */
+.zebra tr:nth-child(odd) {
+  background-color: #ffffff; /* White */
+}

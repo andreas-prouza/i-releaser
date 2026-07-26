@@ -651,6 +651,7 @@ async def save_permissions(request: Request):
         permission_config.PermissionKonfig.convert_permissions('user', user_permissions)
         for user, perm in user_permissions.items():
             permission_config.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
+            permission_config.PermissionKonfig.user_permissions[user].permissions.workflows = perm.permissions.workflows
             permission_config.PermissionKonfig.user_permissions[user].roles = perm.roles
         
         role_permissions = data.get('role_permissions', {})
