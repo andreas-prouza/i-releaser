@@ -148,6 +148,8 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 
 </style>
 
+<link rel="stylesheet" href="{{ url_for('static', path='assets/css/prism.css') }}">
+
 <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
 
 <div class="box box-info">
@@ -219,7 +221,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
             <td colspan="3">
                 <details>
                     <summary>Show custom data</summary>
-                    <pre class="json-container">{{ deployment_dict['custom_data'] | tojson(indent=2) }}</pre>
+                    <pre><code class="language-json">{{ deployment_dict['custom_data'] | tojson(indent=2) }}</code></pre>
                 </details>
             </td>
         </tr>
@@ -350,28 +352,12 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 <script src="{{ url_for('static', path='assets/js/chart.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/json.js') }}"></script>
 
+<script src="{{ url_for('static', path='assets/js/prism.js') }}"></script>
+
 <script type="text/javascript">
 
     
     (function(d) {
-
-        stylizePreElements = function() {
-        var preElements = document.getElementsByTagName("pre");
-        for (i = 0; i < preElements.length; ++i) {
-            var preElement = preElements[i];
-            preElement.className += " prettyprint";
-        }
-        };
-
-        injectPrettifyScript = function() {
-        // https://github.com/googlearchive/code-prettify
-        var scriptElement = document.createElement('script');
-        scriptElement.setAttribute("src", "https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js");
-        document.head.appendChild(scriptElement);
-        };
-
-        stylizePreElements();
-        injectPrettifyScript();
 
         print_flow_connections();
 
@@ -460,6 +446,13 @@ function show_stage_steps(meta_file_id, stage_id, stage_name) {
             customClass: {
                 htmlContainer: 'sweet_container',
                 table: 'table',
+            },
+            didOpen: () => {
+                const codeBlocks = Swal.getHtmlContainer().querySelectorAll('code');
+                codeBlocks.forEach((block) => {
+                    console.log('codeBlock', block);
+                    Prism.highlightElement(block);
+                });
             }
         }).then((result) => {
             last_show_stage_id=null;

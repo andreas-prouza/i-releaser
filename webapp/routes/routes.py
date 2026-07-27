@@ -6,11 +6,10 @@ from fastapi import Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 # Custom modules
-import etc.constants as constants
 import etc.global_cfg as global_cfg
 
 from modules import action_type, files, permissions, stage_status
-from modules import deploy_version, meta_file, deploy_object
+from modules import deploy_version, meta_file
 from modules import workflow
 from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data
 from modules.deploy_object import Deploy_Object
@@ -78,8 +77,10 @@ async def list_objects(request: Request):
     session = request.state.session
 
     project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
-
+    
     do = deploy_object_data.get_deploy_object_list(project=project, filters={})
+
+    logging.error(f"List objects for project {project} with {len(do)} objects found.")
     
     #current_user=session['current_user'], 
     return http_functions.get_html_response(request, 

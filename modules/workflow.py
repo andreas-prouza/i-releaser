@@ -108,7 +108,7 @@ class Workflow:
       return []
     
     import warnings
-    warnings.warn(f"Use of old workflow file: {os.path.abspath(constants.C_WORKFLOW)}. Migrate to single etc/workflows/*.json file for each workflow!", DeprecationWarning, stacklevel=2)
+    warnings.warn(f"DeprecationWarning: Use of old workflow file: {os.path.abspath(constants.C_WORKFLOW)}. Migrate to single etc/workflows/*.json file for each workflow!", DeprecationWarning, stacklevel=2)
     logging.warning(f"Use of old workflow file: {os.path.abspath(constants.C_WORKFLOW)}. Migrate to single etc/workflows/*.json file for each workflow!")
 
     workflows_json = files.getJson(constants.C_WORKFLOW, retry=True)

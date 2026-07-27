@@ -4,10 +4,6 @@ from watchdog.events import FileSystemEventHandler
 import logging
 import threading
 
-# Configure logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
 
 class DirectoryMonitorHandler(FileSystemEventHandler):
     """

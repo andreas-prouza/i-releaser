@@ -120,7 +120,7 @@ function show_deploy_object_details(project, prod_lib, name, type, attribute) {
 
         let html = '<table class="table">';
         if (Array.isArray(data) && data.length > 0) {
-            // Headers
+            // Headers  http://academy:8080/show_details/43
             html += '<thead><tr>';
             for (const key in data[0]) {
                 html += `<th>${key}</th>`;
@@ -132,7 +132,31 @@ function show_deploy_object_details(project, prod_lib, name, type, attribute) {
             for (const row of data) {
                 html += '<tr>';
                 for (const key in row) {
-                    html += `<td>${row[key]}</td>`;
+                    html += '<td>';
+                    if (key === 'meta_file_id'){
+                        html += `<a href="/show_details/${row[key]}">${row[key]}</a>`;
+                    }
+                    else if (key === 'deployment' || key === 'object_status') {
+                        html += `<button type="button" class="btn 
+                            ${row[key] === 'finished' ? 'btn-success' : ''}
+                            ${row[key] === 'failed' ? 'btn-danger' : ''}
+                            ${row[key] === 'canceled' ? 'btn-danger' : ''}
+                            ${row[key] === 'new' ? 'btn-info' : ''}
+                            ${row[key] === 'ready' ? 'btn-primary' : ''}
+                            ${row[key] === 'in process' ? 'btn-secondary' : ''}">
+                            ${row[key]}
+                        </button>`;
+                    }
+                    else if (key === 'deployment_date') {
+                        html += `${row[key]}`;
+                    }
+                    else if (key === 'source') {
+                        html += `<pre><code>${row[key]}</code></pre>`;
+                    }
+                    else {
+                        html += `${row[key]}`;
+                    }
+                    html += '</td>';
                 }
                 html += '</tr>';
             }
@@ -141,7 +165,7 @@ function show_deploy_object_details(project, prod_lib, name, type, attribute) {
         html += '</table>';
         
         Swal.fire({
-            title: `Details for ${name} (${type})`,
+            title: `Details for <code>${name}.${attribute}.${type}</code>`,
             html: html,
             width: 'auto',
             customClass: {

@@ -103,12 +103,15 @@ def get_deploy_object_list(project: str,filters: dict|None=None) -> list[dict]:
                 where += f" AND {key} = ?"
                 params.append(value)
 
-        c.execute(f"""SELECT distinct mf.project, do.prod_lib, do.name, do.type, do.attribute, max(mf.create_time) latest_create_time
+        sql = f"""SELECT  mf.project, do.prod_lib, do.name, do.type, do.attribute, DATETIME(max(mf.create_time)) latest_create_time, count(*) as count
                       FROM deploy_objects do
                       left join meta_files mf on do.meta_file_id = mf.id
                   where mf.project = ? {where} 
-                  order by do.meta_file_id desc 
-                  limit 1000""", [project] + params)
+                  group by mf.project, do.prod_lib, do.name, do.type, do.attribute
+                  order by 6 desc 
+                  limit 1000"""
+
+        c.execute(sql, [project] + params)
         object_rows = c.fetchall()
 
         for row in object_rows:
@@ -125,7 +128,7 @@ def get_deploy_object_lifecycle(project: str, prod_lib: str, name: str, type: st
     with app_sqlite.get_db_connection() as conn:
 
         c = conn.cursor()
-        c.execute("""SELECT do.meta_file_id, do.id, mf.project, do.level, do.prod_lib, do.lib, do.name, do.type, do.attribute, mf.create_time, do.deploy_status, mf.status, do.ready, do.source
+        c.execute("""SELECT do.meta_file_id, mf.project, do.prod_lib, do.lib, DATETIME(mf.create_time) as deployment_date, do.deploy_status as deployment, mf.status as object_status, do.source
                       FROM deploy_objects do
                       left join meta_files mf on do.meta_file_id = mf.id
                   where mf.project = ? AND do.prod_lib = ? AND do.name = ? AND do.type = ? AND do.attribute = ? 
