@@ -117,7 +117,7 @@ class PermissionKonfig:
 
 
   @staticmethod
-  def add_user_permission(name: str, roles: List[str], general: List[permissions.PermissionAction], workflows: Dict[str, permissions.PermissionWorkflow], description='', mail='', extra={}):
+  def add_user_permission(name: str, roles: List[str]|None = None, general: List[permissions.PermissionAction]|None = None, workflows: Dict[str, permissions.PermissionWorkflow]|None = None, description='', mail='', extra={}, data: dict = {}):
 
     PermissionKonfig.check_reload()
 
@@ -126,8 +126,8 @@ class PermissionKonfig:
       logging.exception(error, stack_info=True)
       raise error
 
-    perm: permissions.Permissions = permissions.Permissions(general=general, workflows=workflows)
-    PermissionKonfig.user_permissions[name.lower()] = permissions.User(permissions=perm, roles=roles)
+    perm: permissions.Permissions = permissions.Permissions(general=general or data.get('general', []), workflows=workflows or data.get('workflows', {}))
+    PermissionKonfig.user_permissions[name.lower()] = permissions.User(permissions=perm, roles=roles or data.get('roles', []), detailed_infos=permissions.DetailedInfos(description=description or data.get('detailed_infos', {}).get('description', ''), mail=mail or data.get('detailed_infos', {}).get('mail', ''), extra=extra or data.get('detailed_infos', {}).get('extra', {})))
     if name.lower() not in PermissionKonfig.allowed_users:
       PermissionKonfig.allowed_users.append(name.lower())
       
@@ -138,9 +138,19 @@ class PermissionKonfig:
 
 
   @staticmethod
-  def add_role_permission(name: str, permission: permissions.Role):
+  def add_role_permission(name: str, general: List[str]|None = None, data: dict = {}):
 
-    raise NotImplementedError("Adding role permissions is not implemented yet")
+    PermissionKonfig.check_reload()
+
+    if name.lower() in PermissionKonfig.role_permissions.keys():
+      error = Exception(f"Role {name} already exists, overwriting permissions")
+      logging.exception(error, stack_info=True)
+      raise error
+
+    perm: permissions.Permissions = permissions.Permissions(general=general or data.get('general', []))
+    PermissionKonfig.role_permissions[name.lower()] = permissions.Role(permissions=perm)
+
+    PermissionKonfig.save_permissions()
 
 
 

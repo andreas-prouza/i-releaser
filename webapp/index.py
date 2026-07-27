@@ -76,6 +76,10 @@ if os.path.exists(custom_route_path):
 
 app.add_api_route('/', routes.index, methods=['GET', 'POST'])
 
+app.add_api_route('/list-objects', routes.list_objects, methods=['GET', 'POST'])
+
+app.add_api_route('/api/deploy_object_lifecycle/{project}/{prod_lib}/{name}/{type}/{attribute}', routes.deploy_object_lifecycle, methods=['GET'])
+
 app.add_api_route('/api/list_deployments/{project}', routes.list_deployments, methods=['GET', 'POST'])
 
 

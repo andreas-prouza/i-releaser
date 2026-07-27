@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% endblock %}
+
+{% block css %}
+
+
+  <!-- Include the Bootstrap Table CSS for the table -->
+  <link href="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css">
+
+{% endblock %}
+
+
+
+{% block content %}
+
+  <h1>Workflows <code>{{ project }}</code></h1> 
+
+  {% set btn_colors = [
+      'btn-primary', 
+      'btn-success', 
+      'btn-info', 
+      'btn-warning', 
+      'btn-danger', 
+      'btn-secondary', 
+      'btn-dark'
+  ] %}
+
+  <div class="btn-group" role="group">
+  {% for pr in sidebar['projects'] %}
+    <button type="button" class="btn {{ loop.cycle('btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger') }} mb-2">{{ pr }}</button>
+  {% endfor %}
+  </div>
+
+
+  <!-- /.box-header -->
+  <table id="deploy_objects"
+  class="table w-auto"
+  data-toggle="table" 
+  data-filter-control="true"
+  data-show-search-clear-button="true" 
+  data-show-columns="true"
+  data-pagination="true" 
+  data-page-list="[5, 10, 20, 50, 100, all]"
+  data-page-size="10"
+  data-pagination-h-align="left"
+  data-pagination-detail-h-align="left"
+  data-buttons-align="left"
+  data-search-align="left">
+      <thead>
+          <tr>
+              <th></th>
+              <!--- <th>Auswahl</th> -->
+              {% if deployment_objects|length > 0 %}
+                  {% for key, value in deployment_objects[0].items() %}
+                    <th data-field="{{ key }}" data-sortable="true" data-filter-control={% if key in ['project', 'prod_lib', 'type', 'attribute'] %}"select"{% else %}"input"{% endif %}  data-filter-control-container="#filter">{{ key }}</th>
+                  {% endfor %}
+              {% endif %}
+          </tr>
+      </thead>
+      <tbody>
+        {% for row in deployment_objects %}
+          {% set deployment_objects_index = loop.index0 %}
+        <tr>
+          <td>
+            <img class="run" title="Open details" style="width: 30px;" src="{{ url_for('static', path='assets/img/inspect.png') }}" 
+                onclick="show_deploy_object_details('{{ row['project'] }}', '{{ row['prod_lib'] }}', '{{ row['name'] }}', '{{ row['type'] }}', '{{ row['attribute'] }}')">
+          </td>
+            {% for key, value in row.items() %}
+            <td style="white-space: nowrap;">
+                {% if key == 'status' %}
+                    <a href="/show_details/{{ deployment_objects[deployment_objects_index]['id'] }}">
+                    <button type="button" class="btn 
+                        {% if value == 'finished' %}btn-success{% endif %}
+                        {% if value == 'failed' %}btn-danger{% endif %}
+                        {% if value == 'canceled' %}btn-danger{% endif %}
+                        {% if value == 'new' %}btn-info{% endif %}
+                        {% if value == 'ready' %}btn-primary{% endif %}
+                        {% if value == 'in process' %}btn-secondary{% endif %}
+                    ">{{ value }} </button>
+                  </a>
+                {% else %}
+                    {{ value }}
+                {% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+  </table>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+  <script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
+
+  <!-- http://js-grid.com/getting-started/ -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+  <script src="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.min.js"></script>
+  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
+  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/extensions/resizable/bootstrap-table-resizable.min.js"></script>
+  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+
+  <script>
+
+function show_deploy_object_details(project, prod_lib, name, type, attribute) {
+
+
+    http_getData(`/api/deploy_object_lifecycle/${project}/${prod_lib}/${name}/${type}/${attribute}`).then((data) => {
+        console.log(data); 
+        
+        if (data['status'] == 'error') {
+            show_http_error(data['message']);
+            return;
+        }
+
+        let html = '<table class="table">';
+        if (Array.isArray(data) && data.length > 0) {
+            // Headers
+            html += '<thead><tr>';
+            for (const key in data[0]) {
+                html += `<th>${key}</th>`;
+            }
+            html += '</tr></thead>';
+
+            // Body
+            html += '<tbody>';
+            for (const row of data) {
+                html += '<tr>';
+                for (const key in row) {
+                    html += `<td>${row[key]}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody>';
+        }
+        html += '</table>';
+        
+        Swal.fire({
+            title: `Details for ${name} (${type})`,
+            html: html,
+            width: 'auto',
+            customClass: {
+                htmlContainer: 'sweet_container',
+                table: 'table',
+            }
+        }).then((result) => {
+            last_show_stage_id=null;
+            last_show_stage_name=null;
+            current_meta_file_id=null;
+        });
+    });
+}
+
+
+
+
+  </script>
+{% endblock %}

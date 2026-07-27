@@ -12,7 +12,7 @@ import etc.global_cfg as global_cfg
 from modules import action_type, files, permissions, stage_status
 from modules import deploy_version, meta_file, deploy_object
 from modules import workflow
-from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data
+from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data
 from modules.deploy_object import Deploy_Object
 
 from web_modules import http_functions
@@ -42,8 +42,6 @@ def get_sidebar_data(request: Request):
 
 async def index(request: Request):
     
-    logging.debug(sys.path)
-    logging.debug('Call index.html')
     session = request.state.session
 
     project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
@@ -61,8 +59,6 @@ async def index(request: Request):
             'meta_file_id': d.get('meta_file_id', None)
         })
 
-    logging.debug(f"Deployments: {deployments=}")
-
     logging.debug("Send response")
     
     #current_user=session['current_user'], 
@@ -73,6 +69,37 @@ async def index(request: Request):
                                 deployment_details=dv['deployments'],
                                 deployments=deployments) 
 
+
+
+
+
+async def list_objects(request: Request):
+    
+    session = request.state.session
+
+    project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
+
+    do = deploy_object_data.get_deploy_object_list(project=project, filters={})
+    
+    #current_user=session['current_user'], 
+    return http_functions.get_html_response(request, 
+                                'overview/list-objects.html',
+                                project=project, 
+                                sidebar=get_sidebar_data(request), 
+                                deployment_objects=do)
+
+
+
+
+async def deploy_object_lifecycle(request: Request, project: str, prod_lib: str, name: str, type: str, attribute: str):
+    logging.debug(f"Get deploy object lifecycle for {project=}, {prod_lib=}, {name=}, {type=}, {attribute=}")
+
+    do = deploy_object_data.get_deploy_object_lifecycle(project, prod_lib, name, type, attribute)
+
+    if do is None:
+        return http_functions.get_json_response_error(f"Deploy object not found for project '{project}', lib '{prod_lib}', name '{name}', type '{type}', attribute '{attribute}'", status=404)
+
+    return http_functions.get_json_response(do)
 
 
 
@@ -613,7 +640,7 @@ async def add_permission(request: Request):
     data = await request.json()
     type: str = data['type']
     name: str = data['name']
-    roles: List[str] = data['roles']
+    roles: List[str] = data.get('roles', [])
     general: List[str] = data['general']
 
     logging.debug(f"Add permission of type {type} with name {name} for roles {roles}, {general=}")
@@ -631,7 +658,7 @@ async def add_permission(request: Request):
         if type not in permission_execution:
             return http_functions.get_json_response_error(f"Unknown permission type '{type}'", status=400)
         
-        permission_execution[type](name=name, roles=roles, general=[permissions.PermissionAction(action) for action in general], workflows={})
+        permission_execution[type](name=name, general=[permissions.PermissionAction(action) for action in general])
 
     except Exception as e:
         logging.exception(e, stack_info=True)
@@ -648,17 +675,31 @@ async def save_permissions(request: Request):
 
         data = await request.json()
 
+        # Handle user permissions
         user_permissions = data.get('user_permissions', {})
+
+        users_to_delete = permission_config.PermissionKonfig.user_permissions.keys() - user_permissions.keys()
+        for user in users_to_delete:
+            del permission_config.PermissionKonfig.user_permissions[user]
+
         permission_config.PermissionKonfig.convert_permissions('user', user_permissions)
         for user, perm in user_permissions.items():
             permission_config.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
             permission_config.PermissionKonfig.user_permissions[user].permissions.workflows = perm.permissions.workflows
             permission_config.PermissionKonfig.user_permissions[user].roles = perm.roles
-        
+
+        # Handle role permissions
         role_permissions = data.get('role_permissions', {})
+        
+        roles_to_delete = permission_config.PermissionKonfig.role_permissions.keys() - role_permissions.keys()
+        for role in roles_to_delete:
+            del permission_config.PermissionKonfig.role_permissions[role]
+
         permission_config.PermissionKonfig.convert_permissions('role', role_permissions)
         for role, perm in role_permissions.items():
             permission_config.PermissionKonfig.role_permissions[role].permissions.general = perm.permissions.general
+
+        
         
         permission_config.PermissionKonfig.save_permissions()
 

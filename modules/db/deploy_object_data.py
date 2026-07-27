@@ -88,6 +88,58 @@ def get_deploy_object(deploy_object_id: int) -> do.Deploy_Object | None:
 
 
 
+
+def get_deploy_object_list(project: str,filters: dict|None=None) -> list[dict]:
+
+    object_obj: list[dict] = []
+    
+    with app_sqlite.get_db_connection() as conn:
+
+        c = conn.cursor()
+        where = ""
+        params = []
+        if filters:
+            for key, value in filters.items():
+                where += f" AND {key} = ?"
+                params.append(value)
+
+        c.execute(f"""SELECT distinct mf.project, do.prod_lib, do.name, do.type, do.attribute, max(mf.create_time) latest_create_time
+                      FROM deploy_objects do
+                      left join meta_files mf on do.meta_file_id = mf.id
+                  where mf.project = ? {where} 
+                  order by do.meta_file_id desc 
+                  limit 1000""", [project] + params)
+        object_rows = c.fetchall()
+
+        for row in object_rows:
+            object_obj.append(dict(row))
+
+    return object_obj
+
+
+
+def get_deploy_object_lifecycle(project: str, prod_lib: str, name: str, type: str, attribute: str) -> list[dict]:
+
+    object_obj: list[dict] = []
+    
+    with app_sqlite.get_db_connection() as conn:
+
+        c = conn.cursor()
+        c.execute("""SELECT do.meta_file_id, do.id, mf.project, do.level, do.prod_lib, do.lib, do.name, do.type, do.attribute, mf.create_time, do.deploy_status, mf.status, do.ready, do.source
+                      FROM deploy_objects do
+                      left join meta_files mf on do.meta_file_id = mf.id
+                  where mf.project = ? AND do.prod_lib = ? AND do.name = ? AND do.type = ? AND do.attribute = ? 
+                  order by do.meta_file_id desc""", [project, prod_lib, name, type, attribute])
+        object_rows = c.fetchall()
+
+        for row in object_rows:
+            object_obj.append(dict(row))
+
+    return object_obj
+
+
+
+
 def _convert_deploy_object_row_to_dict(row: sqlite3.Row) -> do.Deploy_Object:
     object_dict = dict(row)
     object_dict['deploy_status'] = do.Obj_Status(object_dict['deploy_status'])

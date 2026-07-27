@@ -60,6 +60,19 @@ Settings
     border-right: none;
   }
 
+  .workflow-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-top: 10px;
+    display: inline-block;
+  }
+  .stage-title {
+    font-weight: bold;
+    font-size: 1.0em;
+    margin-top: 10px;
+    display: inline-block;
+  }
+
   /* Fade in animation */
   @keyframes fadeEffect {
     from {opacity: 0;}
@@ -106,14 +119,22 @@ Settings
         <div id="Permission" class="tab-content" style="display: block;">
 
             <h3>Role</h3>
-            
+
+            <button type="button" class="btn btn-primary" onclick="show_add_role_permission()">
+              <i class="fa-solid fa-plus"></i>
+              Add new role
+            </button>
+
+            <br/>
+            <br/>
+
             <table class="table table-striped table-bordered">
                 <tr><th></th><th>Role</th><th>Permissions</th></tr>
                 {% for role, role_items in role_permissions.items() %}
                     {% set permissions = role_items.permissions %}
                     <tr>
                         <td>
-                          <button type="button" class="btn btn-primary" onclick="delete_role_permission('{{ role }}')">
+                          <button type="button" class="btn btn-primary" onclick="delete_role('{{ role }}')">
                             <i class="fa-solid fa-trash"></i>
                           </button>
                         </td>
@@ -161,7 +182,7 @@ Settings
                     {% set permissions = user_items.permissions %}
                     <tr>
                         <td> 
-                          <button type="button" class="btn btn-primary" onclick="delete_user_permission('{{ user }}')">
+                          <button type="button" class="btn btn-primary" onclick="delete_user('{{ user }}')">
                             <i class="fa-solid fa-trash"></i>
                           </button>
                         </td>
@@ -200,62 +221,72 @@ Settings
                               </td>
                             </tr>
                             <tr>
-                              <th>Workflows</th>
-                              <td><button type="button" class="btn btn-primary" onclick="add_user_workflow('{{ user }}')"><i class="fa-solid fa-plus"></i></button></td>
-                            </tr>
-                            <tr><td>&nbsp;</td><td>
-                              {% for workflow, workflow_permissions in permissions.workflows.items() %}
-                                <h4><label class="user-{{user}}-workflow" data-value="{{ workflow }}">{{ workflow }}</label></h4>
-                                <table class="table zebra">
-                                  <tr>
-                                    <th>General</th>
-                                    <td>
-                                      <table class="table border-right table-striped thick-outer-border">
-                                        <tr>
-                                          {% for action in permission_actions %}
-                                          <td>{{ action.value }}</td>
-                                          {% endfor %}
-                                          </tr>
+                              <th>Workflows <button type="button" class="btn btn-primary" onclick="add_user_workflow('{{ user }}')"><i class="fa-solid fa-plus"></i></button></th>
+                              <td><details><summary>List of workflows</summary>
+                                {% for workflow, workflow_permissions in permissions.workflows.items() %}
+                                  <button type="button" class="btn btn-primary" onclick="delete_user_workflow('{{ user }}', '{{ workflow }}')">
+                                    <i class="fa-solid fa-trash"></i>
+                                  </button>
+                                  <label class="user-{{user}}-workflow workflow-title" data-value="{{ workflow }}">{{ workflow }}</label>
+                                  <table class="table zebra">
+                                    <tr>
+                                      <th>General</th>
+                                      <td>
+                                        <table class="table border-right table-striped thick-outer-border">
                                           <tr>
-                                          {% for action in permission_actions %}
-                                            <td><input type="checkbox" onchange="permissions_changed()" class="user-{{user}}-workflow-{{workflow}}-general" data-workflow="{{ workflow }}" data-value="{{ action.value }}" {% if action in workflow_permissions['general'] %}checked{% endif %}></td>
-                                          {% endfor %}
-                                        </tr>
-                                      </table>
-                                  </tr>
-                                  <tr><th>Stages</th>
-                                    <td>
-                                      <table class="table zebra">
-                                      {% for stage, stage_permissions in workflow_permissions['stages'].items() %}
-                                      <tr>
-                                        <th><label class="user-{{user}}-workflow-{{workflow}}-stage" data-value="{{ stage }}">{{ stage }}</label></th>
-                                        <td>
-                                          <table class="table border-right table-striped thick-outer-border">
-                                            <tr>
-                                              {% for action in permission_actions %}
-                                              <td>{{ action.value }}</td>
-                                              {% endfor %}
-                                              </tr>
-                                              <tr>
-                                              {% for action in permission_actions %}
-                                                <td><input type="checkbox" onchange="permissions_changed()" 
-                                                            class="user-{{user}}-workflow-{{ workflow }}-stage-{{ stage }}" 
-                                                            data-workflow="{{ workflow }}" data-stage="{{ stage }}" 
-                                                            data-value="{{ action.value }}" 
-                                                            {% if action in stage_permissions %}checked{% endif %}></td>
-                                              {% endfor %}
+                                            {% for action in permission_actions %}
+                                            <td>{{ action.value }}</td>
+                                            {% endfor %}
                                             </tr>
-                                          </table>
-                                        </td>
-                                      </tr>
-                                      {% endfor %}
-                                      </table>
-                                    </td>
-                                  </tr>
-                                </table>
-                              {% endfor %}
-                              </td>
-                            </tr>
+                                            <tr>
+                                            {% for action in permission_actions %}
+                                              <td><input type="checkbox" onchange="permissions_changed()" class="user-{{user}}-workflow-{{workflow}}-general" data-workflow="{{ workflow }}" data-value="{{ action.value }}" {% if action in workflow_permissions['general'] %}checked{% endif %}></td>
+                                            {% endfor %}
+                                          </tr>
+                                        </table>
+                                    </tr>
+                                    <tr>
+                                      <th>Stages</th>
+                                      <td><button type="button" class="btn btn-primary" onclick="add_user_workflow_stage('{{ user }}', '{{ workflow }}')"><i class="fa-solid fa-plus"></i></button></td>
+                                    </tr>
+                                    <tr><td>&nbsp;</td>
+                                      <td>
+                                        <table class="table zebra">
+                                        {% for stage, stage_permissions in workflow_permissions['stages'].items() %}
+                                        <tr>
+                                          <td>
+                                            <button type="button" class="btn btn-primary" onclick="delete_user_workflow_stage('{{ user }}', '{{ workflow }}', '{{ stage }}')">
+                                              <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                            <label class="user-{{user}}-workflow-{{workflow}}-stage stage-title" data-value="{{ stage }}">{{ stage }}</label></td>
+                                          <td>
+                                            <table class="table border-right table-striped thick-outer-border">
+                                              <tr>
+                                                {% for action in permission_actions %}
+                                                <td>{{ action.value }}</td>
+                                                {% endfor %}
+                                                </tr>
+                                                <tr>
+                                                {% for action in permission_actions %}
+                                                  <td><input type="checkbox" onchange="permissions_changed()" 
+                                                              class="user-{{user}}-workflow-{{ workflow }}-stage-{{ stage }}" 
+                                                              data-workflow="{{ workflow }}" data-stage="{{ stage }}" 
+                                                              data-value="{{ action.value }}" 
+                                                              {% if action in stage_permissions %}checked{% endif %}></td>
+                                                {% endfor %}
+                                              </tr>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        {% endfor %}
+                                        </table>
+                                      </td>
+                                    </tr>
+                                  </table>
+                                {% endfor %}
+                                </details>
+                                </td>
+                              </tr>
                           </table>
                         </td>
                     </tr>
@@ -272,8 +303,11 @@ Settings
 
 
 <!-- 1. Capture the HTML file into a Jinja variable -->
-{% set new_permission %}
-    {% include 'admin/new_permission.html' %}
+{% set new_user_permission %}
+    {% include 'admin/permissions/new_user_permission.html' %}
+{% endset %}
+{% set new_role_permission %}
+    {% include 'admin/permissions/new_role_permission.html' %}
 {% endset %}
   
   
@@ -306,10 +340,14 @@ Settings
     show_add_permission('user');
   }
 
+  function show_add_role_permission() {
+    show_add_permission('role');
+  }
+
 
 
   function show_add_permission(type) {
-      const html = {{ new_permission | tojson }};
+      const html = type === 'user' ? {{ new_user_permission | tojson }} : {{ new_role_permission | tojson }};
       Swal.fire({
           title: `New ${type}`,
           html: html,
@@ -379,6 +417,7 @@ Settings
 
     const user_permissions = {};
 
+    /* Users */
     document.querySelectorAll('.permission-user').forEach((label) => {
       
       const user = label.dataset.value;
@@ -386,14 +425,17 @@ Settings
       const workflows = {};
       const roles = [];
 
+      /* Users - General */
       document.querySelectorAll(`.user-${user}-general:checked`).forEach((checkbox) => {
         general.push(checkbox.dataset.value);
       });
 
+      /* Users - Roles */
       document.querySelectorAll(`.user-${user}-roles:checked`).forEach((checkbox) => {
         roles.push(checkbox.dataset.value);
       });
 
+      /* Users - Workflows */
       document.querySelectorAll(`.user-${user}-workflow`).forEach((label) => {
       
         const workflowName = label.dataset.value;
@@ -405,25 +447,26 @@ Settings
           };
         }
 
+        /* Users - Workflows - General */
         document.querySelectorAll(`.user-${user}-workflow-${workflowName}-general:checked`).forEach((checkbox) => {
-          /*const stage = checkbox.dataset.stage;*/
-
-          const stages = {};
-
-          document.querySelectorAll(`.user-${user}-workflow-${workflowName}-stage`).forEach((label) => {
-            const stageName = label.dataset.value;
-        
-            document.querySelectorAll(`.user-${user}-workflow-${workflowName}-stage-${stageName}:checked`).forEach((checkbox2) => {
-              if (!stages[stageName]) {
-                stages[stageName] = [];
-              }
-              stages[stageName].push(checkbox2.dataset.value);
-            });
-          });
-
-          workflows[workflowName].stages = stages;
           workflows[workflowName].general.push(checkbox.dataset.value);
         });
+
+        const stages = {};
+
+        /* Users - Workflows - Stages */
+        document.querySelectorAll(`.user-${user}-workflow-${workflowName}-stage`).forEach((label) => {
+          const stageName = label.dataset.value;
+      
+          document.querySelectorAll(`.user-${user}-workflow-${workflowName}-stage-${stageName}:checked`).forEach((checkbox2) => {
+            if (!stages[stageName]) {
+              stages[stageName] = [];
+            }
+            stages[stageName].push(checkbox2.dataset.value);
+          });
+        });
+
+        workflows[workflowName].stages = stages;
         console.log('User:', user, 'Workflow:', workflows);
 
       });
@@ -475,7 +518,7 @@ Settings
 
 
 
-  function save_permissions(user_permissions, role_permissions) {
+  function save_permissions(user_permissions, role_permissions, reload=false) {
 
     console.log('Saving permissions...');
     console.log('User Permissions:', user_permissions);
@@ -501,7 +544,9 @@ Settings
         backdrop: false, // Removes the dark overlay
         allowOutsideClick: false
       }).then(() => {
-        location.reload();
+        if (reload) {
+          location.reload();
+        }
       });
     }).catch((error) => {
       console.error('Error saving permission:', error);
@@ -551,15 +596,141 @@ Settings
       }
       const user_permissions = get_user_permissions();
       const role_permissions = get_role_permissions();
-      console.log(user_permissions);
       user_permissions[user].permissions.workflows[result.value] = {
         general: [],
         stages: {}
       };
-      console.log(user_permissions);
-      save_permissions(user_permissions, role_permissions);
+      save_permissions(user_permissions, role_permissions, true);
     });
   }
+
+
+
+
+  function delete_user(user) {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you want to delete the user "${user}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'No, keep it'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const user_permissions = get_user_permissions();
+        const role_permissions = get_role_permissions();
+        delete user_permissions[user];
+        save_permissions(user_permissions, role_permissions, true);
+      }
+    });
+  }
+
+
+  function delete_user_workflow(user, workflow) {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you want to delete the workflow "${workflow}" for user "${user}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'No, keep it'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const user_permissions = get_user_permissions();
+        const role_permissions = get_role_permissions();
+        delete user_permissions[user].permissions.workflows[workflow];
+        save_permissions(user_permissions, role_permissions, true);
+      }
+    });
+  }
+
+
+  function delete_user_workflow_stage(user, workflow, stage) {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you want to delete the stage "${stage}" from workflow "${workflow}" for user "${user}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'No, keep it'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const user_permissions = get_user_permissions();
+        const role_permissions = get_role_permissions();
+        delete user_permissions[user].permissions.workflows[workflow].stages[stage];
+        save_permissions(user_permissions, role_permissions, true);
+      }
+    });
+  }
+
+
+
+
+
+
+  function delete_role(role) {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you want to delete the role "${role}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'No, keep it'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const user_permissions = get_user_permissions();
+        const role_permissions = get_role_permissions();
+        delete role_permissions[role];
+        save_permissions(user_permissions, role_permissions, true);
+      }
+    });
+  }
+
+
+  
+
+  function add_user_workflow_stage(user, workflow_name) {
+
+    const all_workflows = {{ workflows | tojson }};
+    const selected_workflow = all_workflows.find(wf => wf.name === workflow_name);
+    if (!selected_workflow) {
+      console.error('Workflow not found:', workflow_name);
+      Swal.fire('Error', `Workflow "${workflow_name}" not found`, 'error');
+      return;
+    }
+    const available_stages = selected_workflow.stages.filter(stage => !(stage in get_user_permissions()[user].permissions.workflows[workflow_name].stages));
+    console.log('Available stages for user', user, 'in workflow', workflow_name, ':', available_stages);
+    
+    Swal.fire({
+      title: 'Select a stage',
+      input: 'select',
+      inputOptions: available_stages.reduce((options, stage) => {
+        options[stage.name] = stage.name;
+        return options;
+      }, {}),
+      inputPlaceholder: 'Choose a stage...',
+      showCancelButton: true,
+      // Optional: Prevent the user from submitting without choosing
+      inputValidator: (value) => {
+        return new Promise((resolve) => {
+          if (value) {
+            resolve(); // Validation passed
+          } else {
+            resolve('You need to select a stage!'); // Validation failed
+          }
+        });
+      }
+    }).then((result) => {
+      if (!result.isConfirmed) {
+        return; // User cancelled the selection
+      }
+      const user_permissions = get_user_permissions();
+      const role_permissions = get_role_permissions();
+      user_permissions[user].permissions.workflows[workflow_name].stages[result.value] = [];
+      save_permissions(user_permissions, role_permissions, true);
+    });
+  }
+
 
 
 

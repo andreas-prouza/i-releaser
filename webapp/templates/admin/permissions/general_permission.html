@@ -1,0 +1,15 @@
+  <tr><th>General</th><td>
+    <table class="table border-right">
+      <tr>
+      {% for action in permission_actions %}
+       <td>{{ action.value }}</td>
+      {% endfor %}
+      </tr>
+      <tr>
+      {% for action in permission_actions %}
+        <td><input type="checkbox" class="new_general" id="general_{{ loop.index }}" name="general" value="{{ action.value }}"></td>
+      {% endfor %}
+      </tr>
+    </table>
+
+  </td></tr>
