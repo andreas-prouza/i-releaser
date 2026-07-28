@@ -16,24 +16,16 @@
 
 {% block content %}
 
-  <h1>Workflows <code>{{ project }}</code></h1> 
+{% set btn_classes = {
+    'finished': 'btn-success',
+    'failed': 'btn-danger',
+    'canceled': 'btn-danger',
+    'new': 'btn-info',
+    'ready': 'btn-primary',
+    'in process': 'btn-secondary'
+} %}
 
-  {% set btn_colors = [
-      'btn-primary', 
-      'btn-success', 
-      'btn-info', 
-      'btn-warning', 
-      'btn-danger', 
-      'btn-secondary', 
-      'btn-dark'
-  ] %}
-
-  <div class="btn-group" role="group">
-  {% for pr in sidebar['projects'] %}
-    <button type="button" class="btn {{ loop.cycle('btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger') }} mb-2">{{ pr }}</button>
-  {% endfor %}
-  </div>
-
+  <h1>Object list</h1> 
 
   <!-- /.box-header -->
   <table id="deploy_objects"
@@ -65,26 +57,15 @@
           {% set deployment_objects_index = loop.index0 %}
         <tr>
           <td>
-            <img class="run" title="Open details" style="width: 30px;" src="{{ url_for('static', path='assets/img/inspect.png') }}" 
-                onclick="show_deploy_object_details('{{ row['project'] }}', '{{ row['prod_lib'] }}', '{{ row['name'] }}', '{{ row['type'] }}', '{{ row['attribute'] }}')">
+            <button type="button" class="btn btn-primary" onclick="show_deploy_object_details('{{ row['project'] }}', '{{ row['prod_lib'] }}', '{{ row['name'] }}', '{{ row['type'] }}', '{{ row['attribute'] }}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
+                    <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"></path>
+                    <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"></path>
+                </svg>
+            </button>
           </td>
             {% for key, value in row.items() %}
-            <td style="white-space: nowrap;">
-                {% if key == 'status' %}
-                    <a href="/show_details/{{ deployment_objects[deployment_objects_index]['id'] }}">
-                    <button type="button" class="btn 
-                        {% if value == 'finished' %}btn-success{% endif %}
-                        {% if value == 'failed' %}btn-danger{% endif %}
-                        {% if value == 'canceled' %}btn-danger{% endif %}
-                        {% if value == 'new' %}btn-info{% endif %}
-                        {% if value == 'ready' %}btn-primary{% endif %}
-                        {% if value == 'in process' %}btn-secondary{% endif %}
-                    ">{{ value }} </button>
-                  </a>
-                {% else %}
-                    {{ value }}
-                {% endif %}
-            </td>
+            <td style="white-space: nowrap;">{{ value }}</td>
             {% endfor %}
         </tr>
         {% endfor %}
@@ -112,6 +93,15 @@ function show_deploy_object_details(project, prod_lib, name, type, attribute) {
 
     http_getData(`/api/deploy_object_lifecycle/${project}/${prod_lib}/${name}/${type}/${attribute}`).then((data) => {
         console.log(data); 
+
+        const btnClasses = {
+            'finished': 'btn-success',
+            'failed': 'btn-danger',
+            'canceled': 'btn-danger',
+            'new': 'btn-info',
+            'ready': 'btn-primary',
+            'in process': 'btn-secondary'
+        };
         
         if (data['status'] == 'error') {
             show_http_error(data['message']);
@@ -137,15 +127,7 @@ function show_deploy_object_details(project, prod_lib, name, type, attribute) {
                         html += `<a href="/show_details/${row[key]}">${row[key]}</a>`;
                     }
                     else if (key === 'deployment' || key === 'object_status') {
-                        html += `<button type="button" class="btn 
-                            ${row[key] === 'finished' ? 'btn-success' : ''}
-                            ${row[key] === 'failed' ? 'btn-danger' : ''}
-                            ${row[key] === 'canceled' ? 'btn-danger' : ''}
-                            ${row[key] === 'new' ? 'btn-info' : ''}
-                            ${row[key] === 'ready' ? 'btn-primary' : ''}
-                            ${row[key] === 'in process' ? 'btn-secondary' : ''}">
-                            ${row[key]}
-                        </button>`;
+                        html += `<button type="button" class="btn ${btnClasses[row[key]] || 'btn-secondary'}">${row[key]}</button>`;
                     }
                     else if (key === 'deployment_date') {
                         html += `${row[key]}`;

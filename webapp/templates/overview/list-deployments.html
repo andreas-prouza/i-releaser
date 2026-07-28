@@ -28,9 +28,20 @@
       'btn-dark'
   ] %}
 
+  {% set btn_classes = {
+      'finished': 'btn-success',
+      'failed': 'btn-danger',
+      'canceled': 'btn-danger',
+      'new': 'btn-info',
+      'ready': 'btn-primary',
+      'in process': 'btn-secondary'
+  } %}
+
   <div class="btn-group" role="group">
   {% for pr in sidebar['projects'] %}
-    <button type="button" class="btn {{ loop.cycle('btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger') }} mb-2">{{ pr }}</button>
+  <a href="/project/{{ pr }}">
+    <button type="button" {% if pr != project %}disabled{% endif %} class="btn {{ loop.cycle('btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger') }} mb-2">{{ pr }}</button>
+  </a>
   {% endfor %}
   </div>
 
@@ -67,14 +78,7 @@
             <td style="white-space: nowrap;">
                 {% if key == 'status' %}
                     <a href="/show_details/{{ deployment_details[deployments_index]['id'] }}">
-                    <button type="button" class="btn 
-                        {% if value == 'finished' %}btn-success{% endif %}
-                        {% if value == 'failed' %}btn-danger{% endif %}
-                        {% if value == 'canceled' %}btn-danger{% endif %}
-                        {% if value == 'new' %}btn-info{% endif %}
-                        {% if value == 'ready' %}btn-primary{% endif %}
-                        {% if value == 'in process' %}btn-secondary{% endif %}
-                    ">{{ value }} </button>
+                    <button type="button" class="btn {{ btn_classes[value] }}">{{ value }} </button>
                   </a>
                 {% else %}
                     {{ value }}
