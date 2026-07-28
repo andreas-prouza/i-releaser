@@ -151,11 +151,11 @@ def _save_workflow_definition(c: sqlite3.Cursor, meta_file_id: int, workflow: wf
     if workflow:
         c.execute("SELECT id FROM workflow_definitions WHERE meta_file_id = ?", (meta_file_id,))
         if c.fetchone():
-            c.execute("UPDATE workflow_definitions SET definition = ? WHERE meta_file_id = ?",
-                      (json.dumps(workflow.get_dict()), meta_file_id))
+            c.execute("UPDATE workflow_definitions SET name = ?, default_project = ?, definition = ? WHERE meta_file_id = ?",
+                      (workflow.name, workflow.default_project, json.dumps(workflow.get_dict()), meta_file_id))
         else:
-            c.execute("INSERT INTO workflow_definitions (meta_file_id, definition) VALUES (?, ?)",
-                      (meta_file_id, json.dumps(workflow.get_dict())))
+            c.execute("INSERT INTO workflow_definitions (meta_file_id, name, default_project, definition) VALUES (?, ?, ?, ?)",
+                      (meta_file_id, workflow.name, workflow.default_project, json.dumps(workflow.get_dict())))
 
 
 

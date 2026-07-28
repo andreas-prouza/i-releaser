@@ -41,7 +41,7 @@
   {% for pr in sidebar['projects'] %}
   <a href="/project/{{ pr }}">
     <button type="button" {% if pr != project %}disabled{% endif %} class="btn {{ loop.cycle('btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger') }} mb-2">{{ pr }}</button>
-  </a>
+  </a>&nbsp;
   {% endfor %}
   </div>
 

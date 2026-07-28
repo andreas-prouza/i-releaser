@@ -222,7 +222,7 @@ Settings
                             </tr>
                             <tr>
                               <th>Workflows <button type="button" class="btn btn-primary" onclick="add_user_workflow('{{ user }}')"><i class="fa-solid fa-plus"></i></button></th>
-                              <td><details><summary>List of workflows</summary>
+                              <td><details><summary>{{ permissions.workflows|length }} workflows</summary>
                                 {% for workflow, workflow_permissions in permissions.workflows.items() %}
                                   <button type="button" class="btn btn-primary" onclick="delete_user_workflow('{{ user }}', '{{ workflow }}')">
                                     <i class="fa-solid fa-trash"></i>
