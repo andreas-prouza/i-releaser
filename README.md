@@ -37,7 +37,7 @@ It's flexible and open and can be adabtet using configuration files.
 
 # General process
 
-## Features
+## Key Features
 
 * Can run under a profile with user class ```*USER```  
   No special authority needed.
@@ -49,23 +49,23 @@ It's flexible and open and can be adabtet using configuration files.
 * Detailed tracking of each step and action
   ![details](docs/img/details.png)
 * Separate logs for each task
-* User specific commands for objects to deploy  
-    For each object a user specific command can be defined which will be issued in addition.
+* Step commands can be `SCRIPT` (Python), `PASE` (shell/bash commands/scripts), `QSYS` (IBM i calls)
 * All functions can be accessed via WebAPIs
-* History  
+* Activity history  
   ![details](docs/img/history.png)  
   ![details](docs/img/history-detail.png)  
 * Individual enhancements
-  * HTML
+  * Embed your own HTML
   * Scripts you want to run in a stage
   * Example: automatic rollback function  
     This is custom enhancement to the i-Releaser project
     ![details](docs/img/rollback.png)  
-    ![details](docs/img/rollback-started.png)  
 * Save individual data in a deployment (e.g. JIRA ticket)  
-  See picture above
+  ![details](docs/img/rollback-started.png)
 * Choose the object to include/exclude from deployment
   ![details](docs/img/object-list.png)  
+* Permission concept
+* See full list of features [here](/docs/features.md)
 
 
 
