@@ -89,7 +89,7 @@ def get_deploy_object(deploy_object_id: int) -> do.Deploy_Object | None:
 
 
 
-def get_deploy_object_list(project: str,filters: dict|None=None) -> list[dict]:
+def get_deploy_object_list(filters: dict|None=None) -> list[dict]:
 
     object_obj: list[dict] = []
     
@@ -106,12 +106,12 @@ def get_deploy_object_list(project: str,filters: dict|None=None) -> list[dict]:
         sql = f"""SELECT  mf.project, do.prod_lib, do.name, do.type, do.attribute, DATETIME(max(mf.create_time)) latest_create_time, count(*) as count
                       FROM deploy_objects do
                       left join meta_files mf on do.meta_file_id = mf.id
-                  where mf.project = ? {where} 
+                  where 1=1 {where} 
                   group by mf.project, do.prod_lib, do.name, do.type, do.attribute
                   order by 6 desc 
                   limit 1000"""
 
-        c.execute(sql, [project] + params)
+        c.execute(sql, params)
         object_rows = c.fetchall()
 
         for row in object_rows:
@@ -157,12 +157,12 @@ def _convert_deploy_object_row_to_dict(row: sqlite3.Row) -> do.Deploy_Object:
 
 
 
-def save_deploy_objects(deploy_objects: list[do.Deploy_Object], cursor: sqlite3.Cursor=None):
+def save_deploy_objects(deploy_objects: list[do.Deploy_Object], cursor: sqlite3.Cursor|None=None):
     for deploy_object in deploy_objects:
         save_deploy_object(deploy_object, cursor)
 
 
-def save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor=None):
+def save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor|None=None):
     if cursor is not None:
         _save_deploy_object(deploy_object, cursor)
         return

@@ -76,16 +76,13 @@ async def list_objects(request: Request):
     
     session = request.state.session
 
-    project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
-    
-    do = deploy_object_data.get_deploy_object_list(project=project, filters={})
+    do = deploy_object_data.get_deploy_object_list(filters={})
 
-    logging.error(f"List objects for project {project} with {len(do)} objects found.")
+    logging.error(f"List objects. {len(do)} objects found.")
     
     #current_user=session['current_user'], 
     return http_functions.get_html_response(request, 
                                 'overview/list-objects.html',
-                                project=project, 
                                 sidebar=get_sidebar_data(request), 
                                 deployment_objects=do)
 
