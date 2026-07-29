@@ -1,14 +1,21 @@
+
+{% set btn_classes = {
+    'finished': 'btn-success',
+    'failed': 'btn-danger',
+    'canceled': 'btn-danger',
+    'new': 'btn-info',
+    'ready': 'btn-primary',
+    'in process': 'btn-secondary'
+} %}
+
+
 <tr class="nowrap">
   <td>{{ cmd['sequence'] }}</td>
   <td>{% if (stage['execute_remote'] and cmd['execute_remote'] is none) or (cmd['execute_remote'] is not none and cmd['execute_remote']) %}Remote{% else %}Local{% endif %}</td>
   <td>{{ cmd['processing_step'] }}</td>
   <td>{{ cmd['environment'] }}</td>
   <td>
-    <button type="button" class="btn  
-            {% if cmd['status'] == 'finished' %}btn-success{% endif %}
-            {% if cmd['status'] == 'failed' %}btn-danger{% endif %}
-            {% if cmd['status'] == 'new' %}btn-info{% endif %}
-        ">
+    <button type="button" class="btn {{ btn_classes[cmd['status']] or 'btn-secondary' }}">
       {{ cmd['status'] }}</button>
   </td>
   <td>
@@ -35,11 +42,7 @@
       <tr class="nowrap">
         <td>{{ history['create_time'] }}</td>
         <td>
-          <button type="button" class="btn  
-                        {% if history['status'] == 'finished' %}btn-success{% endif %}
-                        {% if history['status'] == 'failed' %}btn-danger{% endif %}
-                        {% if history['status'] == 'new' %}btn-info{% endif %}
-                    ">
+          <button type="button" class="btn {{ btn_classes[history['status']] or 'btn-secondary' }}">
             {{ history['status'] }}
           </button>
         </td>

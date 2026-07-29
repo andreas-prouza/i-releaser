@@ -1,15 +1,21 @@
 
+
+{% set btn_classes = {
+    'finished': 'btn-success',
+    'failed': 'btn-danger',
+    'canceled': 'btn-danger',
+    'new': 'btn-info',
+    'ready': 'btn-primary',
+    'in process': 'btn-secondary'
+} %}
+
+
 <table class="table table-striped stage_info">
   <tr>
     <th>Description</th><td>{{ stage['description'] }} </td>
     <th class="nowrap">Status</th>
     <td class="nowrap">
-      <button type="button" onClick="show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);" class="btn  
-      {% if stage['status'] == 'finished' %}btn-success{% endif %}
-      {% if stage['status'] == 'failed' %}btn-danger{% endif %}
-      {% if stage['status'] == 'new' %}btn-info{% endif %}
-      {% if stage['status'] == 'in process' %}btn-secondary{% endif %}
-      ">{{ stage['status'] }}</button>
+      <button type="button" onClick="show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);" class="btn {{ btn_classes[stage['status']] or 'btn-secondary' }}">{{ stage['status'] }}</button>
       {{ run_stage_button | safe }} 
       {{ reset_stage_button | safe }} 
     </td>

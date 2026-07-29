@@ -78,7 +78,7 @@
             <td style="white-space: nowrap;">
                 {% if key == 'status' %}
                     <a href="/show_details/{{ deployment_details[deployments_index]['id'] }}">
-                    <button type="button" class="btn {{ btn_classes[value] }}">{{ value }} </button>
+                    <button type="button" class="btn {{ btn_classes[value] or 'btn-secondary' }}">{{ value }} </button>
                   </a>
                 {% else %}
                     {{ value }}
