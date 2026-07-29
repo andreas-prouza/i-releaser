@@ -128,7 +128,7 @@ def get_deploy_object_lifecycle(project: str, prod_lib: str, name: str, type: st
     with app_sqlite.get_db_connection() as conn:
 
         c = conn.cursor()
-        c.execute("""SELECT do.meta_file_id, mf.project, do.prod_lib, do.lib, DATETIME(mf.create_time) as deployment_date, do.deploy_status as deployment, mf.status as object_status, do.source
+        c.execute("""SELECT do.meta_file_id, mf.project, do.prod_lib, do.lib, DATETIME(mf.create_time) as deployment_date, do.deploy_status as object_status, mf.status as deployment, do.source
                       FROM deploy_objects do
                       left join meta_files mf on do.meta_file_id = mf.id
                   where mf.project = ? AND do.prod_lib = ? AND do.name = ? AND do.type = ? AND do.attribute = ? 
