@@ -62,11 +62,11 @@ def get_stages(meta_file_id: int) -> s.Stage_List_list:
         
         for row in stage_rows:
             stage_dict = dict(row)
-            stage_dict['next_stages'] = json.loads(stage_dict['next_stages'])
-            stage_dict['next_stage_ids'] = json.loads(stage_dict['next_stage_ids'])
-            stage_dict['after_stages_finished'] = json.loads(stage_dict['after_stages_finished'])
-            stage_dict['processing_steps'] = json.loads(stage_dict['processing_steps'])
-            stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping'])
+            stage_dict['next_stages'] = json.loads(stage_dict['next_stages']) if stage_dict['next_stages'] else []
+            stage_dict['next_stage_ids'] = json.loads(stage_dict['next_stage_ids']) if stage_dict['next_stage_ids'] else []
+            stage_dict['after_stages_finished'] = json.loads(stage_dict['after_stages_finished']) if stage_dict['after_stages_finished'] else []
+            stage_dict['processing_steps'] = json.loads(stage_dict['processing_steps']) if stage_dict['processing_steps'] else []
+            stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping']) if stage_dict['lib_mapping'] else {}
             stage_dict['status'] = Stage_Status(stage_dict['status'])
             
             stage_dict['actions'] = actions_data.get_actions(stage_id=row['id'])
@@ -93,11 +93,11 @@ def get_stage(stage_id: int) -> s.Stage | None:
         if row is None:
             return None
         stage_dict = dict(row)
-        stage_dict['next_stages'] = json.loads(stage_dict['next_stages'])
-        stage_dict['next_stage_ids'] = json.loads(stage_dict['next_stage_ids'])
-        stage_dict['after_stages_finished'] = json.loads(stage_dict['after_stages_finished'])
-        stage_dict['processing_steps'] = json.loads(stage_dict['processing_steps'])
-        stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping'])
+        stage_dict['next_stages'] = json.loads(stage_dict['next_stages']) if stage_dict['next_stages'] else []
+        stage_dict['next_stage_ids'] = json.loads(stage_dict['next_stage_ids']) if stage_dict['next_stage_ids'] else []
+        stage_dict['after_stages_finished'] = json.loads(stage_dict['after_stages_finished']) if stage_dict['after_stages_finished'] else []
+        stage_dict['processing_steps'] = json.loads(stage_dict['processing_steps']) if stage_dict['processing_steps'] else []
+        stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping']) if stage_dict['lib_mapping'] else {}
         stage_dict['status'] = Stage_Status(stage_dict['status'])
         
         stage_dict['actions'] = actions_data.get_actions(stage_id=row['id'])

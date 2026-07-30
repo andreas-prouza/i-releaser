@@ -132,7 +132,7 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
         deploy_version=meta_file_row['deploy_version'],
         deploy_version_id=meta_file_row['deploy_version_id'],
         stages=stages,
-        custom_data=json.loads(meta_file_row['custom_data'])
+        custom_data=json.loads(meta_file_row['custom_data']) if meta_file_row['custom_data'] else None
     )
     meta_file.deploy_objects = deploy_objects
     meta_file.run_history = run_history

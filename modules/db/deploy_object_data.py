@@ -146,7 +146,7 @@ def get_deploy_object_lifecycle(project: str, prod_lib: str, name: str, type: st
 def _convert_deploy_object_row_to_dict(row: sqlite3.Row) -> do.Deploy_Object:
     object_dict = dict(row)
     object_dict['deploy_status'] = do.Obj_Status(object_dict['deploy_status'])
-    object_dict['depends_on'] = json.loads(object_dict['depends_on'])
+    object_dict['depends_on'] = json.loads(object_dict['depends_on']) if object_dict['depends_on'] else do.Deploy_Object_List()
     object_dict['properties'] = json.loads(object_dict['properties']) if object_dict['properties'] else {}
     object_dict['source'] = object_dict['source']
     object_dict['source_only'] = object_dict['source_only']
