@@ -248,7 +248,7 @@ class Deploy_Object_List(list):
     return None
 
 
-  def get_deploy_object(self, lib: str, prod_lib: str, name: str, type: str) -> Deploy_Object|None:
+  def get_deploy_object(self, lib: str, name: str, type: str, prod_lib: str=None) -> Deploy_Object|None:
     for o in self:
       if o.lib == lib and (prod_lib is None or o.prod_lib == prod_lib) and o.type == type and o.name == name:
         return o
