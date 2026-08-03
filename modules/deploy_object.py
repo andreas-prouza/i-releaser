@@ -250,7 +250,7 @@ class Deploy_Object_List(list):
 
   def get_deploy_object(self, lib: str, prod_lib: str, name: str, type: str) -> Deploy_Object|None:
     for o in self:
-      if o.lib == lib and o.prod_lib == prod_lib and o.type == type and o.name == name:
+      if o.lib == lib and (prod_lib is None or o.prod_lib == prod_lib) and o.type == type and o.name == name:
         return o
     logging.warning(f"No deploy object found for {lib=}, {prod_lib=}, {name=}, {type=}")
     return None

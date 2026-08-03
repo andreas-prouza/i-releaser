@@ -572,7 +572,7 @@ async def set_source_ready_4_deployment(request: Request, meta_file_id: int):
             raise Exception(f"Can't change object status because deployment is already in status '{mf.status.value}'.")
         
         processing_user_data.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set object {data['lib']}/{data['name']}({data['type']}) ready={data['checked']}", meta_file=mf)
-        obj: Deploy_Object = mf.deploy_objects.get_deploy_object(data['lib'], data['name'], data['type'])
+        obj: Deploy_Object = mf.deploy_objects.get_deploy_object(lib=data['lib'], name=data['name'], type=data['type'])
         
         if obj.deploy_status == Obj_Status.FINISHED:
             raise Exception(f"Can't change object status because object is already in status '{obj.deploy_status.value}'.")
