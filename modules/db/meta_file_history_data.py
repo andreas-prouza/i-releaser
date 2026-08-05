@@ -1,19 +1,7 @@
 from io import StringIO
-import sqlite3
-import json
 import logging
-from etc import constants
-from modules.db import app_sqlite
-from modules import meta_file as mf
-from modules import stages as s
-from modules.stage_status import Status as Stage_Status
-from modules import deploy_object as do
-from modules import deploy_action as da
-from modules import workflow as wf
+from modules.db import app_sqlite, compression
 from modules import meta_file_history as mfh
-from modules import deploy_version as dv
-from modules.meta_file_status import Meta_file_status
-from modules.db import stage_data
 
 
 
@@ -49,7 +37,7 @@ def get_run_history_by_id(id: int) -> mfh.Meta_File_History|None:
         if len(run_history_rows) == 0:
             return None
         
-        run_history = mfh.Meta_File_History(id=run_history_rows[0]['id'], meta_file_id=run_history_rows[0]['meta_file_id'], create_time=run_history_rows[0]['create_time'], log=run_history_rows[0]['log'])
+        run_history = mfh.Meta_File_History(id=run_history_rows[0]['id'], meta_file_id=run_history_rows[0]['meta_file_id'], create_time=run_history_rows[0]['create_time'], log=compression.decompress_field(run_history_rows[0]['log']))
 
     return run_history
 
@@ -74,7 +62,7 @@ def add_meta_file_history(meta_file_history: mfh.Meta_File_History):
             INSERT INTO run_history (meta_file_id, create_time, log)
             VALUES (?, ?, ?)
         ''', (
-            meta_file_history.meta_file_id, meta_file_history.create_time, meta_file_history.log.getvalue() if meta_file_history.log else None
+            meta_file_history.meta_file_id, meta_file_history.create_time, compression.compress_field(meta_file_history.log.getvalue()) if meta_file_history.log else None
         ))
         meta_file_history.id = c.lastrowid
 

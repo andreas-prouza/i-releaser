@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI):
     """
     # Initialize databases and tables
     app_sqlite.create_tables()
+    app_sqlite.check_updates()
     app_info_data.add_app_info()
     
     yield

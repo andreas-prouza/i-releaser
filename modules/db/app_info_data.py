@@ -31,3 +31,18 @@ def add_app_info():
             raise Exception("Failed to insert app info.")
 
 
+
+def get_app_info() -> dict | None:
+    with app_sqlite.get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('SELECT * FROM app_info ORDER BY id DESC LIMIT 1')
+        row = c.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'version': row[1],
+                'data': row[2],
+                'created_at': row[3]
+            }
+        else:
+            return None

@@ -1,19 +1,8 @@
-from io import StringIO
-import sqlite3
-import json
+
 import logging
-from etc import constants
 from modules.db import app_sqlite
-from modules import meta_file as mf
-from modules import stages as s
-from modules.stage_status import Status as Stage_Status
-from modules import deploy_object as do
-from modules import deploy_action as da
-from modules import workflow as wf
+from modules.db import compression
 from modules import run_history
-from modules import deploy_version as dv
-from modules.meta_file_status import Meta_file_status
-from modules.db import stage_data
 
 
 
@@ -50,8 +39,9 @@ def get_run_history_by_id(id: int) -> run_history.Run_History|None:
                                 action_id=run_history_rows[0]['action_id'], 
                                 create_time=run_history_rows[0]['create_time'], 
                                 status=run_history_rows[0]['status'],
-                                stdout=run_history_rows[0]['stdout'],
-                                stderr=run_history_rows[0]['stderr'])
+                                stdout=compression.decompress_field(run_history_rows[0]['stdout']),
+                                stderr=compression.decompress_field(run_history_rows[0]['stderr'])
+                            )
 
     return run_history_obj
 

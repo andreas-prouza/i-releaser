@@ -2,7 +2,7 @@ from io import StringIO
 import sqlite3
 import json
 import logging
-from modules.db import  app_sqlite
+from modules.db import  app_sqlite, compression
 from modules import meta_file as mf
 from modules import stages as s
 from modules import workflow as wf
@@ -51,7 +51,7 @@ def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_
 def _load_workflow_definition(c: sqlite3.Cursor, meta_file_id: int) -> wf.Workflow | None:
     c.execute("SELECT * FROM workflow_definitions WHERE meta_file_id = ?", (meta_file_id,))
     workflow_row = c.fetchone()
-    return wf.Workflow(dict=json.loads(workflow_row['definition'])) if workflow_row else None
+    return wf.Workflow(dict=json.loads(compression.decompress_field(workflow_row['definition']))) if workflow_row else None
 
 
 
@@ -69,7 +69,7 @@ def _load_run_history(c: sqlite3.Cursor, meta_file_id: int) -> mfh.Meta_File_His
             c.connection.commit()
             continue
 
-        run_history.add_history(mfh.Meta_File_History(id=row['id'], meta_file_id=row['meta_file_id'], create_time=row['create_time'], log=row['log']))
+        run_history.add_history(mfh.Meta_File_History(id=row['id'], meta_file_id=row['meta_file_id'], create_time=row['create_time'], log=compression.decompress_field(row['log'])))
 
     return run_history
 
@@ -132,7 +132,7 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
         deploy_version=meta_file_row['deploy_version'],
         deploy_version_id=meta_file_row['deploy_version_id'],
         stages=stages,
-        custom_data=json.loads(meta_file_row['custom_data']) if meta_file_row['custom_data'] else None
+        custom_data=json.loads(compression.decompress_field(meta_file_row['custom_data'])) if meta_file_row['custom_data'] else None
     )
     meta_file.deploy_objects = deploy_objects
     meta_file.run_history = run_history
@@ -152,10 +152,10 @@ def _save_workflow_definition(c: sqlite3.Cursor, meta_file_id: int, workflow: wf
         c.execute("SELECT id FROM workflow_definitions WHERE meta_file_id = ?", (meta_file_id,))
         if c.fetchone():
             c.execute("UPDATE workflow_definitions SET name = ?, default_project = ?, definition = ? WHERE meta_file_id = ?",
-                      (workflow.name, workflow.default_project, json.dumps(workflow.get_dict()), meta_file_id))
+                      (workflow.name, workflow.default_project, compression.compress_field(json.dumps(workflow.get_dict())) , meta_file_id))
         else:
             c.execute("INSERT INTO workflow_definitions (meta_file_id, name, default_project, definition) VALUES (?, ?, ?, ?)",
-                      (meta_file_id, workflow.name, workflow.default_project, json.dumps(workflow.get_dict())))
+                      (meta_file_id, workflow.name, workflow.default_project, compression.compress_field(json.dumps(workflow.get_dict()))))
 
 
 
@@ -173,7 +173,7 @@ def _save_run_history(c: sqlite3.Cursor, run_history: mfh.Meta_File_History_List
             c.execute("DELETE FROM run_history WHERE id = ?", (history.id,))
         else:
             c.execute("UPDATE run_history SET log = ? WHERE id = ?",
-                    (log, history.id))
+                    (compression.compress_field(log), history.id))
         
 
 
@@ -193,7 +193,7 @@ def save_meta_file(meta_file: mf.Meta_File):
         ''', (
             meta_file.commit, meta_file.release_branch, meta_file.create_time, meta_file.update_time,
             meta_file.status.value, meta_file.object_list, meta_file.main_deploy_lib,
-            meta_file.remote_deploy_lib, meta_file.backup_deploy_lib, json.dumps(meta_file.custom_data),
+            meta_file.remote_deploy_lib, meta_file.backup_deploy_lib, compression.compress_field(json.dumps(meta_file.custom_data)) if meta_file.custom_data else None,
             meta_file.id
         ))
 
@@ -223,7 +223,7 @@ def add_meta_file(meta_file: mf.Meta_File):
         ''', (
             meta_file.project, meta_file.deploy_version_id, meta_file.commit, meta_file.release_branch,
             meta_file.create_time, meta_file.meta_dir, meta_file.update_time, meta_file.status.value,
-            meta_file.object_list, json.dumps(meta_file.custom_data)
+            meta_file.object_list, compression.compress_field(json.dumps(meta_file.custom_data)) if meta_file.custom_data else None
         ))
         meta_file.id = c.lastrowid
         meta_file.set_libs()

@@ -252,9 +252,6 @@ async def show_details_by_id(request: Request, meta_file_id: int):
         flow = flowchart.get_flowchar_html(request, mf)
         mf_dict = mf.get_all_data_as_dict()
         
-        # Layer the objects based on dependencies
-        layered_objects = mf.deploy_objects.get_layered_objects()
-
         mf_json = json.dumps(mf_dict, default=str, indent=4)
         progress = (len(mf.workflow.stages) - len(mf.get_open_stages())) / len(mf.workflow.stages)
         progress = progress * 100
