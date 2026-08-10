@@ -64,13 +64,13 @@ def get_meta_dir(cursor: sqlite3.Cursor, meta_file_id: int|None=None, stage_id: 
     param = ()
 
     if stage_id is not None:
-        sql += "stage_id = ?"
+        sql += " id in (SELECT meta_file_id FROM stages WHERE id = ?)"
         param = (stage_id,)
     elif deploy_object_id is not None:
-        sql += "deploy_object_id = ?"
+        sql += " id in (SELECT meta_file_id FROM deploy_objects WHERE id = ?)"
         param = (deploy_object_id,)
     elif action_id is not None:
-        sql += "action_id = ?"
+        sql += " id in (SELECT meta_file_id FROM actions WHERE id = ?)"
         param = (action_id,)
     elif meta_file_id is not None:
         sql += "id = ?"
