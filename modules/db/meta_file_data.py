@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import os
 from io import StringIO
 import sqlite3
 import json
@@ -8,6 +11,7 @@ from modules import stages as s
 from modules import workflow as wf
 from modules import meta_file_history as mfh
 from modules import deploy_version as dv
+from modules import files
 from modules.meta_file_status import Meta_file_status
 from modules.db import stage_data, deploy_object_data
 
@@ -55,6 +59,31 @@ def _load_workflow_definition(c: sqlite3.Cursor, meta_file_id: int) -> wf.Workfl
 
 
 
+def get_meta_dir(cursor: sqlite3.Cursor, meta_file_id: int|None=None, stage_id: int|None=None, deploy_object_id: int|None=None, action_id: int|None=None) -> str | None:
+    sql = "SELECT meta_dir FROM meta_files WHERE "
+    param = ()
+
+    if stage_id is not None:
+        sql += "stage_id = ?"
+        param = (stage_id,)
+    elif deploy_object_id is not None:
+        sql += "deploy_object_id = ?"
+        param = (deploy_object_id,)
+    elif action_id is not None:
+        sql += "action_id = ?"
+        param = (action_id,)
+    elif meta_file_id is not None:
+        sql += "id = ?"
+        param = (meta_file_id,)
+    else:
+        raise Exception("Either meta_file_id, stage_id, deploy_object_id, or action_id must be provided.")
+
+    cursor.execute(sql, param)
+    meta_file_row = cursor.fetchone()
+    return meta_file_row['meta_dir'] if meta_file_row else None
+
+
+
 
 def _load_run_history(c: sqlite3.Cursor, meta_file_id: int) -> mfh.Meta_File_History_List_list:
 
@@ -69,7 +98,7 @@ def _load_run_history(c: sqlite3.Cursor, meta_file_id: int) -> mfh.Meta_File_His
             c.connection.commit()
             continue
 
-        run_history.add_history(mfh.Meta_File_History(id=row['id'], meta_file_id=row['meta_file_id'], create_time=row['create_time'], log=compression.decompress_field(row['log'])))
+        run_history.add_history(mfh.Meta_File_History(id=row['id'], meta_file_id=row['meta_file_id'], create_time=row['create_time'], log=row['log']))
 
     return run_history
 
@@ -162,19 +191,26 @@ def _save_workflow_definition(c: sqlite3.Cursor, meta_file_id: int, workflow: wf
 
 
 
-def _save_run_history(c: sqlite3.Cursor, run_history: mfh.Meta_File_History_List_list):
+def _save_run_history(c: sqlite3.Cursor, run_history: mfh.Meta_File_History_List_list, meta_dir: str):
     
     for history in run_history:
         log = history.log
         if type(log) == StringIO:
             log = log.getvalue()
 
+        if log[:7] == "file://":
+            files.writeText(log, log[7:])
+            continue
+
         if len(log) == 0:
             c.execute("DELETE FROM run_history WHERE id = ?", (history.id,))
-        else:
-            c.execute("UPDATE run_history SET log = ? WHERE id = ?",
-                    (compression.compress_field(log), history.id))
-        
+
+        log_file_path = os.path.join(meta_dir, "logs", "run_history", f"{history.id}.log")
+        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+        files.writeText(log, log_file_path)
+        c.execute("UPDATE run_history SET log = ? WHERE id = ?",
+                  (f"file://{log_file_path}", history.id))
+
 
 
 def save_meta_file(meta_file: mf.Meta_File):
@@ -199,7 +235,7 @@ def save_meta_file(meta_file: mf.Meta_File):
 
         deploy_object_data.save_deploy_objects(meta_file.deploy_objects, c)
         stage_data.save_stages(meta_file.stages, c)
-        _save_run_history(c, meta_file.run_history)
+        _save_run_history(c, meta_file.run_history, meta_file.meta_dir)
         _save_workflow_definition(c, meta_file.id, meta_file.workflow)
 
         conn.commit()

@@ -17,9 +17,9 @@ class Meta_File_History:
 
 
 
-  def __init__(self, id:int=None, log: StringIO=None, create_time=None, meta_file_id: int=None, dict: dict=None):
+  def __init__(self, id:int=None, log: StringIO|str|None=None, create_time=None, meta_file_id: int=None, dict: dict=None):
     self.id: int = id
-    self.log = log
+    self.log: StringIO|str|None = log
     self.create_time = create_time
     self.meta_file_id = meta_file_id
 

@@ -1,8 +1,8 @@
 
 import logging
 from modules.db import app_sqlite
-from modules.db import compression
 from modules import run_history
+from modules import files
 
 
 
@@ -39,9 +39,14 @@ def get_run_history_by_id(id: int) -> run_history.Run_History|None:
                                 action_id=run_history_rows[0]['action_id'], 
                                 create_time=run_history_rows[0]['create_time'], 
                                 status=run_history_rows[0]['status'],
-                                stdout=compression.decompress_field(run_history_rows[0]['stdout']),
-                                stderr=compression.decompress_field(run_history_rows[0]['stderr'])
+                                stdout=run_history_rows[0]['stdout'],
+                                stderr=run_history_rows[0]['stderr']
                             )
+
+        if run_history_obj.stdout and run_history_obj.stdout.startswith("file://"):
+            run_history_obj.stdout = files.readFile(run_history_obj.stdout[7:])
+        if run_history_obj.stderr and run_history_obj.stderr.startswith("file://"):
+            run_history_obj.stderr = files.readFile(run_history_obj.stderr[7:])
 
     return run_history_obj
 

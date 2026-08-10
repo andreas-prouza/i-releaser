@@ -1,11 +1,8 @@
-import sqlite3
+import sqlite3, os
 import logging
-import json
-from modules.db import app_sqlite
-from modules import workflow as wf
-from modules import stages as s
-from modules.stage_status import Status as Stage_Status
+from modules.db import app_sqlite, meta_file_data
 from modules import deploy_action as da
+from modules import files
 
 
 
@@ -104,7 +101,24 @@ def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor):
             logging.debug(f"Save {sub_action.get_dict()=}")
             _save_action(sub_action, cursor)
 
+    meta_dir:str|None = meta_file_data.get_meta_dir(cursor, stage_id=action.stage_id, deploy_object_id=action.deploy_object_id, action_id=action.action_id)
+    if meta_dir is None:
+        raise Exception(f"Meta directory not found for action with ID {action.id}. Cannot save run history logs.")
+
     for history in action.run_history:
+
+        if history.stdout and isinstance(history.stdout, str) and not history.stdout.startswith("file://"):
+            stdout_file_path = os.path.join(meta_dir, "logs", "action_run_history", f"{history.id}_stdout.log")
+            os.makedirs(os.path.dirname(stdout_file_path), exist_ok=True)
+            files.writeText(history.stdout, stdout_file_path)
+            history.stdout = f"file://{stdout_file_path}"
+
+        if history.stderr and isinstance(history.stderr, str) and not history.stderr.startswith("file://"):
+            stderr_file_path = os.path.join(meta_dir, "logs", "action_run_history", f"{history.id}_stderr.log")
+            os.makedirs(os.path.dirname(stderr_file_path), exist_ok=True)
+            files.writeText(history.stderr, stderr_file_path)
+            history.stderr = f"file://{stderr_file_path}"
+            
         cursor.execute('''
             update action_run_history set action_id = ?, create_time = ?, status = ?, stdout = ?, stderr = ?
             WHERE id = ?
