@@ -70,7 +70,14 @@ def get_meta_dir(cursor: sqlite3.Cursor, meta_file_id: int|None=None, stage_id: 
         sql += " id in (SELECT meta_file_id FROM deploy_objects WHERE id = ?)"
         param = (deploy_object_id,)
     elif action_id is not None:
-        sql += " id in (SELECT meta_file_id FROM actions WHERE id = ?)"
+        sql += " id in (select COALESCE(s.meta_file_id, do.meta_file_id, s2.meta_file_id, do2.meta_file_id ) \
+                        from actions a \
+                            left join stages s on s.id = a.stage_id \
+                            left join deploy_objects do on do.id = a.deploy_object_id \
+                            left join actions a2 on a2.id = a.action_id \
+                            left join stages s2 on s2.id = a2.stage_id \
+                            left join deploy_objects do2 on do2.id = a2.deploy_object_id \
+                        WHERE a.id = ?)"
         param = (action_id,)
     elif meta_file_id is not None:
         sql += "id = ?"
