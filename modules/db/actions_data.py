@@ -101,7 +101,7 @@ def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor):
             logging.debug(f"Save {sub_action.get_dict()=}")
             _save_action(sub_action, cursor)
 
-    meta_dir:str|None = meta_file_data.get_meta_dir(cursor, stage_id=action.stage_id, deploy_object_id=action.deploy_object_id, action_id=action.action_id)
+    meta_dir:str|None = meta_file_data.get_meta_dir(cursor, stage_id=action.stage_id, deploy_object_id=action.deploy_object_id, action_id=action.id)
     if meta_dir is None:
         raise Exception(f"Meta directory not found for action with ID {action.id}. Cannot save run history logs.")
 
