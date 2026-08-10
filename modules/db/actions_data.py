@@ -34,7 +34,7 @@ def add_action(action: da.Deploy_Action, stage_id: int|None=None, deploy_object_
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
 
-        _save_action(action, cursor=c)
+        _add_action(action, c, stage_id, deploy_object_id, action_id)
         conn.commit()
 
 
@@ -100,6 +100,8 @@ def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor):
                 _add_action(sub_action, cursor, action_id=action.id)
             logging.debug(f"Save {sub_action.get_dict()=}")
             _save_action(sub_action, cursor)
+
+    logging.warning(f"{action.get_dict()=}")
 
     meta_dir:str|None = meta_file_data.get_meta_dir(cursor, stage_id=action.stage_id, deploy_object_id=action.deploy_object_id, action_id=action.id)
     if meta_dir is None:

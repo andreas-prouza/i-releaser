@@ -245,9 +245,16 @@ class Meta_File:
         return next_stages
 
       logging.debug(f"Next stages 2 for {from_stage.name}: {from_stage}")
+
       for ns in from_stage.next_stages:
-        new_stage = self.get_open_stages().get_stages_by_name(stage_name=ns)[0]
-        next_stages.append(new_stage)
+        next_stages_list = self.get_open_stages().get_stages_by_name(stage_name=ns)
+
+        if len(next_stages_list) == 0:
+          logging.warning(f"Next stages 3 for {from_stage.name}: {ns} not found in open stages")
+          continue
+
+        next_stages.append(next_stages_list[0])
+
       return next_stages
 
 
