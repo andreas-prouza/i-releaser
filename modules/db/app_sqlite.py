@@ -5,7 +5,7 @@ import logging
 from etc import constants
 from modules.db import app_sqlite, compression
 from modules.db import app_info_data
-from modules import files
+
 
 DB_FILE = os.path.abspath(constants.C_APP_DB_FILE)
 
@@ -70,6 +70,7 @@ def create_tables(db_path=DB_FILE):
                 remote_lib TEXT,
                 backup_lib TEXT,
                 custom_data TEXT,
+                parallel_deployment_execution_allowed BOOLEAN,
                 FOREIGN KEY (deploy_version_id) REFERENCES deploy_versions (id)
             )
         ''')
@@ -133,6 +134,7 @@ def create_tables(db_path=DB_FILE):
                 status TEXT,
                 create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                run_immediate BOOLEAN,
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
         ''')
@@ -210,227 +212,21 @@ def check_updates():
     logging.info(f"Last app version in database: {last_version}")
 
     if last_version == '2.0.0':
-        add_compression()
+        from modules.db.updates import v_2_0_1
+        v_2_0_1.add_compression()
         last_version = '2.0.1'
 
     if last_version == '2.0.1':
-        extract_logs_2_meta_dir()
+        from modules.db.updates import v_2_0_2
+        v_2_0_2.extract_logs_2_meta_dir()
         last_version = '2.0.2'
 
+    if last_version == '2.0.2':
+        from modules.db.updates import v_2_0_3
+        v_2_0_3.add_parallel_deployment_execution_allowed()
+        v_2_0_3.add_immediate_execution()
+        last_version = '2.0.3'
 
-
-
-def extract_logs_2_meta_dir():
-    logging.info("Moving logs to meta directory...")
-
-    
-    with app_sqlite.get_db_connection() as conn:
-        c = conn.cursor()
-
-
-        ###################################################
-        # Run_History
-        ###################################################
-
-        c.execute("""select rh.*, mf.meta_dir  from meta_files mf
-                        left join run_history rh on rh.meta_file_id = mf.id 
-                     where rh.log is not null and rh.log <> '' and mf.meta_dir is not null and mf.meta_dir <> '' """)
-        rows = c.fetchall()
-
-        for row in rows:
-
-            if row['log'] is None or len(row['log']) == 0 or (isinstance(row['log'], str) and row['log'].startswith("file://")):
-                continue  # Skip if log is None or empty
-
-            meta_dir = row['meta_dir']
-            id = row['id']
-            log_file_path = os.path.join(meta_dir, "logs", "run_history", f"{id}.log")
-            log = compression.decompress_field(row['log'])
-
-            # Write the combined logs to the processing.log file in the meta directory
-            os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-            files.writeText(log, log_file_path)
-
-            c.execute("UPDATE run_history SET log = ? where id = ?", (f"file://{log_file_path}", id))
-
-
-        ###################################################
-        # Action_Run_History
-        ###################################################
-
-        c.execute("""select arh.*, mf.meta_dir  from meta_files mf
-                        INNER join deploy_objects do on do.meta_file_id = mf.id 
-                        INNER join actions a on a.deploy_object_id  = do.id
-                        INNER join action_run_history arh on arh.action_id = a.id
-                    where mf.meta_dir is not null and mf.meta_dir <> ''
-                    union all
-                    select arh.*, mf.meta_dir  from meta_files mf
-                        INNER join stages s on s.meta_file_id = mf.id 
-                        INNER join actions a on a.stage_id = s.id
-                        INNER join action_run_history arh on arh.action_id = a.id
-                    where mf.meta_dir is not null and mf.meta_dir <> ''
-                    union all
-                    select arh.*, mf.meta_dir  from meta_files mf
-                        INNER join stages s on s.meta_file_id = mf.id 
-                        INNER join actions a on a.stage_id = s.id
-                        inner join actions a2 on a2.action_id = a.id
-                        INNER join action_run_history arh on arh.action_id = a2.id
-                    where mf.meta_dir is not null and mf.meta_dir <> '' """)
-        rows = c.fetchall()
-
-        for row in rows:
-
-            meta_dir = row['meta_dir']
-            id = row['id']
-
-            if row['stdout'] is not None and len(row['stdout']) > 0 and not (isinstance(row['stdout'], str) and row['stdout'].startswith("file://")):
-                stdout_file_path = os.path.join(meta_dir, "logs", "action_run_history", f"{id}_stdout.log")
-                os.makedirs(os.path.dirname(stdout_file_path), exist_ok=True)
-                files.writeText(compression.decompress_field(row['stdout']), stdout_file_path)
-                c.execute("UPDATE action_run_history SET stdout = ? where id = ?", (f"file://{stdout_file_path}", id))
-
-            if row['stderr'] is not None and len(row['stderr']) > 0 and not (isinstance(row['stderr'], str) and row['stderr'].startswith("file://")):
-                stderr_file_path = os.path.join(meta_dir, "logs", "action_run_history", f"{id}_stderr.log")
-                os.makedirs(os.path.dirname(stderr_file_path), exist_ok=True)
-                files.writeText(compression.decompress_field(row['stderr']), stderr_file_path)
-                c.execute("UPDATE action_run_history SET stderr = ? where id = ?", (f"file://{stderr_file_path}", id))
-
-
-
-        #################################################
-        # Commit the transaction and close the connection
-        #################################################
-
-        conn.commit()
-
-
-        #################################################
-        # Reclaim space after compression
-        #################################################
-        c.execute("VACUUM")
-
-
-
-
-def add_compression():
-
-    logging.info("Starting compression of text fields in the database...")
-
-    with app_sqlite.get_db_connection() as conn:
-
-        c = conn.cursor()
-
-
-        ########################################
-        # meta_files
-        ########################################
-        c.execute("SELECT id, custom_data FROM meta_files")
-        rows = c.fetchall()
-
-        update_data = []
-
-        # 2. Loop through the rows and compress the text
-        for rowid, custom_data in rows:
-
-            if not custom_data:
-                continue  # Skip if custom_data is None or empty
-
-            compressed_custom_data = compression.compress_field(custom_data)
-
-            # Append a tuple formatted for our UPDATE statement: (val1, id)
-            update_data.append((compressed_custom_data, rowid))
-
-        # 3. Batch update the table with the new BLOB (binary) data
-        c.executemany("UPDATE meta_files SET custom_data = ? WHERE id = ?", update_data)
-
-
-        ########################################
-        # workflow_definitions
-        ########################################
-        c.execute("SELECT id, definition FROM workflow_definitions")
-        rows = c.fetchall()
-
-        update_data = []
-
-        # 2. Loop through the rows and compress the text
-        for rowid, definition in rows:
-
-            if not definition:
-                continue  # Skip if definition is None or empty
-
-            compressed_definition = compression.compress_field(definition)
-
-            # Append a tuple formatted for our UPDATE statement: (val1, id)
-            update_data.append((compressed_definition, rowid))
-
-        # 3. Batch update the table with the new BLOB (binary) data
-        c.executemany("UPDATE workflow_definitions SET definition = ? WHERE id = ?", update_data)
-
-
-
-        ########################################
-        # run_history
-        ########################################
-        c.execute("SELECT id, log FROM run_history")
-        rows = c.fetchall()
-
-        update_data = []
-
-        # 2. Loop through the rows and compress the text
-        for rowid, log in rows:
-
-            if not log:
-                continue  # Skip if log is None or empty
-            
-            compressed_log = compression.compress_field(log)
-
-            # Append a tuple formatted for our UPDATE statement: (val1, id)
-            update_data.append((compressed_log, rowid))
-
-        # 3. Batch update the table with the new BLOB (binary) data
-        c.executemany("UPDATE run_history SET log = ? WHERE id = ?", update_data)
-
-
-        ########################################
-        # action_run_history
-        ########################################
-        c.execute("SELECT id, stdout, stderr FROM action_run_history")
-        rows = c.fetchall()
-
-        update_data = []
-
-        # 2. Loop through the rows and compress the text
-        for rowid, stdout, stderr in rows:
-
-            if not stdout and not stderr:
-                continue  # Skip if both stdout and stderr are None or empty
-
-            compressed_stdout = compression.compress_field(stdout)
-            compressed_stderr = compression.compress_field(stderr)
-
-            logging.info(f"bevore Compressing action_run_history id={rowid}: stdout size={len(stdout) if stdout else 0}, stderr size={len(stderr) if stderr else 0}")
-            logging.info(f"after Compressing action_run_history id={rowid}: stdout size={len(compressed_stdout) if compressed_stdout else 0}, stderr size={len(compressed_stderr) if compressed_stderr else 0}")
-            
-            # Append a tuple formatted for our UPDATE statement: (val1, val2, id)
-            update_data.append((compressed_stdout, compressed_stderr, rowid))
-
-        # 3. Batch update the table with the new BLOB (binary) data
-        c.executemany("UPDATE action_run_history SET stdout = ?, stderr = ? WHERE id = ?", update_data)
-
-
-
-
-        #################################################
-        # Commit the transaction and close the connection
-        #################################################
-
-        conn.commit()
-
-
-        #################################################
-        # Reclaim space after compression
-        #################################################
-        c.execute("VACUUM")
 
 
 
