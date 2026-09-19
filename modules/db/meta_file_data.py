@@ -34,7 +34,8 @@ def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_
         object_list=object_list,
         custom_data=custom_data,
         deploy_version_id=deploy_version['id'], 
-        deploy_version=deploy_version['version']
+        deploy_version=deploy_version['version'],
+        parallel_deployment_execution_allowed=workflow.parallel_deployment_execution_allowed,
     )
 
     add_meta_file(meta_file)
@@ -168,7 +169,8 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
         deploy_version=meta_file_row['deploy_version'],
         deploy_version_id=meta_file_row['deploy_version_id'],
         stages=stages,
-        custom_data=json.loads(compression.decompress_field(meta_file_row['custom_data'])) if meta_file_row['custom_data'] else None
+        custom_data=json.loads(compression.decompress_field(meta_file_row['custom_data'])) if meta_file_row['custom_data'] else None,
+        parallel_deployment_execution_allowed=meta_file_row['parallel_deployment_execution_allowed']
     )
     meta_file.deploy_objects = deploy_objects
     meta_file.run_history = run_history
@@ -261,12 +263,12 @@ def add_meta_file(meta_file: mf.Meta_File):
         c.execute('''
             INSERT INTO meta_files (project, deploy_version_id, commit_hash, release_branch, create_time, 
                                     meta_dir,
-                                    update_time, status, object_list, custom_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    update_time, status, object_list, custom_data, parallel_deployment_execution_allowed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             meta_file.project, meta_file.deploy_version_id, meta_file.commit, meta_file.release_branch,
             meta_file.create_time, meta_file.meta_dir, meta_file.update_time, meta_file.status.value,
-            meta_file.object_list, compression.compress_field(json.dumps(meta_file.custom_data)) if meta_file.custom_data else None
+            meta_file.object_list, compression.compress_field(json.dumps(meta_file.custom_data)) if meta_file.custom_data else None, meta_file.parallel_deployment_execution_allowed
         ))
         meta_file.id = c.lastrowid
         meta_file.set_libs()

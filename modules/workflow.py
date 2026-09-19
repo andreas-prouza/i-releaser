@@ -41,6 +41,7 @@ class Workflow:
     self.default_project = None
     self.step_action = None
     self.stages = None
+    self.parallel_deployment_execution_allowed: bool = False
 
     #logging.debug(f"{name=}, {dict=}")
 
@@ -56,6 +57,9 @@ class Workflow:
 
       if 'stages' in dict:
         self.stages = dict['stages']
+      
+      if 'parallel_deployment_execution_allowed' in dict:
+        self.parallel_deployment_execution_allowed = dict['parallel_deployment_execution_allowed']
 
       #logging.debug(f"Workflow created from dict: {self.get_dict()}")
 
@@ -229,7 +233,7 @@ class Workflow:
     stages.Stage_List_list.validate_items(workflow_dict['stages'])
 
     for key in workflow_dict.keys():
-      if key not in ['name', 'step_action', 'stages', 'default_project']:
+      if key not in ['name', 'step_action', 'stages', 'default_project', 'parallel_deployment_execution_allowed']:
         raise Exception(f"Workflow attribute '{key}' is invalid in file {wf_file}!")
     
     #######################################

@@ -10,19 +10,15 @@ def decompress_field(data):
         return data
         
     # Keep decompressing in a loop as long as the data is compressed bytes
-    while isinstance(data, bytes):
+    if isinstance(data, bytes):
         try:
             # Attempt to decompress
             data = zlib.decompress(data)
         except zlib.error:
             # A zlib.error means we've reached a layer that is NOT compressed.
             # This is our final raw payload, so we break out of the loop.
-            break
-            
-    # Now that all compression layers are stripped, decode back to a string
-    if isinstance(data, bytes):
-        return data.decode('utf-8')
-        
+            return data.decode('utf-8')
+
     return data
 
 

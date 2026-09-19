@@ -19,6 +19,7 @@ from modules import meta_file_history as mfh
 from modules.db import meta_file_history_data as mfhd, processing_user_data
 from modules.db import deploy_object_data
 from modules.permission_config import check_user_permission
+from modules import stage_status
 
 from modules.meta_file_status import Meta_file_status
 
@@ -40,14 +41,14 @@ class Meta_File:
 
 
     def __init__(self, project: str|None=None, workflow_name : str|None=None, workflow=None, 
-                object_list=None, create_time=None, update_time=None, status :Meta_file_status=None, 
-                deploy_version : int|None=None, deploy_version_id : int|None=None, stages: s.Stage_List_list=None,
-                processing_users: list=None, custom_data: dict=None,
-                id: int|None=None, meta_dir: str|None=None):
+                object_list: str|None=None, create_time=None, update_time=None, status :Meta_file_status|None=None, 
+                deploy_version : int|None=None, deploy_version_id : int|None=None, stages: s.Stage_List_list|None=None,
+                processing_users: list|None=None, custom_data: dict|None=None,
+                id: int|None=None, meta_dir: str|None=None, parallel_deployment_execution_allowed: bool=False):
 
       #logging.debug(f"{sys.path=}")
 
-      self.id: int = id
+      self.id: int|None = id
       self.stages: s.Stage_List_list = stages or s.Stage_List_list()
       self.current_running_stage = None
       self.status: Meta_file_status = status or Meta_file_status.NEW
@@ -57,16 +58,17 @@ class Meta_File:
       self.remote_deploy_lib = None
       self.commit = None
       self.release_branch = None
-      self.project: str = project
-      self.deploy_version: int = deploy_version
-      self.deploy_version_id: int = deploy_version_id
-      self.object_list: str = object_list
+      self.project: str|None = project
+      self.deploy_version: int|None = deploy_version
+      self.deploy_version_id: int|None = deploy_version_id
+      self.object_list: str|None = object_list
       self.run_history: mfh.Meta_File_History_List_list = mfh.Meta_File_History_List_list()
       self.processing_users: list = processing_users or []
-      self.custom_data = custom_data or {}
+      self.custom_data: dict|None = custom_data or {}
         
       self.update_time: datetime.datetime = update_time or datetime.datetime.now()
       self.create_time: datetime.datetime = create_time or datetime.datetime.now()
+      self.parallel_deployment_execution_allowed: bool = parallel_deployment_execution_allowed or False
 
       if isinstance(self.update_time, str):
         self.update_time = datetime.datetime.fromisoformat(self.update_time)
@@ -78,7 +80,7 @@ class Meta_File:
         self.create_time = datetime.datetime.now()
         self.update_time = self.create_time
 
-      self.meta_dir: str = meta_dir
+      self.meta_dir: str|None = meta_dir
       if self.meta_dir is None:
         self.meta_dir = constants.C_META_DIR.format(project=project, create_date=str(self.create_time.date()), deploy_version=deploy_version)
 
@@ -139,7 +141,7 @@ class Meta_File:
 
       if update_meta_file and status is not Meta_file_status.NEW:
         logging.debug(f"Update meta file: Finished 1.0")
-        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.commit)
+        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.commit, parallel_deployment_execution_allowed=self.parallel_deployment_execution_allowed)
         logging.debug(f"Update meta file: Finished 1")
         self.status = status
         self.save()
@@ -238,16 +240,19 @@ class Meta_File:
 
       # if already processed, get from self.stages
       for next_id in from_stage.next_stage_ids:
-        next_stages.append(self.get_stage_by_id(next_id))
+        if next_id in next_stages.get_all_ids():
+          continue
+        ns = self.get_stage_by_id(next_id)
+        next_stages.append(ns)
 
-      logging.debug(f"Next stages for {from_stage.name} ({from_stage.id}): {next_stages.get_all_ids}")
+      logging.debug(f"Next stages for {from_stage.name} ({from_stage.id}): {next_stages.get_all_ids()}")
       if len(next_stages) > 0:
         return next_stages
 
       logging.debug(f"Next stages 2 for {from_stage.name}: {from_stage}")
 
       for ns in from_stage.next_stages:
-        next_stages_list = self.get_open_stages().get_stages_by_name(stage_name=ns)
+        next_stages_list = self.get_stages_by_name(stage=ns)
 
         if len(next_stages_list) == 0:
           logging.warning(f"Next stages 3 for {from_stage.name}: {ns} not found in open stages")
@@ -298,10 +303,13 @@ class Meta_File:
 
     def check_deployment_ready_2_run(self, stage_id: int, processing_step: str|None=None):
 
-      if self.status != Meta_file_status.READY:
+      if not self.parallel_deployment_execution_allowed and self.status != Meta_file_status.READY:
         raise Exception(f"Meta file is not in status 'ready', but in status '{self.status.value}'!")
       
-      runable_stage = self.get_open_stages().get_stage(id=stage_id)
+      runable_stage = self.stages.get_stage(id=stage_id)
+      if runable_stage.status == stage_status.Status.FINISHED or runable_stage.status == stage_status.Status.IN_PROCESS:
+        logging.info(f"Stage id '{stage_id}' is in status '{runable_stage.status.value}'!")
+        return
       
       if runable_stage is None:
         e = Exception(f"Stage id '{stage_id}' is not available to run!")
@@ -320,7 +328,7 @@ class Meta_File:
         logging.exception(e, stack_info=True)
         raise e
 
-      dv.Deploy_Version.validate_deployment(self.project, self.deploy_version, Meta_file_status.IN_PROCESS)
+      dv.Deploy_Version.validate_deployment(self.project, self.deploy_version, Meta_file_status.IN_PROCESS, parallel_deployment_execution_allowed=self.parallel_deployment_execution_allowed)
 
 
 
@@ -353,8 +361,16 @@ class Meta_File:
         self.save()
         raise err
 
-      runable_stage = self.get_open_stages().get_stage(id=stage_id)
-      logging.debug(f"Runable stage: {runable_stage.name} ({runable_stage.id}) with processing step {processing_step}")
+      runable_stage = self.stages.get_stage(id=stage_id)
+      logging.debug(f"Runable stage: {runable_stage.name} ({runable_stage.id}) with processing step {processing_step} in status {runable_stage.status}")
+
+      if runable_stage.status == stage_status.Status.FINISHED:
+        logging.info(f"Stage {runable_stage.name} ({runable_stage.id}) has already been finished!")
+        return
+      
+      if runable_stage.status == stage_status.Status.IN_PROCESS:
+        logging.info(f"Stage {runable_stage.name} ({runable_stage.id}) is already in process!")
+        return
 
       from modules.ibm_i_commands import IBM_i_commands
       logging.debug(f"Create IBM i commands instance")
@@ -400,6 +416,10 @@ class Meta_File:
 
       logging.info(f"Stage {stage.name} ({stage.id}) has been finished. Setting next stage(s) {stage.next_stages}")
       self.set_next_stage(stage)
+
+      for next_stage in self.get_open_stages():
+        if next_stage.run_immediate and next_stage.status != stage_status.Status.FINISHED:
+          self.run_current_stage(next_stage.id)
 
 
 
@@ -484,7 +504,7 @@ class Meta_File:
 
 
 
-    def get_stages_by_name(self, stage: str) -> s.Stage:
+    def get_stages_by_name(self, stage: str) -> s.Stage_List_list:
 
       if self.get_open_stages() is not None and stage in self.get_open_stages().get_all_names():
         return self.get_open_stages().get_stages_by_name(stage)
@@ -492,22 +512,24 @@ class Meta_File:
       if self.get_processed_stages() is not None and stage in self.get_processed_stages().get_all_names():
         return self.get_processed_stages().get_stages_by_name(stage)
 
+      return s.Stage_List_list()
+
 
     
     def get_actions(self, processing_step: str|None=None, stage_id: int|None=None, action_id: int|None=None, include_subactions: bool=True) -> list[da.Deploy_Action]:
 
-      list: list[da.Deploy_Action]=[]
+      action_list: list[da.Deploy_Action]=[]
 
       if stage_id is None:
         raise Exception(f"Stage id is None")
 
       stage_obj = self.get_stage_by_id(stage_id)
 
-      list=stage_obj.actions.get_actions(processing_step=processing_step, action_id=action_id, include_subactions=include_subactions)
+      action_list=stage_obj.actions.get_actions(processing_step=processing_step, action_id=action_id, include_subactions=include_subactions)
       
-      list = list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage_obj.name, action_id=action_id, include_subactions=include_subactions)
+      action_list = action_list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage_obj.name, action_id=action_id, include_subactions=include_subactions)
       
-      return list
+      return action_list
 
 
 
@@ -556,6 +578,7 @@ class Meta_File:
                          'object_list':     self.object_list,
                          'processed_stages':  self.get_processed_stages().get_dict(),
                          'open_stages':  self.get_open_stages().get_dict(),
+                         'parallel_deployment_execution_allowed':  self.parallel_deployment_execution_allowed,
                         }
       dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
                              'remote_lib':  self.remote_deploy_lib,

@@ -28,13 +28,13 @@ def _add_stage(meta_file_id: int, stage: s.Stage):
         c = conn.cursor()
         c.execute('''
             INSERT INTO stages (meta_file_id, name, description, host, base_dir, remote_dir, status, build_dir, next_stages, next_stage_ids, 
-                                after_stages_finished, clear_files, lib_replacement_necessary, lib_mapping, processing_steps, execute_remote, create_time, update_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                                after_stages_finished, clear_files, lib_replacement_necessary, lib_mapping, processing_steps, execute_remote, create_time, update_time, run_immediate)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp, ?)
         ''', (
             meta_file_id, stage.name, stage.description, stage.host, stage.base_dir, stage.remote_dir, stage.status.value, stage.build_dir,
             json.dumps(stage.next_stages), json.dumps(stage.next_stage_ids),
             json.dumps(stage.after_stages_finished), json.dumps(stage.clear_files), json.dumps(stage.lib_replacement_necessary), 
-            json.dumps(stage.lib_mapping), json.dumps(stage.processing_steps), stage.execute_remote
+            json.dumps(stage.lib_mapping), json.dumps(stage.processing_steps), stage.execute_remote, stage.run_immediate
         ))
         stage_db_id = c.lastrowid
 
@@ -70,6 +70,8 @@ def get_stages(meta_file_id: int) -> s.Stage_List_list:
             stage_dict['status'] = Stage_Status(stage_dict['status'])
             
             stage_dict['actions'] = actions_data.get_actions(stage_id=row['id'])
+            stage_dict['run_immediate'] = stage_dict['run_immediate'] if 'run_immediate' in stage_dict else False
+
             stage_obj = s.Stage(dict=stage_dict)
             
             stages.append(stage_obj)
@@ -99,6 +101,7 @@ def get_stage(stage_id: int) -> s.Stage | None:
         stage_dict['processing_steps'] = json.loads(stage_dict['processing_steps']) if stage_dict['processing_steps'] else []
         stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping']) if stage_dict['lib_mapping'] else {}
         stage_dict['status'] = Stage_Status(stage_dict['status'])
+        stage_dict['run_immediate'] = stage_dict['run_immediate'] if 'run_immediate' in stage_dict else False
         
         stage_dict['actions'] = actions_data.get_actions(stage_id=row['id'])
 

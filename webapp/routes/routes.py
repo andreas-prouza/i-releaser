@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 # Custom modules
 import etc.global_cfg as global_cfg
+from etc import constants
 
 from modules import action_type, files, permissions, stage_status
 from modules import deploy_version, meta_file
@@ -32,6 +33,7 @@ def get_sidebar_data(request: Request):
     x['current_user'] = current_user.upper() if current_user is not None else None
     x['logs'] = os.listdir('log/')
     x['active'] = request.query_params.get('sidebar_active', 'deployments')
+    x['app_version'] = constants.C_APP_VERSION
     logging.debug(f"Sidebar: {x}")
 
     return x

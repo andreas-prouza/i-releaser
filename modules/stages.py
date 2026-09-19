@@ -13,15 +13,15 @@ class Stage:
 
 
 
-  def __init__(self, dict: dict=None):
-    self.id :int = None
-    self.workflow: wf.Workflow = None
-    self.name :str = None
-    self.description :str = None
-    self.host :str = None
-    self.base_dir :str = None
-    self.remote_dir :str = None
-    self.build_dir :str = None
+  def __init__(self, dict: dict|None=None):
+    self.id :int|None = None
+    self.workflow: wf.Workflow|None = None
+    self.name :str|None = None
+    self.description :str|None = None
+    self.host :str|None = None
+    self.base_dir :str|None = None
+    self.remote_dir :str|None = None
+    self.build_dir :str|None = None
     self.next_stages :Stage_List_list = Stage_List_list()
     self.next_stage_ids :list[int] = []
     self.after_stages_finished :list[str] = []
@@ -36,6 +36,9 @@ class Stage:
     self.create_time: datetime.datetime = datetime.datetime.now()
     self.update_time: datetime.datetime = datetime.datetime.now()
     self.processing_users :list[str] = []
+    self.run_immediate :bool|None = None
+
+
 
 
     if dict is not None and len(dict) > 0:
@@ -174,6 +177,7 @@ class Stage:
       'create_time' : self.create_time,
       'update_time' : self.update_time,
       'processing_users' : self.processing_users,
+      'run_immediate' : self.run_immediate,
       'actions' : self.actions.get_actions_as_dict(),
     }
 
@@ -197,7 +201,7 @@ class Stage:
       raise Exception(f"Stage name has to be defined: {stage_dict=}")
 
     for key in stage_dict.keys():
-      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'remote_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'execute_remote', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions', 'base_dir']:
+      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'remote_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'execute_remote', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions', 'base_dir', 'run_immediate']:
         raise Exception(f"Attribute {key} is invalid for stage {stage_dict['name']}!")
     
     

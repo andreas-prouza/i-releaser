@@ -101,7 +101,7 @@ class Deploy_Version:
 
 
     @staticmethod
-    def validate_deployment(project:str, version : int, status : Meta_file_status, commit : str|None=None):
+    def validate_deployment(project:str, version : int, status : Meta_file_status, commit : str|None=None, parallel_deployment_execution_allowed: bool=False):
 
         versions_config = Deploy_Version.get_deployments(project)
 
@@ -116,9 +116,7 @@ class Deploy_Version:
                 logging.exception(e, stack_info=True)
                 raise e
 
-            if (d['version'] < version and
-                status == meta_file.Meta_file_status.IN_PROCESS and 
-                meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FINISHED, meta_file.Meta_file_status.CANCELED]):
+            if not parallel_deployment_execution_allowed and(d['version'] < version and status == meta_file.Meta_file_status.IN_PROCESS and meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FINISHED, meta_file.Meta_file_status.CANCELED]):
                 e = StatusConflictException(f"Because version {d['version']} is still in status '{d['status']}', version {version} can't be updated to status '{status.value}'")
                 logging.exception(e, stack_info=True)
                 raise e
@@ -128,13 +126,13 @@ class Deploy_Version:
 
 
     @staticmethod
-    def update_deploy_status(project: str, version: int, status: Meta_file_status, commit: str):
+    def update_deploy_status(project: str, version: int, status: Meta_file_status, commit: str, parallel_deployment_execution_allowed: bool=False):
         """
         Updates the status of a deployment version in the SQLite database.
         """
         logging.debug(f"Update deployment status: {version=}, {status=}, {commit=}")
 
-        Deploy_Version.validate_deployment(project=project, version=version, status=status, commit=commit)
+        Deploy_Version.validate_deployment(project=project, version=version, status=status, commit=commit, parallel_deployment_execution_allowed=parallel_deployment_execution_allowed)
 
         with app_sqlite.get_db_connection() as conn:
             cursor = conn.cursor()
