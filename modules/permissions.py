@@ -14,6 +14,7 @@ class PermissionAction(Enum):
   CHANGE_CHECK_ERROR = 'change check error'
   FOUR_EYES_CHECK = '4-eyes check'
   CANCEL_WORKFLOW = 'cancel workflow'
+  EDIT_CUSTOM_DATA = 'edit-custom-data'
 
 
 

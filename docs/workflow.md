@@ -33,3 +33,27 @@ The mergin step can start processing ...
 * right after one of the parallel steps has been finished
 * after one (or more) of the parallel steps has benn finished
   Just define which stages needs to get finished in the property list `after_stages_finished`
+
+
+## Editable custom fields
+
+A deployment may contain a custom json (`custom_data`).
+A workflow defines which fields of that json can be edited by a user in the web app:
+
+```json
+"editable_fields": [
+  "$.ticket",
+  "$.approval.by",
+  "$.tags[0]"
+]
+```
+
+* Users need the permission `edit-custom-data` to edit these fields (button `edit` next to `Custom data` on the deployment page).
+* Fields which do not exist yet in the custom data are created when they are saved.
+* Only concrete paths are supported (no wildcards or filters):
+  * `$.a.b` object keys
+  * `$.a[0].b` list index (the index can't be larger than the current list size)
+  * `$['my key']` quoted key
+* Only paths listed in `editable_fields` can be changed. This is also checked by the server.
+* The workflow definition is stored with each deployment. Deployments created before `editable_fields` was added to the workflow are not editable.
+* A changed value keeps its type (number, boolean, json). New fields are stored as text.
