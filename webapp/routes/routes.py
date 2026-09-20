@@ -304,10 +304,11 @@ async def get_meta_file_json(request: Request, meta_file_id: int):
     logging.debug(f"Get meta file from: {meta_file_id=}")
 
     mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
-    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
 
     if not mf:
         return http_functions.get_json_response_error(f"Meta file for ID {meta_file_id} not found", status=404)
+
+    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
 
 
     #mf_json = json.dumps(meta_file_json, default=str, indent=4)
@@ -633,6 +634,25 @@ async def get_stage_steps_html(request: Request, meta_file_id: int, stage_id: in
 
         html = flowchart.generate_stage_steps_html(request, mf_obj, mf_obj.get_stage_by_id(stage_id))
         return http_functions.get_json_response({'html': html}, status=200)
+    except Exception as e:
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response_error(str(e))
+
+
+
+
+async def get_state_signature(request: Request, meta_file_id: int):
+    """Hashes of the deployment state. The web app polls this to find out when it needs to refresh."""
+
+    try:
+        mf_obj: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+        if not mf_obj:
+            return http_functions.get_json_response_error(f"Meta file for ID {meta_file_id} not found", status=404)
+
+        permission_config.check_user_permission(permissions.PermissionAction.READ, mf_obj.workflow.name)
+
+        return http_functions.get_json_response(mf_obj.get_state_signature(), status=200)
     except Exception as e:
         logging.exception(e, stack_info=True)
         return http_functions.get_json_response_error(str(e))

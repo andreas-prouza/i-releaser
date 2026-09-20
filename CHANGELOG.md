@@ -8,4 +8,5 @@
 * Store logs in meta_file dir to shrink db size
 * Option to automatically run next stage
 * Define editable fields in custom-data
+* Auto refresh of the deployment page and the stage steps window
 * Finish permission maintenance

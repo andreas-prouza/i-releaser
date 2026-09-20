@@ -556,11 +556,7 @@ function show_stage_steps(meta_file_id, stage_id, stage_name) {
                 table: 'table',
             },
             didOpen: () => {
-                const codeBlocks = Swal.getHtmlContainer().querySelectorAll('code');
-                codeBlocks.forEach((block) => {
-                    console.log('codeBlock', block);
-                    Prism.highlightElement(block);
-                });
+                highlight_code_blocks();
             }
         }).then((result) => {
             last_show_stage_id=null;
@@ -569,6 +565,109 @@ function show_stage_steps(meta_file_id, stage_id, stage_name) {
         });
     });
 }
+
+
+
+function highlight_code_blocks() {
+    const codeBlocks = Swal.getHtmlContainer().querySelectorAll('code');
+    codeBlocks.forEach((block) => {
+        console.log('codeBlock', block);
+        Prism.highlightElement(block);
+    });
+}
+
+
+
+//------------------------------------------------------------------------------
+// Auto refresh
+//
+// Polls the state signature of the deployment.
+// * The stage steps window is updated in place, if its stage (or one of its steps) changed.
+// * The page is reloaded if the deployment, a stage or an object changed.
+//   If a dialog is open, the reload is postponed until it has been closed.
+//------------------------------------------------------------------------------
+
+const AUTO_REFRESH_INTERVAL_MS = 3000;
+const AUTO_REFRESH_META_FILE_ID = '{{ deployment_dict['general']['id'] }}';
+
+var auto_refresh_signature = null;
+var auto_refresh_pending_reload = false;
+var auto_refresh_running = false;
+var auto_refresh_timer = null;
+
+
+function is_stage_steps_window_open() {
+    // The steps window gets replaced by log windows, while last_show_stage_id stays set
+    if (last_show_stage_id == null || !Swal.isVisible()) {
+        return false;
+    }
+    const container = Swal.getHtmlContainer();
+    return container != null && container.querySelector('table.stage_info') != null;
+}
+
+
+async function refresh_stage_steps_window(stage_id) {
+    const data = await http_getData(`/api/get_stage_steps_html/${AUTO_REFRESH_META_FILE_ID}/${stage_id}`);
+
+    // The user may have closed or replaced the window meanwhile
+    if (data['status'] == 'error' || !is_stage_steps_window_open() || last_show_stage_id != stage_id) {
+        return;
+    }
+    Swal.getHtmlContainer().innerHTML = data['html'];
+    highlight_code_blocks();
+}
+
+
+async function auto_refresh_check() {
+
+    if (auto_refresh_running || document.hidden) {
+        return;
+    }
+
+    auto_refresh_running = true;
+    try {
+        const signature = await http_getData(`/api/get_state_signature/${AUTO_REFRESH_META_FILE_ID}`);
+
+        if (signature['status'] == 'error') {
+            // e.g. session expired. Stop silently instead of showing an error every few seconds
+            console.log('Auto refresh stopped', signature['message']);
+            clearInterval(auto_refresh_timer);
+            return;
+        }
+
+        const previous = auto_refresh_signature;
+        auto_refresh_signature = signature;
+
+        if (previous == null) {
+            return;
+        }
+
+        if (is_stage_steps_window_open()) {
+            const stage_id = last_show_stage_id;
+            if (previous['stages'][stage_id] != signature['stages'][stage_id]) {
+                await refresh_stage_steps_window(stage_id);
+            }
+        }
+
+        if (previous['page'] != signature['page']) {
+            auto_refresh_pending_reload = true;
+        }
+
+        if (auto_refresh_pending_reload && !Swal.isVisible()) {
+            location.reload();
+        }
+    }
+    catch (error) {
+        console.error('Auto refresh failed', error);
+    }
+    finally {
+        auto_refresh_running = false;
+    }
+}
+
+
+auto_refresh_timer = setInterval(auto_refresh_check, AUTO_REFRESH_INTERVAL_MS);
+auto_refresh_check();
 
 
 

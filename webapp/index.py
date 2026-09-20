@@ -152,6 +152,7 @@ app.add_api_route('/api/set_source_ready_4_deployment/{meta_file_id}', routes.se
 
 
 app.add_api_route('/api/get_stage_steps_html/{meta_file_id}/{stage_id}', routes.get_stage_steps_html, methods=['GET'])
+app.add_api_route('/api/get_state_signature/{meta_file_id}', routes.get_state_signature, methods=['GET'])
 
 
 app.add_api_route('/api/get_workflows', routes.get_workflows, methods=['GET'])

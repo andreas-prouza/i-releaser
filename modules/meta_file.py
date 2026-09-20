@@ -1,6 +1,8 @@
 import datetime
 import configparser
 import copy
+import hashlib
+import json
 import logging
 import os
 from io import StringIO
@@ -636,6 +638,47 @@ class Meta_File:
       logging.debug(f"Number of histories: {len(self.run_history)}")
 
       return dict
+
+
+
+    @staticmethod
+    def _state_hash(data) -> str:
+      return hashlib.md5(json.dumps(data, sort_keys=True, default=str).encode(), usedforsecurity=False).hexdigest()[:12]
+
+
+
+    @staticmethod
+    def _get_action_state(actions: list[dict]) -> list:
+      """Reduces action dicts (including sub actions) to the properties which change while a stage is running."""
+
+      return [[a['id'],
+               a['status'],
+               a['check_error'],
+               [[h['id'], h['status']] for h in a['run_history']],
+               Meta_File._get_action_state(a['sub_actions'])
+              ] for a in actions]
+
+
+
+    def get_state_signature(self) -> dict:
+      """Returns hashes of the current state, used by the web app to detect changes (auto refresh).
+
+      * ``page``: state of the deployment, its stages, its deployed objects and the deployment history
+      * ``stages``: state of each stage including its processing steps (actions), by stage id
+      """
+
+      page_state = {
+        'status': self.status.value,
+        'stages': [[stage.id, stage.status.value] for stage in self.stages],
+        'objects': [[obj['id'], obj['deploy_status']] for obj in self.deploy_objects.get_objects_as_list_of_dict()],
+        'run_history': [h['id'] for h in self.run_history.get_list()],
+      }
+
+      stage_states = {}
+      for stage in self.stages:
+        stage_states[stage.id] = Meta_File._state_hash([stage.status.value, Meta_File._get_action_state(stage.actions.get_actions_as_dict())])
+
+      return {'page': Meta_File._state_hash(page_state), 'stages': stage_states}
 
 
 
