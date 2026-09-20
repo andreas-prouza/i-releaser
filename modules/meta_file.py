@@ -1,5 +1,6 @@
 import datetime
 import configparser
+import copy
 import logging
 import os
 from io import StringIO
@@ -9,7 +10,7 @@ import threading
 # from pydantic import validate_arguments
 
 from etc import constants
-from modules import action_type, deploy_action as da, files, permissions, stage_status
+from modules import action_type, deploy_action as da, files, json_path, permissions, stage_status
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
@@ -549,6 +550,49 @@ class Meta_File:
       self.set_status(Meta_file_status.CANCELED)
       logging.info('Deployment has been canceled!')
       self.save()
+
+
+
+    def get_editable_custom_fields(self) -> list[dict]:
+      """Returns the editable fields of the workflow together with their current value (None if not set yet)."""
+
+      fields = []
+      for path in self.workflow.editable_fields:
+        value = json_path.get_value(self.custom_data, path)
+        fields.append({'path': path, 'exists': value is not json_path.MISSING, 'value': None if value is json_path.MISSING else value})
+      return fields
+
+
+
+    def update_custom_data(self, fields: dict) -> list[str]:
+      """
+      Sets the given fields ({JSONPath: value}) in the custom data.
+      Only fields which are listed in `editable_fields` of the workflow are allowed.
+
+      Returns:
+          List of the changed paths
+      """
+
+      allowed = {json_path.normalize(p): p for p in self.workflow.editable_fields}
+      changes = {}
+
+      for path, value in fields.items():
+        normalized = json_path.normalize(path)
+        if normalized not in allowed:
+          raise Exception(f"Field '{path}' is not editable in workflow '{self.workflow.name}'!")
+        changes[allowed[normalized]] = value
+
+      if self.custom_data is None:
+        self.custom_data = {}
+
+      # Work on a copy, so a failing path does not leave partially changed data
+      new_data = copy.deepcopy(self.custom_data)
+      for path, value in changes.items():
+        json_path.set_value(new_data, path, value)
+
+      self.custom_data = new_data
+      self.save()
+      return list(changes.keys())
 
 
 

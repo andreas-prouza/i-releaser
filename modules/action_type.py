@@ -11,4 +11,5 @@ class Action_type(Enum):
   CREATE_WF = 'create_workflow'
   CANCEL_WF = 'cancel_workflow'
   CUSTOM_ACTION = 'custom_action'
+  EDIT_CUSTOM_DATA = 'edit_custom_data'
   

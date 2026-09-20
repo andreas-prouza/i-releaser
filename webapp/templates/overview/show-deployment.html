@@ -218,19 +218,22 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                 </tr></table>
             </td>
         </tr>
-        {% if deployment_dict.get('custom_data') %}
+        {% if deployment_dict.get('custom_data') or can_edit_custom_data %}
         <tr>
-            <th>Custom data</th>
+            <th>Custom data
+                {% if can_edit_custom_data %}
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" title="Edit custom data" onclick="edit_custom_data({{ deployment_dict['general']['id'] }})">edit</button>
+                {% endif %}
+            </th>
             <td colspan="3">
                 <details>
                     <summary>Show custom data</summary>
-                    <pre><code class="language-json">{{ deployment_dict['custom_data'] | tojson(indent=2) }}</code></pre>
+                    <pre><code class="language-json">{{ (deployment_dict.get('custom_data') or {}) | tojson(indent=2) }}</code></pre>
                 </details>
             </td>
         </tr>
         {% endif %}
     </table>
-
 
     <hr>
 
@@ -417,6 +420,114 @@ function show_http_error(error, reload=false) {
         }
     })
 }
+
+
+
+{% if can_edit_custom_data %}
+const editable_custom_fields = {{ editable_custom_fields | tojson }};
+
+// Text shown in the input field for the current value
+function custom_field_text(field) {
+    if (!field.exists || field.value === null) {
+        return '';
+    }
+    return typeof field.value === 'object' ? JSON.stringify(field.value) : String(field.value);
+}
+
+
+// Converts the entered text back to the type the field had before
+function parse_custom_field_value(field, text) {
+    if (!field.exists || field.value === null) {
+        return text;
+    }
+    if (typeof field.value === 'number') {
+        const number = Number(text);
+        if (text.trim() === '' || Number.isNaN(number)) {
+            throw new Error(`'${field.path}' needs to be a number`);
+        }
+        return number;
+    }
+    if (typeof field.value === 'boolean') {
+        if (!['true', 'false'].includes(text.trim().toLowerCase())) {
+            throw new Error(`'${field.path}' needs to be true or false`);
+        }
+        return text.trim().toLowerCase() === 'true';
+    }
+    if (typeof field.value === 'object') {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            throw new Error(`'${field.path}' needs to be valid JSON`);
+        }
+    }
+    return text;
+}
+
+
+function edit_custom_data(meta_file_id) {
+
+    const form = document.createElement('div');
+    form.style.textAlign = 'left';
+
+    const inputs = editable_custom_fields.map((field, index) => {
+        const label = document.createElement('label');
+        label.className = 'form-label fw-bold mt-2';
+        label.htmlFor = `custom_field_${index}`;
+        label.textContent = field.path;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `custom_field_${index}`;
+        input.className = 'form-control';
+        input.value = custom_field_text(field);
+
+        form.appendChild(label);
+        form.appendChild(input);
+        return input;
+    });
+
+    Swal.fire({
+        title: 'Edit custom data',
+        html: form,
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        focusConfirm: false,
+        preConfirm: () => {
+            const fields = {};
+            try {
+                editable_custom_fields.forEach((field, index) => {
+                    const text = inputs[index].value;
+                    if (text !== custom_field_text(field)) {
+                        fields[field.path] = parse_custom_field_value(field, text);
+                    }
+                });
+            } catch (e) {
+                Swal.showValidationMessage(e.message);
+                return false;
+            }
+            return fields;
+        }
+    }).then((result) => {
+        if (!result.isConfirmed) {
+            return;
+        }
+        if (Object.keys(result.value).length === 0) {
+            return;
+        }
+        postData(`/api/edit_custom_data/${meta_file_id}`, { fields: result.value })
+            .then((response) => {
+                if (response['status'] !== 'success') {
+                    show_http_error(response['message']);
+                    return;
+                }
+                location.reload();
+            })
+            .catch((error) => {
+                show_http_error(error.message);
+            });
+    });
+}
+{% endif %}
 
 
 

@@ -3,7 +3,7 @@ import logging
 from typing import List
 
 from etc import constants
-from modules import files
+from modules import files, json_path
 import glob
 
 
@@ -42,6 +42,7 @@ class Workflow:
     self.step_action = None
     self.stages = None
     self.parallel_deployment_execution_allowed: bool = False
+    self.editable_fields: List[str] = []
 
     #logging.debug(f"{name=}, {dict=}")
 
@@ -60,6 +61,9 @@ class Workflow:
       
       if 'parallel_deployment_execution_allowed' in dict:
         self.parallel_deployment_execution_allowed = dict['parallel_deployment_execution_allowed']
+
+      if 'editable_fields' in dict:
+        self.editable_fields = dict['editable_fields'] or []
 
       #logging.debug(f"Workflow created from dict: {self.get_dict()}")
 
@@ -147,7 +151,7 @@ class Workflow:
 
       try:
 
-        json_data = files.getJson(wf_file, retry=True, use_cache=True)
+        json_data = files.getJson(wf_file, retry=True, use_cache=False)
 
         if not isinstance(json_data, dict):
             raise Exception(f"Workflow file contains a {type(json_data)} instead of dict.")
@@ -233,8 +237,17 @@ class Workflow:
     stages.Stage_List_list.validate_items(workflow_dict['stages'])
 
     for key in workflow_dict.keys():
-      if key not in ['name', 'step_action', 'stages', 'default_project', 'parallel_deployment_execution_allowed']:
+      if key not in ['name', 'step_action', 'stages', 'default_project', 'parallel_deployment_execution_allowed', 'editable_fields']:
         raise Exception(f"Workflow attribute '{key}' is invalid in file {wf_file}!")
+
+    editable_fields = workflow_dict.get('editable_fields', [])
+    if not isinstance(editable_fields, list):
+      raise Exception(f"Workflow attribute 'editable_fields' needs to be a list of JSONPaths in file {wf_file}!")
+    for field in editable_fields:
+      try:
+        json_path.parse(field)
+      except json_path.InvalidJsonPathException as e:
+        raise Exception(f"Invalid entry in 'editable_fields' in file {wf_file}: {e}")
     
     #######################################
 
@@ -306,7 +319,8 @@ class Workflow:
       'step_action': self.step_action,
       'object_commands': self.object_commands,
       'default_project': self.default_project,
-      'stages': self.stages
+      'stages': self.stages,
+      'editable_fields': self.editable_fields
     }
 
 

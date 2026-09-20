@@ -257,7 +257,11 @@ async def show_details_by_id(request: Request, meta_file_id: int):
         mf_json = json.dumps(mf_dict, default=str, indent=4)
         progress = (len(mf.workflow.stages) - len(mf.get_open_stages())) / len(mf.workflow.stages)
         progress = progress * 100
-        return http_functions.get_html_response(request, 'overview/show-deployment.html', sidebar=get_sidebar_data(request), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script']) 
+        editable_custom_fields = mf.get_editable_custom_fields()
+        logging.warning(f"XXXXX Editable custom fields: {editable_custom_fields}")
+        logging.warning(f"XXXXX Is user allowed to edit custom data: {permission_config.is_user_allowed(meta_file.Meta_File.CURRENT_USER, permissions.PermissionAction.EDIT_CUSTOM_DATA, mf.workflow.name)}")
+        can_edit_custom_data = len(editable_custom_fields) > 0 and permission_config.is_user_allowed(meta_file.Meta_File.CURRENT_USER, permissions.PermissionAction.EDIT_CUSTOM_DATA, mf.workflow.name)
+        return http_functions.get_html_response(request, 'overview/show-deployment.html', sidebar=get_sidebar_data(request), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error=error, flow_html=flow['html'], flow_javascript=flow['java_script'], editable_custom_fields=editable_custom_fields, can_edit_custom_data=can_edit_custom_data) 
 
     except Exception as e:
         logging.debug(f"{os.getcwd()=}")
@@ -364,6 +368,35 @@ async def cancel_deployment(request: Request, meta_file_id: int):
 
     return http_functions.get_json_response({'status': 'success'})
     
+
+
+async def edit_custom_data(request: Request, meta_file_id: int):
+    """
+    Changes the editable fields of the custom data of a deployment.
+    Body: {"fields": {"{JSONPath}": value, ...}}
+    Only fields defined in `editable_fields` of the workflow can be changed.
+    """
+
+    try:
+        data = await request.json()
+        fields = data.get('fields')
+        if not isinstance(fields, dict) or len(fields) == 0:
+            raise Exception("No fields to change provided!")
+
+        logging.debug(f"Edit custom data: {meta_file_id=}, {fields=}")
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+        permission_config.check_user_permission(permissions.PermissionAction.EDIT_CUSTOM_DATA, mf.workflow.name)
+
+        changed = mf.update_custom_data(fields)
+        processing_user_data.create_action_log(action=action_type.Action_type.EDIT_CUSTOM_DATA, details=f"Changed custom data: {', '.join(changed)}", meta_file=mf)
+    except Exception as e:
+        logging.error("An error occured. Please check details!")
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response_error(str(e))
+
+    return http_functions.get_json_response({'status': 'success'})
+
 
 
 async def reset_stage_status(request: Request, meta_file_id: int, stage_id: int):
