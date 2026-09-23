@@ -1,9 +1,10 @@
+import asyncio
 import logging, sys, os, json
 from typing import List
 from pathlib import Path
 
 from fastapi import Depends, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 
 # Custom modules
 import etc.global_cfg as global_cfg
@@ -304,10 +305,11 @@ async def get_meta_file_json(request: Request, meta_file_id: int):
     logging.debug(f"Get meta file from: {meta_file_id=}")
 
     mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
-    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
 
     if not mf:
         return http_functions.get_json_response_error(f"Meta file for ID {meta_file_id} not found", status=404)
+
+    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
 
 
     #mf_json = json.dumps(meta_file_json, default=str, indent=4)
@@ -636,6 +638,61 @@ async def get_stage_steps_html(request: Request, meta_file_id: int, stage_id: in
     except Exception as e:
         logging.exception(e, stack_info=True)
         return http_functions.get_json_response_error(str(e))
+
+
+
+
+WATCH_STATE_POLL_INTERVAL_SECONDS = 2
+
+
+async def watch_state(request: Request, meta_file_id: int):
+    """Pushes hashes of the deployment state to the web app over SSE, so it knows when to refresh.
+
+    The connection is held open by this single request; the server re-reads the meta file from the DB
+    every WATCH_STATE_POLL_INTERVAL_SECONDS and only sends an event when the state actually changed.
+    """
+
+    try:
+        mf_obj: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+        if not mf_obj:
+            return http_functions.get_json_response_error(f"Meta file for ID {meta_file_id} not found", status=404)
+
+        permission_config.check_user_permission(permissions.PermissionAction.READ, mf_obj.workflow.name)
+    except Exception as e:
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response_error(str(e))
+
+
+    async def event_stream():
+
+        previous = None
+
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                mf_live: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+                if not mf_live:
+                    yield f"data: {json.dumps({'status': 'error', 'message': f'Meta file for ID {meta_file_id} not found'})}\n\n"
+                    break
+
+                signature = mf_live.get_state_signature()
+
+                if signature != previous:
+                    previous = signature
+                    yield f"data: {json.dumps(signature)}\n\n"
+                else:
+                    yield ": keep-alive\n\n"
+
+                await asyncio.sleep(WATCH_STATE_POLL_INTERVAL_SECONDS)
+        except Exception as e:
+            logging.exception(e, stack_info=True)
+            yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 
