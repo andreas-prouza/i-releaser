@@ -1,9 +1,10 @@
+import asyncio
 import logging, sys, os, json
 from typing import List
 from pathlib import Path
 
 from fastapi import Depends, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 
 # Custom modules
 import etc.global_cfg as global_cfg
@@ -641,8 +642,15 @@ async def get_stage_steps_html(request: Request, meta_file_id: int, stage_id: in
 
 
 
-async def get_state_signature(request: Request, meta_file_id: int):
-    """Hashes of the deployment state. The web app polls this to find out when it needs to refresh."""
+WATCH_STATE_POLL_INTERVAL_SECONDS = 2
+
+
+async def watch_state(request: Request, meta_file_id: int):
+    """Pushes hashes of the deployment state to the web app over SSE, so it knows when to refresh.
+
+    The connection is held open by this single request; the server re-reads the meta file from the DB
+    every WATCH_STATE_POLL_INTERVAL_SECONDS and only sends an event when the state actually changed.
+    """
 
     try:
         mf_obj: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
@@ -651,11 +659,40 @@ async def get_state_signature(request: Request, meta_file_id: int):
             return http_functions.get_json_response_error(f"Meta file for ID {meta_file_id} not found", status=404)
 
         permission_config.check_user_permission(permissions.PermissionAction.READ, mf_obj.workflow.name)
-
-        return http_functions.get_json_response(mf_obj.get_state_signature(), status=200)
     except Exception as e:
         logging.exception(e, stack_info=True)
         return http_functions.get_json_response_error(str(e))
+
+
+    async def event_stream():
+
+        previous = None
+
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                mf_live: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+                if not mf_live:
+                    yield f"data: {json.dumps({'status': 'error', 'message': f'Meta file for ID {meta_file_id} not found'})}\n\n"
+                    break
+
+                signature = mf_live.get_state_signature()
+
+                if signature != previous:
+                    previous = signature
+                    yield f"data: {json.dumps(signature)}\n\n"
+                else:
+                    yield ": keep-alive\n\n"
+
+                await asyncio.sleep(WATCH_STATE_POLL_INTERVAL_SECONDS)
+        except Exception as e:
+            logging.exception(e, stack_info=True)
+            yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 

@@ -581,19 +581,17 @@ function highlight_code_blocks() {
 //------------------------------------------------------------------------------
 // Auto refresh
 //
-// Polls the state signature of the deployment.
+// Server push (SSE) of the state signature of the deployment.
 // * The stage steps window is updated in place, if its stage (or one of its steps) changed.
 // * The page is reloaded if the deployment, a stage or an object changed.
 //   If a dialog is open, the reload is postponed until it has been closed.
 //------------------------------------------------------------------------------
 
-const AUTO_REFRESH_INTERVAL_MS = 3000;
 const AUTO_REFRESH_META_FILE_ID = '{{ deployment_dict['general']['id'] }}';
 
 var auto_refresh_signature = null;
 var auto_refresh_pending_reload = false;
-var auto_refresh_running = false;
-var auto_refresh_timer = null;
+var auto_refresh_source = null;
 
 
 function is_stage_steps_window_open() {
@@ -618,56 +616,70 @@ async function refresh_stage_steps_window(stage_id) {
 }
 
 
-async function auto_refresh_check() {
+function auto_refresh_handle_signature(signature) {
 
-    if (auto_refresh_running || document.hidden) {
+    if (signature['status'] == 'error') {
+        // e.g. session expired. Stop silently instead of showing an error
+        console.log('Auto refresh stopped', signature['message']);
+        if (auto_refresh_source) {
+            auto_refresh_source.close();
+        }
         return;
     }
 
-    auto_refresh_running = true;
-    try {
-        const signature = await http_getData(`/api/get_state_signature/${AUTO_REFRESH_META_FILE_ID}`);
+    const previous = auto_refresh_signature;
+    auto_refresh_signature = signature;
 
-        if (signature['status'] == 'error') {
-            // e.g. session expired. Stop silently instead of showing an error every few seconds
-            console.log('Auto refresh stopped', signature['message']);
-            clearInterval(auto_refresh_timer);
-            return;
-        }
+    if (previous == null) {
+        return;
+    }
 
-        const previous = auto_refresh_signature;
-        auto_refresh_signature = signature;
-
-        if (previous == null) {
-            return;
-        }
-
-        if (is_stage_steps_window_open()) {
-            const stage_id = last_show_stage_id;
-            if (previous['stages'][stage_id] != signature['stages'][stage_id]) {
-                await refresh_stage_steps_window(stage_id);
-            }
-        }
-
-        if (previous['page'] != signature['page']) {
-            auto_refresh_pending_reload = true;
-        }
-
-        if (auto_refresh_pending_reload && !Swal.isVisible()) {
-            location.reload();
+    if (is_stage_steps_window_open()) {
+        const stage_id = last_show_stage_id;
+        if (previous['stages'][stage_id] != signature['stages'][stage_id]) {
+            refresh_stage_steps_window(stage_id);
         }
     }
-    catch (error) {
-        console.error('Auto refresh failed', error);
+
+    if (previous['page'] != signature['page']) {
+        auto_refresh_pending_reload = true;
     }
-    finally {
-        auto_refresh_running = false;
+
+    if (auto_refresh_pending_reload && !Swal.isVisible()) {
+        location.reload();
     }
 }
 
 
-auto_refresh_timer = setInterval(auto_refresh_check, AUTO_REFRESH_INTERVAL_MS);
-auto_refresh_check();
+function start_auto_refresh() {
+    auto_refresh_source = new EventSource(`/api/watch_state/${AUTO_REFRESH_META_FILE_ID}`);
+
+    auto_refresh_source.onmessage = (event) => {
+        auto_refresh_handle_signature(JSON.parse(event.data));
+    };
+
+    auto_refresh_source.onerror = (error) => {
+        // Permanent failure (e.g. session expired, not found) or the connection dropped: close instead of
+        // letting the browser's automatic EventSource retry hammer the server forever.
+        console.error('Auto refresh connection failed', error);
+        auto_refresh_source.close();
+    };
+}
+
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (auto_refresh_source) {
+            auto_refresh_source.close();
+        }
+    }
+    else if (!auto_refresh_source || auto_refresh_source.readyState == EventSource.CLOSED) {
+        start_auto_refresh();
+    }
+});
+
+
+start_auto_refresh();
 
 
 
