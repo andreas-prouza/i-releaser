@@ -393,9 +393,10 @@ class Meta_File:
       logging.info(f"All actions completed '{runable_stage.name}'")
       logging.info(f"Set meta file status to '{Meta_file_status.READY}'")
 
-      self.check_stage_finish(runable_stage)
-
+      # Must be READY before check_stage_finish, as it may immediately run the next stage(s)
       self.set_status(Meta_file_status.READY)
+
+      self.check_stage_finish(runable_stage)
 
       self.check_deployment_finish()
       logging.info(f"Finished run of stage '{runable_stage.name}'")
