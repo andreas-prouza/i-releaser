@@ -57,3 +57,38 @@ A workflow defines which fields of that json can be edited by a user in the web 
 * Only paths listed in `editable_fields` can be changed. This is also checked by the server.
 * The workflow definition is stored with each deployment. Deployments created before `editable_fields` was added to the workflow are not editable.
 * A changed value keeps its type (number, boolean, json). New fields are stored as text.
+
+
+## Hooks
+
+A workflow can run python functions when something happens to a deployment.
+E.g. to inform other systems like Jira (see [jira.md](jira.md)).
+
+```json
+"hooks": {
+  "deployment_created": ["jira.on_event"],
+  "stage_finished": ["jira.on_event", "my_script.notify"]
+}
+```
+
+* Each entry has the format `filename.function_name` (without `.py`) of a file in the `scripts/` folder. Like a `SCRIPT` step.
+* The function is called with:
+  ```python
+  def notify(event: str, meta_file: Meta_File, stage_obj: Stage|None) -> None:
+  ```
+  `stage_obj` is only set for stage events.
+* Events:
+
+  | Event | When |
+  |---|---|
+  | `deployment_created` | A new deployment has been created |
+  | `deployment_finished` | All stages have been finished |
+  | `deployment_canceled` | The deployment has been canceled |
+  | `stage_started` | A stage starts to run (also when it's run again) |
+  | `stage_finished` | All steps of a stage have been finished |
+  | `stage_failed` | A step of a stage failed |
+  | `custom_data_changed` | A user edited the custom data |
+
+* Errors of a hook are logged only. They never stop or fail the deployment.
+* Hooks run in the same thread as the stage (or the web request), so the stage waits for them. Keep them short and use timeouts for network calls.
+* The workflow definition is stored with each deployment. Deployments created before `hooks` was added to the workflow don't run them.

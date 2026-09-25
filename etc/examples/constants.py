@@ -19,6 +19,8 @@ C_OBJECT_LIST = './build-output/object-list.txt'
 
 C_USER_PERMISSIONS = f'{C_LOCAL_BASE_DIR}/etc/user_permissions.json'
 
+C_JIRA_CONFIG = f'{C_LOCAL_BASE_DIR}/etc/jira.json'
+
 #---------------------------------------------------------
 # GIT Settings
 #---------------------------------------------------------

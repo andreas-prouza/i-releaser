@@ -10,3 +10,5 @@
 * Define editable fields in custom-data
 * Auto refresh of the deployment page and the stage steps window
 * Finish permission maintenance
+* Workflow hooks: run scripts when a deployment or stage changes its status
+* Jira integration: show deployments in Jira (Cloud: development panel, Data Center: issue links)

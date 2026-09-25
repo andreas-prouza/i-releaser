@@ -11,7 +11,7 @@ from modules import stages as s
 from modules import workflow as wf
 from modules import meta_file_history as mfh
 from modules import deploy_version as dv
-from modules import files
+from modules import files, hooks
 from modules.meta_file_status import Meta_file_status
 from modules.db import stage_data, deploy_object_data
 
@@ -47,6 +47,8 @@ def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_
 
     #meta_file.stages = s.Stage_List_list.generate_stages(meta_file)
     meta_file.stages.get_stages_by_name('START')[0].status = s.Stage_Status.READY
+
+    hooks.emit(hooks.Event.DEPLOYMENT_CREATED, meta_file)
 
     return meta_file
     

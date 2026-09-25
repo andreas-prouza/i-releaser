@@ -12,7 +12,7 @@ import threading
 # from pydantic import validate_arguments
 
 from etc import constants
-from modules import action_type, deploy_action as da, files, json_path, permissions, stage_status
+from modules import action_type, deploy_action as da, files, hooks, json_path, permissions, stage_status
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
@@ -142,6 +142,8 @@ class Meta_File:
       if self.status == Meta_file_status.CANCELED:
         raise Exception("Deployment has been canceled already. It's not possible to change the status!")
 
+      old_status = self.status
+
       if update_meta_file and status is not Meta_file_status.NEW:
         logging.debug(f"Update meta file: Finished 1.0")
         dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.commit, parallel_deployment_execution_allowed=self.parallel_deployment_execution_allowed)
@@ -151,6 +153,12 @@ class Meta_File:
 
       self.status = status
       logging.debug(f"Finished meta file status set to {self.status.value}")
+
+      if update_meta_file and status != old_status:
+        if status == Meta_file_status.FINISHED:
+          hooks.emit(hooks.Event.DEPLOYMENT_FINISHED, self)
+        elif status == Meta_file_status.CANCELED:
+          hooks.emit(hooks.Event.DEPLOYMENT_CANCELED, self)
 
 
 
@@ -388,6 +396,7 @@ class Meta_File:
       except Exception as err:
         logging.exception(err, stack_info=True)
         self.set_status(Meta_file_status.FAILED)
+        hooks.emit(hooks.Event.STAGE_FAILED, self, runable_stage)
         raise err
 
       logging.info(f"All actions completed '{runable_stage.name}'")
@@ -417,6 +426,8 @@ class Meta_File:
           return
 
       stage.status = stage_status.Status.FINISHED
+      # Before set_next_stage, as it may finish the whole deployment
+      hooks.emit(hooks.Event.STAGE_FINISHED, self, stage)
 
       logging.info(f"Stage {stage.name} ({stage.id}) has been finished. Setting next stage(s) {stage.next_stages}")
       self.set_next_stage(stage)
@@ -595,6 +606,7 @@ class Meta_File:
 
       self.custom_data = new_data
       self.save()
+      hooks.emit(hooks.Event.CUSTOM_DATA_CHANGED, self)
       return list(changes.keys())
 
 
