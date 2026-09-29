@@ -81,7 +81,10 @@ def save_objects_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da
                 continue
 
             obj_name = obj.name.replace('$', '\\$')
-            includes += f" (*INCLUDE {obj_name} *{obj.type})"
+            obj_type = obj.type
+            if obj.type == 'obj':
+                obj_type = obj.attribute
+            includes += f" (*INCLUDE {obj_name} *{obj_type})"
 
             if (
                 clear_files is True

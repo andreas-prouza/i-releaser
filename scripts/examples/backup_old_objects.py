@@ -28,7 +28,10 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
 
         for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib):
             name = obj.name.replace('$', '\\$')
-            includes += f" (*INCLUDE {name} *{obj.type})"
+            obj_type = obj.type
+            if obj.type == 'obj':
+                obj_type = obj.attribute
+            includes += f" (*INCLUDE {name} *{obj_type})"
 
         last_action = action.sub_actions.add_action(da.Deploy_Action(
             cmd=f"SAVLIB LIB({lib}) DEV(*SAVF) SAVF({meta_file.backup_deploy_lib}/{lib}) CLEAR(*ALL) SELECT({includes}) DTACPR(*HIGH)", 
