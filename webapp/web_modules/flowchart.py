@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from fastapi import Request
 from modules import meta_file, stage_status, stages, deploy_action
+from modules.job_status import Status as Job_Status
 import base64
 from web_modules import http_functions
 
@@ -59,6 +60,15 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
 
 def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  # Waiting for the processing service
+  for job in mf.processing_jobs:
+    if job.stage_id == stage.id and job.status == Job_Status.QUEUED:
+      return f'<br/><button type="button" class="btn btn-sm btn-warning" title="Waiting for the processing service. Click to remove it from the queue." onclick="cancel_job({job.id})">queued</button>'
+
+  # Like a deployment which is in process
+  if len(mf.processing_jobs) > 0 and not mf.parallel_deployment_execution_allowed:
+    return ''
 
   if mf.status not in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.READY] or stage.id not in mf.get_open_stages().get_all_ids():
     return ''

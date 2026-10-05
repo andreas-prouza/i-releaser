@@ -19,7 +19,8 @@ from modules import deploy_version as dv
 from modules.cmd_status import Status as Cmd_Status
 from modules import meta_file_history as mfh
 from modules.db import meta_file_history_data as mfhd, processing_user_data
-from modules.db import deploy_object_data
+from modules.db import deploy_object_data, processing_job_data
+from modules import processing_job
 from modules.permission_config import check_user_permission
 from modules import stage_status
 
@@ -67,6 +68,8 @@ class Meta_File:
       self.run_history: mfh.Meta_File_History_List_list = mfh.Meta_File_History_List_list()
       self._history_handler: logging.Handler|None = None
       self.processing_users: list = processing_users or []
+      # Queued and running jobs of the processing service
+      self.processing_jobs: list[processing_job.Processing_Job] = []
       self.custom_data: dict|None = custom_data or {}
         
       self.update_time: datetime.datetime = update_time or datetime.datetime.now()
@@ -332,6 +335,62 @@ class Meta_File:
       t = threading.Thread(target=self.run_current_stage, args=(stage_id, processing_step, continue_run))
       t.start()
       return t
+
+
+
+    def check_no_active_job(self, stage_id: int) -> None:
+      """A stage which is queued or processed by the processing service can't be started again"""
+
+      for job in processing_job_data.get_active_jobs(self.id):
+
+        if job.stage_id == stage_id or not self.parallel_deployment_execution_allowed:
+          stage = self.get_stage_by_id(job.stage_id)
+          raise Exception(f"Stage '{stage.name if stage else job.stage_id}' is already {job.status.value} in the processing service (job {job.id})!")
+
+
+
+    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+    def run_current_stage_as_job(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> processing_job.Processing_Job:
+      """Adds the run of the given stage to the queue of the processing service.
+      It's run there in the name of the current user.
+      """
+
+      self.check_no_active_job(stage_id)
+
+      logging.debug(f"Start deployment check")
+      self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
+      logging.debug(f"Deployment check successfully passed")
+
+      return processing_job_data.create_job(meta_file_id=self.id, stage_id=stage_id, processing_step=processing_step, continue_run=continue_run, user=Meta_File.CURRENT_USER)
+
+
+
+    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+    def start_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> dict:
+      """Runs the given stage in the background.
+      Depending on C_PROCESSING_MODE by the processing service or in a thread of the current process.
+
+      Returns:
+          dict: `mode` and for the processing service also `job_id` and `service_running`
+      """
+
+      if constants.C_PROCESSING_MODE not in ['thread', 'service']:
+        raise Exception(f"C_PROCESSING_MODE '{constants.C_PROCESSING_MODE}' is invalid. Valid modes are: 'thread', 'service'")
+
+      if constants.C_PROCESSING_MODE == 'thread':
+        self.run_current_stage_as_thread(stage_id, processing_step, continue_run)
+        return {'mode': 'thread'}
+
+      # Imported here, as it imports this module
+      from modules import processing_service
+
+      job = self.run_current_stage_as_job(stage_id, processing_step, continue_run)
+
+      service_running = processing_service.notify()
+      if not service_running:
+        logging.warning(f"Processing service is not running. Job {job.id} stays in the queue until it's started.")
+
+      return {'mode': 'service', 'job_id': job.id, 'service_running': service_running}
 
 
 
@@ -681,6 +740,7 @@ class Meta_File:
                             }
       #dict['deploy_cmds'] = self.get_actions_as_dict()
       dict['processing_users'] = self.processing_users
+      dict['processing_jobs'] = [job.get_dict() for job in self.processing_jobs]
       dict['objects'] = self.deploy_objects.get_objects_as_list_of_dict()
       dict['run_history'] = self.run_history.get_list()
       dict['custom_data'] = self.custom_data
@@ -712,13 +772,15 @@ class Meta_File:
     def get_state_signature(self) -> dict:
       """Returns hashes of the current state, used by the web app to detect changes (auto refresh).
 
-      * ``page``: state of the deployment, its stages, its deployed objects and the deployment history
+      * ``page``: state of the deployment, its stages, its deployed objects, the deployment history
+        and its jobs of the processing service
       * ``stages``: state of each stage including its processing steps (actions), by stage id
       """
 
       page_state = {
         'status': self.status.value,
         'stages': [[stage.id, stage.status.value] for stage in self.stages],
+        'jobs': [[job.id, job.status.value] for job in self.processing_jobs],
         'objects': [[obj['id'], obj['deploy_status']] for obj in self.deploy_objects.get_objects_as_list_of_dict()],
         'run_history': [h['id'] for h in self.run_history.get_list()],
       }

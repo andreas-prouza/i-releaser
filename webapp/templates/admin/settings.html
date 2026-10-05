@@ -83,6 +83,14 @@ Settings
 
 {% block no_form_content %}
 
+{% set job_btn_classes = {
+    'queued': 'btn-warning',
+    'running': 'btn-secondary',
+    'finished': 'btn-success',
+    'failed': 'btn-danger',
+    'canceled': 'btn-danger'
+} %}
+
 <div class="box box-info">
 
     <div class="tab-container">
@@ -109,6 +117,41 @@ Settings
                         {% for user,key in keys.items() %}
                             <tr>
                                 <td><code>{{ user }}</code></td><td><code>{{ key['date'] }}</code></td><td><code>{{ key['orig_key_masked'] }}</code></td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </td></tr>
+            </table>
+
+            <h3>Processing of stages</h3>
+
+            <table class="table table-striped table-bordered">
+                <tr><th>Mode</th><td><code>{{ processing_mode }}</code></td></tr>
+                <tr><th>Processing service</th><td>
+                    {% if processing_service_running %}
+                        <button type="button" class="btn btn-sm btn-success">running</button>
+                    {% elif processing_mode == 'service' %}
+                        <button type="button" class="btn btn-sm btn-danger">not running</button>
+                        Stages stay in the queue until the service has been started.
+                    {% else %}
+                        <button type="button" class="btn btn-sm btn-secondary">not running</button>
+                    {% endif %}
+                </td></tr>
+                <tr><th>Jobs</th><td>
+                    <table class="table table-striped table-bordered">
+                        <tr><th>Job</th><th>Deployment</th><th>Stage</th><th>User</th><th>Status</th><th>Queued</th><th>Started</th><th>Ended</th><th>Process</th><th>Error</th></tr>
+                        {% for job in processing_jobs %}
+                            <tr>
+                                <td>{{ job['id'] }}</td>
+                                <td><a href="/show_details/{{ job['meta_file_id'] }}">{{ job['meta_file_id'] }}</a></td>
+                                <td>{{ job['stage_id'] }}</td>
+                                <td>{{ job['user'] or '' }}</td>
+                                <td><button type="button" class="btn btn-sm {{ job_btn_classes[job['status']] or 'btn-secondary' }}">{{ job['status'] }}</button></td>
+                                <td>{{ (job['create_time'] or '')[:19] | replace('T', ' ') }}</td>
+                                <td>{{ (job['start_time'] or '')[:19] | replace('T', ' ') }}</td>
+                                <td>{{ (job['end_time'] or '')[:19] | replace('T', ' ') }}</td>
+                                <td>{{ job['pid'] or '' }}</td>
+                                <td>{{ job['error'] or '' }}</td>
                             </tr>
                         {% endfor %}
                     </table>

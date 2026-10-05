@@ -91,4 +91,5 @@ E.g. to inform other systems like Jira (see [jira.md](jira.md)).
 
 * Errors of a hook are logged only. They never stop or fail the deployment.
 * Hooks run in the same thread as the stage (or the web request), so the stage waits for them. Keep them short and use timeouts for network calls.
+  With the [processing service](processing-service.md) the hooks which are triggered by the run of a stage run in the process of the job.
 * The workflow definition is stored with each deployment. Deployments created before `hooks` was added to the workflow don't run them.

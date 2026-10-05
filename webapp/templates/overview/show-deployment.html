@@ -871,12 +871,26 @@ async function run_stage(meta_file_id, stage_id, stage_name) {
         if (result.isConfirmed) {
 
             if (result.value.status == 'success') {
+                let icon = 'success';
+                let title = 'Stage run in progress';
+                let text = '';
+                let timer = 1500;
+
+                // The stage is in the queue of the processing service, but nobody takes it from there
+                if (result.value.mode == 'service' && !result.value.service_running) {
+                    icon = 'warning';
+                    title = 'Stage is queued';
+                    text = 'The processing service is not running. The stage will be run as soon as the service has been started.';
+                    timer = 6000;
+                }
+
                 Swal.fire({
                     position: 'top-end',
-                    icon: 'success',
-                    title: 'Stage run in progress',
+                    icon: icon,
+                    title: title,
+                    text: text,
                     showConfirmButton: false,
-                    timer: 1500
+                    timer: timer
                 }).then(()=>{
                     if (last_show_stage_id != null) {
                         show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
@@ -966,6 +980,45 @@ function cancel_deployment(meta_file_id) {
 }
 
 
+
+
+
+function cancel_job(job_id) {
+
+    const swalWithBootstrapButtons = Swal.mixin({
+    customClass: {
+        confirmButton: 'btn btn-success',
+        cancelButton: 'btn btn-danger'
+    },
+    buttonsStyling: false
+    })
+
+    swalWithBootstrapButtons.fire({
+        title: 'Remove from queue?',
+        text: "The stage is waiting for the processing service. It will not be run, if you remove it from the queue.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, remove',
+        cancelButtonText: 'No, keep it',
+        reverseButtons: true
+        }).then((result) => {
+        if (result.isConfirmed) {
+            http_getData(`/api/cancel_job/${job_id}`)
+                .then((response) => {
+                    console.log(response);
+                    if (response['status'] !== 'success') {
+                        show_http_error(response['message'], true);
+                        return;
+                    }
+                    location.reload();
+                })
+                .catch((error) => {
+                    show_http_error(error.message, true);
+                });
+        }
+    })
+
+}
 
 
 

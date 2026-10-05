@@ -11,6 +11,7 @@
 | ```POST``` | ```/api/get_meta_file_json```| The content of the given meta file will be returned | 
 | ```POST``` | ```/api/get_action_log```| Returns the logs of the given action | 
 | ```POST``` | ```/api/cancel_deployment```| Set deploymend to status ```canceled``` | 
+| ```GET``` | ```/api/cancel_job/<job_id>```| Removes a stage from the queue of the [processing service](processing-service.md) | 
 | ```GET``` | ```api/create_deployment/<wf_name>/<commit>/<obj_list>```<br/>```api/create_deployment/<wf_name>/<commit>``` <br/> ```api/create_deployment/<wf_name>```| Creates new deployment based on the provided data | 
 | ```POST``` | ```/api/set_check_error```| Turn ```on```\|```off``` error check for single processing steps |
 | ```GET``` | ```/api/get_workflows```| Returns the content of `etc/workflow.json` file |
@@ -33,6 +34,20 @@ If last run of this stage failed, it will try to continue from the last failed s
 
 ##### ```run_all```
 The complete stage will be processed from the beginning
+
+#### Response
+The stage is run in the background. The response tells how:
+
+```json
+{
+  "status": "success",
+  "mode": "thread|service",
+  "job_id": 4711,
+  "service_running": true
+}
+```
+```job_id``` and ```service_running``` are only returned in mode ```service``` (see [processing service](processing-service.md)).
+If ```service_running``` is ```false```, the stage stays in the queue until the service has been started.
 
 
 ### ```get_meta_file_json```

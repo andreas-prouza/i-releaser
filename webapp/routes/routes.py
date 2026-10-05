@@ -12,8 +12,8 @@ from etc import constants
 
 from modules import action_type, files, permissions, stage_status
 from modules import deploy_version, meta_file
-from modules import workflow
-from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data
+from modules import workflow, processing_service
+from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data, processing_job_data
 from modules.deploy_object import Deploy_Object
 
 from web_modules import http_functions
@@ -206,6 +206,10 @@ async def show_workflows(request: Request):
 
 
 
+# Newest jobs of the processing service which are listed in the settings
+SETTINGS_NUMBER_OF_JOBS = 30
+
+
 async def show_settings(request: Request):
 
     logging.debug('Call settings')
@@ -225,7 +229,10 @@ async def show_settings(request: Request):
         workflows=workflow.Workflow.get_all_workflows_json(),
         port='????',
         path=Path(os.path.dirname(__file__)),
-        keys=keys
+        keys=keys,
+        processing_mode=constants.C_PROCESSING_MODE,
+        processing_service_running=processing_service.notify(),
+        processing_jobs=[job.get_dict() for job in reversed(processing_job_data.get_jobs(limit=SETTINGS_NUMBER_OF_JOBS))]
         )
 
 
@@ -282,14 +289,17 @@ async def run_stage(request: Request, meta_file_id: int, stage_id: int, option: 
     permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=mf.get_stage_by_id(stage_id).name)
 
     try:
-        
+
+        # Before the status is set: a job of the processing service may be running this stage right now
+        mf.check_no_active_job(stage_id)
+
         mf.set_status(meta_file.Meta_file_status.READY)
 
         continue_run = True
         if option == 'run_all':
             continue_run = False
 
-        mf.run_current_stage_as_thread(stage_id, continue_run=continue_run)
+        result.update(mf.start_stage(stage_id, continue_run=continue_run))
 
     except Exception as e:
         logging.error("An error occured. Please check details!")
@@ -363,6 +373,8 @@ async def cancel_deployment(request: Request, meta_file_id: int):
         processing_user_data.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
 
         mf.cancel_deployment()
+        # A stage which is already running is not stopped. Like without the processing service.
+        processing_job_data.cancel_queued_jobs(mf.id)
     except Exception as e:
         logging.error("An error occured. Please check details!")
         logging.exception(e, stack_info=True)
@@ -370,6 +382,31 @@ async def cancel_deployment(request: Request, meta_file_id: int):
 
     return http_functions.get_json_response({'status': 'success'})
     
+
+
+async def cancel_job(request: Request, job_id: int):
+    """Removes a stage run from the queue of the processing service, as long as it has not been started."""
+
+    try:
+        logging.debug(f"Cancel processing job: {job_id=}")
+
+        job = processing_job_data.get_job(job_id)
+        if job is None:
+            return http_functions.get_json_response_error(f"Processing job {job_id} not found", status=404)
+
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(job.meta_file_id)
+        permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=mf.get_stage_by_id(job.stage_id).name)
+
+        if not processing_job_data.cancel_job(job_id):
+            raise Exception(f"Processing job {job_id} is not in the queue anymore.")
+
+    except Exception as e:
+        logging.error("An error occured. Please check details!")
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response_error(str(e))
+
+    return http_functions.get_json_response({'status': 'success'})
+
 
 
 async def edit_custom_data(request: Request, meta_file_id: int):
