@@ -2,6 +2,7 @@ import os
 import subprocess
 import logging
 import sys
+import time
 
 from io import StringIO
 from contextlib import redirect_stdout, redirect_stderr
@@ -78,13 +79,17 @@ class IBM_i_commands:
     if continue_run and action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and not action.check_error):
       return
 
-    all_attributes = self.get_all_attributes(action)
+    start_time = time.perf_counter()
 
-    cmd = action.cmd.format(**all_attributes)
+    cmd = action.cmd
+    # The attributes contain the whole deployment, so only collect them if the command uses placeholders
+    if '{' in cmd or '}' in cmd:
+      cmd = cmd.format(**self.get_all_attributes(action))
 
     
     logging.info(f"run {action.sequence=}, {cmd=}, {os.getcwd()=}")
     
+    execute_time = time.perf_counter()
     try:
       rh = executions.get(action.environment)(stage, cmd, action)
 
@@ -96,17 +101,24 @@ class IBM_i_commands:
       rh.stderr = str(e)
 
     #time.sleep(0.02)
+    persist_time = time.perf_counter()
     action.run_history.append(rh)
 
     action.status = rh.status
 
-    if rh.status == Cmd_Status.FAILED and action.check_error:
+    failed = rh.status == Cmd_Status.FAILED and action.check_error
+    if failed:
       stage.set_status(rh.status)
-      self.meta_file.save()
+
+    self.meta_file.save()
+
+    end_time = time.perf_counter()
+    logging.info(f"Action {action.id} ({action.environment.value}) took {end_time - start_time:.3f}s: "
+                 f"prepare {execute_time - start_time:.3f}s, execute {persist_time - execute_time:.3f}s, save {end_time - persist_time:.3f}s")
+
+    if failed:
       logging.exception(f"Error in action {action.sequence} of stage {stage.name}: {rh.stderr}")
       raise Command_Exception(rh.stderr)
-      
-    self.meta_file.save()
 
 
 

@@ -9,6 +9,19 @@ from modules.db import app_info_data
 
 DB_FILE = os.path.abspath(constants.C_APP_DB_FILE)
 
+# Columns which are used to select the data of a deployment
+INDEXED_COLUMNS = [
+    ('workflow_definitions', 'meta_file_id'),
+    ('processing_users', 'meta_file_id'),
+    ('run_history', 'meta_file_id'),
+    ('stages', 'meta_file_id'),
+    ('deploy_objects', 'meta_file_id'),
+    ('actions', 'stage_id'),
+    ('actions', 'deploy_object_id'),
+    ('actions', 'action_id'),
+    ('action_run_history', 'action_id'),
+]
+
 
 
 def get_db_connection(db_path=DB_FILE):
@@ -16,7 +29,33 @@ def get_db_connection(db_path=DB_FILE):
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+
+    # In WAL mode, commits don't need to be synced to disk (only checkpoints do).
+    # An OS crash may lose the latest commits, but never corrupts the database.
+    if conn.execute("PRAGMA journal_mode").fetchone()[0] == 'wal':
+        conn.execute("PRAGMA synchronous=NORMAL")
+
     return conn
+
+
+
+def enable_wal(db_path=DB_FILE) -> bool:
+    """
+    Switches the database to WAL mode (persistent), so commits are cheaper and readers don't block writers.
+    Keeps the rollback journal if that's not possible.
+    """
+
+    try:
+        with get_db_connection(db_path) as conn:
+            journal_mode = conn.execute("PRAGMA journal_mode=WAL").fetchone()[0]
+    except sqlite3.Error as e:
+        journal_mode = str(e)
+
+    if journal_mode != 'wal':
+        logging.warning(f"Could not switch database to WAL mode ({journal_mode}). Rollback journal will be used.")
+        return False
+
+    return True
 
 
 
@@ -195,8 +234,13 @@ def create_tables(db_path=DB_FILE):
             )
         ''')
 
+        for table, column in INDEXED_COLUMNS:
+            c.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_{column} ON {table} ({column})")
+
         conn.commit()
     logging.info("SQLite tables for meta files created successfully.")
+
+    enable_wal(db_path)
 
 
 
@@ -239,8 +283,10 @@ def check_updates():
 if __name__ == '__main__':
     # This allows the script to be run directly to initialize the database
     print("Initializing meta file SQLite database...")
-    if os.path.exists(DB_FILE):
-        os.remove(DB_FILE)
-        print(f"Removed existing database file: {DB_FILE}")
+    # A left over WAL file must not be applied to the new database
+    for db_file in [DB_FILE, f"{DB_FILE}-wal", f"{DB_FILE}-shm"]:
+        if os.path.exists(db_file):
+            os.remove(db_file)
+            print(f"Removed existing database file: {db_file}")
     create_tables()
     print("Database and tables created.")

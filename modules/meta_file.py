@@ -5,7 +5,6 @@ import hashlib
 import json
 import logging
 import os
-from io import StringIO
 
 import threading
 
@@ -66,6 +65,7 @@ class Meta_File:
       self.deploy_version_id: int|None = deploy_version_id
       self.object_list: str|None = object_list
       self.run_history: mfh.Meta_File_History_List_list = mfh.Meta_File_History_List_list()
+      self._history_handler: logging.Handler|None = None
       self.processing_users: list = processing_users or []
       self.custom_data: dict|None = custom_data or {}
         
@@ -105,17 +105,40 @@ class Meta_File:
 
 
 
-    def activate_history(self):
-      #logging.debug(f"Aktivate history log for {self.deploy_version}")
-      #logging.debug(f"0. Number of histories: {len(self.run_history)}")
+    def activate_history(self) -> bool:
+      """Writes all log records of the current thread into a new history log of this deployment,
+      until deactivate_history() is called.
 
-      stdout_new = StringIO()
-      history: mfh.Meta_File_History = mfhd.create_new_meta_file_history(log=stdout_new, meta_file_id=self.id)
+      Returns:
+          bool: False if the history was already active
+      """
+      if self._history_handler is not None:
+        return False
+
+      history: mfh.Meta_File_History = mfhd.create_new_meta_file_history(meta_file_id=self.id)
       self.run_history.append(history)
 
-      hdl = logging.StreamHandler(stream=stdout_new)
-      hdl.setFormatter(logging.root.handlers[0].formatter)
+      thread_id = threading.get_ident()
+      hdl = logging.FileHandler(history.log.removeprefix('file://'), encoding='utf-8')
+      if logging.root.handlers:
+        hdl.setFormatter(logging.root.handlers[0].formatter)
+      # Other threads (e.g. web requests or other deployments) must not end up in this history
+      hdl.addFilter(lambda record: record.thread == thread_id)
       logging.getLogger().addHandler(hdl)
+
+      self._history_handler = hdl
+      return True
+
+
+
+    def deactivate_history(self) -> None:
+
+      if self._history_handler is None:
+        return
+
+      logging.getLogger().removeHandler(self._history_handler)
+      self._history_handler.close()
+      self._history_handler = None
 
 
 
@@ -351,6 +374,19 @@ class Meta_File:
       Raises:
           Exception: If a processing step was given, which is not in the step list of that stage
       """
+      # False if already active, e.g. for stages which are run immediately after the previous one
+      activated = self.activate_history()
+
+      try:
+        self._run_current_stage(stage_id, processing_step, continue_run)
+      finally:
+        if activated:
+          self.deactivate_history()
+
+
+
+    def _run_current_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> None:
+
       logging.debug(f"Run current stage with id {stage_id} and processing step {processing_step}")
 
       self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
