@@ -10,8 +10,9 @@ from modules import files
 
 
 
-def create_new_meta_file_history(log: StringIO=None, create_time=None, meta_file_id: int=None, dict: dict={}) -> mfh.Meta_File_History:
-    """Creates a new Meta_File_History instance and saves it to the database."""
+def create_new_meta_file_history(log: StringIO|str|None=None, create_time=None, meta_file_id: int=None, dict: dict={}) -> mfh.Meta_File_History:
+    """Creates a new Meta_File_History instance and saves it to the database.
+    Its log is stored in a file, the history log contains the file path (file://...)."""
     
     mfh_obj = mfh.Meta_File_History(
         log=log,
@@ -65,10 +66,7 @@ def add_meta_file_history(meta_file_history: mfh.Meta_File_History):
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
 
-        if meta_file_history.log is None or isinstance(meta_file_history.log, StringIO) and meta_file_history.log.getvalue() == "":
-            return
-
-        log = meta_file_history.log
+        log = meta_file_history.log or ''
         if isinstance(log, StringIO):
             log = log.getvalue()
 
@@ -84,12 +82,9 @@ def add_meta_file_history(meta_file_history: mfh.Meta_File_History):
         ))
         meta_file_history.id = c.lastrowid
 
-        if log is None or len(log) == 0:
-            return
-        
+        # Also create an empty file, as further log records get appended to it
         log_file_path = os.path.join(meta_dir, "logs", "run_history", f"{meta_file_history.id}.log")
-        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-        files.writeText(meta_file_history.log, log_file_path)
+        files.writeText(log, log_file_path, write_empty_file=True)
         meta_file_history.log = f"file://{log_file_path}"
 
         c.execute('''

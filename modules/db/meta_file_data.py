@@ -41,12 +41,15 @@ def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_
     add_meta_file(meta_file)
     meta_file.activate_history()
 
-    for stage_dict in workflow.stages:
-        new_stage: s.Stage = stage_data.create_stage(meta_file_id=meta_file.id, name=stage_dict['name'], workflow=workflow)
-        meta_file.stages.append(new_stage)
+    try:
+        for stage_dict in workflow.stages:
+            new_stage: s.Stage = stage_data.create_stage(meta_file_id=meta_file.id, name=stage_dict['name'], workflow=workflow)
+            meta_file.stages.append(new_stage)
 
-    #meta_file.stages = s.Stage_List_list.generate_stages(meta_file)
-    meta_file.stages.get_stages_by_name('START')[0].status = s.Stage_Status.READY
+        #meta_file.stages = s.Stage_List_list.generate_stages(meta_file)
+        meta_file.stages.get_stages_by_name('START')[0].status = s.Stage_Status.READY
+    finally:
+        meta_file.deactivate_history()
 
     hooks.emit(hooks.Event.DEPLOYMENT_CREATED, meta_file)
 
@@ -181,7 +184,6 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
     meta_file.main_deploy_lib = meta_file_row['main_lib']
     meta_file.backup_deploy_lib = meta_file_row['backup_lib']
     meta_file.remote_deploy_lib = meta_file_row['remote_lib']
-    meta_file.activate_history()
 
     return meta_file
 
@@ -209,8 +211,8 @@ def _save_run_history(c: sqlite3.Cursor, run_history: mfh.Meta_File_History_List
         if type(log) == StringIO:
             log = log.getvalue()
 
-        if log[:7] == "file://":
-            files.writeText(log, log[7:])
+        # Already stored in its log file
+        if log is None or log[:7] == "file://":
             continue
 
         if len(log) == 0:
@@ -244,8 +246,8 @@ def save_meta_file(meta_file: mf.Meta_File):
             meta_file.id
         ))
 
-        deploy_object_data.save_deploy_objects(meta_file.deploy_objects, c)
-        stage_data.save_stages(meta_file.stages, c)
+        deploy_object_data.save_deploy_objects(meta_file.deploy_objects, c, meta_dir=meta_file.meta_dir)
+        stage_data.save_stages(meta_file.stages, c, meta_dir=meta_file.meta_dir)
         _save_run_history(c, meta_file.run_history, meta_file.meta_dir)
         _save_workflow_definition(c, meta_file.id, meta_file.workflow)
 

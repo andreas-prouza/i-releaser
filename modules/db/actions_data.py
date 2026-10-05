@@ -64,25 +64,36 @@ def _add_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, stage_id: int|
 
 
 
-def save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor|None=None, stage_id: int|None=None, deploy_object_id: int|None=None, action_id: int|None=None):
+def save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor|None=None, stage_id: int|None=None, deploy_object_id: int|None=None, action_id: int|None=None, meta_dir: str|None=None):
+    """
+    Args:
+        meta_dir (str, optional): Meta directory of the deployment for the log files.
+            If not given, it will be read from the database when needed.
+    """
 
     if action.id is None:
         add_action(action=action, stage_id=stage_id, deploy_object_id=deploy_object_id, action_id=action_id, cursor=cursor)
         return
 
     if cursor is not None:
-        _save_action(action, cursor)
+        _save_action(action, cursor, meta_dir)
         return
 
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
 
-        _save_action(action, c)
+        _save_action(action, c, meta_dir)
         conn.commit()
 
 
 
-def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor):
+def _is_unsaved_log(log) -> bool:
+    """Log text which is not yet stored in a log file"""
+    return bool(log) and isinstance(log, str) and not log.startswith("file://")
+
+
+
+def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, meta_dir: str|None=None):
     cursor.execute('''
         update actions set sequence = ?, cmd = ?, status = ?, processing_step = ?, environment = ?, run_in_new_job = ?, execute_remote = ?, check_error = ?, cwd = ?
         WHERE id = ?
@@ -96,26 +107,24 @@ def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor):
     if action.sub_actions is not None and len(action.sub_actions) > 0:
         for sub_action in action.sub_actions:
             if sub_action.id is None:
-                logging.debug(f"Add {sub_action.get_dict()=}")
+                logging.debug(f"Add sub action '{sub_action.cmd}' to action {action.id}")
                 _add_action(sub_action, cursor, action_id=action.id)
-            logging.debug(f"Save {sub_action.get_dict()=}")
-            _save_action(sub_action, cursor)
-
-    logging.warning(f"{action.get_dict()=}")
-
-    meta_dir:str|None = meta_file_data.get_meta_dir(cursor, stage_id=action.stage_id, deploy_object_id=action.deploy_object_id, action_id=action.id)
-    if meta_dir is None:
-        raise Exception(f"Meta directory not found for action with ID {action.id}. Cannot save run history logs.")
+            _save_action(sub_action, cursor, meta_dir)
 
     for history in action.run_history:
 
-        if history.stdout and isinstance(history.stdout, str) and not history.stdout.startswith("file://"):
+        if meta_dir is None and (_is_unsaved_log(history.stdout) or _is_unsaved_log(history.stderr)):
+            meta_dir = meta_file_data.get_meta_dir(cursor, stage_id=action.stage_id, deploy_object_id=action.deploy_object_id, action_id=action.id)
+            if meta_dir is None:
+                raise Exception(f"Meta directory not found for action with ID {action.id}. Cannot save run history logs.")
+
+        if _is_unsaved_log(history.stdout):
             stdout_file_path = os.path.join(meta_dir, "logs", "action_run_history", f"{history.id}_stdout.log")
             os.makedirs(os.path.dirname(stdout_file_path), exist_ok=True)
             files.writeText(history.stdout, stdout_file_path)
             history.stdout = f"file://{stdout_file_path}"
 
-        if history.stderr and isinstance(history.stderr, str) and not history.stderr.startswith("file://"):
+        if _is_unsaved_log(history.stderr):
             stderr_file_path = os.path.join(meta_dir, "logs", "action_run_history", f"{history.id}_stderr.log")
             os.makedirs(os.path.dirname(stderr_file_path), exist_ok=True)
             files.writeText(history.stderr, stderr_file_path)

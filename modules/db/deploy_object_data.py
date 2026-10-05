@@ -152,28 +152,28 @@ def _convert_deploy_object_row_to_dict(row: sqlite3.Row) -> do.Deploy_Object:
     object_dict['source_only'] = object_dict['source_only']
     object_obj: do.Deploy_Object = do.Deploy_Object(dict_data=object_dict)
     object_obj.actions = actions_data.get_actions(deploy_object_id=object_obj.id)
-    logging.debug(f"Select deploy object {object_obj.get_dict()=}")
+    logging.debug(f"Select deploy object {object_obj.id}: {object_obj.lib}/{object_obj.name} ({object_obj.type})")
     return object_obj
 
 
 
-def save_deploy_objects(deploy_objects: list[do.Deploy_Object], cursor: sqlite3.Cursor|None=None):
+def save_deploy_objects(deploy_objects: list[do.Deploy_Object], cursor: sqlite3.Cursor|None=None, meta_dir: str|None=None):
     for deploy_object in deploy_objects:
-        save_deploy_object(deploy_object, cursor)
+        save_deploy_object(deploy_object, cursor, meta_dir)
 
 
-def save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor|None=None):
+def save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor|None=None, meta_dir: str|None=None):
     if cursor is not None:
-        _save_deploy_object(deploy_object, cursor)
+        _save_deploy_object(deploy_object, cursor, meta_dir)
         return
 
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
-        _save_deploy_object(deploy_object, c)
+        _save_deploy_object(deploy_object, c, meta_dir)
         conn.commit()
 
 
-def _save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor):
+def _save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor, meta_dir: str|None=None):
     cursor.execute('''
         UPDATE deploy_objects 
         SET level = ?, prod_lib = ?, lib = ?, name = ?, type = ?, attribute = ?, deploy_status = ?, ready = ?, depends_on = ?, source = ?, source_only = ?, properties = ?
@@ -184,9 +184,9 @@ def _save_deploy_object(deploy_object: do.Deploy_Object, cursor: sqlite3.Cursor)
         json.dumps(deploy_object.depends_on.get_objects_as_list_of_dict()), deploy_object.source, deploy_object.source_only, json.dumps(deploy_object.properties),
         deploy_object.id
     ))
-    logging.debug(f"Saved deploy object {deploy_object.get_dict()=}")
+    logging.debug(f"Saved deploy object {deploy_object.id}: {deploy_object.lib}/{deploy_object.name} ({deploy_object.type})")
 
     for action in deploy_object.actions:
-        actions_data.save_action(action, cursor, deploy_object_id=deploy_object.id)
+        actions_data.save_action(action, cursor, deploy_object_id=deploy_object.id, meta_dir=meta_dir)
 
 

@@ -111,28 +111,28 @@ def get_stage(stage_id: int) -> s.Stage | None:
 
 
 
-def save_stages(stages: s.Stage_List_list, cursor: sqlite3.Cursor=None):
+def save_stages(stages: s.Stage_List_list, cursor: sqlite3.Cursor=None, meta_dir: str|None=None):
     
     for stage in stages:
-        save_stage(stage, cursor)
+        save_stage(stage, cursor, meta_dir)
 
 
-def save_stage(stage: s.Stage, cursor: sqlite3.Cursor=None):
+def save_stage(stage: s.Stage, cursor: sqlite3.Cursor=None, meta_dir: str|None=None):
 
     if cursor is not None:
-        _save_stage(stage, cursor)
+        _save_stage(stage, cursor, meta_dir)
         return
 
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
-        _save_stage(stage, c)
+        _save_stage(stage, c, meta_dir)
         
         conn.commit()
 
 
 
 
-def _save_stage(stage: s.Stage, cursor: sqlite3.Cursor):
+def _save_stage(stage: s.Stage, cursor: sqlite3.Cursor, meta_dir: str|None=None):
 
     cursor.execute('''
         update stages set status = ?, next_stages = ?, next_stage_ids = ?, after_stages_finished = ?, lib_mapping = ?, update_time = ?
@@ -144,6 +144,6 @@ def _save_stage(stage: s.Stage, cursor: sqlite3.Cursor):
     ))
 
     for action in stage.actions:
-        actions_data.save_action(action, cursor, stage_id=stage.id)
+        actions_data.save_action(action, cursor, stage_id=stage.id, meta_dir=meta_dir)
 
 
