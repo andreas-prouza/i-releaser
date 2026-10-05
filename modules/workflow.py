@@ -3,7 +3,7 @@ import logging
 from typing import List
 
 from etc import constants
-from modules import files, json_path
+from modules import files, json_path, hooks
 import glob
 
 
@@ -43,6 +43,7 @@ class Workflow:
     self.stages = None
     self.parallel_deployment_execution_allowed: bool = False
     self.editable_fields: List[str] = []
+    self.hooks: dict[str, List[str]] = {}
 
     #logging.debug(f"{name=}, {dict=}")
 
@@ -64,6 +65,9 @@ class Workflow:
 
       if 'editable_fields' in dict:
         self.editable_fields = dict['editable_fields'] or []
+
+      if 'hooks' in dict:
+        self.hooks = dict['hooks'] or {}
 
       #logging.debug(f"Workflow created from dict: {self.get_dict()}")
 
@@ -237,7 +241,7 @@ class Workflow:
     stages.Stage_List_list.validate_items(workflow_dict['stages'])
 
     for key in workflow_dict.keys():
-      if key not in ['name', 'step_action', 'stages', 'default_project', 'parallel_deployment_execution_allowed', 'editable_fields']:
+      if key not in ['name', 'step_action', 'stages', 'default_project', 'parallel_deployment_execution_allowed', 'editable_fields', 'hooks']:
         raise Exception(f"Workflow attribute '{key}' is invalid in file {wf_file}!")
 
     editable_fields = workflow_dict.get('editable_fields', [])
@@ -248,6 +252,11 @@ class Workflow:
         json_path.parse(field)
       except json_path.InvalidJsonPathException as e:
         raise Exception(f"Invalid entry in 'editable_fields' in file {wf_file}: {e}")
+
+    try:
+      hooks.validate(workflow_dict.get('hooks', {}))
+    except hooks.InvalidHookException as e:
+      raise Exception(f"Invalid 'hooks' in file {wf_file}: {e}")
     
     #######################################
 
@@ -320,7 +329,8 @@ class Workflow:
       'object_commands': self.object_commands,
       'default_project': self.default_project,
       'stages': self.stages,
-      'editable_fields': self.editable_fields
+      'editable_fields': self.editable_fields,
+      'hooks': self.hooks
     }
 
 

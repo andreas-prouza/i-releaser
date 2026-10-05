@@ -62,6 +62,8 @@ It's flexible and open and can be adabtet using configuration files.
     ![details](docs/img/rollback.png)  
 * Save individual data in a deployment (e.g. JIRA ticket)  
   ![details](docs/img/rollback-started.png)
+* Show deployments and their status in Jira ([details](docs/jira.md))
+* Run your own scripts when a deployment or stage changes its status ([hooks](docs/workflow.md#hooks))
 * Choose the object to include/exclude from deployment
   ![details](docs/img/object-list.png)  
 * Permission concept

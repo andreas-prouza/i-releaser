@@ -55,6 +55,10 @@ class IBM_i_commands:
     processing_user_data.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage)
     stage.set_status('in process')
 
+    # Imported here, as `from scripts import *` may shadow module level names
+    from modules import hooks
+    hooks.emit(hooks.Event.STAGE_STARTED, self.meta_file, stage)
+
     # Execute all from stage
     i=0
     while i < len(stage.actions.get_actions(processing_step)):
