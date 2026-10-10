@@ -468,7 +468,10 @@ class Meta_File:
       logging.info(f"Stage {stage.name} ({stage.id}) has been finished. Setting next stage(s) {stage.next_stages}")
       self.set_next_stage(stage)
 
+      # Only the next stages of the finished stage, as stages which are not reached yet are open too
       for next_stage in self.get_open_stages():
+        if next_stage.name not in stage.next_stages:
+          continue
         if next_stage.run_immediate and next_stage.status != stage_status.Status.FINISHED:
           self.run_current_stage(next_stage.id)
 
