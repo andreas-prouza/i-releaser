@@ -82,7 +82,26 @@ def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
 
 
+def generate_reset_finished_button(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  # Only the last finished stage can be reset
+  last_finished_stage = mf.get_last_finished_stage()
+  if last_finished_stage is None or last_finished_stage.id != stage.id:
+    return ''
+
+  try:
+    mf.check_reset_last_finished_stage()
+  except Exception:
+    return ''
+
+  return f'<br/><img class="run" title="Reset status of the last finished stage" src="/static/assets/img/undo.png" onclick="reset_last_finished_stage({mf.id}, {stage.id}, \'{stage.name}\')">'
+
+
+
 def generate_reset_button(mf: meta_file.Meta_File, stage : stages.Stage):
+
+  if stage.status == stage_status.Status.FINISHED:
+    return generate_reset_finished_button(mf, stage)
 
   if mf.status != meta_file.Meta_file_status.IN_PROCESS or stage.id not in mf.get_open_stages().get_all_ids():
     return ''

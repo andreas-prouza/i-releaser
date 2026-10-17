@@ -459,6 +459,29 @@ async def reset_stage_status(request: Request, meta_file_id: int, stage_id: int)
     
 
 
+async def reset_last_finished_stage(request: Request, meta_file_id: int, stage_id: int):
+    """Sets the stage which has been finished last back to 'ready', so it can be run again.
+    Only possible as long as the deployment is not finished and no stage is in process.
+    """
+
+    try:
+        logging.debug(f"Reset last finished stage: {meta_file_id=}, {stage_id=}")
+        mf: meta_file.Meta_File = meta_file_data.get_meta_file_by_id(meta_file_id)
+
+        permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=mf.get_stage_by_id(stage_id).name)
+
+        stage = mf.reset_last_finished_stage(stage_id)
+        processing_user_data.create_action_log(action=action_type.Action_type.RESET_LAST_FINISHED_STAGE, details=f"Reset finished stage to '{stage.status.value}'", meta_file=mf, stage=stage)
+
+    except Exception as e:
+        logging.error("An error occured. Please check details!")
+        logging.exception(e, stack_info=True)
+        return http_functions.get_json_response_error(str(e))
+
+    return http_functions.get_json_response({'status': 'success'})
+
+
+
 async def reset_deployment_status(request: Request, meta_file_id: int):
 
     try:

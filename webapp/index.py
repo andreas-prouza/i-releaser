@@ -137,6 +137,7 @@ app.add_api_route('/api/cancel_job/{job_id}', routes.cancel_job, methods=['GET']
 app.add_api_route('/api/edit_custom_data/{meta_file_id}', routes.edit_custom_data, methods=['POST'])
 
 app.add_api_route('/api/reset_stage_status/{meta_file_id}/{stage_id}', routes.reset_stage_status, methods=['GET'])
+app.add_api_route('/api/reset_last_finished_stage/{meta_file_id}/{stage_id}', routes.reset_last_finished_stage, methods=['GET'])
 app.add_api_route('/api/reset_deployment_status/{meta_file_id}', routes.reset_deployment_status, methods=['GET'])
 
 

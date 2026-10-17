@@ -31,6 +31,10 @@ class StageNotReadyException(Exception):
   pass
 
 
+# A stage in one of these status is running
+STAGE_IN_PROCESS_STATUS = [stage_status.Status.IN_PROCESS, stage_status.Status.IN_PREPERATION, stage_status.Status.PREPARE]
+
+
 
 class Meta_File:
     
@@ -302,6 +306,92 @@ class Meta_File:
 
 
 
+    def get_last_finished_stage(self) -> s.Stage|None:
+      """The stage which has been finished last (None if no stage has been finished yet)"""
+
+      finished_stages = self.get_processed_stages()
+      if len(finished_stages) == 0:
+        return None
+
+      # update_time is set when the stage gets finished
+      return max(finished_stages, key=lambda stage: (stage.update_time, stage.id))
+
+
+
+    def check_reset_last_finished_stage(self) -> s.Stage:
+      """Returns the stage which has been finished last, if its status can be reset
+
+      Raises:
+          Exception: If the deployment has been finished or canceled, a stage is in process
+              or no stage has been finished yet
+      """
+
+      if self.status in [Meta_file_status.FINISHED, Meta_file_status.CANCELED]:
+        raise Exception(f"Deployment is already {self.status.value}. The status of its stages can't be reset anymore!")
+
+      stages_in_process = [stage.name for stage in self.stages if stage.status in STAGE_IN_PROCESS_STATUS]
+      if len(stages_in_process) > 0:
+        raise Exception(f"Stage(s) {stages_in_process} still in process. The last finished stage can't be reset now!")
+
+      if self.status == Meta_file_status.IN_PROCESS:
+        raise Exception(f"Deployment is in status '{self.status.value}'. The last finished stage can't be reset now!")
+
+      for job in processing_job_data.get_active_jobs(self.id):
+        stage = self.get_stage_by_id(job.stage_id)
+        raise Exception(f"Stage '{stage.name if stage else job.stage_id}' is {job.status.value} in the processing service (job {job.id}). The last finished stage can't be reset now!")
+
+      last_finished_stage = self.get_last_finished_stage()
+      if last_finished_stage is None:
+        raise Exception("No stage has been finished yet!")
+
+      return last_finished_stage
+
+
+
+    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+    def reset_last_finished_stage(self, stage_id: int) -> s.Stage:
+      """Sets the stage which has been finished last back to 'ready', so it can be run again.
+      Its next stages are set back to 'new', unless another finished stage leads to them as well.
+      The status of its steps stays, so they will only be run again with continue_run=False.
+
+      Args:
+          stage_id (int): Needs to be the stage which has been finished last
+
+      Returns:
+          s.Stage: The reset stage
+      """
+
+      stage = self.check_reset_last_finished_stage()
+
+      if stage.id != int(stage_id):
+        raise Exception(f"Stage id {stage_id} is not the last finished stage. The last finished stage is '{stage.name}' ({stage.id})!")
+
+      other_finished_stages = [fs for fs in self.get_processed_stages() if fs.id != stage.id]
+
+      for next_stage_id in set(stage.next_stage_ids):
+
+        if any(next_stage_id in fs.next_stage_ids for fs in other_finished_stages):
+          continue
+
+        next_stage = self.stages.get_stage(next_stage_id)
+        if next_stage.status in [stage_status.Status.READY, stage_status.Status.FAILED]:
+          logging.info(f"Set next stage {next_stage.name} ({next_stage.id}) back to '{stage_status.Status.NEW.value}'")
+          next_stage.status = stage_status.Status.NEW
+          next_stage.update_time = datetime.datetime.now()
+
+      # They will be set again, when the stage gets finished
+      stage.next_stage_ids = []
+      stage.status = stage_status.Status.READY
+      stage.update_time = datetime.datetime.now()
+      logging.info(f"Reset finished stage {stage.name} ({stage.id}) to '{stage.status.value}'")
+
+      # Saves the stages as well
+      self.set_status(Meta_file_status.READY)
+
+      return stage
+
+
+
     def get_stages_needs_2_get_finished(self, stage: s.Stage) -> list[str]:
       if stage.after_stages_finished is None or len(stage.after_stages_finished) == 0:
         return []
@@ -521,6 +611,8 @@ class Meta_File:
           return
 
       stage.status = stage_status.Status.FINISHED
+      # Needed to find the last finished stage
+      stage.update_time = datetime.datetime.now()
       # Before set_next_stage, as it may finish the whole deployment
       hooks.emit(hooks.Event.STAGE_FINISHED, self, stage)
 

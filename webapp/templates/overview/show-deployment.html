@@ -1079,6 +1079,59 @@ function reset_stage_status(meta_file_id, stage_id) {
 
 
 
+function reset_last_finished_stage(meta_file_id, stage_id, stage_name) {
+
+    const swalWithBootstrapButtons = Swal.mixin({
+    customClass: {
+        confirmButton: 'btn btn-success',
+        cancelButton: 'btn btn-danger'
+    },
+    buttonsStyling: false
+    })
+
+    swalWithBootstrapButtons.fire({
+        title: `Reset stage ${stage_name} (${stage_id})?`,
+        html: "The stage will be set back to <code>ready</code>, the stages after it to <code>new</code>.<br/>" +
+              "Its steps keep their status. Choose <i>Run all steps from the beginning</i> to run them again.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, reset',
+        cancelButtonText: 'No, ups!',
+        reverseButtons: true
+        }).then((result) => {
+        if (result.isConfirmed) {
+            http_getData(`/api/reset_last_finished_stage/${meta_file_id}/${stage_id}`)
+                .then((response) => {
+                    console.log(response);
+                    if (response['status'] !== 'success') {
+                        show_http_error(response['message'], true);
+                        return;
+                    }
+
+                    swalWithBootstrapButtons.fire(
+                    'Reset!',
+                    'The stage status has been reset.',
+                    'success'
+                    ).then((result) => {
+                            location.reload();
+                    });
+                })
+                .catch((error) => {
+                    show_http_error(error.message, true);
+                });
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+            swalWithBootstrapButtons.fire(
+            'Canceled',
+            'Your reset has been canceled :-)',
+            'error'
+            )
+        }
+    })
+
+}
+
+
+
 function reset_deployment_status(meta_file_id) {
 
     const swalWithBootstrapButtons = Swal.mixin({

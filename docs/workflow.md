@@ -23,6 +23,16 @@
 * All specific actions to that stage are added
 * If all stages has been finished, the deployment is set to status `finished`.
 
+### Reset the last finished stage
+
+As long as the deployment is not `finished` (or `canceled`), the status of the stage which has been finished last can be reset (undo button of that stage).
+
+* Only possible if no stage is in process and no stage is queued or running in the [processing service](processing-service.md)
+* The stage is set back to `ready`
+* Its next stages are set back to `new`, unless another finished stage leads to them as well (parallel workflows)
+* The steps of the stage keep their status. Run the stage with `run_all` to run them again
+* Repeat it to go back step by step
+
 
 ## Parallel workflows
 

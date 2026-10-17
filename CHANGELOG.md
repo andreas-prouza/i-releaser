@@ -17,3 +17,4 @@
 * Database uses WAL mode: back up `var/app.sqlite-wal` and `var/app.sqlite-shm` together with `var/app.sqlite`
 * Deployment history logs are stored again
 * Processing service: stages can be run by an independent service, so they keep running if the web server ends (`C_PROCESSING_MODE = 'service'`, see `docs/processing-service.md`)
+* Reset the status of the last finished stage, as long as the deployment is not finished and no stage is in process
