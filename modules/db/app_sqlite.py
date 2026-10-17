@@ -20,6 +20,8 @@ INDEXED_COLUMNS = [
     ('actions', 'deploy_object_id'),
     ('actions', 'action_id'),
     ('action_run_history', 'action_id'),
+    ('processing_jobs', 'meta_file_id'),
+    ('processing_jobs', 'status'),
 ]
 
 
@@ -231,6 +233,27 @@ def create_tables(db_path=DB_FILE):
                 stdout TEXT,
                 stderr TEXT,
                 FOREIGN KEY (action_id) REFERENCES actions (id)
+            )
+        ''')
+
+        # Queue of the processing service
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS processing_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                meta_file_id INTEGER,
+                stage_id INTEGER,
+                processing_step TEXT,
+                continue_run BOOLEAN,
+                user TEXT,
+                status TEXT,
+                error TEXT,
+                create_time TEXT,
+                start_time TEXT,
+                end_time TEXT,
+                pid INTEGER,
+                heartbeat REAL, -- Epoch seconds
+                FOREIGN KEY (meta_file_id) REFERENCES meta_files (id),
+                FOREIGN KEY (stage_id) REFERENCES stages (id)
             )
         ''')
 

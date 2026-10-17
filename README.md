@@ -100,6 +100,21 @@ andreas    63918   63905  0 16:53 pts/0    00:00:00 grep gunicorn
 
 Port & Co are defined in ```etc/gunicorn.conf.py```.
 
+## Start the processing service (optional)
+
+By default the stages are run by the web server. With the processing service they are run by an independent job.
+So they keep running, even if the web server ends.
+
+```bash
+[andreas@idev i-releaser]$ cd serviceapp
+[andreas@idev serviceapp]$ ./service start
+Start service
+Service is running ...
+```
+
+It needs to be switched on in ```etc/constants.py``` (```C_PROCESSING_MODE = 'service'```).
+See [processing service](docs/processing-service.md) for details.
+
 
 ## How to use it
 
@@ -327,6 +342,10 @@ Below you will find a list of directories, the containing files and the descript
 * scripts
     
     Can be used for defined steps in you workflow process
+
+* serviceapp
+
+    [Processing service](docs/processing-service.md): runs the stages independent of the web server
 
 
 

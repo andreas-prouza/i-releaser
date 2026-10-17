@@ -13,7 +13,7 @@ from modules import meta_file_history as mfh
 from modules import deploy_version as dv
 from modules import files, hooks
 from modules.meta_file_status import Meta_file_status
-from modules.db import stage_data, deploy_object_data
+from modules.db import stage_data, deploy_object_data, processing_job_data
 
 
 
@@ -179,6 +179,7 @@ def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.R
     )
     meta_file.deploy_objects = deploy_objects
     meta_file.run_history = run_history
+    meta_file.processing_jobs = processing_job_data.get_active_jobs(meta_file_id)
     meta_file.commit = meta_file_row['commit_hash']
     meta_file.release_branch = meta_file_row['release_branch']
     meta_file.main_deploy_lib = meta_file_row['main_lib']
