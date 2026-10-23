@@ -4,6 +4,7 @@ from etc import constants
 from modules import meta_file as mf, stages as s
 from modules import deploy_action as da
 from modules import ibm_i_commands
+from modules.db_deployment import objects as db_objects
 
 from modules.cmd_status import Status as Cmd_Status
 from modules.object_status import Status as Obj_Status
@@ -26,12 +27,19 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
 
     for lib in meta_file.deploy_objects.get_lib_list_from_prod():
 
+        includes = ''
         for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib):
+            # Large tables of the DB deployment are kept in the backup library by the cut-over, instead of saving them
+            if db_objects.is_db_deployment_object(meta_file, obj):
+                continue
             name = obj.name.replace('$', '\\$')
             obj_type = obj.type
             if obj.type == 'obj':
                 obj_type = obj.attribute
             includes += f" (*INCLUDE {name} *{obj_type})"
+
+        if includes == '':
+            continue
 
         last_action = action.sub_actions.add_action(da.Deploy_Action(
             cmd=f"SAVLIB LIB({lib}) DEV(*SAVF) SAVF({meta_file.backup_deploy_lib}/{lib}) CLEAR(*ALL) SELECT({includes}) DTACPR(*HIGH)", 

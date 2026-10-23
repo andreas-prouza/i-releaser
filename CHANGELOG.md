@@ -18,3 +18,4 @@
 * Deployment history logs are stored again
 * Processing service: stages can be run by an independent service, so they keep running if the web server ends (`C_PROCESSING_MODE = 'service'`, see `docs/processing-service.md`)
 * Reset the status of the last finished stage, as long as the deployment is not finished and no stage is in process
+* DB deployment: deploy changes of large tables with a minimal downtime. The new table is filled in a shadow library while the users keep working, changes are taken from the journal (see `docs/db-deployment.md`)

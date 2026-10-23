@@ -91,6 +91,30 @@
     "check_error": true
   },
   {
+    "processing_step": "db-prepare",
+    "environment": "SCRIPT",
+    "execute": "db_deployment.prepare_tables",
+    "check_error": true
+  },
+  {
+    "processing_step": "db-copy",
+    "environment": "SCRIPT",
+    "execute": "db_deployment.copy_tables",
+    "check_error": true
+  },
+  {
+    "processing_step": "db-cutover",
+    "environment": "SCRIPT",
+    "execute": "db_deployment.cutover_tables",
+    "check_error": true
+  },
+  {
+    "processing_step": "db-cleanup",
+    "environment": "SCRIPT",
+    "execute": "db_deployment.cleanup_tables",
+    "check_error": true
+  },
+  {
     "processing_step": "post",
     "environment": "PASE",
     "execute": "echo \"Not implemented\"",
