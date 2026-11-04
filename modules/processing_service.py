@@ -27,7 +27,7 @@ import time
 from etc import constants
 # Before meta_file (circular import)
 from modules import deploy_version
-from modules import files, hooks, meta_file, stage_status
+from modules import current_user, files, hooks, stage_status
 from modules.db import meta_file_data, processing_job_data
 from modules.job_status import Status as Job_Status
 from modules.meta_file_status import Meta_file_status
@@ -122,7 +122,7 @@ def run_job(job_id: int) -> Job_Status:
   logging.info(f"Run processing job {job.id}: {job.meta_file_id=}, {job.stage_id=}, {job.processing_step=}, {job.continue_run=}, {job.user=}")
 
   processing_job_data.set_job_pid(job.id, os.getpid())
-  meta_file.Meta_File.CURRENT_USER = job.user
+  current_user.set_user(job.user)
 
   stop_heartbeat = threading.Event()
   heartbeat = threading.Thread(target=send_heartbeats, args=(job.id, stop_heartbeat), daemon=True)

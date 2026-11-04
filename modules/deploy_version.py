@@ -5,7 +5,7 @@ import logging
 
 # from pydantic import validate_arguments
 
-from modules import meta_file
+from modules import errors, meta_file
 from modules.db import app_sqlite, meta_file_data
 from modules.meta_file_status import Meta_file_status
 import logging
@@ -13,10 +13,10 @@ import logging
 # from operator import itemgetter
 # from modules.permission_config import check_user_permission
 
-class DeploymentExistException(Exception):
+class DeploymentExistException(errors.Conflict_Error):
     pass
 
-class StatusConflictException(Exception):
+class StatusConflictException(errors.Conflict_Error):
     pass
 
 
@@ -32,8 +32,11 @@ class Deploy_Version:
         with app_sqlite.get_db_connection() as conn:
             cursor = conn.cursor()
 
+            # Reading the last version and adding the new one has to be atomic, also over multiple processes
+            cursor.execute("BEGIN IMMEDIATE")
+
             # Get the last version for the project
-            cursor.execute("SELECT MAX(id) FROM deploy_versions WHERE project = ?", (project,))
+            cursor.execute("SELECT MAX(version) FROM deploy_versions WHERE project = ?", (project,))
             result = cursor.fetchone()
             last_version = result[0] if result and result[0] is not None else 0
             
@@ -101,26 +104,51 @@ class Deploy_Version:
 
 
     @staticmethod
+    def get_deployment_list(project: str) -> list[dict]:
+        """Deployments of a project, newest first (the list of the Web API)"""
+
+        with app_sqlite.get_db_connection() as conn:
+            rows = conn.execute("""
+                SELECT mf.id as meta_file_id, dv.version, mf.status, wd.name as workflow_name, mf.commit_hash as "commit", mf.create_time, mf.update_time
+                  FROM deploy_versions dv
+                  INNER JOIN meta_files mf ON dv.id = mf.deploy_version_id
+                  LEFT JOIN workflow_definitions wd ON mf.id = wd.meta_file_id
+                 WHERE dv.project = ?
+                 ORDER BY dv.version DESC""", (project,)).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+
+    @staticmethod
     def validate_deployment(project:str, version : int, status : Meta_file_status, commit : str|None=None, parallel_deployment_execution_allowed: bool=False):
 
-        versions_config = Deploy_Version.get_deployments(project)
+        with app_sqlite.get_db_connection() as conn:
 
-        for d in versions_config['deployments']:
+            if commit is not None and commit != '':
+                row = conn.execute("""
+                    SELECT dv.version FROM deploy_versions dv
+                      INNER JOIN meta_files mf ON dv.id = mf.deploy_version_id
+                     WHERE dv.project = ? AND dv.version <> ? AND mf.commit_hash = ? AND mf.status NOT IN (?, ?)
+                     LIMIT 1""", (project, version, commit, Meta_file_status.FAILED.value, Meta_file_status.CANCELED.value)).fetchone()
 
-            if d['version'] == version:
-                continue
+                if row:
+                    e = DeploymentExistException(f"Commit {commit} already exist in deployment {row['version']}")
+                    logging.exception(e, stack_info=True)
+                    raise e
 
-            if (meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FAILED, meta_file.Meta_file_status.CANCELED] and
-                commit is not None and d.get('commit') and commit == d['commit']):
-                e = DeploymentExistException(f"Commit {commit} already exist in deployment {d}")
-                logging.exception(e, stack_info=True)
-                raise e
+            if not parallel_deployment_execution_allowed and status == Meta_file_status.IN_PROCESS:
+                row = conn.execute("""
+                    SELECT dv.version, mf.status FROM deploy_versions dv
+                      INNER JOIN meta_files mf ON dv.id = mf.deploy_version_id
+                     WHERE dv.project = ? AND dv.version < ? AND mf.status NOT IN (?, ?)
+                     ORDER BY dv.version DESC
+                     LIMIT 1""", (project, version, Meta_file_status.FINISHED.value, Meta_file_status.CANCELED.value)).fetchone()
 
-            if not parallel_deployment_execution_allowed and(d['version'] < version and status == meta_file.Meta_file_status.IN_PROCESS and meta_file.Meta_file_status(d['status']) not in [meta_file.Meta_file_status.FINISHED, meta_file.Meta_file_status.CANCELED]):
-                e = StatusConflictException(f"Because version {d['version']} is still in status '{d['status']}', version {version} can't be updated to status '{status.value}'")
-                logging.exception(e, stack_info=True)
-                raise e
-
+                if row:
+                    e = StatusConflictException(f"Because version {row['version']} is still in status '{row['status']}', version {version} can't be updated to status '{status.value}'")
+                    logging.exception(e, stack_info=True)
+                    raise e
 
 
 
@@ -178,9 +206,7 @@ class Deploy_Version:
             if row:
                 return meta_file_data.get_meta_file_by_id(row['meta_file_id'])
 
-        err = Exception(f"Couldn't find deployment version {version}: {project=}") 
-        logging.exception(err, stack_info=True)
-        raise err
+        raise errors.Not_Found_Error(f"Couldn't find deployment version {version}: {project=}")
 
 
 
@@ -196,16 +222,16 @@ class Deploy_Version:
             return None
         
         with app_sqlite.get_db_connection() as conn:
-            cursor = conn.cursor()
-            # This is not efficient, but without full-text search or a dedicated column, it's the way to go with JSON blobs.
-            cursor.execute("SELECT details FROM deploy_versions WHERE project = ?", (project,))
-            rows = cursor.fetchall()
+            # Deployments which aren't canceled first: they are the ones which block the commit
+            row = conn.execute("""
+                SELECT dv.version, mf.status, mf.commit_hash as "commit" FROM deploy_versions dv
+                  INNER JOIN meta_files mf ON dv.id = mf.deploy_version_id
+                 WHERE dv.project = ? AND mf.commit_hash = ?
+                 ORDER BY mf.status = ?, dv.version DESC
+                 LIMIT 1""", (project, commit, Meta_file_status.CANCELED.value)).fetchone()
 
-            for row in rows:
-                details = json.loads(row['details'])
-                if details.get('commit') == commit:
-                    return details
+        if row:
+            return dict(row)
 
         logging.info(f"Couldn't find deployment with commit {commit}: {project=}")
         return None
-

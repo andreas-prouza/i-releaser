@@ -4,7 +4,7 @@ import sqlite3
 import time
 
 from modules.db import app_sqlite
-from modules import processing_job
+from modules import errors, processing_job
 from modules.job_status import Status as Job_Status
 
 
@@ -17,13 +17,34 @@ def _convert_row_to_object(row: sqlite3.Row) -> processing_job.Processing_Job:
 
 
 
-def create_job(meta_file_id: int, stage_id: int, processing_step: str|None=None, continue_run: bool=True, user: str|None=None) -> processing_job.Processing_Job:
-    """Creates a new Processing_Job instance and adds it to the queue of the processing service."""
+def create_job(meta_file_id: int, stage_id: int, processing_step: str|None=None, continue_run: bool=True, user: str|None=None, exclusive: bool=False) -> processing_job.Processing_Job:
+    """
+    Creates a new Processing_Job instance and adds it to the queue of the processing service.
+    Checking the queue and adding the job is atomic, so a stage can't be queued twice.
+
+    Args:
+        exclusive (bool): No job of the same deployment may be active, instead of only of the same stage
+
+    Raises:
+        errors.Conflict_Error: If there's an active job already
+    """
 
     job = processing_job.Processing_Job(meta_file_id=meta_file_id, stage_id=stage_id, processing_step=processing_step, continue_run=continue_run, user=user)
 
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
+        c.execute("BEGIN IMMEDIATE")
+
+        active = [Job_Status.QUEUED.value, Job_Status.RUNNING.value]
+
+        if exclusive:
+            c.execute("SELECT id FROM processing_jobs WHERE meta_file_id = ? AND status IN (?, ?)", (meta_file_id, *active))
+        else:
+            c.execute("SELECT id FROM processing_jobs WHERE stage_id = ? AND status IN (?, ?)", (stage_id, *active))
+
+        row = c.fetchone()
+        if row:
+            raise errors.Conflict_Error(f"Stage can't be queued: job {row['id']} is already active")
 
         c.execute('''
             INSERT INTO processing_jobs (meta_file_id, stage_id, processing_step, continue_run, user, status, create_time)

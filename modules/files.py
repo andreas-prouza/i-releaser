@@ -1,7 +1,11 @@
+import contextlib
 import datetime
 from enum import Enum
+import fcntl
 import os, pathlib, json, logging
 import hashlib, mmap
+import shutil
+import tempfile
 import time
 from dataclasses import is_dataclass, asdict
 
@@ -100,14 +104,43 @@ def getJson(file, retry=False, use_cache=False):
 
 
 def writeJson(content, file):
-  
+
   if file is None:
     return
 
   #logging.debug(content)
   # Create dir if not exist
-  pathlib.Path(os.path.dirname(file)).mkdir(parents=True, exist_ok=True)
+  pathlib.Path(os.path.dirname(file) or '.').mkdir(parents=True, exist_ok=True)
 
-  with open(file, 'w') as json_file:
-    json.dump(content, json_file, indent=2, ensure_ascii=False, cls=DataclassJSONEncoder)
+  # A crash while writing must not leave an invalid file
+  fd, tmp_file = tempfile.mkstemp(dir=os.path.dirname(file) or '.', prefix=f"{os.path.basename(file)}.")
+
+  try:
+    with os.fdopen(fd, 'w') as json_file:
+      json.dump(content, json_file, indent=2, ensure_ascii=False, cls=DataclassJSONEncoder)
+
+    if os.path.exists(file):
+      shutil.copymode(file, tmp_file)
+
+    os.replace(tmp_file, file)
+
+  except BaseException:
+    if os.path.exists(tmp_file):
+      os.remove(tmp_file)
+    raise
+
+
+
+@contextlib.contextmanager
+def lock(lock_file: str):
+  """Exclusive lock over multiple processes, e.g. to change a file: read, change and write it"""
+
+  pathlib.Path(os.path.dirname(lock_file) or '.').mkdir(parents=True, exist_ok=True)
+
+  with open(lock_file, 'w') as f:
+    fcntl.flock(f, fcntl.LOCK_EX)
+    try:
+      yield
+    finally:
+      fcntl.flock(f, fcntl.LOCK_UN)
 

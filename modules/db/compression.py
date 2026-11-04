@@ -10,7 +10,7 @@ def decompress_field(data):
         return data
         
     # Keep decompressing in a loop as long as the data is compressed bytes
-    if isinstance(data, bytes):
+    while isinstance(data, bytes):
         try:
             # Attempt to decompress
             data = zlib.decompress(data)

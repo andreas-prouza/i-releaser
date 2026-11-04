@@ -1,64 +1,78 @@
 #!/bin/bash
 
-FILE=/QOpenSys/run/webapp.sock
-
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-#SCRIPT_DIR=$SCRIPT_DIR/webapp
-
 
 PID=$SCRIPT_DIR/etc/webapp.pid
-LOG_FILE=$SCRIPT_DIR/log/webapp.log
-LOG_LEVEL='debug'
-PROCESS_COUNT=1
+LOG_DIR=$SCRIPT_DIR/log
 
 export I_RELEASER_WEBAPP_PATH=$SCRIPT_DIR
 
+# gunicorn.conf.py and the web app use paths relative to this directory
+cd "$SCRIPT_DIR" || exit 1
+
+
+is_running() {
+    [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2> /dev/null
+}
+
 
 start() {
-    if [ -f $PID ]; then
-        echo "Process already exist"
-        echo "1. Check if process is running:"
-        echo "    ps -ef | grep gunicorn"
-        echo "2. If no precess is running check if socket file exists and remove it:"
-        echo "    rm $PID"
+    if is_running; then
+        echo "Process already exist ($(cat "$PID"))"
 
     else
-        echo "Activate virtual environment: $SCRIPT_DIR/venv/bin/activate"
+        # Left over, if the web app has crashed
+        rm -f "$PID"
 
         echo "Start service"
-        mkdir -p $SCRIPT_DIR/log
-        nohup $SCRIPT_DIR/../.venv/bin/python $SCRIPT_DIR/../.venv/bin/gunicorn --config=etc/gunicorn.conf.py  wsgi:app > log/nohub.log 2>&1 &
+        mkdir -p "$LOG_DIR"
+        nohup "$SCRIPT_DIR/../.venv/bin/python" "$SCRIPT_DIR/../.venv/bin/gunicorn" --config=etc/gunicorn.conf.py wsgi:app > "$LOG_DIR/nohup.log" 2>&1 &
     fi
-    
-    sleep 1
+
+    sleep 2
     status
+
+    if ! is_running; then
+        echo "See $LOG_DIR/nohup.log"
+        tail -n 5 "$LOG_DIR/nohup.log"
+        return 1
+    fi
 }
 
 
 stop() {
-    echo "Killing process `cat $PID`"
-    kill `cat $PID`
-    echo "remove $PID"
-    rm $PID
+    if is_running; then
+        echo "Stop process $(cat "$PID")"
+        kill "$(cat "$PID")"
 
+        # gunicorn removes its pid file by itself
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+            if ! is_running; then
+                break
+            fi
+            sleep 1
+        done
+
+    else
+        echo "Process is not running"
+    fi
+
+    rm -f "$PID"
     status
 }
 
 
 status() {
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
     NC='\033[0m' # No Color
-    White='\033[0;37m'
-    On_Green='\033[42m'
-    IGreen='\033[0;92m'
 
     RUNNING='\033[102;97m'
     STOPPED='\033[101;31m'
 
-    if [ -f $PID ]; then
+    if is_running; then
         echo -e "Service is ${RUNNING}running${NC} ..."
-        ps -ef | grep gunicorn
+        MASTER=$(cat "$PID")
+        ps -f -p "$MASTER"
+        ps -ef | awk -v master="$MASTER" '$3 == master'
 
     else
         echo -e "Service ${STOPPED}stopped${NC}"
@@ -78,8 +92,6 @@ case "$1" in
        start
        ;;
     status)
-       # code to check status of app comes here 
-       # example: status program_name
        status
        ;;
     *)

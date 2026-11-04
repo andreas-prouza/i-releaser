@@ -35,7 +35,7 @@ shows the progress as usual  <--------  status of stage, steps and logs
 
 ## Set up
 
-1. Switch the mode in `etc/constants.py`
+1. Switch the mode in `etc/settings.py`
 
    ```python
    C_PROCESSING_MODE = 'service'
@@ -62,7 +62,7 @@ There you also find the last jobs with their status and error.
 
 ## Settings
 
-All settings are in `etc/constants.py`.
+The defaults are in `etc/constants.py`. Put your values into `etc/settings.py`.
 
 | Setting | Default | Description |
 |---|---|---|
@@ -73,6 +73,8 @@ All settings are in `etc/constants.py`.
 | `C_SERVICE_HEARTBEAT_TIMEOUT` | `60` | Seconds without a sign of life until a job is seen as dead. |
 | `C_SERVICE_SOCKET` | `var/processing-service.sock` | Socket for the wake up. |
 | `C_SERVICE_PID_FILE` | `var/processing-service.pid` | Process id of the service. If you change it, also change it in `serviceapp/service`. |
+
+The service doesn't start if the database is older than the code: start the web app first after an update, it updates the database.
 
 
 ## What happens if ...

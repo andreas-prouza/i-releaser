@@ -2,7 +2,7 @@ import datetime
 import logging
 
 from modules.action_type import Action_type
-from modules import meta_file as mf
+from modules import current_user
 
 
 class Processing_User:
@@ -11,7 +11,7 @@ class Processing_User:
     self.id :int = id
     self.meta_file_id: int = meta_file_id
     self.action: Action_type = action
-    self.user: str = mf.Meta_File.CURRENT_USER
+    self.user: str = current_user.get_user()
     self.timestamp: datetime.datetime = timestamp
     self.stage: str = stage
     self.details: str = details

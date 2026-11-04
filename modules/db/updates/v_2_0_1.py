@@ -4,6 +4,11 @@ from modules.db import compression
 
 
 
+def is_uncompressed_text(value) -> bool:
+    return bool(value) and isinstance(value, str) and not value.startswith("file://")
+
+
+
 def add_compression():
 
     logging.info("Starting compression of text fields in the database...")
@@ -24,8 +29,8 @@ def add_compression():
         # 2. Loop through the rows and compress the text
         for rowid, custom_data in rows:
 
-            if not custom_data:
-                continue  # Skip if custom_data is None or empty
+            if not custom_data or isinstance(custom_data, bytes):
+                continue  # Skip if custom_data is None, empty or already compressed
 
             compressed_custom_data = compression.compress_field(custom_data)
 
@@ -47,8 +52,8 @@ def add_compression():
         # 2. Loop through the rows and compress the text
         for rowid, definition in rows:
 
-            if not definition:
-                continue  # Skip if definition is None or empty
+            if not definition or isinstance(definition, bytes):
+                continue  # Skip if definition is None, empty or already compressed
 
             compressed_definition = compression.compress_field(definition)
 
@@ -71,8 +76,8 @@ def add_compression():
         # 2. Loop through the rows and compress the text
         for rowid, log in rows:
 
-            if not log:
-                continue  # Skip if log is None or empty
+            if not log or isinstance(log, bytes) or log.startswith("file://"):
+                continue  # Skip if log is None, empty, already compressed or stored in a file
             
             compressed_log = compression.compress_field(log)
 
@@ -94,11 +99,11 @@ def add_compression():
         # 2. Loop through the rows and compress the text
         for rowid, stdout, stderr in rows:
 
-            if not stdout and not stderr:
-                continue  # Skip if both stdout and stderr are None or empty
+            if not is_uncompressed_text(stdout) and not is_uncompressed_text(stderr):
+                continue  # Skip if both stdout and stderr are None, empty, already compressed or stored in a file
 
-            compressed_stdout = compression.compress_field(stdout)
-            compressed_stderr = compression.compress_field(stderr)
+            compressed_stdout = compression.compress_field(stdout) if is_uncompressed_text(stdout) else stdout
+            compressed_stderr = compression.compress_field(stderr) if is_uncompressed_text(stderr) else stderr
 
             logging.info(f"bevore Compressing action_run_history id={rowid}: stdout size={len(stdout) if stdout else 0}, stderr size={len(stderr) if stderr else 0}")
             logging.info(f"after Compressing action_run_history id={rowid}: stdout size={len(compressed_stdout) if compressed_stdout else 0}, stderr size={len(compressed_stderr) if compressed_stderr else 0}")

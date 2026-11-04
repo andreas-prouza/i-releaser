@@ -97,6 +97,7 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
                                     class="ms-1 d-none d-sm-inline">Configuration</span></a>
                         </li>
                         <hr /><br />
+                        {% if sidebar['logs'] %}
                         <li>
                             <a href="/#log_menu" data-bs-toggle="collapse" class="nav-link px-0 align-middle text-white">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
@@ -116,6 +117,7 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
                                 {% endfor %}
                             </ul>
                         </li>
+                        {% endif %}
                         <hr /><br />
                         <li>
                             <a href="/user?sidebar_active=user" class="nav-link px-0 align-middle text-white {% if sidebar['active'] == 'user' %} active{% endif %}">
@@ -142,6 +144,9 @@ SideBar Navigation: https://bootstrapious.com/p/bootstrap-sidebar
 
 
             <div class="col py-3">
+                {% if local_debugging %}
+                <div class="alert alert-danger">Local debugging mode: the password check of the login is turned off!</div>
+                {% endif %}
 
                 <form name="main" method="post">
                     <input type="hidden" name="action" id="action" value="{{ action }}">

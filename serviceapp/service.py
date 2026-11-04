@@ -24,6 +24,7 @@ import logging
 from modules import processing_service
 # Loads the scripts, so they don't need to be loaded by each job
 from modules import ibm_i_commands
+from modules import errors
 from modules.db import app_sqlite
 
 
@@ -36,9 +37,11 @@ if __name__ == '__main__':
     app_sqlite.create_tables()
 
     try:
+        # The database is updated by the web app
+        app_sqlite.check_schema_version()
         processing_service.Service().run_forever()
 
-    except processing_service.ServiceAlreadyRunningException as e:
+    except (processing_service.ServiceAlreadyRunningException, errors.App_Error) as e:
         logging.error(e)
         print(e, file=sys.stderr)
         sys.exit(1)

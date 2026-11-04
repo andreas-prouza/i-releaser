@@ -3,6 +3,7 @@
 #######################################################
 
 # Configuration modules
+import asyncio
 import glob
 import importlib
 import sys, os
@@ -24,7 +25,23 @@ logging.debug(f"{sys.path=}")
 # Custom modules
 from routes import routes, initial
 from modules.db import app_info_data, app_sqlite
+from web_modules import app_login, server_sessions
 
+# Seconds between two deletions of expired sessions
+SESSION_CLEANUP_INTERVAL_SECONDS = 3600
+
+
+
+
+async def delete_expired_sessions() -> None:
+
+    while True:
+        try:
+            await asyncio.to_thread(server_sessions.delete_expired_sessions)
+        except Exception as e:
+            logging.exception(e, stack_info=True)
+
+        await asyncio.sleep(SESSION_CLEANUP_INTERVAL_SECONDS)
 
 
 
@@ -33,13 +50,24 @@ async def lifespan(app: FastAPI):
     """
     Context manager to handle startup and shutdown events.
     """
+    if app_login.is_local_debugging():
+
+        # gunicorn is how the web app runs on a server
+        if 'gunicorn' in sys.modules:
+            raise RuntimeError("I_RELEASER_LOCAL_DEBUGGING turns off the password check. It must not be set on a server!")
+
+        logging.warning("I_RELEASER_LOCAL_DEBUGGING is set: the password check of the login is turned off!")
+
     # Initialize databases and tables
     app_sqlite.create_tables()
     app_sqlite.check_updates()
     app_info_data.add_app_info()
+
+    cleanup_task = asyncio.create_task(delete_expired_sessions())
     
     yield
-    # Add shutdown logic here if needed
+
+    cleanup_task.cancel()
 
 
 #######################################################
@@ -119,7 +147,7 @@ app.add_api_route('/show_details/{meta_file_id}', routes.show_details_by_id, met
 app.add_api_route('/show_details/{project}/{version}', routes.show_details, methods=['GET', 'POST'])
 
 
-app.add_api_route('/api/run_stage/{meta_file_id}/{stage_id}/{option}', routes.run_stage, methods=['GET'])
+app.add_api_route('/api/run_stage/{meta_file_id}/{stage_id}/{option}', routes.run_stage, methods=['GET', 'POST'])
 
 
 app.add_api_route('/api/get_meta_file_json/{meta_file_id}', routes.get_meta_file_json, methods=['POST'])
@@ -132,22 +160,22 @@ app.add_api_route('/api/get_action_log/{id}', routes.get_action_log, methods=['G
 app.add_api_route('/api/show_processing_history/{meta_file_id}', routes.show_processing_history, methods=['GET'])
 
 
-app.add_api_route('/api/cancel_deployment/{meta_file_id}', routes.cancel_deployment, methods=['GET'])
-app.add_api_route('/api/cancel_job/{job_id}', routes.cancel_job, methods=['GET'])
+app.add_api_route('/api/cancel_deployment/{meta_file_id}', routes.cancel_deployment, methods=['GET', 'POST'])
+app.add_api_route('/api/cancel_job/{job_id}', routes.cancel_job, methods=['GET', 'POST'])
 app.add_api_route('/api/edit_custom_data/{meta_file_id}', routes.edit_custom_data, methods=['POST'])
 
-app.add_api_route('/api/reset_stage_status/{meta_file_id}/{stage_id}', routes.reset_stage_status, methods=['GET'])
-app.add_api_route('/api/reset_last_finished_stage/{meta_file_id}/{stage_id}', routes.reset_last_finished_stage, methods=['GET'])
-app.add_api_route('/api/reset_deployment_status/{meta_file_id}', routes.reset_deployment_status, methods=['GET'])
+app.add_api_route('/api/reset_stage_status/{meta_file_id}/{stage_id}', routes.reset_stage_status, methods=['GET', 'POST'])
+app.add_api_route('/api/reset_last_finished_stage/{meta_file_id}/{stage_id}', routes.reset_last_finished_stage, methods=['GET', 'POST'])
+app.add_api_route('/api/reset_deployment_status/{meta_file_id}', routes.reset_deployment_status, methods=['GET', 'POST'])
 
 
-app.add_api_route('/api/create_deployment/{wf_name}/{commit}/{obj_list}', routes.create_deployment, methods=['GET'])
-app.add_api_route('/api/create_deployment/{wf_name}/{commit}', routes.create_deployment, methods=['GET'])
-app.add_api_route('/api/create_deployment/{wf_name}', routes.create_deployment, methods=['GET'])
+app.add_api_route('/api/create_deployment/{wf_name}/{commit}/{obj_list}', routes.create_deployment, methods=['GET', 'POST'])
+app.add_api_route('/api/create_deployment/{wf_name}/{commit}', routes.create_deployment, methods=['GET', 'POST'])
+app.add_api_route('/api/create_deployment/{wf_name}', routes.create_deployment, methods=['GET', 'POST'])
  
 
 
-app.add_api_route('/api/set_check_error/{meta_file_id}/{stage_id}/{action_id}/{checked}', routes.set_check_error, methods=['GET'])
+app.add_api_route('/api/set_check_error/{meta_file_id}/{stage_id}/{action_id}/{checked}', routes.set_check_error, methods=['GET', 'POST'])
 
 
 app.add_api_route('/api/set_source_ready_4_deployment/{meta_file_id}', routes.set_source_ready_4_deployment, methods=['POST'])
@@ -177,6 +205,5 @@ app.add_api_route('/api/save_permissions', routes.save_permissions, methods=['PO
 
 if __name__ == '__main__':
     logging.info("Run WebApp from MAIN")
-    os.environ["I_RELEASER_LOCAL_DEBUGGING"] = "True"
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

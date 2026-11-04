@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import requests
 
 from etc import constants
-from modules import files, json_path
+from modules import files, json_path, version
 from modules.meta_file_status import Meta_file_status
 from modules.stage_status import Status as Stage_Status
 
@@ -339,7 +339,7 @@ def send_to_cloud(config: dict, meta_file: Meta_File, reports: list[tuple[dict, 
   url = f"{get_api_url(config)}/jira/deployments/0.1/cloud/{get_cloud_id(config)}/bulk"
   body = {
     'deployments': [get_cloud_deployment(config, meta_file, env, stage, state, issue_keys) for env, stage, state in reports],
-    'providerMetadata': {'product': f"i-Releaser {constants.C_APP_VERSION}"},
+    'providerMetadata': {'product': f"i-Releaser {version.APP_VERSION}"},
   }
 
   r = requests.post(url, json=body, headers={'Authorization': f"Bearer {get_cloud_token(config)}"}, timeout=get_timeout(config))

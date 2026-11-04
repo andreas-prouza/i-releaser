@@ -8,29 +8,6 @@ from modules.cmd_status import Status as Cmd_Status
 from modules.object_status import Status as Obj_Status
 
 
-def set_cmd_transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
-    """Transfer all SAVFs to the target system
-
-    Args:
-        stage (str): _description_
-    Example:
-        scp -rp /dir/deployment1 target_server:~/also-a-dir
-    """
-
-    actions = stage_obj.actions
-    deployment_dir = os.path.dirname(os.path.realpath(meta_file.meta_dir))
-
-    cmd = f"scp -rp {deployment_dir} {stage_obj.host}:{stage_obj.remote_dir}"
-    actions.add_action_cmd(
-        cmd=cmd,
-        environment=da.Command_Type.PASE,
-        processing_step=action.processing_step,
-        stage=stage_obj.name,
-        add_after=action
-    )
-
-
-
 def transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
     """Transfer all SAVFs to the target system
 
@@ -47,7 +24,8 @@ def transfer_to_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.D
     cmd = ibm_i_commands.IBM_i_commands(meta_file)
 
     run_action = action.sub_actions.add_action(da.Deploy_Action(
-        cmd=f"scp -rp {deployment_dir} {stage_obj.host}:{stage_obj.remote_dir}",
+        # BatchMode: fail instead of waiting for a password
+        cmd=f"scp -o BatchMode=yes -rp {deployment_dir} {stage_obj.host}:{stage_obj.remote_dir}",
         environment=da.Command_Type.PASE,
         processing_step=action.processing_step,
         check_error=action.check_error, run_in_new_job=action.run_in_new_job,

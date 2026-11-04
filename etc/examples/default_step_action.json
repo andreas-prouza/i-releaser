@@ -13,12 +13,6 @@
     "check_error": true
   },
   {
-    "processing_step": "create_compile_script",
-    "environment": "SCRIPT",
-    "execute": "build.create_compile_script",
-    "check_error": true
-  },
-  {
     "processing_step": "clean_current_commit",
     "environment": "SCRIPT",
     "execute": "build.clean_current_commit",
@@ -34,24 +28,6 @@
     "processing_step": "load_object_list",
     "environment": "SCRIPT",
     "execute": "build.load_object_list",
-    "check_error": true
-  },
-  {
-    "processing_step": "create_object_list",
-    "environment": "PASE",
-    "execute": "scripts/cleanup.sh  && scripts/create_build_script.sh",
-    "check_error": true
-  },
-  {
-    "processing_step": "run_build",
-    "environment": "PASE",
-    "execute": "scripts/cleanup.sh  && scripts/run_build.sh",
-    "check_error": true
-  },
-  {
-    "processing_step": "build",
-    "environment": "SCRIPT",
-    "execute": "build.build_all",
     "check_error": true
   },
   {
@@ -91,22 +67,34 @@
     "check_error": true
   },
   {
+    "processing_step": "db-prepare",
+    "environment": "SCRIPT",
+    "execute": "db_deployment.prepare_tables",
+    "check_error": true
+  },
+  {
+    "processing_step": "db-copy",
+    "environment": "SCRIPT",
+    "execute": "db_deployment.copy_tables",
+    "check_error": true
+  },
+  {
+    "processing_step": "db-cutover",
+    "environment": "SCRIPT",
+    "execute": "db_deployment.cutover_tables",
+    "check_error": true
+  },
+  {
+    "processing_step": "db-cleanup",
+    "environment": "SCRIPT",
+    "execute": "db_deployment.cleanup_tables",
+    "check_error": true
+  },
+  {
     "processing_step": "post",
     "environment": "PASE",
-    "execute": "echo \"Not implemented\"",
+    "execute": "echo \"Add your own step here\"",
     "execute_remote": false,
     "check_error": true
-  },
-  {
-    "processing_step": "test_error",
-    "environment": "PASE",
-    "execute": "Wrong definition",
-    "check_error": true
-  },
-  {
-    "processing_step": "test_error_OK",
-    "environment": "PASE",
-    "execute": "Wrong definition, but OK",
-    "check_error": false
   }
 ]

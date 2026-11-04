@@ -816,27 +816,6 @@ function show_processing_history(meta_file_id) {
 
 
 
-function show_json(project, version) {
-    
-    postData(`/api/get_meta_file_json/${project}/${version}`, {}).then((data) => {
-        console.log(data); // JSON data parsed by `data.json()` call
-        data = JSON.stringify(data, null, 2);
-        data = syntaxHighlight(data);
-        //data = data.replaceAll('\\n', '<br/>');
-        Swal.fire({
-            icon: 'info',
-            title: 'Meta file',
-            html: '<pre class="logs">'+ data +'</pre>',
-            width: 'auto',
-            customClass: {
-                popup: 'json'
-            }
-        });
-    });
-}
-
-
-
 async function run_stage(meta_file_id, stage_id, stage_name) {
 
     Swal.fire({
@@ -852,7 +831,7 @@ async function run_stage(meta_file_id, stage_id, stage_name) {
         showCancelButton: true,
         showLoaderOnConfirm: true,
         preConfirm: (option) => {
-            return http_getData(`/api/run_stage/${meta_file_id}/${stage_id}/${option}`)
+            return postData(`/api/run_stage/${meta_file_id}/${stage_id}/${option}`)
             .then(response => {
                 
                 console.log(response);
@@ -916,7 +895,7 @@ async function run_stage(meta_file_id, stage_id, stage_name) {
 
 
 function set_check_error(obj, meta_file_id, stage_id, action_id, checked) {
-    http_getData(`/api/set_check_error/${meta_file_id}/${stage_id}/${action_id}/${checked}`).then((data) => {
+    postData(`/api/set_check_error/${meta_file_id}/${stage_id}/${action_id}/${checked}`).then((data) => {
         console.log(data); // JSON data parsed by `data.json()` call
         if (data['status'] == 'error') {
             obj.checked = !checked;
@@ -947,7 +926,7 @@ function cancel_deployment(meta_file_id) {
         reverseButtons: true
         }).then((result) => {
         if (result.isConfirmed) {
-            http_getData(`/api/cancel_deployment/${meta_file_id}`)
+            postData(`/api/cancel_deployment/${meta_file_id}`)
                 .then((response) => {
                     console.log(response); // JSON data parsed by `response.json()` call
                     if (response['status'] !== 'success') {
@@ -1003,7 +982,7 @@ function cancel_job(job_id) {
         reverseButtons: true
         }).then((result) => {
         if (result.isConfirmed) {
-            http_getData(`/api/cancel_job/${job_id}`)
+            postData(`/api/cancel_job/${job_id}`)
                 .then((response) => {
                     console.log(response);
                     if (response['status'] !== 'success') {
@@ -1042,7 +1021,7 @@ function reset_stage_status(meta_file_id, stage_id) {
         reverseButtons: true
         }).then((result) => {
         if (result.isConfirmed) {
-            http_getData(`/api/reset_stage_status/${meta_file_id}/${stage_id}`)
+            postData(`/api/reset_stage_status/${meta_file_id}/${stage_id}`)
                 .then((response) => {
                     console.log(response);
                     if (response['status'] !== 'success') {
@@ -1100,7 +1079,7 @@ function reset_last_finished_stage(meta_file_id, stage_id, stage_name) {
         reverseButtons: true
         }).then((result) => {
         if (result.isConfirmed) {
-            http_getData(`/api/reset_last_finished_stage/${meta_file_id}/${stage_id}`)
+            postData(`/api/reset_last_finished_stage/${meta_file_id}/${stage_id}`)
                 .then((response) => {
                     console.log(response);
                     if (response['status'] !== 'success') {
@@ -1152,7 +1131,7 @@ function reset_deployment_status(meta_file_id) {
         reverseButtons: true
         }).then((result) => {
         if (result.isConfirmed) {
-            http_getData(`/api/reset_deployment_status/${meta_file_id}`)
+            postData(`/api/reset_deployment_status/${meta_file_id}`)
                 .then((response) => {
                     console.log(response);
                     console.log('Hier 1');

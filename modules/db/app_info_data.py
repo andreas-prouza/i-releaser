@@ -1,7 +1,7 @@
 import os
 import threading
 from modules.db import app_sqlite
-from etc import constants
+from modules import version
 
 
 
@@ -21,7 +21,7 @@ def add_app_info():
             INSERT INTO app_info (version, data) 
             VALUES (?, ?)
         ''', (
-            constants.C_APP_VERSION,
+            version.APP_VERSION,
             str(data),
         ))
 

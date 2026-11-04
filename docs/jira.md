@@ -124,14 +124,14 @@ Hooks are stored with each deployment, so only new deployments are reported.
 
 ## Set the issue key
 
-* When creating the deployment:
+* When creating the deployment (the body is the custom data, see [Web API](webapi.md#create-a-deployment)):
   ```
   POST /api/start_workflow/simple_wf
-  {"custom_data": {"jira": {"ticket": "ABC-1"}}}
+  {"jira": {"ticket": "ABC-1"}}
   ```
 * Or in the web app: button `edit` next to `Custom data` on the deployment page.
 
-> Note: Don't edit custom data while a stage is running. The running stage may overwrite the change when it saves the deployment.
+Custom data can also be edited while a stage is running.
 
 
 ## As a processing step

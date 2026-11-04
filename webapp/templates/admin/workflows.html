@@ -5,6 +5,17 @@
 
 {% block content %}
 
+{% if invalid_files %}
+<div class="alert alert-danger">
+    <h5>Invalid workflow files</h5>
+    <ul>
+        {% for file, error in invalid_files.items() %}
+        <li><code>{{ file }}</code>: {{ error }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <div class="box box-info">
 
     <form>
@@ -70,15 +81,12 @@
 
     async function start_workflow(wf_name) {
         console.log(`start ${wf_name}`);
-        http_get(`/api/create_deployment/${wf_name}`)
+        http_post(`/api/create_deployment/${wf_name}`)
             .then((response) => {
                 if (!response.ok) {
-                    if (response.status === 500) {
-                        return response.json().then((data) => {
-                            throw new Error(data.error || 'Unknown server error');
-                        });
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json().then((data) => {
+                        throw new Error(data.message || 'Unknown server error');
+                    });
                 }
                 return response.json();
             })

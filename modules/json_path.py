@@ -10,8 +10,10 @@ The leading `$` is optional.
 import re
 from typing import Any, List
 
+from modules import errors
 
-class InvalidJsonPathException(Exception):
+
+class InvalidJsonPathException(errors.Invalid_Input_Error):
   pass
 
 
@@ -124,3 +126,27 @@ def set_value(data: dict, path: str, value: Any) -> None:
       child = [] if isinstance(parts[i + 1], int) else {}
       current[part] = child
     current = child
+
+
+
+def get_leaf_paths(data: Any) -> List[List[str|int]]:
+  """Returns the path (see `parse`) of each value of a json structure which is no object or list."""
+
+  if isinstance(data, dict):
+    items = data.items()
+  elif isinstance(data, list):
+    items = enumerate(data)
+  else:
+    return [[]]
+
+  paths = [[key, *path] for key, value in items for path in get_leaf_paths(value)]
+
+  # Empty objects and lists are values too
+  return paths or [[]]
+
+
+
+def is_under(path: List[str|int], parent: List[str|int]) -> bool:
+  """True if path is the same as parent or a value below it"""
+
+  return path[:len(parent)] == parent
