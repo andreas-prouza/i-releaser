@@ -1,0 +1,28 @@
+{
+  "connections": {
+    "localhost": {
+      "system": "localhost",
+      "user": "*CURRENT",
+      "password": "*CURRENT"
+    },
+    "prod400": {
+      "system": "prod400.example.com",
+      "user": "IRELEASER",
+      "password_env": "I_RELEASER_DB_PROD400_PASSWORD",
+      "options": {
+        "QueryTimeout": "0"
+      }
+    }
+  },
+  "defaults": {
+    "batch_size": 50000,
+    "apply_batch_size": 1000,
+    "journal_batch_size": 50000,
+    "catch_up_threshold": 1000,
+    "catch_up_max_cycles": 100,
+    "lock_wait_seconds": 60,
+    "progress_interval_seconds": 60,
+    "verify_inserts": true,
+    "max_errors": 1000
+  }
+}

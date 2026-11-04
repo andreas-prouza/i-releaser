@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "mode": "cloud",
+  "i_releaser_url": "https://ireleaser.example.com",
+  "timeout_seconds": 10,
+  "issue_key_paths": ["$.jira.ticket"],
+  "cloud": {
+    "site": "yourcompany.atlassian.net",
+    "cloud_id": null,
+    "client_id": "",
+    "client_secret": null
+  },
+  "datacenter": {
+    "base_url": "https://jira.example.com",
+    "token": null,
+    "remote_link": true,
+    "comment_events": ["stage_finished", "stage_failed", "deployment_canceled"]
+  },
+  "workflows": {
+    "simple_wf": {
+      "environments": {
+        "BUILD": { "id": "build", "display_name": "Build", "type": "development" },
+        "DEPLOY_PROD": { "id": "prod", "display_name": "Production", "type": "production" }
+      }
+    }
+  }
+}

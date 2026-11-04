@@ -6,12 +6,15 @@ from modules import deploy_action as da
 from modules.cmd_status import Status as Cmd_Status
 from modules.object_status import Status as Obj_Status
 from modules import ibm_i_commands
+from modules.db_deployment import objects as db_objects
 
 
 def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
     """
-     RSTLIB SAVLIB(PROUZALIB) DEV(*SAVF) SAVF(QGPL/PROUZASAVF) RSTLIB(RSTLIB)
+     RSTLIB SAVLIB(MYLIB) DEV(*SAVF) SAVF(QGPL/MYSAVF) RSTLIB(RSTLIB)
             SELECT((*INCLUDE TEST *PGM) (*INCLUDE TEST *FILE)) 
+
+     Expects the save files of `save_objects.py` in the directory of the deployment.
     """
 
 
@@ -24,7 +27,7 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
 
     meta_file.deploy_objects.set_objects_status(Obj_Status.IN_RESTORE)
 
-    for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib():
+    for lib in meta_file.deploy_objects.get_lib_list_with_prod_lib(ready=True, objects_only=True):
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
         cmd=f"CRTSAVF {meta_file.remote_deploy_lib}/{lib['lib']}",
@@ -62,18 +65,24 @@ def restore_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, actio
       # Restore all objects
       restore_to_lib = lib['prod_lib']
       if stage_obj.lib_replacement_necessary:
-        if lib['prod_lib'] in stage_obj.lib_mapping.keys():
-          restore_to_lib = stage_obj.lib_mapping[lib['lib']]
+        restore_to_lib = stage_obj.lib_mapping.get(lib['prod_lib'], restore_to_lib)
 
       includes = ''
       
-      for obj in meta_file.deploy_objects.get_obj_list_by_lib(lib['lib']):
-        name = obj.name.replace('$', '\\$')
-        includes += f" (*INCLUDE {name} *{obj.type})"
+      for obj in meta_file.deploy_objects.get_obj_list_by_prod_lib(lib['prod_lib'], ready=True, objects_only=True):
+
+        # Replaced by the cut-over. Raises an error if the cut-over hasn't been done yet.
+        if db_objects.check_deploy_object(meta_file, obj):
+          continue
+
+        obj_type = obj.attribute if obj.type == 'obj' else obj.type
+        includes += f" (*INCLUDE {obj.name} *{obj_type})"
+
+      if includes == '':
+        continue
 
       last_added_action = action.sub_actions.add_action(da.Deploy_Action(
-        #cmd=f"RSTLIB SAVLIB({lib['lib']}) DEV(*SAVF) SAVF({meta_file.remote_deploy_lib}/{lib['lib']}) SELECT({includes}) RSTLIB({restore_to_lib})", 
-        cmd=f"call prouzalib/iRSTLIB ({lib['lib']} {meta_file.remote_deploy_lib} {lib['lib']} {restore_to_lib})", 
+        cmd=f"RSTLIB SAVLIB({lib['lib']}) DEV(*SAVF) SAVF({meta_file.remote_deploy_lib}/{lib['lib']}) SELECT({includes}) MBROPT(*ALL) ALWOBJDIF(*ALL) RSTLIB({restore_to_lib})", 
         environment=da.Command_Type.QSYS, 
         processing_step=action.processing_step, 
         stage=stage_obj.name, 

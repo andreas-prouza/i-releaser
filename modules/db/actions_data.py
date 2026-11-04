@@ -44,12 +44,14 @@ def _add_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, stage_id: int|
     cursor.execute('''
         INSERT INTO actions (stage_id, deploy_object_id, action_id, sequence, cmd, status, 
                                 processing_step, environment, run_in_new_job, 
-                                execute_remote, check_error, cwd)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+                                execute_remote, check_error, cwd, fail_on_stderr, timeout_seconds,
+                                parallel_group, parallel)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         stage_id, deploy_object_id, action_id, action.sequence, action.cmd, action.status.value,
         action.processing_step, action.environment.value, action.run_in_new_job,
-        action.execute_remote, action.check_error, action.cwd
+        action.execute_remote, action.check_error, action.cwd, action.fail_on_stderr, action.timeout_seconds,
+        action.parallel_group, action.parallel
     ))
     action_db_id = cursor.lastrowid
     
@@ -59,6 +61,7 @@ def _add_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, stage_id: int|
     action.action_id = action_id
     action.deploy_object_id = deploy_object_id
     action.stage_id = stage_id
+    action.saved_values = _get_values(action)
 
 
 
@@ -93,14 +96,39 @@ def _is_unsaved_log(log) -> bool:
 
 
 
+def _get_values(action: da.Deploy_Action) -> dict:
+    return {
+        'sequence': action.sequence,
+        'cmd': action.cmd,
+        'status': action.status.value,
+        'processing_step': action.processing_step,
+        'environment': action.environment.value,
+        'run_in_new_job': action.run_in_new_job,
+        'execute_remote': action.execute_remote,
+        'check_error': action.check_error,
+        'cwd': action.cwd,
+        'fail_on_stderr': action.fail_on_stderr,
+        'timeout_seconds': action.timeout_seconds,
+        'parallel_group': action.parallel_group,
+        'parallel': action.parallel,
+    }
+
+
+
+def _get_history_values(action: da.Deploy_Action, history) -> dict:
+    return {
+        'action_id': action.id,
+        'create_time': history.create_time,
+        'status': history.status.value,
+        'stdout': history.stdout,
+        'stderr': history.stderr,
+    }
+
+
+
 def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, meta_dir: str|None=None):
-    cursor.execute('''
-        update actions set sequence = ?, cmd = ?, status = ?, processing_step = ?, environment = ?, run_in_new_job = ?, execute_remote = ?, check_error = ?, cwd = ?
-        WHERE id = ?
-    ''', (
-        action.sequence, action.cmd, action.status.value, action.processing_step, action.environment.value, action.run_in_new_job, action.execute_remote, action.check_error, action.cwd,
-        action.id
-    ))
+
+    action.saved_values = app_sqlite.update_changes(cursor, 'actions', action.id, _get_values(action), action.saved_values)
     
     logging.debug(f"Saved action with ID {action.id} and command '{len(action.sub_actions)}' subactions to the database.")
 
@@ -130,13 +158,7 @@ def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, meta_dir: str
             files.writeText(history.stderr, stderr_file_path)
             history.stderr = f"file://{stderr_file_path}"
             
-        cursor.execute('''
-            update action_run_history set action_id = ?, create_time = ?, status = ?, stdout = ?, stderr = ?
-            WHERE id = ?
-        ''', (
-            action.id, history.create_time, history.status.value, history.stdout, history.stderr,
-            history.id
-        ))
+        history.saved_values = app_sqlite.update_changes(cursor, 'action_run_history', history.id, _get_history_values(action, history), history.saved_values)
 
 
 
@@ -181,6 +203,11 @@ def get_actions(stage_id: int|None=None, deploy_object_id: int|None=None, action
             
             action_obj = da.Deploy_Action(dict_data=action_dict)
             action_obj.sub_actions = get_actions(action_id=row['id'])
+            action_obj.saved_values = _get_values(action_obj)
+
+            for history in action_obj.run_history:
+                history.saved_values = _get_history_values(action_obj, history)
+
             actions.append(action_obj)
 
     return actions

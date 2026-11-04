@@ -1,4 +1,5 @@
 
+import functools
 import json, logging, os
 from datetime import datetime, date
 import decimal
@@ -47,7 +48,9 @@ def get_json_response(dict: Union[dict, list], status: int=200) -> JSONResponse:
 
 
 
-def get_html_response(request: Request, template: str, **kwargs) -> HTMLResponse:
+@functools.lru_cache(maxsize=1)
+def get_templates() -> Jinja2Templates:
+    """One environment for all responses, so the templates are only compiled once"""
 
     service_path = os.getenv("I_RELEASER_WEBAPP_PATH", "")
     if len(service_path) > 0:
@@ -60,8 +63,14 @@ def get_html_response(request: Request, template: str, **kwargs) -> HTMLResponse
     templates.env.filters["pretty_json"] = format_json
     templates.env.filters["get_type"] = lambda v: type(v).__name__
 
-    return templates.TemplateResponse(
-        request=request, name=template, context={**kwargs, "now": datetime.now()}
+    return templates
+
+
+
+def get_html_response(request: Request, template: str, **kwargs) -> HTMLResponse:
+
+    local_debugging = os.environ.get("I_RELEASER_LOCAL_DEBUGGING", "False").lower() == "true"
+
+    return get_templates().TemplateResponse(
+        request=request, name=template, context={**kwargs, "now": datetime.now(), "local_debugging": local_debugging}
     )
-
-

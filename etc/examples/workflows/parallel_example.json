@@ -1,0 +1,55 @@
+{
+  "name": "parallel_example",
+  "default_project": "test",
+  "step_action": [
+    {
+      "processing_step": "pre",
+      "environment": "PASE",
+      "execute": "echo 'Pre script'",
+      "check_error": true
+    },
+    {
+      "processing_step": "sleep",
+      "environment": "PASE",
+      "execute": "sleep 2",
+      "check_error": true
+    },
+    {
+      "processing_step": "list_dir",
+      "environment": "PASE",
+      "execute": "pwd; ls -la",
+      "check_error": true
+    }
+  ],
+  "stages": [
+    {
+      "name": "START",
+      "next_stages": ["STAGE 2.1", "STAGE 2.2"],
+      "host": "localhost",
+      "processing_steps": ["pre", "post"]
+    },
+    {
+      "name": "STAGE 2.1",
+      "next_stages": ["STAGE 3"],
+      "host": "localhost",
+      "processing_steps": ["pre", "sleep", "list_dir", "post"]
+    },
+    {
+      "name": "STAGE 2.2",
+      "next_stages": ["STAGE 3"],
+      "host": "localhost",
+      "processing_steps": ["pre", "sleep", "post"]
+    },
+    {
+      "name": "STAGE 3",
+      "next_stages": ["END"],
+      "after_stages_finished": ["STAGE 2.1", "STAGE 2.2"],
+      "host": "localhost",
+      "processing_steps": ["pre", "post"]
+    },
+    {
+      "name": "END",
+      "description": "Finished"
+    }
+  ]
+}

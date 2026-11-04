@@ -4,7 +4,7 @@ from typing import Dict, List
 from fastapi import Request
 
 from etc import constants, constants
-from modules import files, meta_file, permissions
+from modules import current_user, errors, files, permissions
 from modules.db import stage_data
 
 
@@ -13,12 +13,10 @@ from modules.db import stage_data
 
 def check_user_permission(action : permissions.PermissionAction, workflow:str|None =None, stage:str|None = None, stage_id:int|None =None):
 
-  user = meta_file.Meta_File.CURRENT_USER.lower() if meta_file.Meta_File.CURRENT_USER else None
+  user = current_user.get_user()
 
   if not is_user_allowed(user, action, workflow, stage, stage_id):
-      error = Exception(f"User {user} does not have permission {action} (workflow: {workflow}, stage: {stage or stage_id})")
-      logging.exception(error, stack_info=True)
-      raise error
+      raise errors.Permission_Denied_Error(f"User {user} does not have permission {action} (workflow: {workflow}, stage: {stage or stage_id})")
 
 
 
@@ -59,6 +57,25 @@ def is_user_allowed(user, action : permissions.PermissionAction, workflow:str|No
     
   logging.info(f"User {user} does not have permission {action} (workflow: {workflow}, stage: {stage})")
   return False
+
+
+
+def get_readable_workflows(workflows: list[str]) -> list[str]|None:
+  """
+  Args:
+      workflows (list): Names of the workflows to check
+
+  Returns:
+      list: Those the current user may read. None if the user may read all workflows (also unknown ones).
+  """
+
+  user = current_user.get_user()
+
+  if is_user_allowed(user, permissions.PermissionAction.READ):
+    return None
+
+  return [wf for wf in workflows if is_user_allowed(user, permissions.PermissionAction.READ, wf)]
+
 
 
 
@@ -122,9 +139,7 @@ class PermissionKonfig:
     PermissionKonfig.check_reload()
 
     if name.lower() in PermissionKonfig.user_permissions.keys():
-      error = Exception(f"User {name} already exists, overwriting permissions")
-      logging.exception(error, stack_info=True)
-      raise error
+      raise errors.Conflict_Error(f"User {name} already exists")
 
     perm: permissions.Permissions = permissions.Permissions(general=general or data.get('general', []), workflows=workflows or data.get('workflows', {}))
     PermissionKonfig.user_permissions[name.lower()] = permissions.User(permissions=perm, roles=roles or data.get('roles', []), detailed_infos=permissions.DetailedInfos(description=description or data.get('detailed_infos', {}).get('description', ''), mail=mail or data.get('detailed_infos', {}).get('mail', ''), extra=extra or data.get('detailed_infos', {}).get('extra', {})))
@@ -143,9 +158,7 @@ class PermissionKonfig:
     PermissionKonfig.check_reload()
 
     if name.lower() in PermissionKonfig.role_permissions.keys():
-      error = Exception(f"Role {name} already exists, overwriting permissions")
-      logging.exception(error, stack_info=True)
-      raise error
+      raise errors.Conflict_Error(f"Role {name} already exists")
 
     perm: permissions.Permissions = permissions.Permissions(general=general or data.get('general', []))
     PermissionKonfig.role_permissions[name.lower()] = permissions.Role(permissions=perm)
@@ -186,12 +199,15 @@ class PermissionKonfig:
         logging.warning(f"Could not load permissions from {constants.C_USER_PERMISSIONS}, file is empty or not valid json")
         return
   
-      PermissionKonfig.user_permissions = data.get('users', {})
-      PermissionKonfig.role_permissions = data.get('roles', {})
+      user_permissions = data.get('users', {})
+      role_permissions = data.get('roles', {})
 
       # Convert string permissions to PermissionAction objects
-      PermissionKonfig.convert_permissions('user', PermissionKonfig.user_permissions)
-      PermissionKonfig.convert_permissions('role', PermissionKonfig.role_permissions)
+      # Before they are used: requests run in parallel threads
+      PermissionKonfig.convert_permissions('user', user_permissions)
+      PermissionKonfig.convert_permissions('role', role_permissions)
+      PermissionKonfig.user_permissions = user_permissions
+      PermissionKonfig.role_permissions = role_permissions
       logging.debug(f"Reloaded user permissions: {PermissionKonfig.user_permissions}")
       logging.debug(f"Reloaded role permissions: {PermissionKonfig.role_permissions}")
 

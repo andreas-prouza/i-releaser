@@ -32,7 +32,7 @@ def backup_objects_on_target(meta_file: mf.Meta_File, stage_obj: s.Stage, action
             # Large tables of the DB deployment are kept in the backup library by the cut-over, instead of saving them
             if db_objects.is_db_deployment_object(meta_file, obj):
                 continue
-            name = obj.name.replace('$', '\\$')
+            name = obj.name
             obj_type = obj.type
             if obj.type == 'obj':
                 obj_type = obj.attribute

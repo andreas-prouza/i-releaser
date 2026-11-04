@@ -17,7 +17,7 @@ def thread_id_filter(record):
 
 LOG_FORMAT = '%(asctime)s (%(process)d)|%(thread_id)d %(levelname)-7.7s %(filename)-10.10s %(funcName)-10.10s (%(lineno)d): %(message)s'
 
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 
 LOG_DIR = Path(os.path.dirname(__file__), '../log')
 

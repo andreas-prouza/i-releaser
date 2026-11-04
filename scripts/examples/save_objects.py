@@ -5,6 +5,7 @@ from etc import constants
 from modules import meta_file as mf, stages as s
 from modules.cmd_status import Status as Cmd_Status
 from modules.object_status import Status as Obj_Status
+from modules.db_deployment import objects as db_objects
 from modules import deploy_action as da
 from modules import ibm_i_commands
 
@@ -57,7 +58,7 @@ def init_save(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Act
 
 def save_objects_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
     """
-    SAVLIB LIB(PROUZALIB) DEV(*SAVF) SAVF(QGPL/PROUZASAVF)
+    SAVLIB LIB(MYLIB) DEV(*SAVF) SAVF(QGPL/MYSAVF)
            SELECT(
                   (*INCLUDE TEST *PGM)
                   (*INCLUDE TEST *FILE)
@@ -80,7 +81,11 @@ def save_objects_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da
                 logging.info(f"Only source {obj.source} detected, skip adding build commands")
                 continue
 
-            obj_name = obj.name.replace('$', '\\$')
+            # They are replaced by the cut-over of the DB deployment
+            if db_objects.is_db_deployment_object(meta_file, obj):
+                continue
+
+            obj_name = obj.name
             obj_type = obj.type
             if obj.type == 'obj':
                 obj_type = obj.attribute
@@ -135,7 +140,7 @@ def save_objects_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da
 
 def save_sources_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
     """
-    SAVLIB LIB(PROUZALIB) DEV(*SAVF) SAVF(QGPL/PROUZASAVF)
+    SAVLIB LIB(MYLIB) DEV(*SAVF) SAVF(QGPL/MYSAVF)
            SELECT(
                   (*INCLUDE TEST *PGM)
                   (*INCLUDE TEST *FILE)
@@ -158,7 +163,7 @@ def save_sources_to_savf(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da
                 logging.info(f"Only source {obj.source} detected, skip adding build commands")
                 continue
 
-            obj_name = obj.name.replace('$', '\\$')
+            obj_name = obj.name
             includes += f" (*INCLUDE {obj_name} *{obj.type})"
 
             if (

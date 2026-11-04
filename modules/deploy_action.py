@@ -1,6 +1,7 @@
 import logging
 from enum import Enum
 
+from modules import errors
 from modules import run_history as rh
 from modules.cmd_status import Status as Cmd_Status
 
@@ -38,12 +39,23 @@ class Deploy_Action:
     * ``None``: Default from stage will be taken
     * ``True``: Execution will be done on remote system (via SSH)
     * ``False``: Execution will be done on local system
+  fail_on_stderr : bool | None
+    * ``None``, ``True``: Output on stderr fails the command
+    * ``False``: Only the exit code decides
+  timeout_seconds : int | None
+    The command is ended after this time. ``None``: Default from C_COMMAND_TIMEOUT_SECONDS
+  parallel_group : str | None
+    Name of the group, in which the step runs at the same time as the other steps with `parallel`
+  parallel : bool
+    * ``True``: The step runs in the background, together with the steps before it with the same `parallel_group`
+    * ``False``: The step waits until all running steps have ended
   """
 
 
-  def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=None,  
-    environment: Command_Type=None, stage: str=None, processing_step: str=None, 
-    check_error: bool=True, dict_data: dict=None, id: int|None=None, run_in_new_job: bool=False, execute_remote: bool=None, cwd: str=None):
+  def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=None,
+    environment: Command_Type=None, stage: str=None, processing_step: str=None,
+    check_error: bool=True, dict_data: dict=None, id: int|None=None, run_in_new_job: bool=False, execute_remote: bool=None, cwd: str=None,
+    fail_on_stderr: bool|None=None, timeout_seconds: int|None=None, parallel_group: str|None=None, parallel: bool=False):
 
     self.id :int|None = id
     self.stage_id :int|None = None
@@ -60,6 +72,12 @@ class Deploy_Action:
     self.check_error = check_error
     self.sub_actions = Deploy_Action_List_list()
     self.cwd = cwd
+    self.fail_on_stderr = fail_on_stderr
+    self.timeout_seconds = timeout_seconds
+    self.parallel_group = parallel_group
+    self.parallel = parallel
+    # Values in the database, see app_sqlite.update_changes
+    self.saved_values: dict|None = None
 
     self.processing_step = processing_step
 
@@ -156,7 +174,11 @@ class Deploy_Action:
       'run_history': self.run_history.get_list(),
       'sub_actions': self.sub_actions.get_list(),
       'check_error': self.check_error,
-      'cwd': self.cwd
+      'cwd': self.cwd,
+      'fail_on_stderr': self.fail_on_stderr,
+      'timeout_seconds': self.timeout_seconds,
+      'parallel_group': self.parallel_group,
+      'parallel': self.parallel
       }
 
 
@@ -259,19 +281,19 @@ class Deploy_Action_List_list(list):
 
 
 
-  def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True, add_after: Deploy_Action=None, run_in_new_job: bool=False, execute_remote: bool=None) -> Deploy_Action:
+  def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True, add_after: Deploy_Action=None, run_in_new_job: bool=False, execute_remote: bool=None, fail_on_stderr: bool|None=None, timeout_seconds: int|None=None, parallel_group: str|None=None, parallel: bool=False) -> Deploy_Action:
     #logging.debug(f'Add action for cmd: {cmd=}, {environment=}, {processing_step=}')
 
-    return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step, 
-    stage=stage, check_error=check_error, run_in_new_job=run_in_new_job, execute_remote=execute_remote), add_after=add_after)
+    return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step,
+    stage=stage, check_error=check_error, run_in_new_job=run_in_new_job, execute_remote=execute_remote, fail_on_stderr=fail_on_stderr, timeout_seconds=timeout_seconds, parallel_group=parallel_group, parallel=parallel), add_after=add_after)
 
 
 
-  def add_actions_from_dict(self, dict_input: dict) -> None:
+  def add_actions_from_dict(self, dict_input: dict, add_after: Deploy_Action=None) -> None:
 
     #logging.debug(f'Add actions from {type(dict_input)}')
     action = Deploy_Action(dict_data=dict_input)
-    self.add_action(action)
+    self.add_action(action, add_after=add_after)
 
 
 
@@ -280,7 +302,7 @@ class Deploy_Action_List_list(list):
       if a.id == id:
         return a
 
-    raise Exception(f"Action id {id} not found in list {self.get_actions_as_dict()}")
+    raise errors.Not_Found_Error(f"Action id {id} not found")
 
 
 
@@ -346,7 +368,7 @@ class Deploy_Action_List_list(list):
     action = self.get_action_by_id(action_id)
 
     if action.status == Cmd_Status.FINISHED:
-      raise Exception('Not possible to change a finished step')
+      raise errors.Conflict_Error('Not possible to change a finished step')
 
     action.check_error = check
 

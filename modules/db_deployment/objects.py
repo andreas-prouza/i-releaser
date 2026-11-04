@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from typing import TYPE_CHECKING
 
 from modules.db_deployment.connection import Db_Deployment_Exception
@@ -27,6 +28,8 @@ if TYPE_CHECKING:
 C_PROPERTY = 'db_deployment'
 C_PREPARED = 'prepared'
 C_DEPLOYED = 'deployed'
+
+C_SYSTEM_NAME = re.compile(r'[A-Z$#@][A-Z0-9$#@_.]{0,9}')
 
 C_TABLE_ATTRIBUTES = ('sqltable', 'pf')
 C_DEPENDENT_ATTRIBUTES = ('sqlindex', 'lf')
@@ -60,14 +63,14 @@ def split_object_name(name: str) -> tuple[str, str]:
   parts = str(name).strip().upper().split('/')
   if len(parts) != 2 or '' in parts:
     raise Db_Deployment_Exception(f"'{name}' is not a qualified object name (LIB/NAME)")
-  return parts[0], parts[1]
+  return check_system_name(parts[0], 'library of a dependent file'), check_system_name(parts[1], 'name of a dependent file')
 
 
 
 def check_system_name(name: str, what: str) -> str:
 
   name = str(name or '').strip().upper()
-  if name == '' or len(name) > 10:
+  if not C_SYSTEM_NAME.fullmatch(name):
     raise Db_Deployment_Exception(f"DB deployment: '{name}' is not a valid system name for the {what}")
   return name
 

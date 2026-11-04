@@ -1,445 +1,152 @@
-- [ i-Releaser: The new deployment tool for i](#-i-releaser-the-new-deployment-tool-for-i)
-- [General process](#general-process)
-  - [Features](#features)
-  - [The setup](#the-setup)
-  - [How to use it](#how-to-use-it)
-  - [The concept](#the-concept)
-  - [Interesting to know](#interesting-to-know)
-- [Get started](#get-started)
-  - [Requirements on IBM i](#requirements-on-ibm-i)
-  - [Set up Python project](#set-up-python-project)
-  - [Create a new deployment request](#create-a-new-deployment-request)
-  - [Run stage](#run-stage)
-- [Concept of this framework](#concept-of-this-framework)
-  - [Detailed description](#detailed-description)
-    - [Workflow name](#workflow-name)
-    - [Stage](#stage)
-    - [Run steps within a stage](#run-steps-within-a-stage)
-- [Directory structure](#directory-structure)
-  - [etc (configurations)](#etc-configurations)
-  - [modules](#modules)
-  - [scripts](#scripts)
-- [Configuration files](#configuration-files)
-  - [attribute "cmd"](#attribute-cmd)
-- [Coverage](#coverage)
+![i-Releaser](docs/img/logo2-icon.png)
 
+# i-Releaser
 
+Deployment workflows for IBM i.
 
-![logo2](docs/img/logo2-icon.png) 
-# i-Releaser: The new deployment tool for i
- 
+You define the stages a release goes through (build, test, production, ...) and what has to be done in each of them.
+i-Releaser runs them from a web app or the Web API, shows the progress, and keeps the log of every step and who started it.
+
 ![deployment](docs/img/deployment.png)
 
-This framework is used to organize the deployment workflow in different projects.
 
-It's flexible and open and can be adabtet using configuration files.
+## Features
 
+**Workflows**
 
-# General process
-
-## Key Features
-
-* Can run under a profile with user class ```*USER```  
-  No special authority needed.
-* Individual workflows
-  ![details](docs/img/workflow-list.png)  
-* Graphical workflow overview
-* Parallel workflow branches
+* Your own workflows, one JSON file each, with any number of stages  
+  ![workflows](docs/img/workflow-list.png)
+* Parallel branches, which can be merged again  
   ![parallel](docs/img/parallel.png)
-* Detailed tracking of each step and action
+* Steps are IBM i commands (`QSYS`), shell commands (`PASE`) or Python functions (`SCRIPT`)
+* Stages can run in an independent [processing service](docs/processing-service.md), so they keep running when the web server restarts
+* [DB deployment](docs/db-deployment.md): deploy changes of large tables with a downtime of minutes. The table is copied in the background, changes are taken from the journal.
+
+**Tracking**
+
+* Status and log of each step and command  
   ![details](docs/img/details.png)
-* Separate logs for each task
-* Step commands can be `SCRIPT` (Python), `PASE` (shell/bash commands/scripts), `QSYS` (IBM i calls)
-* All functions can be accessed via WebAPIs
-* Activity history  
-  ![details](docs/img/history.png)  
-  ![details](docs/img/history-detail.png)  
-* Individual enhancements
-  * Embed your own HTML
-  * Scripts you want to run in a stage
-  * Example: automatic rollback function  
-    This is custom enhancement to the i-Releaser project
-    ![details](docs/img/rollback.png)  
-* Save individual data in a deployment (e.g. JIRA ticket)  
-  ![details](docs/img/rollback-started.png)
-* Show deployments and their status in Jira ([details](docs/jira.md))
-* Run your own scripts when a deployment or stage changes its status ([hooks](docs/workflow.md#hooks))
-* Deploy changes of large tables with a downtime of minutes: copied in the background, changes taken from the journal ([details](docs/db-deployment.md))
-* Choose the object to include/exclude from deployment
-  ![details](docs/img/object-list.png)  
-* Permission concept
-* See full list of features [here](/docs/features.md)
+* Activity history: who did what and when  
+  ![history](docs/img/history.png)
+  ![history details](docs/img/history-detail.png)
+* Choose the objects to include in or exclude from a deployment  
+  ![objects](docs/img/object-list.png)
+
+**Integration and extension**
+
+* [Web API](docs/webapi.md) for all actions, with a personal API token per user  
+  ![token](docs/img/http-token.png)
+* Custom data per deployment (e.g. a Jira ticket), with fields users can edit  
+  ![custom data](docs/img/rollback-started.png)
+* [Hooks](docs/workflow.md#hooks): run your own scripts when a deployment or stage changes its status
+* [Jira integration](docs/jira.md): deployments appear in the Jira issue
+* [Your own scripts, routes and HTML](docs/scripts.md), e.g. an automatic rollback  
+  ![rollback](docs/img/rollback.png)
+
+**Operation**
+
+* Runs under a user profile of user class `*USER`. The profile only needs the authorities your steps need.
+* [Permissions](docs/permissions.md) per user and role, for all workflows, a workflow or a stage
+* Deployments of a project are processed in the order of their version
 
 
+## Quick start
 
-## The setup
-
-On your IBM i via QSH or (better) via SSH (see [SSH setup](https://github.com/andreas-prouza/ibm-i-build/blob/main/docs/pages/SSH.md) you haven't used it before):
+On your IBM i, in a QSH or (better) an SSH session (see [SSH setup](https://github.com/andreas-prouza/ibm-i-build/blob/main/docs/pages/SSH.md)):
 
 ```bash
-mkdir /apps/
-cd /apps/
+mkdir -p /apps && cd /apps
 git clone https://github.com/andreas-prouza/i-releaser
 cd i-releaser
-./setup.sh
+./setup3.13.sh
 ```
 
-## Start the web server
-```bash
-[andreas@idev webapp]$ cd webapp
-[andreas@idev webapp]$ ./service start
-Activate virtual environment: i-releaser/webapp/venv/bin/activate
-Start service
-Service is running ...
-andreas    63909   63905 19 16:53 pts/0    00:00:00 gunicorn: master [wsgi:app]
-andreas    63911   63909 31 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
-andreas    63913   63909 27 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
-andreas    63914   63909 29 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
-andreas    63918   63905  0 16:53 pts/0    00:00:00 grep gunicorn
-[andreas@idev webapp]$ 
+Then:
+
+1. In `etc/user_permissions.json`, replace the sample user `myuser` by your IBM i user profile (lower case).
+2. Adapt the workflows in `etc/workflows/` (see [workflow configuration](docs/workflow.md)). The setup copied two samples there.
+3. Start the web app:
+
+   ```bash
+   cd webapp
+   ./service start
+   ```
+
+4. The web app listens on `127.0.0.1:8080` (`webapp/etc/gunicorn.conf.py`), so it's only reachable on the IBM i itself.
+   For a first test, open an SSH tunnel from your PC and browse to `http://localhost:8080`:
+
+   ```bash
+   ssh -L 8080:127.0.0.1:8080 <user>@<your IBM i>
+   ```
+
+   For regular use, put a [reverse proxy with HTTPS](docs/installation.md#reverse-proxy) in front of it.
+5. Log in with your IBM i user and password.
+
+The details (requirements, all configuration files, reverse proxy, backup) are in the [installation guide](docs/installation.md).
+
+
+## Documentation
+
+| Topic | |
+|---|---|
+| [Installation and operation](docs/installation.md) | Requirements, setup, configuration files, starting and stopping, reverse proxy, backup, updates, troubleshooting |
+| [Concepts](docs/concepts.md) | Projects, workflows, deployments, stages and steps, their status, and how a deployment runs |
+| [Workflow configuration](docs/workflow.md) | Reference of the workflow files, step mappings, commands, editable fields, hooks |
+| [Scripts and extensions](docs/scripts.md) | Your own Python steps, the example scripts, custom routes and HTML |
+| [Permissions](docs/permissions.md) | Users, roles and what each permission allows |
+| [Web API](docs/webapi.md) | All endpoints, authentication with API tokens |
+| [Technical notes](docs/technik.md) | Tests, database updates, package review, decisions |
+| [Processing service](docs/processing-service.md) | Run stages independent of the web server |
+| [Jira integration](docs/jira.md) | Show deployments in Jira Cloud or Data Center |
+| [DB deployment](docs/db-deployment.md) | Deploy changes of large tables with minimal downtime |
+| [Changelog](CHANGELOG.md) | |
+
+
+## How it works
+
+```
+workflow (etc/workflows/simple.json)
+  │
+  ├── stage START ──────► stage TEST ──────► stage PROD ──────► stage END
+  │     processing steps    processing steps   processing steps
+  │     pre, build          save, transfer     backup-old-objects,
+  │                                            perform-deployment
+  │
+  └── each processing step is mapped to a command
+        QSYS    an IBM i command             CRTLIB D000000042
+        PASE    a shell command              scp -rp ... prod400:/deploy
+        SCRIPT  a Python function            target_deployment.restore_objects_on_target
 ```
 
-Port & Co are defined in ```etc/gunicorn.conf.py```.
+1. A deployment is created from a workflow (in the web app or with the Web API). It gets the next version number of its project.
+2. A user runs a stage. Its steps run one after the other, and each command's output is stored.
+3. When all steps of a stage are finished, its next stages become ready.
+4. When the last stage is finished, the deployment is finished. Stages without steps, like `END`, finish automatically.
 
-## Start the processing service (optional)
+See [concepts](docs/concepts.md) for the details.
 
-By default the stages are run by the web server. With the processing service they are run by an independent job.
-So they keep running, even if the web server ends.
 
-```bash
-[andreas@idev i-releaser]$ cd serviceapp
-[andreas@idev serviceapp]$ ./service start
-Start service
-Service is running ...
+## Project layout
+
 ```
-
-It needs to be switched on in ```etc/constants.py``` (```C_PROCESSING_MODE = 'service'```).
-See [processing service](docs/processing-service.md) for details.
-
-
-## How to use it
-
-1. There are [WebAPIs](docs/webapi.md) to call all actions like ...
-   * create a new deployment request
-   * run stages
-   * retrieve deployment information
-2. In ```etc/workflow.json``` you have to define the stages, steps, environment and process of your deployment like ...
-   * ```build_dir```  
-     Project directory
-   * ```hostname```
-3. You can call that APIs from every other application using an API-Token.
-   ![token](docs/img/http-token.png)
-
-
-
-## Interesting to know
-
-* If you need a emergency deployment you can define a HotFix worfklow for this.
-* It's not possible to run multiple deployments in parallel from the same project.  
-  You first have to finish all previous open deployments.  
-  You can cancel them, if you don't need them anymore.  
-  Only deployments from different projects can run at the same time.
-
-
-
-# Get started
-
-## Requirements on IBM i
-* Python
-* ODBC
-
-Follow [this setup](https://github.com/andreas-prouza/python-webapi?tab=readme-ov-file#setup-your-webapi).
-
-
-## Set up Python project
-
-Use the ```setup.sh``` script for it.
-```sh
-$ ./setup.sh
-```
-
-## Create a new deployment request
-
-You can use
-* [WebAPIs](docs/webapi.md) 
-* or call the Python script directly
-
-Run the python `deployment.py` script to create a new deployment request (meta file).  
-This script expects 2 parameters:
-
-* -a / --action create
-    
-    Creates a new deployment request
-
-* -w / --workflow
-    
-    The name of the workflow which will be used
-
-* -o / --object-file-list
-  
-    The name of the file containing the deployment objects.
-
-```sh
-python deployment.py -a create -w default_workflow -o prod_obj.txt
-```
-
-The directory meta file and its file name is defined in the `./etc/constants.py` script. It's the variable `C_DEPLOY_META_FILE`.
-
-
-## Run stage
-
-Run the python `deployment.py` script to run a stage of a deployment request (meta file).  
-This script expects 2 parameters:
-
-* -a / --action run
-  
-    Run a stage
-
-* -d / --deploy-version
-
-    Version (id) of the deployment
-
-* -s / --stage
-  
-    Provide the stage name, which should be run.
-    The stage musst be in the "current stage list"
-
-```sh
-python deployment.py -a run -d 4711 -s START
+etc/                  Configuration (templates in etc/examples/)
+  workflows/          One JSON file per workflow
+modules/              Core: deployments, stages, steps, permissions
+  db/                 SQLite data access and database updates
+  db_deployment/      Engine of the DB deployment
+scripts/              Python functions for SCRIPT steps and hooks (templates in scripts/examples/)
+webapp/               Web app and Web API (FastAPI, gunicorn)
+  etc/                Configuration of the web app (templates in webapp/etc/examples/)
+  custom/routes/      Your own routes
+serviceapp/           Processing service
+tests/                Tests (`.venv/bin/pytest`)
+docs/                 Documentation
+var/                  Database (app.sqlite), its backups, socket and PID of the processing service
+meta/                 Logs and generated files of each deployment
+log/                  Logs of the processing service
 ```
 
 
-# Concept of this framework
+## License
 
-Workflow with example
-
-```
-workflow (default)
-    |   workflow.json
-    |
-    |--> Stage (START)
-    |    |
-    |    |
-    |    |--> Next stages (UAT, ARCHIV)
-    |    |      Name of the stages, which will be called when the current stage finished its processing
-    |    |
-    |    |--> Stage commands
-    |    |      stage_commands.json
-    |    |       This is a global definition for all workflows.
-    |    |       Commands to run at this stage
-    |    |       This is in addition to the steps to process for this stage
-    |    |
-    |    |--> Steps 
-    |         |  ... to process at this stage (pre, post, ...)
-    |         |
-    |         |--> Commands
-    |               |
-    |               |--> defined in constants.py (C_STEP_2_CMD_MAPPING)
-    |               |
-    |               |--> in addition all object commands for this step
-    |               |       object_commands.json
-    |               |
-    |               |--> Sub commands
-    |
-    |--> Stage (UAT)
-```
-
-
-
-## Detailed description
-
-### Workflow name
-
-Multiple workflows can be defined.  
-Each of them needs a unique name.
-
-It contains the step chain and what to do at each step.  
-In addition a user specific list of steps & cmds can be defined here.
-
-### Stage
-
-A stage is collection of steps to run.  
-A development cycle went through multiple stages (enviroments).
-
-A stage can have one ore more following stages defined.  
-So, if multiple stages are defined as follower (next_stages), they will run in parallel.
-
-E.g.:  
-```
-START --> Development --> Test (UAT) --> Production --> END
-                            |
-                            |----------> Archive    --> END
-```
-
-Each step has definitions what is necessary to do here. --> Running steps (see next chapter).
-
-
-### Run steps within a stage
-
-Each stage has its definition which steps needs to run.  
-There are a couple of steps available. Only the necessary steps can be defined. It's not necessary to define all of them.  
-The scripts for the steps are located in the directory: `scripts`.
-
-The order to run these steps, will be taken from the order in the list of the step (`processing_steps`).
-
-The following are the available steps in that order:
-
-1. pre (`pre.py`)
-    
-    A user defined function will be run here.
-
-2. save (`save.py`)
-  
-    Save objects to a save file.
-
-3. target-prepare (`target_prepare.py`)
-
-    Creates on the target system:
-    * Deployment library
-    * Backup library
-    * SAVF for each library of objects which will be deployed.
-  
-        This SAVF will be used to save the old objects.
-
-4. transfer (`transfer.py`)
-  
-    Transfer objects to the target system (host) which is defined in the stage settings.
-
-5. backup-old-objects (`backup_old_objects.py`)
-  
-    Do a backup of the old objects on the target system.
-
-6. perform-deployment (`target_deployment.py`)
-
-    Run the deployment on the target host.
-
-7. post (`post.py`)
-
-    If it's necessary to run some stuff at the end.
-
-
-These scripts can be replaced by your own one, if you want some other stuff to run.
-
-
-
-
-# Directory structure
-
-Below you will find a list of directories, the containing files and the description.
-
-* etc
-    
-    Configurations
-
-* log
-* modules
-    
-    Core scripts
-
-* meta
-    
-    Meta-files (json) containing the deployment information
-
-* scripts
-    
-    Can be used for defined steps in you workflow process
-
-* serviceapp
-
-    [Processing service](docs/processing-service.md): runs the stages independent of the web server
-
-
-
-## etc (configurations)
-
-* constants.py
-  
-    Contains all constants used in the scripts like:
-    
-  * codepage
-  * directory names
-  * file name templates
-
-* deploy_version.json
-  
-    History of deployed versions
-
-* default_step_action.json
-    Default action definitions for some steps
-
-
-* logger_config.py
-  
-    Logger configuration (filename, debug level, ...)
-  
-* object_commands.json
-  
-    Specify commands to get run for specific objects
-  
-* stage_commands.json
-
-    Specify commands to get run for specific stage
-  
-* workflow.json
-
-    Define stage workflow and its attributes
-
-
-## modules
-
-This folder contains all internal modules which are necessary to run this framework.
-
-This is a collection of classes and functions.
-
-E.g.: `meta_file.py` (Meta_File class) which will handle all stuff with meta files:
-* save & read json files
-* several checks
-* stores object structures
-* execution history of each object
-* etc.
-
-
-## scripts
-
-All scripts in this folder can be used in any json-config file where a cmd can be defined.
-
-
-
-# Configuration files
-
-Below some descriptions to the JSON config files you need to know.
-
-
-## attribute "cmd"
-
-Depending on the command type, the command can be a shell command, or it can also be a function of a python script.
-
-command types:
-* QSYS
-  
-  Call of IBM i commands
-
-* PASE
-  
-  Call of shell commands
-
-* SCRIPT
-  
-  Call of a python function from a script
-
-
-To run python functions, the syntax is:
-
-`"cmd": "{script-name}.{function-name}"`
-
-E.g.:
-
-`"cmd": "pre.pre_cmd"`
-
-This will execute from script `pre.py` the function `pre_cmd`.
-
-
-
-# Coverage
-
-https://coverage.readthedocs.io/en/6.0/source.html
+[GNU Affero General Public License v3.0](LICENSE)

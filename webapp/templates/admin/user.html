@@ -24,6 +24,9 @@
         <tr>
             <th>Creation date</th><td><code>{{ user_key['date'] or '-' }}</code></td>
         </tr>
+        <tr>
+            <th>Last used</th><td><code>{{ user_key['last_used'] or '-' }}</code></td>
+        </tr>
     </table>
     <button type="button" onclick="drop_key()" class="btn btn-light"><i class="bi bi-trash"></i></button>
     <button type="button" onclick="renew_key()" class="btn btn-primary">

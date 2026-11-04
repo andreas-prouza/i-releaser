@@ -1,13 +1,15 @@
 import os
+import shlex
+import signal
 import subprocess
 import logging
 import sys
 import time
 
 from io import StringIO
-from contextlib import redirect_stdout, redirect_stderr
 
-from modules import meta_file, permissions
+from etc import constants
+from modules import meta_file, output_capture, parallel_steps, permissions, placeholders
 from modules import deploy_action as da
 from modules import run_history
 from modules import stages as s
@@ -60,12 +62,18 @@ class IBM_i_commands:
     from modules import hooks
     hooks.emit(hooks.Event.STAGE_STARTED, self.meta_file, stage)
 
-    # Execute all from stage
-    i=0
-    while i < len(stage.actions.get_actions(processing_step)):
-      actions = stage.actions.get_actions(processing_step)
-      self.execute_action(stage, actions[i], continue_run)
-      i += 1
+    # Execute all from stage. A step can add further steps (e.g. object commands), also in front of the running one
+    done = set()
+
+    with parallel_steps.scope():
+
+      while True:
+        next_action = next((a for a in stage.actions.get_actions(processing_step) if id(a) not in done), None)
+        if next_action is None:
+          break
+
+        done.add(id(next_action))
+        self.execute_action(stage, next_action, continue_run)
 
     #iconv -f IBM-1252 -t utf-8 './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' > './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp && mv './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' 
 
@@ -73,6 +81,41 @@ class IBM_i_commands:
 
   #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def execute_action(self, stage: s.Stage, action: da.Deploy_Action, continue_run=True):
+    """
+    Runs a step. A step with `parallel` is only started: it's running when this function returns.
+    See wait_for_parallel_actions, if something depends on its result.
+
+    Raises:
+        Command_Exception: If the step, or a parallel step before it, failed and has the error check on
+    """
+
+    scope = parallel_steps.current()
+
+    if scope is not None and action.parallel:
+      scope.start(action.parallel_group, lambda: self._run_action(stage, action, continue_run))
+      return
+
+    self.wait_for_parallel_actions()
+    self._run_action(stage, action, continue_run)
+
+
+
+  def wait_for_parallel_actions(self) -> None:
+    """
+    Waits until the parallel steps which have been started so far have ended.
+
+    Raises:
+        Command_Exception: If one of them failed and has the error check on
+    """
+
+    scope = parallel_steps.current()
+
+    if scope is not None:
+      scope.wait()
+
+
+
+  def _run_action(self, stage: s.Stage, action: da.Deploy_Action, continue_run=True):
 
     executions = {
       da.Command_Type.QSYS: self.run_qsys_cmd,
@@ -80,21 +123,21 @@ class IBM_i_commands:
       da.Command_Type.SCRIPT: self.run_script_cmd,
     }
 
-    if continue_run and action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and not action.check_error):
+    if continue_run and (action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and not action.check_error)):
       return
 
     start_time = time.perf_counter()
+    execute_time = start_time
 
-    cmd = action.cmd
-    # The attributes contain the whole deployment, so only collect them if the command uses placeholders
-    if '{' in cmd or '}' in cmd:
-      cmd = cmd.format(**self.get_all_attributes(action))
-
-    
-    logging.info(f"run {action.sequence=}, {cmd=}, {os.getcwd()=}")
-    
-    execute_time = time.perf_counter()
     try:
+      cmd = action.cmd
+      # The attributes contain the whole deployment, so only collect them if the command uses placeholders
+      if '{' in cmd or '}' in cmd:
+        cmd = placeholders.resolve(cmd, self.get_all_attributes(action), action.environment)
+
+      logging.info(f"run {action.sequence=}, {cmd=}, {os.getcwd()=}")
+
+      execute_time = time.perf_counter()
       rh = executions.get(action.environment)(stage, cmd, action)
 
     except Exception as e:
@@ -110,11 +153,9 @@ class IBM_i_commands:
 
     action.status = rh.status
 
-    failed = rh.status == Cmd_Status.FAILED and action.check_error
-    if failed:
-      stage.set_status(rh.status)
-
     self.meta_file.save()
+
+    failed = rh.status == Cmd_Status.FAILED and action.check_error
 
     end_time = time.perf_counter()
     logging.info(f"Action {action.id} ({action.environment.value}) took {end_time - start_time:.3f}s: "
@@ -145,26 +186,18 @@ class IBM_i_commands:
     stdout_new = StringIO()
     stderr_new = StringIO()
 
-    hdl = logging.StreamHandler(stream=stdout_new)
-    root_logger = logging.getLogger()
-
-    # 1. Save the original logging level so we can restore it later
-    original_level = root_logger.getEffectiveLevel()
-
-    # 2. Force the root logger to accept DEBUG and INFO messages
-    root_logger.setLevel(logging.DEBUG)
-    root_logger.addHandler(hdl)
-
     try:
 
-      # Safely redirect stdout and stderr using context managers
-      with redirect_stdout(stdout_new), redirect_stderr(stderr_new):
+      # Only the output of this thread: the web app runs other stages and requests at the same time
+      with output_capture.capture(stdout_new, stderr_new):
 
         try:
           func = getattr(globals()[obj[0]], obj[1])
           logging.info(f"Run {str(func)}")
 
-          func(self.meta_file, stage, action)
+          with parallel_steps.scope():
+            func(self.meta_file, stage, action)
+
           rh.status = Cmd_Status.FINISHED
 
         except Exception as e:
@@ -172,17 +205,10 @@ class IBM_i_commands:
           logging.exception(e, stack_info=True)
           rh.status = Cmd_Status.FAILED
 
-        finally:
-            # Capture the values while the buffers are still in scope
-            rh.stdout = stdout_new.getvalue()
-            rh.stderr = stderr_new.getvalue()
-
     finally:
-        # Guarantee the log handler is removed even if a catastrophic error occurs.
-        # (stdout and stderr are automatically restored when the `with` block exits)
-        root_logger.removeHandler(hdl)
-        # Restore the original logging level
-        root_logger.setLevel(original_level)
+        # Capture the values while the buffers are still in scope
+        rh.stdout = stdout_new.getvalue()
+        rh.stderr = stderr_new.getvalue()
 
         # Optional: clean up buffers from memory
         stdout_new.close()
@@ -194,8 +220,8 @@ class IBM_i_commands:
 
 
   def generate_ssh_cmd(stage: s.Stage, cmd: str) -> str:
-    cmd = cmd.replace('"', '\\"')
-    return f'ssh "{stage.host}" "{cmd}"'
+    # BatchMode: fail instead of waiting for a password
+    return f'ssh -o BatchMode=yes {shlex.quote(stage.host)} {shlex.quote(cmd)}'
 
 
 
@@ -204,7 +230,9 @@ class IBM_i_commands:
     if action.run_in_new_job:
       parameter = 'S'
 
-    return f'(cl -{parameter}v "{cmd}"; cl -v "dspjoblog")'
+    # The exit code of the command decides, not the one of dspjoblog.
+    # Not with `exit $rc`: a shell on IBM i can report -1 here, which isn't a valid value for `exit` in every shell.
+    return f'(cl -{parameter}v {shlex.quote(cmd)}; rc=$?; cl -v "dspjoblog"; [ "$rc" -eq 0 ])'
 
 
 
@@ -233,13 +261,27 @@ class IBM_i_commands:
       
       logging.debug(f"{cmd=}; {stage.build_dir=}; {action.cwd=}; {os.getcwd()=}")
 
-      s=subprocess.run(cmd, stdout=subprocess.PIPE, cwd=action.cwd or stage.build_dir, stderr=subprocess.PIPE, shell=True, check=False, executable='/bin/bash')
+      timeout = action.timeout_seconds if action.timeout_seconds is not None else constants.C_COMMAND_TIMEOUT_SECONDS
 
-      stdout = s.stdout
-      stderr = s.stderr
+      # In its own session, to be able to end the command together with its child processes
+      process = subprocess.Popen(cmd, stdout=subprocess.PIPE, cwd=action.cwd or stage.build_dir, stderr=subprocess.PIPE, shell=True, executable='/bin/bash', start_new_session=True)
 
-      stdout = stdout.decode('utf-8')
-      stderr = stderr.decode('utf-8')
+      timed_out = False
+
+      try:
+        stdout, stderr = process.communicate(timeout=timeout or None)
+
+      except subprocess.TimeoutExpired:
+        timed_out = True
+        os.killpg(process.pid, signal.SIGKILL)
+        stdout, stderr = process.communicate()
+
+      # Output of IBM i commands isn't always UTF-8. That must not fail the step or lose its output
+      stdout = stdout.decode('utf-8', errors='replace')
+      stderr = stderr.decode('utf-8', errors='replace')
+
+      if timed_out:
+        stderr += f"Command ended: timeout after {timeout} seconds\n"
 
       rh = run_history_data.create_new_run_history(action_id=action.id)
       
@@ -248,7 +290,7 @@ class IBM_i_commands:
 
       rh.status = Cmd_Status.FINISHED
 
-      if s.returncode != 0 or stderr != '':
+      if timed_out or process.returncode != 0 or (stderr != '' and action.fail_on_stderr is not False):
         rh.status = Cmd_Status.FAILED
 
       return rh

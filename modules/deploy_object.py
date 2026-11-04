@@ -42,6 +42,8 @@ class Deploy_Object:
     self.source: str|None = source
     self.source_only: bool = source_only
     self.properties: dict|None = properties
+    # Values in the database, see app_sqlite.update_changes
+    self.saved_values: dict|None = None
 
     if dict_data is not None and len(dict_data) > 0:
 
@@ -280,24 +282,26 @@ class Deploy_Object_List(list):
 
 
   def add_object_action_from_dict(self, dict: dict, workflow: workflow.Workflow):
+    """
+    Adds the commands of an entry of object_commands.json to its object.
+
+    Args:
+        dict (dict): lib, name, type (production library, not case sensitive) and actions.
+            An action without `stages` is added for all stages which have its processing step.
+    """
     
-    obj = self.get_prod_object(dict.get('lib', ''), dict.get('name', ''), dict.get('type', ''))
+    obj = self.get_prod_object(dict.get('lib', '').lower(), dict.get('name', '').lower(), dict.get('type', '').lower())
     
     if obj is None:
       return
     
     for a in dict['actions']:
 
-      if 'stages' not in a.keys() or a['stages'] is None or a['stages'] == []:
-        # Do it for all stages
-        a['stages'] = workflow.stages
+      action_dict = {k: v for k, v in a.items() if k != 'stages'}
+      stages = a.get('stages') or [stage['name'] for stage in workflow.stages if a.get('processing_step') in stage.get('processing_steps', [])]
 
-      stages = a['stages']
-      del a['stages']
-      
       for stage in stages:
-        action = da.Deploy_Action(dict_data=a, stage=stage['name'])
-        obj.actions.add_action(action)
+        obj.actions.add_action(da.Deploy_Action(dict_data=action_dict, stage=stage))
 
 
 

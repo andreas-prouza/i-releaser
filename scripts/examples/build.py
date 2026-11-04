@@ -22,6 +22,7 @@ from modules import deploy_action as da
 #    This is due to performance problems on IBM i
 #################################################################
 def create_compile_script(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
+  """Expects the scripts make/scripts/cleanup.sh, reset.sh and create_build_script.sh in the build directory"""
 
   build_dir = stage_obj.build_dir
   new_release = meta_file.release_branch
@@ -81,39 +82,6 @@ def load_object_list(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Dep
 
   meta_file.import_objects_from_config_file()
   meta_file.save()
-
-
-
-@DeprecationWarning
-def run_compile_script(meta_file: mf.Meta_File, stage_obj: s.Stage, action: da.Deploy_Action) -> None:
-  build_dir = stage_obj.build_dir
-  new_release = meta_file.release_branch
-  commit_msg='Build successfully'
-
-  run_sys_cmd(['pwd'], build_dir)
-
-  reset_git_repo(build_dir)
-  run_sys_cmd(['git', 'checkout', new_release], build_dir)
-  run_sys_cmd(['git', 'reset', '--hard', f'origin/{new_release}'], build_dir)
-  
-  error = None
-  try:
-    run_sys_cmd(['tmp/compile.sh'], build_dir)
-  except Exception as e:
-    error = e
-    logging.exception(e, stack_info=True)
-    commit_msg='Build failed'
-
-  update_compiled_object_status(meta_file, stage_obj, action)
-
-  # List all changed objects
-  run_sys_cmd(['find build/* -type f -daystart -mtime -1 | xargs ls -la'], build_dir, True)
-
-  git_save_changes(meta_file, stage_obj, action)
-
-  if error is not None:
-    raise error
-
 
 
 

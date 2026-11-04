@@ -37,6 +37,8 @@ class Stage:
     self.update_time: datetime.datetime = datetime.datetime.now()
     self.processing_users :list[str] = []
     self.run_immediate :bool|None = None
+    # Values in the database, see app_sqlite.update_changes
+    self.saved_values: dict|None = None
 
 
 
@@ -104,7 +106,11 @@ class Stage:
                 processing_step=all_step.get('processing_step', []), 
                 stage=self.name, 
                 check_error=all_step.get('check_error', True), 
-                execute_remote=all_step.get('execute_remote', None)
+                execute_remote=all_step.get('execute_remote', None),
+                fail_on_stderr=all_step.get('fail_on_stderr', None),
+                timeout_seconds=all_step.get('timeout_seconds', None),
+                parallel_group=all_step.get('parallel_group', None),
+                parallel=all_step.get('parallel', False)
           )
           break
 

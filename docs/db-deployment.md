@@ -80,6 +80,18 @@ If moving an object fails, the objects moved so far are moved back.
 * Generated columns other than identity columns (e.g. row change timestamps) get new values, unless they have an expression.
 
 
+## Security
+
+* The tables are configured in the custom data of the deployment, and their column expressions (`columns`) are SQL.
+  They run with the DB user of `etc/db_deployment.json`, which has far-reaching authorities (create libraries, move and journal files, grant authorities).
+* Whoever can set the custom data decides which production tables are replaced and which SQL runs:
+  * `start workflow`, if `$.db_deployment` is in the [`create_fields`](workflow.md#create-fields) of the workflow;
+  * `edit-custom-data`, if `$.db_deployment` is in the `editable_fields` of the workflow.
+* Library and table names have to be valid system names. They are checked before they are used in CL commands.
+* For workflows with a DB deployment, only give these permissions to people who may change the production database anyway.
+  Review the configuration before `db-prepare`: it logs the mapping of all columns.
+
+
 ## Check your system first
 
 `docs/db-deployment-spike.py` checks on your IBM i that the assumptions of the DB deployment hold. Run it once before the first deployment and after OS upgrades.
@@ -166,7 +178,7 @@ Every check must show `PASS` or `INFO`.
    }
    ```
 
-   Add `"$.db_deployment"` to the `editable_fields` of the workflow, so the tables can be configured in the web app.
+   Add `"$.db_deployment"` to the `editable_fields` of the workflow, so the tables can be configured in the web app (see [security](#security)).
 
 5. Your deployment step has to skip the objects which are replaced by the cut-over. Check each object:
 
@@ -179,9 +191,11 @@ Every check must show `PASS` or `INFO`.
 
    `check_deploy_object` raises an error if the object belongs to the DB deployment but the cut-over hasn't been done yet. This avoids that a large table is changed in place by accident.
 
-   Done in:
-   * `scripts/obi.py` (`perform_deployment`);
-   * `scripts/examples/backup_old_objects.py`, which doesn't save these tables: the old table is kept in the backup library by the cut-over.
+   The example scripts already do this:
+   * `save_objects.py` and `backup_old_objects.py` leave these tables out: the old table is kept in the backup library by the cut-over.
+   * `target_deployment.py` doesn't restore them.
+
+   Add the check to your own deployment scripts.
 
 6. Use the [processing service](processing-service.md) (`C_PROCESSING_MODE = 'service'`). The copy of a large table takes hours, and the service keeps it running when the web app restarts. If a run ends anyway, run the stage again: the copy continues where it has stopped.
 

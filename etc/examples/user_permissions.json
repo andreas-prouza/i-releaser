@@ -1,87 +1,13 @@
 {
   "users": {
-    "prouza": {
+    "myuser": {
       "roles": ["admin"],
       "permissions": {
-        "general": [
-          "read",
-          "start workflow",
-                "change check error",
-          "deploy"
-        ],
-        "workflows": {
-          "unit_test_permissions": {
-            "general": [
-              "deploy",
-              "read"
-            ],
-            "stages": {
-              "uat": [
-                "admin",
-                "cancel workflow",
-                "start workflow",
-                "read",
-                "deploy",
-                "4-eyes check",
-                "change check error",
-                "run"
-              ]
-            }
-          },
-          "simple_wf": {
-            "general": [
-              "cancel workflow",
-              "start workflow",
-              "read",
-              "deploy",
-              "4-eyes check",
-              "run"
-            ],
-            "stages": {
-              "starts": [
-                "admin",
-                "cancel workflow",
-                "start workflow",
-                "read",
-                "deploy",
-                "4-eyes check",
-                "change check error",
-                "run"
-              ]
-            }
-          }
-        }
+        "general": [],
+        "workflows": {}
       },
       "detailed_infos": {
-        "description": "",
-        "mail": "",
-        "extra": {}
-      }
-    },
-    "prouzat1": {
-      "roles": [],
-      "permissions": {
-        "general": [
-          "read",
-          "start workflow"
-        ],
-        "workflows": {
-          "unit_test_permissions": {
-            "general": [
-              "read"
-            ],
-            "stages": {
-              "uat": [
-                "4-eyes check",
-                "read",
-                "deploy"
-              ]
-            }
-          }
-        }
-      },
-      "detailed_infos": {
-        "description": "",
+        "description": "Replace this user by your IBM i user profile (lower case)",
         "mail": "",
         "extra": {}
       }
@@ -94,75 +20,10 @@
           "admin",
           "read",
           "start workflow",
-          "deploy",
           "run",
           "change check error",
-          "4-eyes check",
-          "cancel workflow"
-        ],
-        "workflows": {
-          "unit_test_permissions": {
-            "general": [
-              "read",
-              "start workflow",
-              "deploy",
-              "admin",
-              "cancel workflow",
-              "4-eyes check",
-              "change check error",
-              "run"
-            ],
-            "stages": {
-              "uat": [
-                "4-eyes check",
-                "admin",
-                "read",
-                "deploy",
-                "cancel workflow",
-                "start workflow",
-                "change check error",
-                "run"
-              ]
-            }
-          },
-          "unit_test_permissions_admin": {
-            "general": [
-              "read",
-              "start workflow",
-              "deploy",
-              "admin",
-              "cancel workflow",
-              "4-eyes check",
-              "change check error",
-              "run"
-            ],
-            "stages": {
-              "uat": [
-                "4-eyes check",
-                "admin",
-                "read",
-                "deploy",
-                "cancel workflow",
-                "start workflow",
-                "change check error",
-                "run"
-              ]
-            }
-          }
-        }
-      },
-      "detailed_infos": {
-        "description": "",
-        "mail": "",
-        "extra": {}
-      }
-    },
-    "user": {
-      "permissions": {
-        "general": [
-          "start workflow",
-          "run",
-          "change check error"
+          "cancel workflow",
+          "edit-custom-data"
         ],
         "workflows": {}
       },

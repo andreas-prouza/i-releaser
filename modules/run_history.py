@@ -30,6 +30,8 @@ class Run_History:
     self.stdout = stdout # Run in these stages
     self.stderr = stderr
     self.create_time = create_time
+    # Values in the database, see app_sqlite.update_changes
+    self.saved_values: dict|None = None
 
     if dict is not None and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
       for k, v in dict.items():
