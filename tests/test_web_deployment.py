@@ -398,6 +398,47 @@ def test_custom_data_size_is_limited(boss):
 
 
 #---------------------------------------------------------
+# compile-list-over-custom-data-limit
+#---------------------------------------------------------
+
+def get_build_list(sources: int=100) -> dict:
+    """Like the build list OBI sends: larger than the custom data limit"""
+
+    source = {'source': 'lib/qrpglesrc/pgm.rpgle.pgm', 'status': 'success', 'variables': {'TARGET_LIB': 'lib', 'OPTIONS': 'x' * 1000},
+              'cmds': [{'cmd': 'CRTBNDRPG ...', 'status': 'success', 'properties': {}}]}
+    return {'timestamp': '2026-11-05 17:39:23', 'git': {'commit': 'abc'}, 'compiles': [{'level': 0, 'sources': [source] * sources}]}
+
+
+def test_compile_list_is_stored_beside_the_custom_data(boss):
+
+    build_list = get_build_list()
+    assert len(json.dumps(build_list)) > 64 * 1024
+
+    deployment = boss.create_deployment('hidden_wf', {'ticket': 'ABC-1', **build_list})
+    data = boss.get_deployment(deployment)
+
+    assert data['custom_data'] == {'ticket': 'ABC-1', 'timestamp': build_list['timestamp'], 'git': build_list['git']}
+
+    with open(os.path.join(data['general']['meta_dir'], 'compile-list.json'), encoding='utf-8') as f:
+        assert json.load(f) == {'compiles': build_list['compiles']}
+
+
+def test_custom_data_beside_the_compile_list_is_still_limited(boss):
+    assert boss.post_json('/api/start_workflow/hidden_wf', {'ticket': 'x' * 70000, 'compiles': []})[0] == 422
+
+
+def test_invalid_compile_list_creates_no_deployment(boss):
+
+    before = len(json.loads(boss.get('/api/list_deployments/hidden')[2]))
+    status, data = boss.post_json('/api/start_workflow/hidden_wf', {'ticket': 'x', 'compiles': 'not a list'})
+
+    assert status == 422
+    assert 'compiles' in data['message']
+    assert len(json.loads(boss.get('/api/list_deployments/hidden')[2])) == before
+
+
+
+#---------------------------------------------------------
 # missing-permission-checks, api-consistency
 #---------------------------------------------------------
 

@@ -33,6 +33,9 @@ C_DB_BACKUP_COUNT = 5
 # Maximum size of the custom data of a deployment (bytes of its JSON)
 C_MAX_CUSTOM_DATA_SIZE = 64 * 1024
 
+# Maximum size of the compile list of a deployment (bytes of its JSON), see docs/webapi.md#create-a-deployment
+C_MAX_COMPILE_LIST_SIZE = 32 * 1024 * 1024
+
 # Default timeout of PASE and QSYS commands in seconds. 0: no timeout
 C_COMMAND_TIMEOUT_SECONDS = 0
 

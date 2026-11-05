@@ -325,6 +325,7 @@ Custom data can be set when a deployment is created ([Web API](webapi.md#create-
 
 * A listed path allows the field and everything below it.
 * Requests with other fields are rejected with status 422. No deployment is created.
+* `compiles` doesn't have to be listed: it's the [compile list](webapi.md#create-a-deployment), not custom data.
 * Without `create_fields` all fields are allowed, except `db_deployment`: the [DB deployment](db-deployment.md#security) configuration can only be set if it's listed in `create_fields`, or later with `edit-custom-data`.
 
 

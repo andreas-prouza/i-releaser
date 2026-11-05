@@ -27,6 +27,7 @@ Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2**
 | P1 | [Command placeholders: user input in shell commands, braces break commands](command-placeholders-with-user-input.md) | security / bug | code review | finished |
 | P1 | [Missing permission checks](missing-permission-checks.md) | security | code review | finished |
 | P1 | [Any custom data can be set when a deployment is created](custom-data-on-create-unrestricted.md) | security | code review | finished |
+| P1 | [OBI can't start a workflow: build list larger than the custom data limit](compile-list-over-custom-data-limit.md) | bug (regression) | reproduced | finished |
 | P1 | [DB deployment: names from custom data in CL commands unchecked](db-deployment-name-validation.md) | security | code review | finished |
 | P1 | [API tokens are weak](weak-api-tokens.md) | security | code review | finished |
 | P1 | [Session handling: unchecked session id, cookie flags, cleanup](session-store-hardening.md) | security | partly reproduced | finished |

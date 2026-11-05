@@ -149,6 +149,7 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
   Prefer environment variables for passwords and tokens (`password_env` of the DB deployment, `I_RELEASER_JIRA_TOKEN`, `I_RELEASER_JIRA_CLIENT_SECRET`).
 * **Treat custom data as user input.** Users with the permission `start workflow` or `edit-custom-data` can set it.
   Limit the fields with `create_fields` of the [workflow](workflow.md#create-fields).
+  The same applies to the [compile list](webapi.md#create-a-deployment) (`compiles`), which every user with `start workflow` can send, to any workflow.
   [Placeholders](workflow.md#placeholders) quote or check its values, but scripts have to take care of them too.
   Only give these permissions to trusted users for workflows with a [DB deployment](db-deployment.md#security) (its column expressions are SQL).
 * **Run the dependency check** regularly: `.venv/bin/pip-audit -r requirements.txt`.

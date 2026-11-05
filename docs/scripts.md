@@ -46,9 +46,22 @@ Useful attributes:
 
 | Object | Attributes |
 |---|---|
-| `meta_file` (the deployment) | `id`, `project`, `deploy_version`, `status`, `commit`, `release_branch`, `custom_data`, `meta_dir` (directory for files of this deployment), `main_deploy_lib`, `backup_deploy_lib`, `remote_deploy_lib`, `deploy_objects`, `workflow`, `save()` |
+| `meta_file` (the deployment) | `id`, `project`, `deploy_version`, `status`, `commit`, `release_branch`, `custom_data`, `meta_dir` (directory for files of this deployment), `main_deploy_lib`, `backup_deploy_lib`, `remote_deploy_lib`, `deploy_objects`, `workflow`, `save()`, `get_compile_list()` |
 | `stage_obj` | `name`, `host`, `build_dir`, `remote_dir`, `execute_remote`, `processing_steps`, `lib_mapping` |
 | `action` (the step) | `processing_step`, `check_error`, `sub_actions` |
+
+### Compile list
+
+`meta_file.get_compile_list()` returns the compile list the deployment was [created](webapi.md#create-a-deployment) with (`compiles` of an OBI build list), or `None`.
+
+```python
+for level in meta_file.get_compile_list() or []:
+    for source in level['sources']:
+        ...
+```
+
+* It's stored in `compile-list.json` in `meta_dir`. Deployments created before have it in `custom_data['compiles']`, `get_compile_list()` returns that too.
+* Its values come from the user who created the deployment. Check them like custom data before you use them in commands or paths.
 
 
 ## Run commands from a script

@@ -950,6 +950,56 @@ class Meta_File:
 
 
 
+    # Compile list (`compiles` of an OBI build list), stored in the meta directory, see docs/webapi.md#create-a-deployment
+    COMPILE_LIST_FILE = 'compile-list.json'
+
+
+    @staticmethod
+    def check_compile_list(compiles) -> None:
+      """
+      Raises:
+          errors.Invalid_Input_Error: If it's not a list or too large
+      """
+
+      if not isinstance(compiles, list):
+        raise errors.Invalid_Input_Error("The compile list ('compiles') has to be a list")
+
+      size = len(json.dumps(compiles))
+      if size > constants.C_MAX_COMPILE_LIST_SIZE:
+        raise errors.Invalid_Input_Error(f"The compile list is {size} bytes, the limit is {constants.C_MAX_COMPILE_LIST_SIZE} bytes")
+
+
+
+    def get_compile_list_file(self) -> str:
+      return os.path.join(self.meta_dir, Meta_File.COMPILE_LIST_FILE)
+
+
+
+    def save_compile_list(self, compiles: list) -> None:
+
+      Meta_File.check_compile_list(compiles)
+
+      with open(self.get_compile_list_file(), 'w', encoding='utf-8') as f:
+        json.dump({'compiles': compiles}, f, ensure_ascii=False)
+
+
+
+    def get_compile_list(self) -> list|None:
+      """
+      The compile list of the deployment, None if it has none.
+      Deployments created before it was stored separately have it in custom data (`compiles`).
+      """
+
+      file = self.get_compile_list_file()
+
+      if os.path.isfile(file):
+        with open(file, encoding='utf-8') as f:
+          return json.load(f)['compiles']
+
+      return (self.custom_data or {}).get('compiles')
+
+
+
     # Load meta file based on its version number
     @staticmethod
     #@check_user_permission(permissions.PermissionAction.READ)
