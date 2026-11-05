@@ -570,16 +570,16 @@ class Meta_File:
     #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def start_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> dict:
       """Runs the given stage in the background.
-      Depending on C_PROCESSING_MODE by the processing service or in a thread of the current process.
+      Depending on the processing mode (see processing_settings) by the processing service or in a thread of the current process.
 
       Returns:
           dict: `mode` and for the processing service also `job_id` and `service_running`
       """
 
-      if constants.C_PROCESSING_MODE not in ['thread', 'service']:
-        raise Exception(f"C_PROCESSING_MODE '{constants.C_PROCESSING_MODE}' is invalid. Valid modes are: 'thread', 'service'")
+      # Read for each start: the mode can be changed in the web app
+      from modules import processing_settings
 
-      if constants.C_PROCESSING_MODE == 'thread':
+      if processing_settings.get_processing_mode() == 'thread':
         # Stages which have been queued before the mode was changed
         self.check_no_active_job(stage_id)
         self.run_current_stage_as_thread(stage_id, processing_step, continue_run)

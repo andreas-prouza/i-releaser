@@ -25,4 +25,12 @@ jobs:
         with:
           python-version: '3.13'
       - run: pip install pip-audit
-      - run: pip-audit -r requirements.txt
+      # Ignored: starlette 0.50 is the newest with pydantic 1 (pydantic 2 doesn't build on IBM i).
+      # Reason per advisory: docs/technik.md#known-vulnerabilities
+      - run: >
+          pip-audit -r requirements.txt
+          --ignore-vuln PYSEC-2026-161
+          --ignore-vuln PYSEC-2026-248
+          --ignore-vuln PYSEC-2026-249
+          --ignore-vuln PYSEC-2026-2280
+          --ignore-vuln PYSEC-2026-2281

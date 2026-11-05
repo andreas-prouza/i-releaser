@@ -35,15 +35,18 @@ shows the progress as usual  <--------  status of stage, steps and logs
 
 ## Set up
 
-1. Switch the mode in `etc/settings.py`
+In the web app (permission `admin`): `Settings` &rarr; `General` &rarr; `Processing of stages`.
+Change the mode and start the service there. No restart is necessary.
+
+Or on the command line:
+
+1. Switch the mode in `etc/settings.py` and restart the web app
 
    ```python
    C_PROCESSING_MODE = 'service'
    ```
 
-2. Restart the web app
-
-3. Start the service
+2. Start the service
 
    ```bash
    [andreas@idev i-releaser]$ cd serviceapp
@@ -54,7 +57,11 @@ shows the progress as usual  <--------  status of stage, steps and logs
 
    Also available: `./service stop`, `./service status`, `./service restart`
 
-Run the service with the same user as the web app. Both use the same database, logs and meta directories.
+Run the service with the same user as the web app (the web app starts it with its own user).
+A service started in the web app keeps running when the web app ends.
+
+The mode changed in the web app is stored in `etc/web_settings.json` and overrides `etc/settings.py`.
+The settings page shows where the current mode comes from. Both use the same database, logs and meta directories.
 
 The current state is shown in the web app: `Settings` &rarr; `General` &rarr; `Processing of stages`.
 There you also find the last jobs with their status and error.
@@ -72,6 +79,7 @@ The defaults are in `etc/constants.py`. Put your values into `etc/settings.py`.
 | `C_SERVICE_HEARTBEAT_INTERVAL` | `10` | Seconds between two signs of life of a running job. |
 | `C_SERVICE_HEARTBEAT_TIMEOUT` | `60` | Seconds without a sign of life until a job is seen as dead. |
 | `C_SERVICE_SOCKET` | `var/processing-service.sock` | Socket for the wake up. |
+| `C_WEB_SETTINGS_FILE` | `etc/web_settings.json` | Processing mode changed in the web app. Overrides `C_PROCESSING_MODE`. |
 | `C_SERVICE_PID_FILE` | `var/processing-service.pid` | Process id of the service. If you change it, also change it in `serviceapp/service`. |
 
 The service doesn't start if the database is older than the code: start the web app first after an update, it updates the database.
@@ -97,4 +105,4 @@ The service doesn't start if the database is older than the code: start the web 
 * Scripts are loaded when the service starts. Restart the service after you changed a file in `scripts/` (like you have to restart the web app in mode `thread`).
 * [Hooks](workflow.md#hooks) which are triggered by the run of a stage (`stage_started`, `stage_finished`, `stage_failed`, `deployment_finished`) run in the process of the job. The other hooks still run in the web app.
 * Logs of the service: `log/service.log` (and `log/service_nohup.log` for errors during the start). The logs of a stage are stored with the deployment as usual.
-* Switching back to `'thread'`: stages which are still in the queue are only run by the service. Let the service finish them or remove them from the queue first.
+* Switching back to `'thread'`: stages which are still in the queue are only run by the service. Let the service finish them or remove them from the queue first (the web app doesn't switch while stages are queued).

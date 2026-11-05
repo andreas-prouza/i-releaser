@@ -1,7 +1,8 @@
 pyodbc
 
 pydantic==1.10.21
-fastapi==0.115.8
+fastapi==0.125.0
+starlette==0.50.0
 gunicorn==23.0.0
 uvicorn==0.34.0
 requests
@@ -9,5 +10,6 @@ jsonschema<4.18.0
 python-multipart
 itsdangerous
 watchdog
+
 
 jinja2

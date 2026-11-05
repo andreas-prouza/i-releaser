@@ -1,5 +1,5 @@
 """Security of the web app, tested against the running application"""
-import json, os, re, subprocess, sys, threading, time
+import http.client, json, os, re, subprocess, sys, threading, time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -410,3 +410,67 @@ def test_failed_logins_are_blocked():
 
     finally:
         server.close()
+
+
+
+#---------------------------------------------------------
+# host-header-skips-login-check
+#---------------------------------------------------------
+
+HOSTS = ['x/static/', 'x/static', 'x/favicon.ico?', 'x/logout?']
+
+
+@pytest.mark.parametrize('host', HOSTS)
+def test_host_header_does_not_skip_the_login_check(server, host):
+
+    status, _, text = server.client().get('/api/get_workflows', headers={'Host': host})
+
+    assert status == 401, text
+
+
+@pytest.mark.parametrize('host', ['x/y', 'x/static/'])
+def test_host_header_does_not_allow_actions_with_get(server, host):
+
+    boss = server.client('boss')
+    deployment = boss.create_deployment('hidden_wf')
+
+    assert boss.get(f"/api/cancel_deployment/{deployment}", headers={'Host': host})[0] == 405
+    assert boss.get_deployment(deployment)['general']['status'] == 'ready'
+
+
+
+#---------------------------------------------------------
+# dependency-vulnerabilities (PYSEC-2026-249: no limit for urlencoded forms)
+#---------------------------------------------------------
+
+def test_large_login_form_is_not_read(server):
+
+    client = server.client()
+    form = {'user': 'boss', 'password': 'x', 'filler': 'a' * 5000}
+
+    status, _, text = client.request('POST', '/', form=form)
+    assert status == 413, text
+    assert client.get('/api/get_workflows')[0] == 401
+
+
+
+def test_login_form_without_length_is_not_read(server):
+
+    connection = http.client.HTTPConnection('127.0.0.1', server.port, timeout=30)
+    try:
+        connection.putrequest('POST', '/')
+        connection.putheader('Content-Type', 'application/x-www-form-urlencoded')
+        connection.putheader('Transfer-Encoding', 'chunked')
+        connection.endheaders()
+        connection.send(b'f\r\nuser=boss&passw\r\n8\r\nord=x&a=\r\n0\r\n\r\n')
+        assert connection.getresponse().status == 411
+    finally:
+        connection.close()
+
+
+
+def test_login_still_works(server):
+
+    client = server.client()
+    assert client.login('boss') in (200, 302, 303)
+    assert client.get('/api/get_workflows')[0] == 200

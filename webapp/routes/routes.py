@@ -13,7 +13,7 @@ from etc import constants
 
 from modules import action_type, current_user, errors, files, permissions, version
 from modules import deploy_version, meta_file
-from modules import workflow, processing_service
+from modules import workflow, processing_service, processing_settings
 from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data, processing_job_data
 from modules.deploy_object import Deploy_Object
 
@@ -290,7 +290,8 @@ def show_settings(request: Request):
         port='????',
         path=Path(os.path.dirname(__file__)),
         keys=keys,
-        processing_mode=constants.C_PROCESSING_MODE,
+        processing_mode=processing_settings.get_processing_mode(),
+        processing_mode_source=processing_settings.get_processing_mode_source(),
         processing_service_running=processing_service.notify(),
         processing_jobs=[job.get_dict() for job in reversed(processing_job_data.get_jobs(limit=SETTINGS_NUMBER_OF_JOBS))]
         )
@@ -425,6 +426,28 @@ def cancel_job(request: Request, job_id: int):
         raise errors.Conflict_Error(f"Processing job {job_id} is not in the queue anymore.")
 
     return http_functions.get_json_response({'status': 'success'})
+
+
+
+def set_processing_mode(request: Request, mode: str):
+    """Changes the processing mode for the next stages, without a restart (stored in etc/web_settings.json)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    processing_settings.set_processing_mode(mode, current_user.get_user())
+
+    return http_functions.get_json_response({'status': 'success', 'mode': mode, 'service_running': processing_service.notify()})
+
+
+
+def control_processing_service(request: Request, action: str):
+    """Starts, stops or restarts the processing service. Running jobs are not affected."""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    output = processing_settings.control_service(action, current_user.get_user())
+
+    return http_functions.get_json_response({'status': 'success', 'output': output, 'service_running': processing_service.notify()})
 
 
 

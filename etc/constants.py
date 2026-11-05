@@ -51,6 +51,9 @@ C_LOGIN_BLOCK_MINUTES = 15
 # 'service': A stage runs in a job of the processing service (see docs/processing-service.md)
 C_PROCESSING_MODE = 'thread'
 
+# The mode changed in the web app (Settings -> General) is stored here and overrides C_PROCESSING_MODE
+C_WEB_SETTINGS_FILE = f'{C_LOCAL_BASE_DIR}/etc/web_settings.json'
+
 C_SERVICE_SOCKET = f'{C_LOCAL_BASE_DIR}/var/processing-service.sock'
 C_SERVICE_PID_FILE = f'{C_LOCAL_BASE_DIR}/var/processing-service.pid'
 

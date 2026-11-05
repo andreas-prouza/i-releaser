@@ -17,6 +17,7 @@
 * Database uses WAL mode: back up `var/app.sqlite-wal` and `var/app.sqlite-shm` together with `var/app.sqlite`
 * Deployment history logs are stored again
 * [Processing service](docs/processing-service.md): stages keep running if the web server ends
+* Processing mode and processing service in the web app (see [processing service](docs/processing-service.md#set-up))
 * [Reset the last finished stage](docs/workflow.md#reset-the-last-finished-stage)
 * [DB deployment](docs/db-deployment.md): deploy changes of large tables with minimal downtime
 * [Documentation](README.md#documentation) restructured
@@ -30,6 +31,7 @@
 * Local settings in `etc/settings.py` (see [configuration files](docs/installation.md#configuration-files))
 * Web app: requests don't block each other
 * [Tests](docs/technik.md#tests) in `tests/`, run on GitHub
+* FastAPI 0.125, `starlette` 0.50 (see [FastAPI and pydantic](docs/technik.md#fastapi-and-pydantic))
 * Removed: `deployment.py`, `stage_commands.json`, `flask_config.py`, `gen_commands.py`
 
 ## Before you update to 3.1.0

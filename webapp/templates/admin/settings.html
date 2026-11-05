@@ -100,7 +100,7 @@ Settings
             <button type="button" class="tablinks" onclick="openTab(event, 'Permission')">Permission</button>
         </div>
 
-        <div id="General" class="tab-content"  style="display: none;">
+        <div id="General" class="tab-content" style="display: block;">
 
             <h3>General</h3>
 
@@ -126,7 +126,15 @@ Settings
             <h3>Processing of stages</h3>
 
             <table class="table table-striped table-bordered">
-                <tr><th>Mode</th><td><code>{{ processing_mode }}</code></td></tr>
+                <tr><th>Mode</th><td>
+                    <select id="processing_mode" class="form-select form-select-sm d-inline-block w-auto">
+                        {% for mode in ['thread', 'service'] %}
+                            <option value="{{ mode }}" {% if mode == processing_mode %}selected{% endif %}>{{ mode }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="set_processing_mode()">Change</button>
+                    <small class="text-muted">from {{ processing_mode_source }}</small>
+                </td></tr>
                 <tr><th>Processing service</th><td>
                     {% if processing_service_running %}
                         <button type="button" class="btn btn-sm btn-success">running</button>
@@ -136,6 +144,11 @@ Settings
                     {% else %}
                         <button type="button" class="btn btn-sm btn-secondary">not running</button>
                     {% endif %}
+                    &nbsp;
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="control_processing_service('start')" {% if processing_service_running %}disabled{% endif %}>Start</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="control_processing_service('stop')" {% if not processing_service_running %}disabled{% endif %}>Stop</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="control_processing_service('restart')">Restart</button>
+                    <small class="text-muted">Running stages are not affected.</small>
                 </td></tr>
                 <tr><th>Jobs</th><td>
                     <table class="table table-striped table-bordered">
@@ -159,7 +172,7 @@ Settings
             </table>
         </div>
 
-        <div id="Permission" class="tab-content" style="display: block;">
+        <div id="Permission" class="tab-content" style="display: none;">
 
             <h3>Role</h3>
 
@@ -356,6 +369,58 @@ Settings
   
 {% block scripts %}
 <script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
+
+<script>
+  // Processing of stages (see docs/processing-service.md)
+
+  function show_processing_result(title, data, ok) {
+    const pre = document.createElement('pre');
+    pre.style.textAlign = 'left';
+    pre.textContent = data.output || data.message || '';
+    Swal.fire({title: title, html: pre, icon: ok ? 'success' : 'error'}).then(() => {
+      if (ok) location.reload();
+    });
+  }
+
+  async function processing_request(url, title, show_success=true) {
+    try {
+      const response = await http_post(url);
+      const data = await response.json();
+      if (!response.ok || show_success) show_processing_result(title, data, response.ok);
+      return response.ok ? data : null;
+    } catch (error) {
+      Swal.fire('Error', error.message, 'error');
+      return null;
+    }
+  }
+
+  async function set_processing_mode() {
+    const mode = document.getElementById('processing_mode').value;
+    const title = `Processing mode: ${mode}`;
+    const data = await processing_request(`/api/set_processing_mode/${mode}`, title, false);
+    if (!data) return;
+    if (mode !== 'service' || data.service_running) {
+      show_processing_result(title, {output: `Next stages are run in mode ${mode}.`}, true);
+    } else {
+      Swal.fire({
+        title: 'Processing service is not running',
+        text: 'Stages stay in the queue until the service has been started.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Start',
+        cancelButtonText: 'Later'
+      }).then((result) => {
+        if (result.isConfirmed) control_processing_service('start');
+        else location.reload();
+      });
+    }
+  }
+
+  function control_processing_service(action) {
+    Swal.fire({title: `Processing service: ${action} ...`, allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+    processing_request(`/api/processing_service/${action}`, `Processing service: ${action}`);
+  }
+</script>
 
 <script>
   function openTab(evt, tabName) {

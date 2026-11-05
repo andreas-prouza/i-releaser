@@ -134,6 +134,13 @@ Actions which change data are shown with `POST`. With an API token they also wor
 | `GET` | `/api/get_activity_log/{id}` | `read` | Log of one run of a stage (`run_history[].id` of the deployment) |
 | `GET` | `/api/show_processing_history/{meta_file_id}` | `read` | Who did what and when |
 
+### Processing service
+
+| Method | Path | Permission | Description |
+|---|---|---|---|
+| `POST` | `/api/set_processing_mode/{mode}` | `admin` | `thread` or `service` for the next stages, see [processing service](processing-service.md#set-up). `409` while stages wait in the queue and `mode` is `thread`. |
+| `POST` | `/api/processing_service/{action}` | `admin` | `start`, `stop` or `restart` the processing service: `{"output": "...", "service_running": true}` |
+
 ### Users and permissions
 
 | Method | Path | Permission | Description |
