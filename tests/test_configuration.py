@@ -436,6 +436,57 @@ class TestCustomData(unittest.TestCase):
 
 
 
+class TestCompileList(Temp_Database):
+
+    # `compiles` doesn't have to be listed: it isn't custom data
+    WORKFLOW = {**VALID_WORKFLOW, 'create_fields': ['$.ticket']}
+    COMPILES = [{'level': 0, 'sources': [{'source': 'lib/qrpglesrc/pgm.rpgle.pgm', 'absolute_path': '/home/ä/src/pgm.rpgle'}]}]
+
+
+    def test_stored_in_the_meta_directory(self):
+
+        mf = meta_file_data.create_new_meta_file('valid_wf', custom_data={'ticket': 'A'}, compiles=self.COMPILES)
+
+        self.assertTrue(os.path.isfile(os.path.join(mf.meta_dir, 'compile-list.json')))
+        loaded = meta_file_data.get_meta_file_by_id(mf.id)
+        self.assertEqual(loaded.get_compile_list(), self.COMPILES)
+        self.assertEqual(loaded.custom_data, {'ticket': 'A'})
+
+
+    def test_older_deployments_have_it_in_custom_data(self):
+
+        mf = meta_file_data.create_new_meta_file('valid_wf')
+        self.assertIsNone(mf.get_compile_list())
+
+        mf.custom_data = {'compiles': self.COMPILES}
+        self.assertEqual(mf.get_compile_list(), self.COMPILES)
+
+
+    def test_hook_on_creation_sees_it(self):
+
+        seen = []
+        with patch.object(hooks, 'emit', side_effect=lambda event, mf, *args, **kwargs: seen.append(mf.get_compile_list())):
+            meta_file_data.create_new_meta_file('valid_wf', compiles=self.COMPILES)
+
+        self.assertEqual(seen, [self.COMPILES])
+
+
+    def test_size_limit(self):
+
+        with patch.object(constants, 'C_MAX_COMPILE_LIST_SIZE', 10):
+            with self.assertRaises(errors.Invalid_Input_Error) as e:
+                meta_file_data.create_new_meta_file('valid_wf', compiles=self.COMPILES)
+
+        self.assertIn('limit is 10 bytes', str(e.exception))
+
+
+    def test_has_to_be_a_list(self):
+
+        with self.assertRaises(errors.Invalid_Input_Error):
+            meta_file_data.create_new_meta_file('valid_wf', compiles={'level': 0})
+
+
+
 class TestTemplates(unittest.TestCase):
 
 

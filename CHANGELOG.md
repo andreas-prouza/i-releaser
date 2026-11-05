@@ -25,6 +25,7 @@
 * Steps: `fail_on_stderr`, `timeout_seconds`, correct exit code of `QSYS` steps, object commands are run (see [step actions](docs/workflow.md#step-actions))
 * [Parallel steps](docs/workflow.md#parallel-steps)
 * Workflows: [`create_fields`](docs/workflow.md#create-fields), one invalid workflow file doesn't stop the others
+* [Compile list](docs/webapi.md#create-a-deployment): `compiles` of the OBI build list is stored beside the custom data, so large builds aren't rejected by its 64 KB limit. Scripts read it with [`meta_file.get_compile_list()`](docs/scripts.md#compile-list)
 * [Backup of the database before updates](docs/installation.md#backups-before-updates)
 * Web API: [consistent status codes and errors](docs/webapi.md#responses-and-errors)
 * Local settings in `etc/settings.py` (see [configuration files](docs/installation.md#configuration-files))

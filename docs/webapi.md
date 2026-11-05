@@ -164,6 +164,17 @@ Three endpoints create a deployment. They all:
 
 The fields can be limited with [`create_fields`](workflow.md#create-fields) of the workflow. Other fields, or more than 64 KB, are rejected with status 422.
 
+Except the field `compiles`: it's the **compile list** of the deployment (e.g. of an OBI build list), not custom data.
+
+```json
+{"timestamp": "2026-11-05 17:39:23", "git": {...}, "compiles": [{"level": 0, "sources": [...]}]}
+```
+
+* `timestamp` and `git` become custom data, `compiles` is stored in `compile-list.json` in the meta directory of the deployment.
+* It has to be a list and can be up to `C_MAX_COMPILE_LIST_SIZE` (32 MB). Otherwise the request fails with status 422.
+* `create_fields` doesn't have to list it.
+* Scripts read it with [`meta_file.get_compile_list()`](scripts.md#compile-list).
+
 With an API token also as `GET /api/start_workflow/{wf_name}?ticket=ABC-1`: the query parameters become the custom data (as text). Deprecated.
 
 **`POST /api/create_deployment/{wf_name}/{commit}/{obj_list}`**: no custom data, but:

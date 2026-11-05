@@ -23,6 +23,7 @@
 | Step (action) | The command of a processing step in a stage, with its status and log. Scripts may add sub-steps, e.g. one `CRTSAVF` per library. |
 | Deploy object | An object of the deployment (production library, name, type, attribute). Imported from an [object list](workflow.md#object-list). |
 | Custom data | Any JSON you store with a deployment, e.g. a ticket number. Set when the deployment is created; users can [edit](workflow.md#editable-custom-fields) the fields the workflow allows. |
+| Compile list | The `compiles` of an OBI build list, sent when the deployment is [created](webapi.md#create-a-deployment). Stored beside the custom data, read by scripts like `obi.py` to create the deploy objects. |
 
 
 ## Life of a deployment

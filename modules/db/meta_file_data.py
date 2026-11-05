@@ -19,13 +19,21 @@ from modules.db import stage_data, deploy_object_data, processing_job_data
 
 
 
-def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_data: dict|None=None) -> 'Meta_File':
-    """Creates a new Meta_File instance and saves it to the database."""
+def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_data: dict|None=None, compiles: list|None=None) -> 'Meta_File':
+    """
+    Creates a new Meta_File instance and saves it to the database.
+
+    Args:
+        compiles: Compile list (`compiles` of an OBI build list), stored in the meta directory, not in the custom data
+    """
     workflow: wf.Workflow = wf.Workflow(name=workflow_name)
     workflow.check_custom_data(custom_data)
 
     if object_list is not None:
         workflow.check_object_list(object_list)
+
+    if compiles is not None:
+        mf.Meta_File.check_compile_list(compiles)
 
     wf_s = workflow.stages
     #s.Stage.get_stage_from_workflow
@@ -41,6 +49,10 @@ def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_
         deploy_version=deploy_version['version'],
         parallel_deployment_execution_allowed=workflow.parallel_deployment_execution_allowed,
     )
+
+    # Before the deployment exists: hooks and stages which run immediately can use it
+    if compiles is not None:
+        meta_file.save_compile_list(compiles)
 
     add_meta_file(meta_file)
     meta_file.activate_history()

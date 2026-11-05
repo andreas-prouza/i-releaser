@@ -539,13 +539,13 @@ def create_deployment(request: Request, wf_name: str, commit: str|None=None, obj
 
 
 
-def create_deployment_with_custom_data(wf_name: str, custom_data: dict):
+def create_deployment_with_custom_data(wf_name: str, custom_data: dict, compiles: list|None=None):
 
-    logging.info(f"Starting workflow {wf_name} with {len(custom_data)} custom data fields")
+    logging.info(f"Starting workflow {wf_name} with {len(custom_data)} custom data fields{'' if compiles is None else ' and a compile list'}")
 
     permission_config.check_user_permission(permissions.PermissionAction.START_WORKFLOW, wf_name)
 
-    mf = meta_file_data.create_new_meta_file(workflow_name=wf_name, custom_data=custom_data)
+    mf = meta_file_data.create_new_meta_file(workflow_name=wf_name, custom_data=custom_data, compiles=compiles)
     processing_user_data.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
 
     mf.set_status(meta_file.Meta_file_status.READY)
@@ -566,10 +566,13 @@ def start_workflow(request: Request, wf_name: str):
 
 def start_workflow_post(request: Request, wf_name: str, custom_data: dict = Body(default={})):
     """
-    Starts a workflow. The body is its custom data.
+    Starts a workflow. The body is its custom data, except `compiles`: the compile list (e.g. of an OBI build list), stored separately.
     """
 
-    return create_deployment_with_custom_data(wf_name, custom_data)
+    custom_data = dict(custom_data)
+    compiles = custom_data.pop('compiles', None)
+
+    return create_deployment_with_custom_data(wf_name, custom_data, compiles)
 
 
 
