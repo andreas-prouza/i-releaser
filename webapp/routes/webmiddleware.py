@@ -20,6 +20,17 @@ ACTIONS_WITHOUT_GET = re.compile(r'^/api/(run_stage|cancel_deployment|cancel_job
 
 SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
 
+# The login form is read before the user is known. Starlette doesn't limit urlencoded forms (PYSEC-2026-249, fixed in starlette 1.3.1),
+# so the size is checked here. User and password are much smaller.
+LOGIN_FORM_MAX_BYTES = 4096
+LOGIN_FORM_MAX_FIELDS = 10
+
+
+
+def get_path(request: Request) -> str:
+    """The path the router uses. `request.url.path` is built with the Host header, which the client chooses (e.g. `Host: x/static/`)."""
+    return request.scope['path']
+
 
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
@@ -36,7 +47,7 @@ class WebMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
 
-        logging.debug(f'Now call handler for {request.url.path}')
+        logging.debug(f'Now call handler for {get_path(request)}')
         response = None
 
         current_user.set_user(None)
@@ -68,12 +79,12 @@ class WebMiddleware(BaseHTTPMiddleware):
         """Errors for the caller are shown. For all others the caller only gets an id to find the details in the log."""
 
         if isinstance(e, errors.App_Error):
-            logging.info(f"{request.method} {request.url.path}: {type(e).__name__}: {e}")
+            logging.info(f"{request.method} {get_path(request)}: {type(e).__name__}: {e}")
             message = str(e)
             status_code = e.status_code
         else:
             error_id = uuid.uuid4().hex[:8]
-            logging.exception(f"Error {error_id} in {request.method} {request.url.path}: {e}", exc_info=e)
+            logging.exception(f"Error {error_id} in {request.method} {get_path(request)}: {e}", exc_info=e)
             message = f"An unexpected error occurred. Error id: {error_id}"
             status_code = 500
 
@@ -89,7 +100,7 @@ class WebMiddleware(BaseHTTPMiddleware):
 
     def wants_html(self, request: Request) -> bool:
 
-        if request.url.path.startswith('/api/'):
+        if get_path(request).startswith('/api/'):
             return False
 
         accept: str = request.headers.get("accept") or ""
@@ -125,8 +136,8 @@ class WebMiddleware(BaseHTTPMiddleware):
     def check_session_request(self, request: Request) -> JSONResponse | None:
         """Requests with a session cookie can be triggered by other web sites (CSRF)"""
 
-        if request.method == 'GET' and ACTIONS_WITHOUT_GET.match(request.url.path):
-            return http_functions.get_json_response_error(f"Use POST for {request.url.path}", status=405)
+        if request.method == 'GET' and ACTIONS_WITHOUT_GET.match(get_path(request)):
+            return http_functions.get_json_response_error(f"Use POST for {get_path(request)}", status=405)
 
         if request.method not in SAFE_METHODS and not self.is_same_origin(request):
             return http_functions.get_json_response_error("Request from another origin is not allowed", status=403)
@@ -135,11 +146,26 @@ class WebMiddleware(BaseHTTPMiddleware):
 
 
 
+    def check_login_form_size(self, request: Request) -> JSONResponse | None:
+        """The body of a request without login is only read if its size is known and small (the server reads no more than `Content-Length`)"""
+
+        length = request.headers.get('content-length', '')
+
+        if not length.isdigit():
+            return http_functions.get_json_response_error('Content-Length is required', status=411)
+
+        if int(length) > LOGIN_FORM_MAX_BYTES:
+            return http_functions.get_json_response_error('Request too large', status=413)
+
+        return None
+
+
+
     async def check_session(self, request: Request) -> None | JSONResponse | HTMLResponse | RedirectResponse:
 
-        logging.debug(request.url.path)
+        path = get_path(request)
 
-        if '/static' == request.url.path[:len('/static')] or '/favicon.ico' == request.url.path:
+        if path.startswith('/static/') or path == '/favicon.ico':
             logging.debug("No need to check session. Only media!")
             return
         
@@ -148,7 +174,7 @@ class WebMiddleware(BaseHTTPMiddleware):
 
         request.state.session.pop('error_text', None)
 
-        if request.url.path == '/logout':
+        if path == '/logout':
             return
 
         if 'is_logged_in' in request.state.session and '__invalid__' not in request.state.session:
@@ -171,9 +197,11 @@ class WebMiddleware(BaseHTTPMiddleware):
         # Not logged in
         user = None
         password = None
-        form = None
         if request.method == "POST":
-            form = await request.form()
+            response = self.check_login_form_size(request)
+            if response is not None:
+                return response
+            form = await request.form(max_fields=LOGIN_FORM_MAX_FIELDS, max_part_size=LOGIN_FORM_MAX_BYTES)
             if 'user' in form:
                 user = form['user']
             if 'password' in form:

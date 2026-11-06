@@ -18,7 +18,7 @@
 * Tests never use the real `var/`, `etc/` or `meta/` of an installation.
 * `.github/workflows/tests.yml` runs the tests and `pip-audit` for every push and pull request.
 
-Security check of the dependencies: `.venv/bin/pip-audit -r requirements.txt`.
+Security check of the dependencies: `.venv/bin/pip-audit -r requirements.txt`. It reports 5 advisories of `starlette` which don't apply, see [known vulnerabilities](#known-vulnerabilities).
 
 ### Database updates
 
@@ -80,6 +80,30 @@ No CSRF token: the header check needs no changes in the pages, and all current b
 
 `modules/placeholders.py` replaces only known placeholders. `PASE` values are quoted depending on the position in the command (outside of quotes, in `'...'`, in `"..."`). `QSYS` values from users are checked instead of quoted, as they can be inside or outside of a CL string.
 
+### Request path
+
+The middleware decides on `request.scope['path']` (`get_path`), the path the router uses. `request.url` is built with the `Host` header, which the client chooses.
+
+### FastAPI and pydantic
+
+`pydantic` 2 doesn't install on IBM i: `pydantic-core` needs Rust (checked 2026-11-04).
+So `fastapi` stays at 0.125.0, the newest version with `pydantic` 1, and with it `starlette` at 0.50.0.
+If this line gets new advisories, the way out is plain Starlette 1.x without FastAPI (the app uses no `pydantic` models or `Depends`).
+
+### Known vulnerabilities
+
+`pip-audit` reports these advisories of `starlette` 0.50.0. The CI ignores them (`.github/workflows/tests.yml`):
+
+| Advisory | Why ignored |
+|---|---|
+| PYSEC-2026-161: `request.url` built with the `Host` header | The middleware uses the router path, see [request path](#request-path) |
+| PYSEC-2026-248: `request.url.hostname` can be changed by the path | Not used |
+| PYSEC-2026-249: no limits for urlencoded forms | The only form, the login, is limited to 4 KB before it's read (`LOGIN_FORM_MAX_BYTES` in `webmiddleware.py`) |
+| PYSEC-2026-2280: `HTTPEndpoint` calls any method | Not used |
+| PYSEC-2026-2281: `StaticFiles` SSRF | Windows only |
+
+Before using one of these features (or a new form), upgrade or check again.
+
 
 <a id="package-prüfung"></a>
 
@@ -94,4 +118,4 @@ Criteria: see [architektur.md](architektur.md). Checked on 2026-11-01.
 
 Removed: `starsessions` and `aiofiles` (not used anymore).
 
-The other packages of `requirements.txt` have not been reviewed yet. Known vulnerabilities: see [dependency vulnerabilities](bugfixes/dependency-vulnerabilities.md).
+The other packages of `requirements.txt` have not been reviewed yet. `starlette` is pinned now (it was only a dependency of `fastapi`), see [FastAPI and pydantic](#fastapi-and-pydantic).

@@ -59,6 +59,7 @@ Your configuration files are not tracked by git, so updates don't touch them.
 | File | Content | Details |
 |---|---|---|
 | `etc/settings.py` | Your values for the settings of `etc/constants.py`: processing mode, processing service, git branch names, timeouts, ... | [processing service](processing-service.md#settings) |
+| `etc/web_settings.json` | Processing mode changed in the web app. Overrides `etc/settings.py`. Written by the web app. | [processing service](processing-service.md#set-up) |
 | `etc/workflows/*.json` | One workflow per file | [workflow configuration](workflow.md) |
 | `etc/default_step_action.json` | Commands of the processing steps, for all workflows | [workflow configuration](workflow.md#step-actions) |
 | `etc/object_commands.json` | Additional commands for specific objects | [workflow configuration](workflow.md#object-commands) |
@@ -152,7 +153,7 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
   The same applies to the [compile list](webapi.md#create-a-deployment) (`compiles`), which every user with `start workflow` can send, to any workflow.
   [Placeholders](workflow.md#placeholders) quote or check its values, but scripts have to take care of them too.
   Only give these permissions to trusted users for workflows with a [DB deployment](db-deployment.md#security) (its column expressions are SQL).
-* **Run the dependency check** regularly: `.venv/bin/pip-audit -r requirements.txt`.
+* **Run the dependency check** regularly: `.venv/bin/pip-audit -r requirements.txt` (5 advisories of `starlette` don't apply, see [known vulnerabilities](technik.md#known-vulnerabilities)).
 
 
 ## Backup

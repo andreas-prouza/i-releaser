@@ -162,6 +162,8 @@ app.add_api_route('/api/show_processing_history/{meta_file_id}', routes.show_pro
 
 app.add_api_route('/api/cancel_deployment/{meta_file_id}', routes.cancel_deployment, methods=['GET', 'POST'])
 app.add_api_route('/api/cancel_job/{job_id}', routes.cancel_job, methods=['GET', 'POST'])
+app.add_api_route('/api/set_processing_mode/{mode}', routes.set_processing_mode, methods=['POST'])
+app.add_api_route('/api/processing_service/{action}', routes.control_processing_service, methods=['POST'])
 app.add_api_route('/api/edit_custom_data/{meta_file_id}', routes.edit_custom_data, methods=['POST'])
 
 app.add_api_route('/api/reset_stage_status/{meta_file_id}/{stage_id}', routes.reset_stage_status, methods=['GET', 'POST'])

@@ -32,7 +32,8 @@ Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2**
 | P1 | [API tokens are weak](weak-api-tokens.md) | security | code review | finished |
 | P1 | [Session handling: unchecked session id, cookie flags, cleanup](session-store-hardening.md) | security | partly reproduced | finished |
 | P1 | [Local debugging mode turns off the password check without notice](local-debugging-mode-without-password.md) | security | code review | finished |
-| P1 | [Known vulnerabilities in dependencies](dependency-vulnerabilities.md) | security | `pip-audit` | draft |
+| P1 | [Host header skips the login check](host-header-skips-login-check.md) | security | reproduced | finished |
+| P1 | [Known vulnerabilities in dependencies](dependency-vulnerabilities.md) | security | `pip-audit` | ready |
 | P2 | [`/api/list_deployments` fails if a deployment has custom data](list-deployments-fails-with-custom-data.md) | bug | reproduced | finished |
 | P2 | [Object commands are never run](object-commands-never-run.md) | bug | reproduced | finished |
 | P2 | [Command line `deployment.py` doesn't work](cli-deployment-py-broken.md) | bug | reproduced | finished |
@@ -66,6 +67,6 @@ Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2**
 
 ## Still open
 
-* [Known vulnerabilities in dependencies](dependency-vulnerabilities.md): new, not started.
+* [Known vulnerabilities in dependencies](dependency-vulnerabilities.md): FastAPI 0.125 / starlette 0.50, install on IBM i to check.
 * [Four-eyes check](../features/four-eyes-check.md): needs a definition.
 * `ready`: implemented and tested, only the check on an IBM i (or the first CI run) is missing. See the status line of each file.

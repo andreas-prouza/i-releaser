@@ -7,6 +7,9 @@ BASE_DIR="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
 PID=$BASE_DIR/var/processing-service.pid
 LOG_DIR=$BASE_DIR/log
 
+# The web app sets I_RELEASER_PYTHON to its own Python
+PYTHON=${I_RELEASER_PYTHON:-$BASE_DIR/.venv/bin/python}
+
 
 is_running() {
     [ -f $PID ] && kill -0 `cat $PID` 2> /dev/null
@@ -20,7 +23,7 @@ start() {
     else
         echo "Start service"
         mkdir -p $LOG_DIR
-        nohup $BASE_DIR/.venv/bin/python $SCRIPT_DIR/service.py > $LOG_DIR/service_nohup.log 2>&1 &
+        nohup $PYTHON $SCRIPT_DIR/service.py > $LOG_DIR/service_nohup.log 2>&1 &
     fi
 
     sleep 1

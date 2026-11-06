@@ -1,6 +1,6 @@
 # Known vulnerabilities in dependencies
 
-- **Status:** draft
+- **Status:** ready (only the install on IBM i is open)
 - **Type:** security
 - **Priority:** P1
 - **Found:** 2026-11-01, `pip-audit -r requirements.txt`
@@ -9,32 +9,40 @@
 
 ## Current situation
 
-`pip-audit` reports 14 known vulnerabilities in one package: `starlette 0.45.3` (PYSEC-2026-161, -248, -249, -1941, -1942, -2280, -2281). The fixes are in versions 0.47.2 to 1.3.1.
+`pip-audit` reported 14 known vulnerabilities in `starlette 0.45.3` (pinned by `fastapi==0.115.8`). The audit job in `.github/workflows/tests.yml` failed.
 
-`starlette` is pinned by `fastapi==0.115.8`. Upgrading it means upgrading FastAPI, which may need a newer `pydantic` than the pinned `1.10.21`.
 
-The audit job in `.github/workflows/tests.yml` fails until this is fixed.
+## Decision (2026-11-05)
+
+`pydantic` 2 doesn't install on IBM i (`pydantic-core` needs Rust), so FastAPI 0.162 is out.
+Upgrade to `fastapi` 0.125.0, the newest with `pydantic` 1, and pin `starlette` 0.50.0.
+The 5 advisories left are checked and ignored in the CI, the one which applies is mitigated in our code.
+Details: [technik.md](../technik.md#known-vulnerabilities).
 
 
 ## Requirements
 
-1. Upgrade FastAPI and with it `starlette`, so `pip-audit -r requirements.txt` reports nothing.
-2. Check which of the vulnerabilities apply to i-Releaser, to decide how urgent it is.
+1. Upgrade FastAPI and `starlette` as far as `pydantic` 1 allows.
+2. Check which of the remaining vulnerabilities apply to i-Releaser, and mitigate those.
 3. All tests pass. Check the web app in a browser.
 
 
 ## Acceptance criteria
 
-- [ ] `.venv/bin/pip-audit -r requirements.txt` reports no vulnerabilities.
-- [ ] All tests pass.
-- [ ] The packages still install on IBM i (`pydantic` 2 needs a compiled package, `pydantic-core`).
+- [x] `pip-audit` reports only the 5 checked advisories, the CI ignores them with a reason.
+- [x] PYSEC-2026-249: the login form is only read up to 4 KB and with a known length (`test_large_login_form_is_not_read`, `test_login_form_without_length_is_not_read`).
+- [x] PYSEC-2026-161: fixed in [host-header-skips-login-check](host-header-skips-login-check.md).
+- [x] All tests pass.
+- [ ] The packages install on IBM i (`fastapi` 0.125.0 adds `annotated-doc`, pure Python).
+- [ ] Web app checked in a browser.
 
 
 ## Non-goals
 
 * Other changes of the web app
+* Replacing FastAPI with plain Starlette (the way out if this line gets new advisories)
 
 
 ## Open questions
 
-* Can `pydantic` 2 be installed on IBM i? If not, which is the newest FastAPI which works with `pydantic` 1?
+* ~~Can `pydantic` 2 be installed on IBM i?~~ No (checked 2026-11-04).
