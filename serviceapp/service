@@ -3,8 +3,10 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BASE_DIR="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
 
-# Needs to match C_SERVICE_PID_FILE in etc/constants.py
+# Need to match C_SERVICE_PID_FILE and C_SERVICE_STOPPED_FILE in etc/constants.py
 PID=$BASE_DIR/var/processing-service.pid
+# Pauses the auto start of the web app until the next start (see docs/processing-service.md)
+STOPPED=$BASE_DIR/var/processing-service.stopped
 LOG_DIR=$BASE_DIR/log
 
 # The web app sets I_RELEASER_PYTHON to its own Python
@@ -17,6 +19,8 @@ is_running() {
 
 
 start() {
+    rm -f $STOPPED
+
     if is_running; then
         echo "Process already exist (`cat $PID`)"
 
@@ -37,6 +41,9 @@ start() {
 
 
 stop() {
+    mkdir -p `dirname $STOPPED`
+    touch $STOPPED
+
     if is_running; then
         echo "Stop process `cat $PID`"
         echo "Running jobs are not stopped. They finish on their own."
@@ -64,14 +71,18 @@ status() {
     NC='\033[0m' # No Color
 
     RUNNING='\033[102;97m'
-    STOPPED='\033[101;31m'
+    STOPPED_COLOR='\033[101;31m'
 
     if is_running; then
         echo -e "Service is ${RUNNING}running${NC} ..."
         ps -f -p `cat $PID`
 
     else
-        echo -e "Service ${STOPPED}stopped${NC}"
+        echo -e "Service ${STOPPED_COLOR}stopped${NC}"
+    fi
+
+    if [ -f $STOPPED ]; then
+        echo "Auto start of the web app is paused until the next start"
     fi
 }
 

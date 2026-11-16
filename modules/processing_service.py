@@ -16,6 +16,8 @@ See docs/processing-service.md
 """
 from __future__ import annotations
 
+import errno
+import fcntl
 import logging
 import os
 import select
@@ -53,6 +55,34 @@ def get_socket_address() -> str:
 
   relative_path = os.path.relpath(constants.C_SERVICE_SOCKET)
   return relative_path if len(relative_path) < len(constants.C_SERVICE_SOCKET) else constants.C_SERVICE_SOCKET
+
+
+
+def try_lock(lock_file: str):
+  """
+  Exclusive lock of the given file, without waiting.
+
+  A POSIX record lock (lockf), which is available in PASE too. It belongs to the process:
+  a forked job process doesn't hold it, and it's released when the process ends.
+
+  Returns:
+      The open file, which holds the lock until it's closed. None if another process holds it.
+  """
+
+  os.makedirs(os.path.dirname(lock_file), exist_ok=True)
+  # 'a': an exclusive lock needs write access, and the file is not truncated
+  f = open(lock_file, 'a')
+
+  try:
+    fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+  except OSError as e:
+    f.close()
+    if e.errno in (errno.EACCES, errno.EAGAIN):
+      return None
+    raise
+
+  return f
 
 
 
@@ -259,6 +289,8 @@ class Service:
   def __init__(self):
 
     self.socket: socket.socket|None = None
+    # Open as long as the service runs (C_SERVICE_LOCK_FILE)
+    self.lock = None
     # {pid: job id} of the job processes which have been started by this service
     self.children: dict[int, int] = {}
     self.stop_requested: bool = False
@@ -267,7 +299,14 @@ class Service:
 
   def start(self) -> None:
 
+    # Without the lock, two services started at the same time could both get past the check of the socket
+    self.lock = try_lock(constants.C_SERVICE_LOCK_FILE)
+    if self.lock is None:
+      raise ServiceAlreadyRunningException(f"Processing service is already running ({constants.C_SERVICE_LOCK_FILE} is locked)")
+
+    # A service of an older version, without the lock
     if notify():
+      self.release_lock()
       raise ServiceAlreadyRunningException(f"Processing service is already running ({constants.C_SERVICE_SOCKET})")
 
     os.makedirs(os.path.dirname(constants.C_SERVICE_SOCKET), exist_ok=True)
@@ -297,8 +336,20 @@ class Service:
       if os.path.exists(file):
         os.remove(file)
 
+    # Released last: a new service may start now
+    self.release_lock()
+
     running_jobs = processing_job_data.get_jobs(status=[Job_Status.RUNNING])
     logging.info(f"Processing service stopped. Jobs which are still running: {[job.id for job in running_jobs]}")
+
+
+
+  def release_lock(self) -> None:
+    """The lock file itself stays: removing it would allow a second lock on a new file"""
+
+    if self.lock is not None:
+      self.lock.close()
+      self.lock = None
 
 
 
@@ -398,6 +449,9 @@ class Service:
       signal.signal(signal.SIGTERM, signal.SIG_DFL)
       signal.signal(signal.SIGINT, signal.SIG_DFL)
       self.socket.close()
+      # Only closes the copy of the job process: a lockf lock belongs to the service process
+      if self.lock is not None:
+        self.lock.close()
 
       if run_job(job.id) == Job_Status.FINISHED:
         exit_code = 0

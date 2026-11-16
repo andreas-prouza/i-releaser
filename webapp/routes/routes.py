@@ -293,6 +293,8 @@ def show_settings(request: Request):
         processing_mode=processing_settings.get_processing_mode(),
         processing_mode_source=processing_settings.get_processing_mode_source(),
         processing_service_running=processing_service.notify(),
+        service_auto_start=processing_settings.get_service_auto_start(),
+        service_auto_start_paused=processing_settings.is_service_auto_start_paused(),
         processing_jobs=[job.get_dict() for job in reversed(processing_job_data.get_jobs(limit=SETTINGS_NUMBER_OF_JOBS))]
         )
 
@@ -430,7 +432,7 @@ def cancel_job(request: Request, job_id: int):
 
 
 def set_processing_mode(request: Request, mode: str):
-    """Changes the processing mode for the next stages, without a restart (stored in etc/web_settings.json)"""
+    """Changes the processing mode for the next stages, without a restart (stored in etc/app.json)"""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
 
@@ -448,6 +450,18 @@ def control_processing_service(request: Request, action: str):
     output = processing_settings.control_service(action, current_user.get_user())
 
     return http_functions.get_json_response({'status': 'success', 'output': output, 'service_running': processing_service.notify()})
+
+
+
+def set_service_auto_start(request: Request, enabled: bool):
+    """Turns the auto start of the processing service on or off (stored in etc/app.json)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    processing_settings.set_service_auto_start(enabled, current_user.get_user())
+
+    return http_functions.get_json_response({'status': 'success', 'auto_start': enabled,
+                                             'auto_start_paused': processing_settings.is_service_auto_start_paused()})
 
 
 

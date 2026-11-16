@@ -4,7 +4,7 @@ configuration, database and logs. Nothing of the real installation is used.
 
 The password isn't checked (I_RELEASER_LOCAL_DEBUGGING), the users come from USERS.
 """
-import http.client, json, os, shutil, socket, subprocess, sys, tempfile, time
+import http.client, json, os, shutil, signal, socket, subprocess, sys, tempfile, time
 from urllib.parse import urlencode
 
 
@@ -97,6 +97,15 @@ def copy_repository(target: str) -> None:
 
 
 
+def is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+
+
+
 def get_free_port() -> int:
     with socket.socket() as s:
         s.bind(('127.0.0.1', 0))
@@ -107,12 +116,14 @@ def get_free_port() -> int:
 class Web_Server:
 
 
-    def __init__(self, workflows: dict=WORKFLOWS, users: dict=USERS, log_level: str='DEBUG', settings: str='', env: dict|None=None):
+    def __init__(self, workflows: dict=WORKFLOWS, users: dict=USERS, log_level: str='DEBUG', settings: str='', env: dict|None=None, workers: int=1):
 
         self.directory = tempfile.mkdtemp(prefix='ir-')
         self.port = get_free_port()
         self.process = None
         self.env = env or {}
+        # Like gunicorn on a server: each worker runs the startup of the web app
+        self.workers = workers
 
         copy_repository(self.directory)
 
@@ -154,8 +165,11 @@ class Web_Server:
     def start(self) -> 'Web_Server':
 
         self.output = open(os.path.join(self.directory, 'uvicorn.log'), 'ab')
-        self.process = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'wsgi:app', '--port', str(self.port)], cwd=self.web_dir,
-                                        env=self.get_environment(), stdout=self.output, stderr=self.output)
+        command = [sys.executable, '-m', 'uvicorn', 'wsgi:app', '--port', str(self.port)]
+        if self.workers > 1:
+            command += ['--workers', str(self.workers)]
+
+        self.process = subprocess.Popen(command, cwd=self.web_dir, env=self.get_environment(), stdout=self.output, stderr=self.output)
 
         for _ in range(100):
             if self.process.poll() is not None:
@@ -184,7 +198,71 @@ class Web_Server:
 
     def close(self) -> None:
         self.stop()
+        self.stop_service()
         shutil.rmtree(self.directory, ignore_errors=True)
+
+
+    def path(self, *parts: str) -> str:
+        return os.path.join(self.directory, *parts)
+
+
+    def get_service_pid(self) -> int|None:
+        """Of the processing service, from its PID file"""
+
+        pid_file = self.path('var', 'processing-service.pid')
+        if not os.path.exists(pid_file):
+            return None
+        with open(pid_file) as f:
+            return int(f.read().strip())
+
+
+    def is_service_running(self) -> bool:
+        pid = self.get_service_pid()
+        return pid is not None and is_running(pid)
+
+
+    def wait_for_service(self, running: bool=True, timeout: float=15) -> int|None:
+        """Returns the PID of the service"""
+
+        end = time.time() + timeout
+        while time.time() < end:
+            if self.is_service_running() == running:
+                return self.get_service_pid()
+            time.sleep(0.1)
+
+        raise Exception(f"Processing service is {'not ' if running else ''}running after {timeout} seconds")
+
+
+    def stop_service(self) -> None:
+        """Processing service, if it's running"""
+
+        pid = self.get_service_pid()
+        if pid is None or not is_running(pid):
+            return
+
+        os.kill(pid, signal.SIGTERM)
+        for _ in range(100):
+            if not is_running(pid):
+                return
+            time.sleep(0.1)
+
+
+    def run_service_script(self, action: str) -> str:
+        """serviceapp/service on the command line"""
+
+        result = subprocess.run([self.path('serviceapp', 'service'), action], capture_output=True, text=True, timeout=60,
+                                env={**os.environ, 'I_RELEASER_PYTHON': sys.executable}, start_new_session=True)
+        return result.stdout + result.stderr
+
+
+    def write_app_settings(self, settings: dict) -> None:
+        with open(self.path('etc', 'app.json'), 'w') as f:
+            json.dump(settings, f)
+
+
+    def read_app_settings(self) -> dict:
+        with open(self.path('etc', 'app.json')) as f:
+            return json.load(f)
 
 
     def read_output(self) -> str:

@@ -140,6 +140,7 @@ Actions which change data are shown with `POST`. With an API token they also wor
 |---|---|---|---|
 | `POST` | `/api/set_processing_mode/{mode}` | `admin` | `thread` or `service` for the next stages, see [processing service](processing-service.md#set-up). `409` while stages wait in the queue and `mode` is `thread`. |
 | `POST` | `/api/processing_service/{action}` | `admin` | `start`, `stop` or `restart` the processing service: `{"output": "...", "service_running": true}` |
+| `POST` | `/api/set_service_auto_start/{enabled}` | `admin` | `true` or `false`: [start the processing service automatically](processing-service.md#start-automatically): `{"auto_start": true, "auto_start_paused": false}` |
 
 ### Users and permissions
 

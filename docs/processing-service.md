@@ -60,8 +60,39 @@ Or on the command line:
 Run the service with the same user as the web app (the web app starts it with its own user).
 A service started in the web app keeps running when the web app ends.
 
-The mode changed in the web app is stored in `etc/web_settings.json` and overrides `etc/settings.py`.
+The mode changed in the web app is stored in `etc/app.json` and overrides `etc/settings.py`.
 The settings page shows where the current mode comes from. Both use the same database, logs and meta directories.
+(Earlier versions used `etc/web_settings.json`. The web app renames it at its start.)
+
+
+### Start automatically
+
+Tick `Start automatically` next to the buttons `Start`, `Stop` and `Restart` (permission `admin`, off by default, stored in `etc/app.json`).
+In mode `service` the web app then makes sure the service is running: when it starts and every `C_SERVICE_WATCHDOG_INTERVAL` seconds.
+So the service is running again after a restart of the system (as soon as the web app runs) or a crash of the service.
+
+```mermaid
+flowchart TD
+    A[Start of the web app,<br>then every C_SERVICE_WATCHDOG_INTERVAL seconds] --> B{Auto start ticked<br>and mode service?}
+    B -- no --> Z[nothing]
+    B -- yes --> C{var/processing-service.stopped<br>exists?}
+    C -- yes: paused --> Z
+    C -- no --> D{Service<br>running?}
+    D -- yes --> Z
+    D -- no --> E{Start lock free?<br>another worker may start it}
+    E -- no --> Z
+    E -- yes --> F[serviceapp/service start]
+```
+
+* **Paused after a stop:** `Stop` in the web app or `./service stop` on the command line creates `var/processing-service.stopped`.
+  As long as it exists, the service is not started automatically. `Start` and `Restart` remove it. `./service status` shows it.
+  So a service you stopped on purpose stays stopped.
+* **Only one service:** all workers of the web app check, but only one of them starts the service (lock `var/processing-service.lock.start`).
+  The service itself holds `var/processing-service.lock` as long as it runs: a second service ends immediately with `Processing service is already running`.
+* **Failed start:** the web app keeps running. The error is in the log of the web app (`Auto start of the processing service failed`)
+  and in `log/service_nohup.log` / `log/service.log`. The next check tries again.
+* **systemd:** if the web app runs as a systemd unit (`KillMode=control-group`, the default), systemd stops the service together with the web app.
+  There run the service as its own unit and leave `Start automatically` off. Not relevant on IBM i.
 
 The current state is shown in the web app: `Settings` &rarr; `General` &rarr; `Processing of stages`.
 There you also find the last jobs with their status and error.
@@ -79,8 +110,11 @@ The defaults are in `etc/constants.py`. Put your values into `etc/settings.py`.
 | `C_SERVICE_HEARTBEAT_INTERVAL` | `10` | Seconds between two signs of life of a running job. |
 | `C_SERVICE_HEARTBEAT_TIMEOUT` | `60` | Seconds without a sign of life until a job is seen as dead. |
 | `C_SERVICE_SOCKET` | `var/processing-service.sock` | Socket for the wake up. |
-| `C_WEB_SETTINGS_FILE` | `etc/web_settings.json` | Processing mode changed in the web app. Overrides `C_PROCESSING_MODE`. |
+| `C_APP_SETTINGS_FILE` | `etc/app.json` | Settings changed in the web app: processing mode (overrides `C_PROCESSING_MODE`) and `Start automatically`. |
+| `C_SERVICE_WATCHDOG_INTERVAL` | `60` | Seconds between two checks of the web app whether the service is running (only with `Start automatically`). |
 | `C_SERVICE_PID_FILE` | `var/processing-service.pid` | Process id of the service. If you change it, also change it in `serviceapp/service`. |
+| `C_SERVICE_STOPPED_FILE` | `var/processing-service.stopped` | Exists after a stop: `Start automatically` is paused. If you change it, also change it in `serviceapp/service`. |
+| `C_SERVICE_LOCK_FILE` | `var/processing-service.lock` | Locked by the running service, so only one service runs. |
 
 The service doesn't start if the database is older than the code: start the web app first after an update, it updates the database.
 
@@ -91,6 +125,8 @@ The service doesn't start if the database is older than the code: start the web 
 |---|---|
 | The web app is stopped | Running stages continue. |
 | The service is stopped | Running stages continue. They are not affected by the restart of the service. |
+| The service crashes or the system is restarted | With `Start automatically` the web app starts it again within `C_SERVICE_WATCHDOG_INTERVAL` seconds (after an IPL: as soon as the web app runs). Otherwise start it by hand. |
+| The service is started twice at the same time | Only one of them runs, the other one ends with `Processing service is already running`. |
 | A stage is started while the service is not running | The stage is added to the queue and you get a warning. The stage shows the button `queued`. It's run as soon as the service has been started. |
 | You don't want to wait for the service | Click on `queued` to remove the stage from the queue. |
 | A job process dies (killed, restart of the system) | The job, its stage and the deployment are set to `failed`. The hook `stage_failed` is called. The stage can be run again (`Continue processing` starts with the step which was not finished). |
