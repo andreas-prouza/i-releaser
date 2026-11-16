@@ -54,11 +54,20 @@ C_LOGIN_BLOCK_MINUTES = 15
 # 'service': A stage runs in a job of the processing service (see docs/processing-service.md)
 C_PROCESSING_MODE = 'thread'
 
-# The mode changed in the web app (Settings -> General) is stored here and overrides C_PROCESSING_MODE
-C_WEB_SETTINGS_FILE = f'{C_LOCAL_BASE_DIR}/etc/web_settings.json'
+# Settings changed in the web app (Settings -> General) are stored here: the processing mode
+# (overrides C_PROCESSING_MODE) and the auto start of the processing service
+C_APP_SETTINGS_FILE = f'{C_LOCAL_BASE_DIR}/etc/app.json'
 
 C_SERVICE_SOCKET = f'{C_LOCAL_BASE_DIR}/var/processing-service.sock'
+# The PID file and the stopped file need to match serviceapp/service
 C_SERVICE_PID_FILE = f'{C_LOCAL_BASE_DIR}/var/processing-service.pid'
+# Exists after `serviceapp/service stop`: the auto start is paused until the next start
+C_SERVICE_STOPPED_FILE = f'{C_LOCAL_BASE_DIR}/var/processing-service.stopped'
+# Held by the running service, so only one service runs at the same time
+C_SERVICE_LOCK_FILE = f'{C_LOCAL_BASE_DIR}/var/processing-service.lock'
+
+# Seconds between two checks of the web app whether the processing service is running (auto start)
+C_SERVICE_WATCHDOG_INTERVAL = 60
 
 # Seconds between two checks of the queue, if the service has not been woken up by the web app
 C_SERVICE_POLL_INTERVAL = 5

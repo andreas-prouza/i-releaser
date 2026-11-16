@@ -72,6 +72,7 @@ class TestProcessingService(unittest.TestCase):
             patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(constants, 'C_SERVICE_SOCKET', os.path.join(self.tmp_dir, 'processing-service.sock')),
             patch.object(constants, 'C_SERVICE_PID_FILE', os.path.join(self.tmp_dir, 'processing-service.pid')),
+            patch.object(constants, 'C_SERVICE_LOCK_FILE', os.path.join(self.tmp_dir, 'processing-service.lock')),
             patch.object(constants, 'C_PROCESSING_MODE', 'service'),
             patch.object(workflow.Workflow, 'get_default_step_mapping', return_value=[]),
         ]

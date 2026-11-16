@@ -10,7 +10,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def no_local_web_settings(tmp_path, monkeypatch):
-    """Tests never use the etc/web_settings.json of the installation"""
+def no_local_app_settings(tmp_path, monkeypatch):
+    """Tests never use the etc/app.json of the installation"""
     from etc import constants
-    monkeypatch.setattr(constants, 'C_WEB_SETTINGS_FILE', str(tmp_path / 'web_settings.json'))
+    monkeypatch.setattr(constants, 'C_APP_SETTINGS_FILE', str(tmp_path / 'app.json'))

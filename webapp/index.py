@@ -24,11 +24,27 @@ logging.debug(f"{sys.path=}")
 
 # Custom modules
 from routes import routes, initial
+from etc import constants
+from modules import processing_settings
 from modules.db import app_info_data, app_sqlite
 from web_modules import app_login, server_sessions
 
 # Seconds between two deletions of expired sessions
 SESSION_CLEANUP_INTERVAL_SECONDS = 3600
+
+
+
+async def watch_processing_service() -> None:
+    """Auto start of the processing service: at the start of the web app and every C_SERVICE_WATCHDOG_INTERVAL seconds"""
+
+    while True:
+        try:
+            # In a thread: the start of the service takes some seconds
+            await asyncio.to_thread(processing_settings.ensure_service_running)
+        except Exception as e:
+            logging.exception(e, stack_info=True)
+
+        await asyncio.sleep(constants.C_SERVICE_WATCHDOG_INTERVAL)
 
 
 
@@ -63,11 +79,16 @@ async def lifespan(app: FastAPI):
     app_sqlite.check_updates()
     app_info_data.add_app_info()
 
+    processing_settings.take_over_old_settings_file()
+
     cleanup_task = asyncio.create_task(delete_expired_sessions())
-    
+    # After the update of the database: the service doesn't start with an older one
+    watchdog_task = asyncio.create_task(watch_processing_service())
+
     yield
 
     cleanup_task.cancel()
+    watchdog_task.cancel()
 
 
 #######################################################
@@ -164,6 +185,7 @@ app.add_api_route('/api/cancel_deployment/{meta_file_id}', routes.cancel_deploym
 app.add_api_route('/api/cancel_job/{job_id}', routes.cancel_job, methods=['GET', 'POST'])
 app.add_api_route('/api/set_processing_mode/{mode}', routes.set_processing_mode, methods=['POST'])
 app.add_api_route('/api/processing_service/{action}', routes.control_processing_service, methods=['POST'])
+app.add_api_route('/api/set_service_auto_start/{enabled}', routes.set_service_auto_start, methods=['POST'])
 app.add_api_route('/api/edit_custom_data/{meta_file_id}', routes.edit_custom_data, methods=['POST'])
 
 app.add_api_route('/api/reset_stage_status/{meta_file_id}/{stage_id}', routes.reset_stage_status, methods=['GET', 'POST'])

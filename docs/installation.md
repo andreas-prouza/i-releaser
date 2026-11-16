@@ -59,7 +59,7 @@ Your configuration files are not tracked by git, so updates don't touch them.
 | File | Content | Details |
 |---|---|---|
 | `etc/settings.py` | Your values for the settings of `etc/constants.py`: processing mode, processing service, git branch names, timeouts, ... | [processing service](processing-service.md#settings) |
-| `etc/web_settings.json` | Processing mode changed in the web app. Overrides `etc/settings.py`. Written by the web app. | [processing service](processing-service.md#set-up) |
+| `etc/app.json` | Settings changed in the web app: processing mode (overrides `etc/settings.py`) and auto start of the processing service. Written by the web app. Replaces `etc/web_settings.json`. | [processing service](processing-service.md#set-up) |
 | `etc/workflows/*.json` | One workflow per file | [workflow configuration](workflow.md) |
 | `etc/default_step_action.json` | Commands of the processing steps, for all workflows | [workflow configuration](workflow.md#step-actions) |
 | `etc/object_commands.json` | Additional commands for specific objects | [workflow configuration](workflow.md#object-commands) |

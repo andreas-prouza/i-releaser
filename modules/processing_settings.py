@@ -1,9 +1,9 @@
 """
 Processing mode and processing service, changed in the web app.
-See docs/features/processing-settings-in-web-app.md
+See docs/features/processing-settings-in-web-app.md and docs/features/processing-service-auto-start.md
 
-The mode changed in the web app is stored in etc/web_settings.json.
-It overrides C_PROCESSING_MODE of etc/settings.py, which overrides the default in etc/constants.py.
+The settings changed in the web app are stored in etc/app.json (C_APP_SETTINGS_FILE).
+The mode there overrides C_PROCESSING_MODE of etc/settings.py, which overrides the default in etc/constants.py.
 The file is read for each start of a stage, so all workers of the web app use a new mode without a restart.
 """
 
@@ -13,6 +13,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 from etc import constants
 from modules import errors
@@ -28,38 +29,82 @@ SOURCE_WEB_APP = 'web app'
 SOURCE_SETTINGS = 'etc/settings.py'
 SOURCE_DEFAULT = 'default'
 
+# Shown in the log as the user who started the service
+AUTO_START_USER = 'auto start'
+# Seconds the auto start waits until the started service listens
+AUTO_START_WAIT_SECONDS = 10
+
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 
 
 
-def read_web_settings() -> dict:
+def get_old_settings_file() -> str:
+  """Where earlier versions stored the settings: etc/web_settings.json"""
+  return os.path.join(os.path.dirname(constants.C_APP_SETTINGS_FILE), 'web_settings.json')
 
-  if not os.path.exists(constants.C_WEB_SETTINGS_FILE):
+
+
+def take_over_old_settings_file() -> None:
+  """
+  Renames etc/web_settings.json to etc/app.json, so an installation keeps its processing mode.
+  Called at the start of the web app, by each worker: only one of them can rename it.
+  """
+
+  old_file = get_old_settings_file()
+
+  if os.path.exists(constants.C_APP_SETTINGS_FILE) or not os.path.exists(old_file):
+    return
+
+  try:
+    os.rename(old_file, constants.C_APP_SETTINGS_FILE)
+  except FileNotFoundError:
+    # Taken over by another worker meanwhile
+    return
+
+  logging.info(f"{old_file} has been renamed to {constants.C_APP_SETTINGS_FILE}")
+
+
+
+def read_app_settings() -> dict:
+
+  if not os.path.exists(constants.C_APP_SETTINGS_FILE):
     return {}
 
-  with open(constants.C_WEB_SETTINGS_FILE) as f:
+  with open(constants.C_APP_SETTINGS_FILE) as f:
     settings = json.load(f)
 
   if not isinstance(settings, dict):
-    raise errors.App_Error(f"{constants.C_WEB_SETTINGS_FILE} has to contain a JSON object")
+    raise errors.App_Error(f"{constants.C_APP_SETTINGS_FILE} has to contain a JSON object")
 
   return settings
 
 
 
-def write_web_settings(settings: dict) -> None:
+def write_app_settings(settings: dict) -> None:
   """Written to a new file first, so a reader never sees a half written file"""
 
-  tmp_file = f"{constants.C_WEB_SETTINGS_FILE}.tmp"
+  tmp_file = f"{constants.C_APP_SETTINGS_FILE}.tmp"
   with open(tmp_file, 'w') as f:
     json.dump(settings, f, indent=2)
-  os.replace(tmp_file, constants.C_WEB_SETTINGS_FILE)
+  os.replace(tmp_file, constants.C_APP_SETTINGS_FILE)
+
+
+
+def change_app_setting(key: str, value) -> object:
+  """Returns the old value"""
+
+  settings = read_app_settings()
+  old_value = settings.get(key)
+  settings[key] = value
+  write_app_settings(settings)
+
+  return old_value
 
 
 
 def get_processing_mode() -> str:
 
-  mode = read_web_settings().get('C_PROCESSING_MODE', constants.C_PROCESSING_MODE)
+  mode = read_app_settings().get('C_PROCESSING_MODE', constants.C_PROCESSING_MODE)
 
   if mode not in PROCESSING_MODES:
     raise errors.App_Error(f"C_PROCESSING_MODE '{mode}' is invalid. Valid modes are: {', '.join(PROCESSING_MODES)}")
@@ -71,7 +116,7 @@ def get_processing_mode() -> str:
 def get_processing_mode_source() -> str:
   """Where the current mode comes from"""
 
-  if 'C_PROCESSING_MODE' in read_web_settings():
+  if 'C_PROCESSING_MODE' in read_app_settings():
     return SOURCE_WEB_APP
 
   # Loaded by etc/constants.py, if the file exists. No import here: without the file,
@@ -97,12 +142,76 @@ def set_processing_mode(mode: str, user: str|None) -> None:
       raise errors.Conflict_Error(f"{len(queued)} stage(s) are waiting in the queue of the processing service. "
                                   "Start the service to run them, or remove them from the queue first.")
 
-  settings = read_web_settings()
-  old_mode = settings.get('C_PROCESSING_MODE', constants.C_PROCESSING_MODE)
-  settings['C_PROCESSING_MODE'] = mode
-  write_web_settings(settings)
+  old_mode = change_app_setting('C_PROCESSING_MODE', mode) or constants.C_PROCESSING_MODE
 
   logging.info(f"Processing mode changed from '{old_mode}' to '{mode}' by {user}")
+
+
+
+def get_service_auto_start() -> bool:
+  """Off, until it's turned on in the web app"""
+  return read_app_settings().get('C_SERVICE_AUTO_START', False) is True
+
+
+
+def set_service_auto_start(enabled: bool, user: str|None) -> None:
+
+  change_app_setting('C_SERVICE_AUTO_START', enabled)
+
+  logging.info(f"Auto start of the processing service turned {'on' if enabled else 'off'} by {user}")
+
+
+
+def is_service_auto_start_paused() -> bool:
+  """After `serviceapp/service stop` until the next start"""
+  return os.path.exists(constants.C_SERVICE_STOPPED_FILE)
+
+
+
+def ensure_service_running() -> bool:
+  """
+  Auto start: starts the processing service, if it's turned on, the mode is 'service' and the service is not running.
+  Called by each worker of the web app at its start and every C_SERVICE_WATCHDOG_INTERVAL seconds.
+
+  Returns:
+      bool: True if the service has been started
+  """
+
+  # Imported here: the module is imported by meta_file
+  from modules import processing_service
+
+  if not get_service_auto_start() or get_processing_mode() != 'service' or is_service_auto_start_paused():
+    return False
+
+  if processing_service.notify():
+    return False
+
+  # Only one worker starts the service. The others don't wait: the next check is soon enough.
+  lock = processing_service.try_lock(f"{constants.C_SERVICE_LOCK_FILE}.start")
+  if lock is None:
+    return False
+
+  try:
+    # Meanwhile started by another worker, or stopped by an admin
+    if processing_service.notify() or is_service_auto_start_paused():
+      return False
+
+    logging.warning("Processing service is not running: auto start")
+    control_service('start', AUTO_START_USER)
+
+    # serviceapp/service waits only 1 second. Loading the modules and scripts may take longer.
+    # The lock is kept meanwhile, so no other worker starts a second one.
+    end = time.monotonic() + AUTO_START_WAIT_SECONDS
+    while not processing_service.notify():
+      if time.monotonic() > end:
+        logging.error(f"Auto start of the processing service failed. See {constants.C_LOCAL_BASE_DIR}/log/service_nohup.log and service.log")
+        break
+      time.sleep(0.5)
+
+  finally:
+    lock.close()
+
+  return True
 
 
 

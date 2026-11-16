@@ -1,9 +1,9 @@
 """Processing mode and processing service in the web app (docs/features/processing-settings-in-web-app.md)"""
-import json, os, signal, time
+import json, os, time
 
 import pytest
 
-from web_server import Web_Server
+from web_server import Web_Server, is_running
 
 
 
@@ -11,40 +11,7 @@ from web_server import Web_Server
 def server():
     s = Web_Server().start()
     yield s
-    stop_service(s)
     s.close()
-
-
-
-def get_service_pid(server: Web_Server) -> int|None:
-    pid_file = os.path.join(server.directory, 'var', 'processing-service.pid')
-    if not os.path.exists(pid_file):
-        return None
-    with open(pid_file) as f:
-        return int(f.read().strip())
-
-
-
-def is_running(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-        return True
-    except ProcessLookupError:
-        return False
-
-
-
-def stop_service(server: Web_Server) -> None:
-
-    pid = get_service_pid(server)
-    if pid is None or not is_running(pid):
-        return
-
-    os.kill(pid, signal.SIGTERM)
-    for _ in range(100):
-        if not is_running(pid):
-            return
-        time.sleep(0.1)
 
 
 
@@ -58,7 +25,7 @@ def test_next_stage_runs_in_the_new_mode(server):
     status, data = boss.post_json('/api/set_processing_mode/service')
     assert (status, data['mode'], data['service_running']) == (200, 'service', False)
 
-    with open(os.path.join(server.directory, 'etc', 'web_settings.json')) as f:
+    with open(server.path('etc', 'app.json')) as f:
         assert json.load(f) == {'C_PROCESSING_MODE': 'service'}
 
     status, data = boss.run_stage(boss.create_deployment('seq_wf'), 'START')
@@ -114,19 +81,19 @@ def test_mode_from_the_settings_file():
 
 
 
-@pytest.mark.parametrize('path', ['/api/set_processing_mode/service', '/api/processing_service/start'])
+@pytest.mark.parametrize('path', ['/api/set_processing_mode/service', '/api/processing_service/start', '/api/set_service_auto_start/true'])
 def test_only_for_admins(server, path):
 
     for user in ['intern', 'stranger', 'runner']:
         status, data = server.client(user).post_json(path)
         assert status == 403, (user, data)
 
-    assert not os.path.exists(os.path.join(server.directory, 'etc', 'web_settings.json'))
-    assert get_service_pid(server) is None
+    assert not os.path.exists(server.path('etc', 'app.json'))
+    assert server.get_service_pid() is None
 
 
 
-@pytest.mark.parametrize('path', ['/api/set_processing_mode/service', '/api/processing_service/start'])
+@pytest.mark.parametrize('path', ['/api/set_processing_mode/service', '/api/processing_service/start', '/api/set_service_auto_start/true'])
 def test_actions_need_post(server, path):
 
     boss = server.client('boss')
@@ -136,12 +103,12 @@ def test_actions_need_post(server, path):
     boss.origin = 'https://evil.example'
     assert boss.post(path)[0] == 403
 
-    assert not os.path.exists(os.path.join(server.directory, 'etc', 'web_settings.json'))
-    assert get_service_pid(server) is None
+    assert not os.path.exists(server.path('etc', 'app.json'))
+    assert server.get_service_pid() is None
 
 
 
-@pytest.mark.parametrize('path', ['/api/set_processing_mode/fast', '/api/processing_service/kill'])
+@pytest.mark.parametrize('path', ['/api/set_processing_mode/fast', '/api/processing_service/kill', '/api/set_service_auto_start/maybe'])
 def test_invalid_input(server, path):
     assert server.client('boss').post_json(path)[0] == 422
 
@@ -157,7 +124,7 @@ def test_service_started_by_the_web_app_keeps_running(server):
     assert 'Service is running' in data['output']
     assert '\x1b' not in data['output']
 
-    pid = get_service_pid(server)
+    pid = server.get_service_pid()
     assert pid is not None and is_running(pid)
 
     server.stop()
@@ -178,11 +145,11 @@ def test_restart_of_the_service(server):
 
     boss = server.client('boss')
     boss.post_json('/api/processing_service/start')
-    old_pid = get_service_pid(server)
+    old_pid = server.get_service_pid()
 
     status, data = boss.post_json('/api/processing_service/restart')
     assert (status, data['service_running']) == (200, True), data
-    assert get_service_pid(server) not in (None, old_pid)
+    assert server.get_service_pid() not in (None, old_pid)
 
 
 

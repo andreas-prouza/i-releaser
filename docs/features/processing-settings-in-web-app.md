@@ -34,7 +34,7 @@ Tests: `tests/test_processing_settings.py`.
 ## Non-goals
 
 * Other settings in the web app
-* Starting the service automatically (e.g. with the web app or at IPL)
+* Starting the service automatically (e.g. with the web app or at IPL). With the web app: see [processing-service-auto-start.md](processing-service-auto-start.md)
 
 
 ## Decisions (2026-11-05)

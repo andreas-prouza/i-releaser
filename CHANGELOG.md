@@ -18,6 +18,7 @@
 * Deployment history logs are stored again
 * [Processing service](docs/processing-service.md): stages keep running if the web server ends
 * Processing mode and processing service in the web app (see [processing service](docs/processing-service.md#set-up))
+* [Start the processing service automatically](docs/processing-service.md#start-automatically) with the web app, and again after a crash. Only one service can run at the same time. `etc/web_settings.json` is renamed to `etc/app.json`
 * [Reset the last finished stage](docs/workflow.md#reset-the-last-finished-stage)
 * [DB deployment](docs/db-deployment.md): deploy changes of large tables with minimal downtime
 * [Documentation](README.md#documentation) restructured
