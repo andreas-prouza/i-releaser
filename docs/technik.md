@@ -130,4 +130,23 @@ Criteria: see [architektur.md](architektur.md). Checked on 2026-11-01.
 
 Removed: `starsessions` and `aiofiles` (not used anymore).
 
+### Libraries of the web pages
+
+Files in `webapp/static/assets/`, checked on 2026-11-17. Each library exists once, as minified file; the licenses are in `assets/licenses/`.
+
+| Library | Version | Used for | Repository | Stars | Forks | License | Result |
+|---|---|---|---|---|---|---|---|
+| Bootstrap | 5.3.9 | Layout and components (`bootstrap.min.css`, `bootstrap.bundle.min.js` with Popper) | `twbs/bootstrap` | 175072 | 79484 | MIT | OK |
+| Bootstrap Icons | 1.13.2 | Icons (the only icon set) | `twbs/icons` | 8184 | 1122 | MIT | OK |
+| bootstrap-table | 1.28.0 | Tables with sorting, filters and paging (with the filter-control extension) | `wenzhixin/bootstrap-table` | 11812 | 4330 | MIT | OK |
+| jQuery | 3.7.1 | Needed by bootstrap-table | `jquery/jquery` | 59898 | 20685 | MIT | OK |
+| SweetAlert2 | 11.26.25 | Dialogs | `sweetalert2/sweetalert2` | 18103 | 1615 | MIT | OK, see note |
+| Prism | 1.30.0 | Highlighting of commands and JSON (languages clike, javascript, bash, json, sql) | `PrismJS/prism` | 13070 | 1411 | MIT | OK |
+| Swagger UI | 5.35.0 | `/docs` | `swagger-api/swagger-ui` | 29085 | 9245 | Apache-2.0 | OK |
+
+Note on SweetAlert2: versions from 11.4.9 on (also 11.7.20, used until 2026-11) contained code which blocked the page and played audio from another server for browsers with a Russian language setting on `.ru`, `.su`, `.by` and `.рф` hosts. 11.26.25 doesn't contain it. Check `sweetalert2.min.js` for `navigator.language` at each update.
+
+To update a library: `npm pack <package>@<version>` in an empty directory, copy the minified files named above (and the license) over the old ones, remove `sourceMappingURL` lines, update this table, run the tests and open each page.
+Prism: download from prismjs.com with the languages of its first line.
+
 The other packages of `requirements.txt` have not been reviewed yet. `starlette` is pinned now (it was only a dependency of `fastapi`), see [FastAPI and pydantic](#fastapi-and-pydantic).

@@ -1,6 +1,6 @@
 # Static files: local, pinned, cleaned up
 
-- **Status:** ready
+- **Status:** finished (2026-11-17; tested with `tests/test_web_pages.py`, every page and dialog looked at in headless Chrome on a copy of the web app, not on IBM i)
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 1
@@ -58,12 +58,21 @@ Other findings:
 
 ## Acceptance criteria
 
-- [ ] Test: every file a rendered page refers to (`src`, `href`) exists in `webapp/static`.
-- [ ] Test: every file in `webapp/static` is referred to by a template, a stylesheet or a script. Exceptions are a list in the test (files kept for custom templates, licenses).
-- [ ] Test: no template uses a `fa-` class.
-- [ ] `webapp/static` is smaller than 2 MB.
-- [ ] All pages look and work as before (manual check of each page, or [browser tests](web-ui-browser-tests.md)).
-- [ ] Docs: [technik.md](../technik.md). Changelog: removed files, for owners of custom templates.
+- [x] Test: every file a rendered page refers to (`src`, `href`) exists in `webapp/static`.
+- [x] Test: every file in `webapp/static` is referred to by a template, a stylesheet or a script. Exceptions are a list in the test (files kept for custom templates, licenses).
+- [x] Test: no template uses a `fa-` class.
+- [x] `webapp/static` is smaller than 2 MB, without Swagger UI: 1.3 MB, plus 1.9 MB of Swagger UI for `/docs` (came with the [bugfix](../bugfixes/web-scripts-from-third-party-servers.md) after this criterion was written). Before: 35 MB.
+- [x] All pages look and work as before: manual check in headless Chrome of every page, sorting, filters and paging of the tables, and the dialogs (run a stage, logs, token, permissions). No error in the console.
+- [x] Docs: [technik.md](../technik.md). Changelog: removed files, for owners of custom templates.
+
+
+## Decisions
+
+* Versions now: Bootstrap 5.3.9, Bootstrap Icons 1.13.2, bootstrap-table 1.28.0, SweetAlert2 11.26.25; jQuery 3.7.1 and Prism 1.30.0 were current.
+* SweetAlert2 11.26.25 doesn't contain the code for Russian hosts any more (checked in the file).
+* SweetAlert2 is loaded in `<head>`: scripts inside the content of a page (also custom templates) use `Swal` while the page is read.
+* The stylesheet of the icons is `bootstrap-icons.min.css` (the only path which changed). `sweetalert2.all.min.js` is replaced by `sweetalert2.min.js`: custom templates which load it themselves have to remove that line, `Swal` comes from `base.html`.
+* Licenses of the libraries: `webapp/static/assets/licenses/`.
 
 
 ## Non-goals

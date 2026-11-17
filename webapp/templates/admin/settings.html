@@ -187,7 +187,7 @@ Settings
             <h3>Role</h3>
 
             <button type="button" class="btn btn-primary" onclick="show_add_role_permission()">
-              <i class="fa-solid fa-plus"></i>
+              <i class="bi bi-plus-lg"></i>
               Add new role
             </button>
 
@@ -201,7 +201,7 @@ Settings
                     <tr>
                         <td>
                           <button type="button" class="btn btn-primary" data-role="{{ role }}" onclick="delete_role(this.dataset.role)">
-                            <i class="fa-solid fa-trash"></i>
+                            <i class="bi bi-trash"></i>
                           </button>
                         </td>
                         <td><h4><label class="permission-role" data-value="{{ role }}">{{ role }}</label></h4></td>
@@ -236,7 +236,7 @@ Settings
             <h3>User</h3>
             
             <button type="button" class="btn btn-primary" onclick="show_add_user_permission()">
-              <i class="fa-solid fa-plus"></i>
+              <i class="bi bi-plus-lg"></i>
               Add new user
             </button>
 
@@ -249,7 +249,7 @@ Settings
                     <tr>
                         <td> 
                           <button type="button" class="btn btn-primary" data-user="{{ user }}" onclick="delete_user(this.dataset.user)">
-                            <i class="fa-solid fa-trash"></i>
+                            <i class="bi bi-trash"></i>
                           </button>
                         </td>
                         <td><h4><label class="permission-user" data-value="{{ user }}">{{ user }}</label></h4></td>
@@ -287,11 +287,11 @@ Settings
                               </td>
                             </tr>
                             <tr>
-                              <th>Workflows <button type="button" class="btn btn-primary" data-user="{{ user }}" onclick="add_user_workflow(this.dataset.user)"><i class="fa-solid fa-plus"></i></button></th>
+                              <th>Workflows <button type="button" class="btn btn-primary" data-user="{{ user }}" onclick="add_user_workflow(this.dataset.user)"><i class="bi bi-plus-lg"></i></button></th>
                               <td><details><summary>{{ permissions.workflows|length }} workflows</summary>
                                 {% for workflow, workflow_permissions in permissions.workflows.items() %}
                                   <button type="button" class="btn btn-primary" data-user="{{ user }}" data-workflow="{{ workflow }}" onclick="delete_user_workflow(this.dataset.user, this.dataset.workflow)">
-                                    <i class="fa-solid fa-trash"></i>
+                                    <i class="bi bi-trash"></i>
                                   </button>
                                   <label class="workflow-title" data-kind="user-workflow" data-user="{{ user }}" data-value="{{ workflow }}">{{ workflow }}</label>
                                   <table class="table zebra">
@@ -313,7 +313,7 @@ Settings
                                     </tr>
                                     <tr>
                                       <th>Stages</th>
-                                      <td><button type="button" class="btn btn-primary" data-user="{{ user }}" data-workflow="{{ workflow }}" onclick="add_user_workflow_stage(this.dataset.user, this.dataset.workflow)"><i class="fa-solid fa-plus"></i></button></td>
+                                      <td><button type="button" class="btn btn-primary" data-user="{{ user }}" data-workflow="{{ workflow }}" onclick="add_user_workflow_stage(this.dataset.user, this.dataset.workflow)"><i class="bi bi-plus-lg"></i></button></td>
                                     </tr>
                                     <tr><td>&nbsp;</td>
                                       <td>
@@ -322,7 +322,7 @@ Settings
                                         <tr>
                                           <td>
                                             <button type="button" class="btn btn-primary" data-user="{{ user }}" data-workflow="{{ workflow }}" data-stage="{{ stage }}" onclick="delete_user_workflow_stage(this.dataset.user, this.dataset.workflow, this.dataset.stage)">
-                                              <i class="fa-solid fa-trash"></i>
+                                              <i class="bi bi-trash"></i>
                                             </button>
                                             <label class="stage-title" data-kind="user-stage" data-user="{{ user }}" data-workflow="{{ workflow }}" data-value="{{ stage }}">{{ stage }}</label></td>
                                           <td>

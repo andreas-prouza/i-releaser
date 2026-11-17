@@ -370,3 +370,128 @@ def test_permissions_page_keeps_names_out_of_selectors(permission_server):
     assert 'data-kind="user-general" data-user="dev#1"' in text
     assert 'class="user-' not in text and 'class="role-' not in text
     assert not re.search(r'querySelectorAll\(`[^`]*\$\{(user|role|workflow|stage)', text)
+
+
+
+#-----------------------------------------------------------------------------------------------
+# Static files (docs/features/web-ui-static-assets.md)
+#-----------------------------------------------------------------------------------------------
+
+STATIC_DIR = os.path.join(ROOT_DIR, 'webapp', 'static')
+
+# Not referred to by a page of the repository
+STATIC_FILES_WITHOUT_REFERENCE = [
+    # licenses of the libraries
+    r'assets/licenses/.*',
+    r'assets/swagger-ui/(LICENSE|NOTICE|swagger-ui-bundle\.js\.LICENSE\.txt)',
+    # scripts of an installation (custom templates)
+    r'custom/.*',
+]
+
+
+def get_static_files() -> list:
+    files = []
+    for directory, _, names in os.walk(STATIC_DIR):
+        files += [os.path.relpath(os.path.join(directory, name), STATIC_DIR).replace(os.sep, '/') for name in names]
+    return files
+
+
+
+def get_own_sources() -> str:
+    """Templates, Python code of the web app and the own scripts and stylesheets: everything which can refer to a static file"""
+
+    web_dir = os.path.join(ROOT_DIR, 'webapp')
+    text = ''
+
+    for top in ['templates', 'web_modules', 'routes', os.path.join('static', 'assets', 'css'), os.path.join('static', 'assets', 'bootstrap', 'font')]:
+        for directory, _, names in os.walk(os.path.join(web_dir, top)):
+            if os.path.basename(directory) in ['custom_templates', '__pycache__']:
+                continue
+            for name in names:
+                if name.endswith(('.html', '.py', '.css')):
+                    with open(os.path.join(directory, name), encoding='utf-8') as f:
+                        text += f.read()
+
+    return text
+
+
+
+def test_every_static_file_is_used():
+
+    sources = get_own_sources()
+    unused = []
+
+    for file in get_static_files():
+        if any(re.fullmatch(pattern, file) for pattern in STATIC_FILES_WITHOUT_REFERENCE):
+            continue
+        # Stylesheets refer to their fonts with a relative path
+        if file not in sources and os.path.basename(file) not in sources:
+            unused.append(file)
+
+    assert unused == []
+
+
+
+def test_files_of_the_pages_exist(server, boss):
+
+    deployment = boss.create_deployment('hidden_wf')
+    log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
+    checked = set()
+
+    try:
+        for path in ['/', '/list-objects', '/workflows', '/settings', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
+            _, _, text = boss.get(path, headers={'Accept': 'text/html'})
+            urls = re.findall(r'<(?:script|img|link)\b[^>]*?\b(?:src|href)\s*=\s*["\']([^"\']+)', text, re.I)
+            assert urls, path
+            for url in urls:
+                file = url.replace(boss.origin, '')
+                if file in checked:
+                    continue
+                checked.add(file)
+                assert file.startswith('/static/'), f"{path}: {url}"
+                assert boss.get(file)[0] == 200, f"{path}: {url}"
+    finally:
+        boss.post(f"/api/cancel_deployment/{deployment}")
+
+    # Run buttons of the flow chart are images written by flowchart.py
+    for image in ['run-green.png', 'undo.png']:
+        assert boss.get(f"/static/assets/img/{image}")[0] == 200
+
+
+
+def test_one_icon_set_and_each_library_once():
+
+    sources = get_own_sources()
+    assert not re.search(r'class="[^"]*\bfa[srb]?\b|\bfa-(solid|regular|[a-z]+)\b', sources)
+    assert 'fontawesome' not in sources
+    assert 'popper' not in sources.replace('contains Popper', '')
+
+    with open(os.path.join(ROOT_DIR, 'webapp', 'templates', 'base.html'), encoding='utf-8') as f:
+        base = f.read()
+
+    # The base template loads the libraries of all pages; no page loads one a second time
+    for directory, _, names in os.walk(os.path.join(ROOT_DIR, 'webapp', 'templates')):
+        if os.path.basename(directory) == 'custom_templates':
+            continue
+        for name in names:
+            if name == 'base.html':
+                continue
+            with open(os.path.join(directory, name), encoding='utf-8') as f:
+                text = f.read()
+            for library in ['jquery', 'sweetalert2', 'bootstrap.bundle', 'bootstrap.min.css', 'bootstrap-icons']:
+                assert library not in text, f"{name}: {library} is loaded by base.html"
+
+    for library in ['jquery.min.js', 'sweetalert2.min.js', 'sweetalert2.min.css', 'bootstrap.bundle.min.js', 'bootstrap.min.css', 'bootstrap-icons.min.css']:
+        assert base.count(library) == 1, library
+
+
+
+def test_size_of_the_static_files():
+
+    size = {'swagger-ui': 0, 'other': 0}
+    for file in get_static_files():
+        size['swagger-ui' if file.startswith('assets/swagger-ui/') else 'other'] += os.path.getsize(os.path.join(STATIC_DIR, file))
+
+    # 35 MB before the cleanup. Swagger UI is only loaded by /docs.
+    assert size['other'] < 2 * 1024 * 1024
+    assert size['swagger-ui'] < 2.5 * 1024 * 1024

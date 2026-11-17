@@ -96,7 +96,7 @@ flowchart LR
 | Step | File | Size | Status |
 |---|---|---|---|
 | – | The three P1 bugfixes above | S each | finished |
-| 1 | [Static assets: local, pinned, cleaned up](web-ui-static-assets.md) | S | ready |
+| 1 | [Static assets: local, pinned, cleaned up](web-ui-static-assets.md) | S | finished |
 | 2 | [Layout and styles](web-ui-layout.md): base layout, navigation, design tokens, components, login and error page | L | draft |
 | 3 | [Scripts in files](web-ui-scripts.md): modules, shared helpers, rules, contract for custom templates | M | draft |
 | 4 | [Deployment page](web-ui-deployment-page.md): header, stage flow, steps, objects, logs | L | draft |

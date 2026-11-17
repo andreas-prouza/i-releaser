@@ -37,6 +37,7 @@
 * Web pages load no files from other servers any more; `/docs` uses a local Swagger UI, `/redoc` is turned off
 * Web pages: names of objects, stages, users and commands with special characters (`'`, `<`, `->`, spaces, `.`, `#`) are shown as text and don't break pages. The permissions page saves them correctly
 * `/api/save_permissions` keeps users and roles which are not sent; delete with `deleted_users` / `deleted_roles` (see [Web API](docs/webapi.md#users-and-permissions))
+* Static files of the web app cleaned up (35 MB → 3 MB): Font Awesome, unused fonts, stylesheets and scripts removed; Bootstrap 5.3.9, bootstrap-table 1.28, SweetAlert2 11.26 (see [libraries](docs/technik.md#libraries-of-the-web-pages))
 * Removed: `deployment.py`, `stage_commands.json`, `flask_config.py`, `gen_commands.py`
 
 ## Before you update to 3.1.0
@@ -46,4 +47,5 @@
 * Own clients: `POST`, `Authorization: Bearer` and the new [error format](docs/webapi.md#responses-and-errors)
 * Generate new [API tokens](docs/permissions.md#api-tokens)
 * Check the [production checklist](docs/installation.md#production-checklist) (log level, `C_COOKIE_SECURE`) and the [reverse proxy](docs/installation.md#reverse-proxy) (`ProxyPreserveHost On`)
+* Custom templates: Font Awesome icons (`fa-...`) are gone, use [Bootstrap Icons](https://icons.getbootstrap.com) (`bi bi-...`). Don't load `sweetalert2.all.min.js` or `popper.min.js` yourself, `base.html` provides `Swal` and Bootstrap
 * Start the web app first, it updates the database (see [update](docs/installation.md#update))
