@@ -149,7 +149,7 @@ Actions which change data are shown with `POST`. With an API token they also wor
 | `POST` | `/api/generate_user_key` | login | New API token for the logged-in user: `{"token": "..."}`. Replaces the old one. |
 | `POST` | `/api/drop_key` | login | Delete the API token of the logged-in user |
 | `POST` | `/api/add_permission` | `admin` | Add a user or role: `{"type": "user"\|"role", "name": "anna", "general": ["read"]}` |
-| `POST` | `/api/save_permissions` | `admin` | Replace all users and roles (`{"user_permissions": {...}, "role_permissions": {...}}`, like `etc/user_permissions.json`) |
+| `POST` | `/api/save_permissions` | `admin` | Replace the permissions of the given users and roles (`{"user_permissions": {...}, "role_permissions": {...}}`, like `etc/user_permissions.json`). Users and roles which are not given stay unchanged. To delete some: `"deleted_users": ["anna"]`, `"deleted_roles": ["developer"]`. Unknown users or roles: `422` (add them with `add_permission`). |
 
 
 ## Details
