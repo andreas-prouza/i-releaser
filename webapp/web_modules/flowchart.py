@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from fastapi import Request
 from modules import meta_file, stage_status, stages, deploy_action
 from modules.job_status import Status as Job_Status
-import base64
+from html import escape
 from web_modules import http_functions
 
 
@@ -29,18 +29,11 @@ btn_class_list = {
   }
 
 
-def get_stage_as_html_id(stage:str) -> str:
-  """Generates an unique html id
-
-  Args:
-      stage (str): ID is a base64 code of the stage name.
-                   This avoids special character problems
-
-  Returns:
-      str: html id
+def get_stage_as_html_id(stage: stages.Stage) -> str:
+  """The id of the stage in the page, also used as name of a JavaScript variable.
+  From the id of the stage, not from its name: a name can contain any character.
   """
-  return f"flow_{base64.b64encode(stage.encode()).decode('ascii').replace('=', '')}"
-  #return f"flow_{stage}"
+  return f"flow_stage_{int(stage.id)}"
 
 
 
@@ -51,7 +44,7 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
   btn_class = btn_class_list['None']
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
-  return f'<button type="button" id="{get_stage_as_html_id(stage.name)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{stage.name}</button>'
+  return f'<button type="button" id="{get_stage_as_html_id(stage)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{escape(stage.name)}</button>'
 
 
 
@@ -60,7 +53,7 @@ def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
   # Waiting for the processing service
   for job in mf.processing_jobs:
     if job.stage_id == stage.id and job.status == Job_Status.QUEUED:
-      return f'<br/><button type="button" class="btn btn-sm btn-warning" title="Waiting for the processing service. Click to remove it from the queue." onclick="cancel_job({job.id})">queued</button>'
+      return f'<br/><button type="button" class="btn btn-sm btn-warning" title="Waiting for the processing service. Click to remove it from the queue." onclick="cancel_job({int(job.id)})">queued</button>'
 
   # Like a deployment which is in process
   if len(mf.processing_jobs) > 0 and not mf.parallel_deployment_execution_allowed:
@@ -74,7 +67,7 @@ def generate_run_button(mf: meta_file.Meta_File, stage : stages.Stage):
   global btn_class_list
 
   btn_class = btn_class_list['None']
-  return f'<br/><img class="run" title="Run Stage" src="/static/assets/img/run-green.png" onclick="run_stage({mf.id}, {stage.id}, \'{stage.name}\')">'
+  return f'<br/><img class="run" title="Run Stage" src="/static/assets/img/run-green.png" data-stage-name="{escape(stage.name)}" onclick="run_stage({int(mf.id)}, {int(stage.id)}, this.dataset.stageName)">'
 
 
 
@@ -90,7 +83,7 @@ def generate_reset_finished_button(mf: meta_file.Meta_File, stage : stages.Stage
   except Exception:
     return ''
 
-  return f'<br/><img class="run" title="Reset status of the last finished stage" src="/static/assets/img/undo.png" onclick="reset_last_finished_stage({mf.id}, {stage.id}, \'{stage.name}\')">'
+  return f'<br/><img class="run" title="Reset status of the last finished stage" src="/static/assets/img/undo.png" data-stage-name="{escape(stage.name)}" onclick="reset_last_finished_stage({int(mf.id)}, {int(stage.id)}, this.dataset.stageName)">'
 
 
 
@@ -110,7 +103,7 @@ def generate_reset_button(mf: meta_file.Meta_File, stage : stages.Stage):
   global btn_class_list
 
   btn_class = btn_class_list['None']
-  return f'<br/><img class="run" title="Reset Stage" src="/static/assets/img/undo.png" onclick="reset_stage_status({mf.id}, {stage.id})">'
+  return f'<br/><img class="run" title="Reset Stage" src="/static/assets/img/undo.png" onclick="reset_stage_status({int(mf.id)}, {int(stage.id)})">'
 
 
 
@@ -120,7 +113,7 @@ def generate_action_button(action : deploy_action.Deploy_Action):
   
   btn_class = btn_class_list['None']
   btn_class=f' {btn_class_list.get(action.get_dict().get("status", "None"),"None")}'
-  return f'<button class="btn btn-sm {btn_class}">{action.status.value}</button>'
+  return f'<button class="btn btn-sm {btn_class}">{escape(action.status.value)}</button>'
 
 
 def generate_stage_steps_html(request: Request, mf: meta_file.Meta_File, stage : stages.Stage):
@@ -158,11 +151,6 @@ def generate_stage_steps_html(request: Request, mf: meta_file.Meta_File, stage :
                                   ).body.decode()
   #html_actions = render_template('overview/details/quotes.html', html=html_actions)
   
-  html_actions=html_actions.replace('\n', '')
-  html_actions=html_actions.replace('\r\n', '')
-  html_actions=html_actions.replace('&quot;', '\\&quot;')
-  html_actions=html_actions.replace('&#39;', '\\&#39;')
-
   return html_actions
 
 
@@ -191,7 +179,7 @@ def get_flow_stage(request: Request, mf: meta_file.Meta_File, stage : stages.Sta
       str: html code
   """
 
-  flow_stages.append(get_stage_as_html_id(stage.name))
+  flow_stages.append(get_stage_as_html_id(stage))
 
   next_stages = mf.get_next_stages(stage)
   sub_row=''
@@ -203,10 +191,10 @@ def get_flow_stage(request: Request, mf: meta_file.Meta_File, stage : stages.Sta
     direction_from='right'
     if i>1:
       direction_from='bottom'
-    flow_connection.append({'from': f"{get_stage_as_html_id(stage.name)}", 'to': f"{get_stage_as_html_id(ns.name)}", 'direction_from': direction_from, 'direction_to': 'left'})
+    flow_connection.append({'from': get_stage_as_html_id(stage), 'to': get_stage_as_html_id(ns), 'direction_from': direction_from, 'direction_to': 'left'})
     
     # Every stage will only be printed once
-    if f"{get_stage_as_html_id(ns.name)}" in flow_stages:
+    if get_stage_as_html_id(ns) in flow_stages:
       continue
     
     # All next stages in a new Row

@@ -790,12 +790,26 @@ def save_permissions(request: Request, data: dict = Body(...)):
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
 
-    # Handle user permissions
+    # Users and roles which are missing in the request are kept: the web app reads them from its page,
+    # and an error there must not delete them. They are only deleted if the request says so.
     user_permissions = data.get('user_permissions', {})
+    role_permissions = data.get('role_permissions', {})
+    deleted_users = data.get('deleted_users', [])
+    deleted_roles = data.get('deleted_roles', [])
 
-    users_to_delete = permission_config.PermissionKonfig.user_permissions.keys() - user_permissions.keys()
-    for user in users_to_delete:
-        del permission_config.PermissionKonfig.user_permissions[user]
+    if not all(isinstance(value, dict) for value in [user_permissions, role_permissions]) or not all(isinstance(value, list) for value in [deleted_users, deleted_roles]):
+        raise errors.Invalid_Input_Error("user_permissions and role_permissions have to be objects, deleted_users and deleted_roles lists")
+
+    permission_config.PermissionKonfig.check_reload()
+
+    unknown_users = user_permissions.keys() - permission_config.PermissionKonfig.user_permissions.keys()
+    unknown_roles = role_permissions.keys() - permission_config.PermissionKonfig.role_permissions.keys()
+    if unknown_users or unknown_roles:
+        raise errors.Invalid_Input_Error(f"Unknown users or roles: {', '.join(sorted(unknown_users | unknown_roles))}")
+
+    for user in deleted_users:
+        user_permissions.pop(user, None)
+        permission_config.PermissionKonfig.user_permissions.pop(user, None)
 
     permission_config.PermissionKonfig.convert_permissions('user', user_permissions)
     for user, perm in user_permissions.items():
@@ -803,12 +817,9 @@ def save_permissions(request: Request, data: dict = Body(...)):
         permission_config.PermissionKonfig.user_permissions[user].permissions.workflows = perm.permissions.workflows
         permission_config.PermissionKonfig.user_permissions[user].roles = perm.roles
 
-    # Handle role permissions
-    role_permissions = data.get('role_permissions', {})
-
-    roles_to_delete = permission_config.PermissionKonfig.role_permissions.keys() - role_permissions.keys()
-    for role in roles_to_delete:
-        del permission_config.PermissionKonfig.role_permissions[role]
+    for role in deleted_roles:
+        role_permissions.pop(role, None)
+        permission_config.PermissionKonfig.role_permissions.pop(role, None)
 
     permission_config.PermissionKonfig.convert_permissions('role', role_permissions)
     for role, perm in role_permissions.items():

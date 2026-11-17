@@ -1,6 +1,6 @@
 # Object names, commands and names from the configuration can run as script in the web app (XSS)
 
-- **Status:** ready
+- **Status:** finished (2026-11-17; tested with `tests/test_web_pages.py` and in headless Chrome on a copy of the web app, not on IBM i)
 - **Type:** security
 - **Priority:** P1
 - **Found:** 2026-11-16, analysis of the web front end; partly reproduced in Chrome on a copy of the web app
@@ -42,11 +42,18 @@ A complete attack was not carried out. Number 1 was reproduced up to the broken 
 
 ## Acceptance criteria
 
-- [ ] Test: the deployment page, the steps of a stage and the object list contain these values only escaped (no `<img` from data in the HTML, no value inside an `on...=` attribute or a `<script>`).
-- [ ] Test: no template uses `|safe` for data (`flow_html` is gone with the [stage flow](../features/web-ui-deployment-page.md), or documented as template output).
-- [ ] Browser test (or manual check, see [browser tests](../features/web-ui-browser-tests.md)): open the page, the steps, the object history and the processing history of the test deployment: `window.xss` stays undefined, the names are shown as text.
-- [ ] Browser test (or manual check): the switch of the object `o'brien` works.
-- [ ] Changelog entry.
+- [x] Test: the deployment page, the steps of a stage and the object list contain these values only escaped (no `<img` from data in the HTML, no value inside an `on...=` attribute or a `<script>`).
+- [x] Test: no template uses `|safe` for data. Left: `flow_html`, `flow_javascript`, `run_stage_button`, `reset_stage_button`, which are HTML of `flowchart.py`; it escapes its values now and they are gone with the [stage flow](../features/web-ui-deployment-page.md).
+- [x] Manual check in headless Chrome (no [browser tests](../features/web-ui-browser-tests.md) yet): the page, the steps, the object history and the processing history of a deployment with such values: `window.xss` stays undefined, the names are shown as text.
+- [x] Manual check in headless Chrome: the switches of the objects `o'brien` and `<img src=x onerror="window.xss=1">` work.
+- [x] Changelog entry.
+
+
+## Decisions
+
+* `escape_html` is in `web.deploy.js`.
+* The inline handlers stay until the [scripts](../features/web-ui-scripts.md) step, but read their values with `this.dataset`.
+* Not covered by an automatic test: the tables which JavaScript builds (object history, processing history). A test only checks that the scripts call `escape_html`.
 
 
 ## Non-goals

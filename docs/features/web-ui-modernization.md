@@ -50,10 +50,10 @@ Analysis of the web front end, the answer to "complete redesign?", and the plan.
 
 | Priority | Defect | Type | Fix |
 |---|---|---|---|
-| P1 | [Scripts from third-party servers](../bugfixes/web-scripts-from-third-party-servers.md) | security | before the redesign |
-| P1 | [Values can run as script (XSS)](../bugfixes/web-values-run-as-script.md) | security | before the redesign |
-| P1 | [Permissions page: can't save, or removes permissions](../bugfixes/permissions-page-names-in-selectors.md) | bug (data loss) | before the redesign |
-| P2 | [A stage name can turn off all buttons of the deployment page](../bugfixes/stage-name-breaks-deployment-page.md) | bug | with step 4, or before |
+| P1 | [Scripts from third-party servers](../bugfixes/web-scripts-from-third-party-servers.md) | security | finished 2026-11-17 |
+| P1 | [Values can run as script (XSS)](../bugfixes/web-values-run-as-script.md) | security | finished 2026-11-17 |
+| P1 | [Permissions page: can't save, or removes permissions](../bugfixes/permissions-page-names-in-selectors.md) | bug (data loss) | finished 2026-11-17 |
+| P2 | [A stage name can turn off all buttons of the deployment page](../bugfixes/stage-name-breaks-deployment-page.md) | bug | finished 2026-11-17 |
 | P2 | [Objects table of the deployment page](../bugfixes/deployment-objects-table.md) | bug | with step 4, or before |
 | P3 | [Minor defects of the web pages](../bugfixes/minor-web-defects.md) | bug | with the steps |
 
@@ -95,7 +95,7 @@ flowchart LR
 
 | Step | File | Size | Status |
 |---|---|---|---|
-| – | The three P1 bugfixes above | S each | ready |
+| – | The three P1 bugfixes above | S each | finished |
 | 1 | [Static assets: local, pinned, cleaned up](web-ui-static-assets.md) | S | ready |
 | 2 | [Layout and styles](web-ui-layout.md): base layout, navigation, design tokens, components, login and error page | L | draft |
 | 3 | [Scripts in files](web-ui-scripts.md): modules, shared helpers, rules, contract for custom templates | M | draft |

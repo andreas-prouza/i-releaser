@@ -1,6 +1,6 @@
 # Permissions page: can't save, or removes permissions, if a name contains special characters
 
-- **Status:** ready
+- **Status:** finished (2026-11-17; tested with `tests/test_web_pages.py` and in headless Chrome on a copy of the web app, not on IBM i)
 - **Type:** bug (data loss)
 - **Priority:** P1
 - **Found:** 2026-11-16, analysis of the web front end; reproduced in Chrome on a copy of the web app
@@ -37,10 +37,18 @@ Permissions are only removed, never added. An administrator can remove their own
 
 ## Acceptance criteria
 
-- [ ] Test: `/api/save_permissions` without a user who exists → the user is kept. Deleting a user or a role in the page still works.
-- [ ] Browser test (or manual check, see [browser tests](../features/web-ui-browser-tests.md)): users `a.b` and `dev#1`, workflow `my.workflow`, stages `STAGE 2.1` and `Create object list`, each with permissions. Change one checkbox of another user → `user_permissions.json` contains all permissions as before, plus the change.
-- [ ] Browser test (or manual check): `/api/save_permissions` answers with an error → an error message is shown.
-- [ ] Changelog entry.
+- [x] Test: `/api/save_permissions` without a user who exists → the user is kept. Deleting a user or a role in the page still works.
+- [x] Manual check in headless Chrome (no [browser tests](../features/web-ui-browser-tests.md) yet): users `a.b` and `dev#1`, workflow `my.workflow`, stages `STAGE 2.1`, `Create object list`, `It's <b>x</b>` and `A->B`, role `o'role`. Change one checkbox of another user → `user_permissions.json` contains all permissions as before, plus the change.
+- [ ] `/api/save_permissions` answers with an error → an error message is shown. Implemented (`show_permission_error`), **not checked in a browser**.
+- [x] Changelog entry.
+
+
+## Decisions
+
+* The page marks its checkboxes with `data-kind` and the names as `data-*` attributes, and compares names as text (`find_elements`).
+* `/api/save_permissions`: users and roles which are missing stay unchanged; `deleted_users` and `deleted_roles` delete; unknown ones are rejected with `422` ([webapi.md](../webapi.md)). This changes the endpoint for other clients which deleted by leaving out.
+* A stage without a ticked permission is kept until it's deleted (it disappeared with the next change before).
+* The dialog to add a stage offered stages the user already had: fixed.
 
 
 ## Non-goals

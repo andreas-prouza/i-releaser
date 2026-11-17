@@ -1,6 +1,6 @@
 # The web app loads scripts from third-party servers
 
-- **Status:** ready
+- **Status:** finished (2026-11-17; tested with `tests/test_web_pages.py` and in headless Chrome on a copy of the web app, not on IBM i)
 - **Type:** security
 - **Priority:** P1
 - **Found:** 2026-11-16, analysis of the web front end; reproduced in Chrome on a copy of the web app
@@ -40,11 +40,18 @@ Effects:
 
 ## Acceptance criteria
 
-- [ ] Test: every page (`/`, `/list-objects`, `/workflows`, `/settings`, `/user`, `/log/...`, a deployment, login, error, `/docs`) has no `src`, no `href` of a `link`, and no `url(...)` or `@import` which points to another server.
-- [ ] Test: no template, script or stylesheet of the web app (libraries excluded) contains `http://` or `https://` in a `script`, `link` or `import`.
-- [ ] Test: `/redoc` → 404.
-- [ ] The deployment list and the object list sort, filter and page without internet access (browser test or manual check).
-- [ ] Changelog entry.
+- [x] Test: every page (`/`, `/list-objects`, `/workflows`, `/settings`, `/user`, `/log/...`, a deployment, login, error, `/docs`) has no `src`, no `href` of a `link`, and no `url(...)` or `@import` which points to another server.
+- [x] Test: no template, script or stylesheet of the web app (libraries excluded) contains `http://` or `https://` in a `script`, `link` or `import`.
+- [x] Test: `/redoc` → 404.
+- [x] The deployment list and the object list sort, filter and page without internet access (manual check in headless Chrome: no request to another server on any page, paging and filters are there).
+- [x] Changelog entry.
+
+
+## Decisions
+
+* Swagger UI 5.35.0 (`swagger-ui-dist`) is in `webapp/static/assets/swagger-ui/`: bundle, stylesheet, licenses, without source maps. `/docs` is an own route in [initial.py](../../webapp/routes/initial.py).
+* Also removed: the local `raphael.min.js` and `bootstrap-table-resizable.min.js`.
+* The deployment page now loads the stylesheet of bootstrap-table ([objects table](deployment-objects-table.md), number 1).
 
 
 ## Non-goals

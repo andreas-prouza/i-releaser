@@ -55,10 +55,10 @@ Found in the analysis of the web front end of 2026-11-16 (see [modernization](..
 
 | Priority | Defect | Type | Found by | Status |
 |---|---|---|---|---|
-| P1 | [The web app loads scripts from third-party servers](web-scripts-from-third-party-servers.md) | security | reproduced | ready |
-| P1 | [Object names, commands and names from the configuration can run as script (XSS)](web-values-run-as-script.md) | security | partly reproduced | ready |
-| P1 | [Permissions page: can't save, or removes permissions, if a name contains special characters](permissions-page-names-in-selectors.md) | bug (data loss) | reproduced | ready |
-| P2 | [A stage name can turn off all buttons of the deployment page](stage-name-breaks-deployment-page.md) | bug | reproduced | ready |
+| P1 | [The web app loads scripts from third-party servers](web-scripts-from-third-party-servers.md) | security | reproduced | finished |
+| P1 | [Object names, commands and names from the configuration can run as script (XSS)](web-values-run-as-script.md) | security | partly reproduced | finished |
+| P1 | [Permissions page: can't save, or removes permissions, if a name contains special characters](permissions-page-names-in-selectors.md) | bug (data loss) | reproduced | finished |
+| P2 | [A stage name can turn off all buttons of the deployment page](stage-name-breaks-deployment-page.md) | bug | reproduced | finished |
 | P2 | [Deployment page: defects of the table "Objects to deploy"](deployment-objects-table.md) | bug | reproduced | ready |
 | P3 | [Minor defects of the web pages](minor-web-defects.md) | bug | seen / code review | ready |
 

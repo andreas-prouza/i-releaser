@@ -34,6 +34,9 @@
 * Web app: requests don't block each other
 * [Tests](docs/technik.md#tests) in `tests/`, run on GitHub
 * FastAPI 0.125, `starlette` 0.50 (see [FastAPI and pydantic](docs/technik.md#fastapi-and-pydantic))
+* Web pages load no files from other servers any more; `/docs` uses a local Swagger UI, `/redoc` is turned off
+* Web pages: names of objects, stages, users and commands with special characters (`'`, `<`, `->`, spaces, `.`, `#`) are shown as text and don't break pages. The permissions page saves them correctly
+* `/api/save_permissions` keeps users and roles which are not sent; delete with `deleted_users` / `deleted_roles` (see [Web API](docs/webapi.md#users-and-permissions))
 * Removed: `deployment.py`, `stage_commands.json`, `flask_config.py`, `gen_commands.py`
 
 ## Before you update to 3.1.0

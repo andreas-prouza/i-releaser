@@ -10,7 +10,7 @@
 
 | # | Defect | Cause |
 |---|---|---|
-| 1 | `Loading, please wait` is always shown above the table. Filters and paging look unstyled. | The page loads the script of bootstrap-table, but not its stylesheet ([show-deployment.html:347](../../webapp/templates/overview/show-deployment.html#L347)) |
+| 1 | **Fixed 2026-11-17.** `Loading, please wait` is always shown above the table. Filters and paging look unstyled. | The page loads the script of bootstrap-table, but not its stylesheet ([show-deployment.html:347](../../webapp/templates/overview/show-deployment.html#L347)) |
 | 2 | `Showing 1 to 10 of 13 rows` for 9 objects. The rows `Level 1`, `Level 2`, ... are counted, sorted and filtered like objects: after a sort by name they are somewhere in the table. | The level headings are table rows ([show-deployment.html:296](../../webapp/templates/overview/show-deployment.html#L296)), bootstrap-table reads them as data |
 | 3 | The switch in the header (all objects ready): turning it on shows `An unexpected error occurred. Error id: ...`, and the web app logs a `KeyError` for each level. | `toggleAll` sends a request for each level row, without library and name ([show-deployment.html:1182](../../webapp/templates/overview/show-deployment.html#L1182)) |
 | 4 | The same switch sends a request for each finished object, answered with `409`. | Finished objects can't be changed, but they are not left out |

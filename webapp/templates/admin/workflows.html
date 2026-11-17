@@ -36,14 +36,12 @@
             </tr>
         </thead>
     {% for wf in workflows %}
-        <tr><td><input type="button" class="btn btn-primary" onClick="start_workflow('{{ wf.name }}')" value='Start'></td>
+        <tr><td><input type="button" class="btn btn-primary" data-workflow="{{ wf.name }}" onClick="start_workflow(this.dataset.workflow)" value='Start'></td>
             <td>
                 {{ wf.name }}<br\>
                 <details>
                   <summary>Click to expand/collapse json</summary>
-                    <pre class="prettyprint lang-json">
-{{ wf | pretty_json }}
-                    </pre>
+                    <pre><code class="language-json">{{ wf | pretty_json }}</code></pre>
                 </details>
             </td>
         </tr>
@@ -53,35 +51,14 @@
 
 <script src="{{ url_for('static', path='assets/js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', path='assets/css/prism.css') }}">
+<script src="{{ url_for('static', path='assets/js/prism.js') }}"></script>
 
 <script type="text/javascript">
 
-    (function(d) {
-
-    stylizePreElements = function() {
-    var preElements = document.getElementsByTagName("pre");
-    for (i = 0; i < preElements.length; ++i) {
-        var preElement = preElements[i];
-        preElement.className += "prettyprint";
-    }
-    };
-
-    injectPrettifyScript = function() {
-    // https://github.com/googlearchive/code-prettify
-    var scriptElement = document.createElement('script');
-    scriptElement.setAttribute("src", "https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js");
-    document.head.appendChild(scriptElement);
-    };
-
-    stylizePreElements();
-    injectPrettifyScript();
-
-    })(document)
-
-
     async function start_workflow(wf_name) {
         console.log(`start ${wf_name}`);
-        http_post(`/api/create_deployment/${wf_name}`)
+        http_post(`/api/create_deployment/${encodeURIComponent(wf_name)}`)
             .then((response) => {
                 if (!response.ok) {
                     return response.json().then((data) => {
@@ -91,7 +68,7 @@
                 return response.json();
             })
             .then((data) => {
-                window.open(`/show_details/${data.meta_file.general.id}`,'_self');
+                window.open(`/show_details/${encodeURIComponent(data.meta_file.general.id)}`,'_self');
             })
             .catch((error) => {
                 Swal.fire({

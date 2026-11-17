@@ -2,6 +2,7 @@ import logging
 import os, re
 
 from fastapi import FastAPI
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,10 +26,26 @@ class RedactToken(logging.Filter):
 
 
 
+def show_api_docs():
+    """Swagger UI from the files of the web app (static/assets/swagger-ui)"""
+
+    return get_swagger_ui_html(
+        openapi_url='/openapi.json',
+        title='i-Releaser Web API',
+        swagger_js_url='/static/assets/swagger-ui/swagger-ui-bundle.js',
+        swagger_css_url='/static/assets/swagger-ui/swagger-ui.css',
+        swagger_favicon_url='/static/assets/img/favicon.png',
+        oauth2_redirect_url=None,
+    )
+
+
+
 def setup_fastapi(lifespan=None) -> FastAPI:
     
-    app: FastAPI = FastAPI(lifespan=lifespan)
+    # The default pages of FastAPI load Swagger UI and ReDoc from other servers
+    app: FastAPI = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
     setup_middleware(app)
+    app.add_api_route('/docs', show_api_docs, methods=['GET'], include_in_schema=False)
 
     logging.getLogger('uvicorn.access').addFilter(RedactToken())
 

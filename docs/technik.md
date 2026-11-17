@@ -76,6 +76,17 @@ Route handlers are plain functions (FastAPI runs them in threads), so blocking w
 For requests with a session cookie, `WebMiddleware.check_session_request` requires `POST` for actions and an `Origin` or `Referer` of the own host. API tokens aren't sent automatically by browsers, so requests with a token don't need this.
 No CSRF token: the header check needs no changes in the pages, and all current browsers send `Origin` with `POST`.
 
+### Files of the web pages
+
+No page loads anything from another server (`tests/test_web_pages.py`). Libraries are files in `webapp/static/assets/`.
+`/docs` is an own route with the local Swagger UI, `/redoc` is turned off (`initial.py`).
+To update Swagger UI: `npm pack swagger-ui-dist@<version>`, copy `swagger-ui-bundle.js`, `swagger-ui.css` and the licenses, remove the `sourceMappingURL` lines.
+
+### Values in web pages
+
+Values are never written into inline JavaScript (`onclick="f('{{ value }}')"`): the browser decodes `&#39;` before it runs the handler.
+Handlers read `data-*` attributes, scripts use `escape_html` (`web.deploy.js`) for HTML they build, Python uses `html.escape`. No `|safe` for data.
+
 ### Placeholders
 
 `modules/placeholders.py` replaces only known placeholders. `PASE` values are quoted depending on the position in the command (outside of quotes, in `'...'`, in `"..."`). `QSYS` values from users are checked instead of quoted, as they can be inside or outside of a CL string.
@@ -115,6 +126,7 @@ Criteria: see [architektur.md](architektur.md). Checked on 2026-11-01.
 |---|---|---|---|---|
 | `pytest` | Tests (`requirements-dev.txt`) | 14659 | 3583 | OK |
 | `pip-audit` | Check of the dependencies (`requirements-dev.txt`) | 1389 | 149 | OK |
+| `swagger-ui-dist` 5.35.0 (JavaScript, `webapp/static/assets/swagger-ui/`, checked 2026-11-17) | `/docs`, instead of the copy FastAPI loads from a CDN | 29085 | 9245 | OK |
 
 Removed: `starsessions` and `aiofiles` (not used anymore).
 

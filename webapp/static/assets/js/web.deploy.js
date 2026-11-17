@@ -1,4 +1,15 @@
 
+// Values of the server are data: escape them before they become part of HTML
+function escape_html(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+
 async function http_getData(url = "", accept="application/json") {
   // Default options are marked with *
   const response = await fetch(url, {

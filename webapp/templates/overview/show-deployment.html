@@ -149,8 +149,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 </style>
 
 <link rel="stylesheet" href="{{ url_for('static', path='assets/css/prism.css') }}">
-
-<script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
 
 
 {% set btn_classes = {
@@ -305,7 +304,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
                             data-lib="{{ object['lib'] }}"
                             data-name="{{ object['name'] }}"
                             data-type="{{ object['type'] }}"
-                            onchange="set_source_ready_4_deployment(this, {{ deployment_dict['general']['id'] }}, '{{ object['lib'] }}', '{{ object['name'] }}', '{{ object['type'] }}', this.checked)">
+                            onchange="set_source_ready_4_deployment(this, {{ deployment_dict['general']['id'] }}, this.dataset.lib, this.dataset.name, this.dataset.type, this.checked)">
                         <span class="slider round"></span>
                     </label>
                 </td>
@@ -345,7 +344,6 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 </div>
 
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table.min.js') }}"></script>
-<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-resizable.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-filter-control.min.js') }}"></script>
 
 <script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
@@ -548,7 +546,7 @@ function show_stage_steps(meta_file_id, stage_id, stage_name) {
         html = data['html'];
         
         Swal.fire({
-            title: `Steps for ${stage_name} (${stage_id})`,
+            title: `Steps for ${escape_html(stage_name)} (${escape_html(stage_id)})`,
             html: html,
             width: 'auto',
             customClass: {
@@ -779,11 +777,11 @@ function show_processing_history(meta_file_id) {
         
         let tableRows = data.map(item => {
             return `<tr>
-                <td>${item.timestamp}</td>
-                <td>${item.user}</td>
-                <td>${item.action}</td>
-                <td>${item.stage ? item.stage : ''}</td>
-                <td>${item.details ? item.details : ''}</td>
+                <td>${escape_html(item.timestamp)}</td>
+                <td>${escape_html(item.user)}</td>
+                <td>${escape_html(item.action)}</td>
+                <td>${escape_html(item.stage)}</td>
+                <td>${escape_html(item.details)}</td>
             </tr>`;
         }).join('');
         html = `<table class="table table-striped table-bordered w-auto">
@@ -820,7 +818,7 @@ async function run_stage(meta_file_id, stage_id, stage_name) {
 
     Swal.fire({
         icon: 'question',
-        title: `Run stage ${stage_name} (${stage_id})?`,
+        title: `Run stage ${escape_html(stage_name)} (${escape_html(stage_id)})?`,
         input: 'radio',
         width: 'auto',
         inputOptions: {
@@ -1069,7 +1067,7 @@ function reset_last_finished_stage(meta_file_id, stage_id, stage_name) {
     })
 
     swalWithBootstrapButtons.fire({
-        title: `Reset stage ${stage_name} (${stage_id})?`,
+        title: `Reset stage ${escape_html(stage_name)} (${escape_html(stage_id)})?`,
         html: "The stage will be set back to <code>ready</code>, the stages after it to <code>new</code>.<br/>" +
               "Its steps keep their status. Choose <i>Run all steps from the beginning</i> to run them again.",
         icon: 'warning',
