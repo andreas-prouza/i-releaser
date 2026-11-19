@@ -1,0 +1,27 @@
+{#
+  Rollback button on the deployment page.
+
+  Copy to: webapp/templates/custom_templates/deployment_status.html
+  Script:  webapp/static/custom/rollback.js (docs/examples/rollback/rollback.js)
+
+  No JavaScript in this template: values go to the script as data-* attributes.
+  With the Content-Security-Policy of the web app (docs/features/web-ui-security-headers.md)
+  inline scripts and onclick attributes don't run.
+#}
+{% if deployment_dict['general']['status'] == 'finished' %}
+  <button type="button" class="btn btn-sm btn-outline-secondary" data-rollback
+          data-project="{{ deployment_dict['general']['project'] }}"
+          data-version="{{ deployment_dict['general']['deploy_version'] }}"
+          title="Roll back this deployment">
+    <img src="{{ url_for('static', path='assets/img/undo.png') }}" alt="" style="height: 1.2em;">
+    Roll back
+  </button>
+  <script type="module" src="{{ url_for('static', path='custom/rollback.js') }}"></script>
+{% endif %}
+
+{% if deployment_dict['general']['workflow']['name'] == 'rollback_deployment' %}
+  <span style="margin-left: 2em;">
+    Rollback of deployment:
+    <a href="/show_details/{{ deployment_dict['custom_data']['project'] | urlencode }}/{{ deployment_dict['custom_data']['version'] | urlencode }}">{{ deployment_dict['custom_data']['project'] }} - {{ deployment_dict['custom_data']['version'] }}</a>
+  </span>
+{% endif %}

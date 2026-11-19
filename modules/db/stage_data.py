@@ -169,19 +169,33 @@ def claim_stage(stage_id: int, exclusive: bool) -> bool:
 
 
 
-def activate_stage(stage_id: int) -> bool:
+def activate_stage(stage_id: int, wait_for: list[str]|None=None) -> bool:
     """
     Sets a stage which has not been reached yet to status `ready`.
     Parallel branches which lead to the same stage can do this at the same time.
 
+    Args:
+        wait_for: names of stages of the same deployment which have to be finished before (`after_stages_finished`).
+                  They are checked in the same statement: of several branches which finish at the same time,
+                  the last one activates the stage.
+
     Returns:
-        bool: False if the stage has been reached already
+        bool: False if the stage has been reached already, or still waits for other stages
     """
+
+    sql = "UPDATE stages SET status = ?, update_time = ? WHERE id = ? AND status = ?"
+    params: list = [Stage_Status.READY.value, datetime.datetime.now(), stage_id, Stage_Status.NEW.value]
+
+    names = sorted(set(wait_for or []))
+    if names:
+        sql += f""" AND (SELECT COUNT(DISTINCT waited.name) FROM stages waited
+                         WHERE waited.meta_file_id = stages.meta_file_id AND waited.status = ?
+                           AND waited.name IN ({', '.join('?' * len(names))})) = ?"""
+        params += [Stage_Status.FINISHED.value, *names, len(names)]
 
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
-        c.execute("UPDATE stages SET status = ?, update_time = ? WHERE id = ? AND status = ?",
-                  (Stage_Status.READY.value, datetime.datetime.now(), stage_id, Stage_Status.NEW.value))
+        c.execute(sql, params)
         conn.commit()
         return c.rowcount == 1
 

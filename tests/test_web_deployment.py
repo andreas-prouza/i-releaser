@@ -710,3 +710,34 @@ def test_failed_stage_can_be_run_again(server, boss):
     assert boss.wait_for_stage(deployment, 'START')['status'] == 'finished'
 
     boss.post(f"/api/cancel_deployment/{deployment}")
+
+
+
+def test_stage_which_waits_for_parallel_stages(server, boss):
+    """docs/bugfixes/merging-stage-ready-too-early.md: END of par_wf waits for A and B"""
+
+    def stage(deployment, name):
+        return boss.get_stages(deployment)[name]
+
+    deployment = boss.create_deployment('par_wf')
+
+    try:
+        for name in ['START', 'A']:
+            assert boss.run_stage(deployment, name)[0] == 200
+            boss.wait_for_stage(deployment, name)
+
+        assert stage(deployment, 'END')['status'] == 'new'
+        assert stage(deployment, 'END')['waiting_for'] == ['B']
+        assert stage(deployment, 'A')['waiting_for'] == []
+
+        # The deployment page has no run button for END, and names what it waits for
+        _, _, page = boss.get(f"/show_details/{deployment}", headers={'Accept': 'text/html'})
+        assert 'title="Waits for B"' in page
+
+        assert boss.run_stage(deployment, 'B')[0] == 200
+        boss.wait_for_stage(deployment, 'B')
+
+        assert stage(deployment, 'END')['status'] == 'ready'
+        assert stage(deployment, 'END')['waiting_for'] == []
+    finally:
+        boss.post(f"/api/cancel_deployment/{deployment}")

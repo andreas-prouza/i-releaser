@@ -73,6 +73,7 @@ Other findings:
 * SweetAlert2 is loaded in `<head>`: scripts inside the content of a page (also custom templates) use `Swal` while the page is read.
 * The stylesheet of the icons is `bootstrap-icons.min.css` (the only path which changed). `sweetalert2.all.min.js` is replaced by `sweetalert2.min.js`: custom templates which load it themselves have to remove that line, `Swal` comes from `base.html`.
 * Licenses of the libraries: `webapp/static/assets/licenses/`.
+* SweetAlert2 11.26 resolves a dialog as dismissed (without `dismiss` reason) when another dialog replaces it; 11.7 never resolved it. The steps window of the deployment page reset its state then, so it didn't open again after a log. Found by the [browser tests](web-ui-browser-tests.md) on 2026-11-19 and fixed: `show_stage_steps` ignores this case.
 
 
 ## Non-goals

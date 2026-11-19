@@ -1,6 +1,6 @@
 # Browser tests for the web app
 
-- **Status:** draft
+- **Status:** ready (implemented on 2026-11-19 and tested locally; only the run on GitHub is missing: configured, not run yet)
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md)
@@ -35,10 +35,12 @@
 
 ## Acceptance criteria
 
-- [ ] `.venv/bin/pytest -m browser` runs the browser tests; `.venv/bin/pytest` without Playwright skips them and passes.
-- [ ] The smoke test fails for each of today's defects when it's run against today's pages (shown once, the result in this file): the script error of a stage `A->B`, the request to `unpkg.com`.
-- [ ] GitHub runs the browser tests for every push and pull request.
-- [ ] Docs: [technik.md](../technik.md#entwicklung) (how to run them, package review), `CLAUDE.md` (commands).
+- [x] `.venv/bin/pytest -m browser` runs the browser tests; `.venv/bin/pytest` without Playwright, or without its Chromium, skips them with the reason and passes (checked with a Playwright that can't be imported and with an empty `PLAYWRIGHT_BROWSERS_PATH`).
+- [x] The smoke test fails for each of today's defects when it's run against today's pages (shown once, the result in this file): the script error of a stage `A->B`, the request to `unpkg.com`.
+  Run on 2026-11-19 against commit `f3995bc` (before the fixes): `test_pages_have_no_errors` failed for both users with `request to another server: https://unpkg.com/bootstrap-table@1.22.1/...` (and `cdn.jsdelivr.net`), `test_stage_names_dont_break_the_deployment_page` with `typeof run_stage == 'undefined'`.
+- [ ] GitHub runs the browser tests for every push and pull request. Configured in `.github/workflows/tests.yml` (`python -m playwright install --with-deps chromium`), not run yet.
+- [x] Docs: [technik.md](../technik.md#entwicklung) (how to run them, package review), `CLAUDE.md` (commands).
+- [x] Requirement 6: `tests/screenshots.py` makes the 10 pictures of `README.md` in about 10 seconds (`test_screenshots_script` checks that each picture of `README.md` is made). `docs/img/` is not replaced yet: the redesign will change the pictures again.
 
 
 ## Non-goals
@@ -49,10 +51,17 @@
 * Browser tests on IBM i
 
 
+## Decisions
+
+* Playwright as development package: **yes** (2026-11-19).
+* Screenshots of the documentation by script (requirement 6): **yes** (2026-11-19).
+* The browser tests run with every `.venv/bin/pytest` if Playwright and its Chromium are installed, and are skipped otherwise (2026-11-19).
+* The fixtures are in `tests/browser_tools.py` (not `conftest.py`): a test module imports them, so the other tests don't load Playwright. `Page_Watch` collects the failures of requirement 4; CSP violations are errors in the console.
+* `playwright==1.65.2` is pinned: the version decides the build of Chromium.
+* First tests (`tests/test_web_browser.py`, 12 tests, about 30 seconds): smoke test of every page for `boss` (admin) and `intern` (read); stage names `A->B`, `It's <b>x</b>`, `QA?`; values which would run as script in the steps, their log, the processing history and the object history; `None ready` for filtered objects in one request; switches of objects with `'` and `"`; no horizontal scrolling at 1440 and 1024 px; closing a log of the deployment history; token dialogs; permissions with special characters in names, and the error message when saving fails.
+* Found by them: since SweetAlert2 11.26 ([static assets](web-ui-static-assets.md)) a dialog which is replaced by another one is resolved as dismissed. The steps window forgot its stage when a log opened over it, and didn't open again after the log. Fixed in `show_stage_steps`.
+
+
 ## Open questions
 
-1. Playwright as development package: **yes (recommended)**?
-   * Without it, the criteria marked `Browser test` are manual checks, written down as a list in each step, and defects like those of 2026-11-16 can come back unnoticed.
-   * Alternative Selenium (`SeleniumHQ/selenium`): also meets the criteria, but needs a separate driver for the browser and more code for waiting.
-2. Should the browser tests run by default (`.venv/bin/pytest`) if Playwright is installed (**recommended**), or only with `-m browser`? They add about a minute.
-3. Screenshots of the documentation by script (requirement 6): wanted?
+None.

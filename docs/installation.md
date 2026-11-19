@@ -162,7 +162,7 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
 |---|---|
 | Database: deployments, stages, steps, history, queue of the processing service | `var/app.sqlite` (and `var/backup/`, see below) |
 | Logs and generated files of each deployment | `meta/` |
-| Configuration and your scripts | `etc/`, `webapp/etc/`, `scripts/`, `webapp/custom/`, `webapp/templates/custom_templates/` |
+| Configuration and your scripts | `etc/`, `webapp/etc/`, `scripts/`, `webapp/custom/`, `webapp/templates/custom_templates/`, `webapp/static/custom/` |
 
 The database uses WAL mode: `var/app.sqlite-wal` and `var/app.sqlite-shm` belong to it.
 Either copy all three files while the web app and the processing service are stopped, or make an online copy:

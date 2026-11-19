@@ -71,7 +71,7 @@ A test checks the rules for all templates and own scripts. Templates which are n
 * They can import the helpers (`import { post_json } from '../assets/js/app/api.js'`), which are documented in [scripts.md](../scripts.md). `Swal` stays global.
 * `postData`, `http_post`, `http_get` and `http_getData` stay as global functions in `web.deploy.js` until the next major version.
 * The context of `deployment_status.html` is documented: `deployment_dict` and where it's shown (see [deployment page](web-ui-deployment-page.md#header)).
-* [scripts.md](../scripts.md) gets the rollback button as example in the new form (template and script file).
+* [scripts.md](../scripts.md#scripts-of-custom-templates) has the rollback button as example in the new form, with a table how to move an old template (done 2026-11-19, the files in [`docs/examples/rollback/`](../examples/rollback/), tested by `tests/test_web_browser.py`). It works with the current pages, so installations can move their templates before step 9. Until step 3 it uses `fetch` instead of `api.js`.
 * Until step 9 old custom templates keep working unchanged.
 
 
@@ -91,7 +91,11 @@ A test checks the rules for all templates and own scripts. Templates which are n
 * Replacing jQuery: bootstrap-table needs it. Own scripts don't use it, except to call bootstrap-table.
 
 
+## Decisions (2026-11-19)
+
+* Custom templates: scripts as files in `webapp/static/custom/`, no nonce. The policy stays strict.
+
+
 ## Open questions
 
-1. Custom templates: scripts as files in `webapp/static/custom/` (**recommended**: the policy stays strict, no exception), or inline scripts with a nonce (`<script nonce="{{ csp_nonce }}">`: custom templates stay one file, but every page gets a policy with a nonce and inline `onclick` still doesn't work)?
-2. How long do the old global functions (`postData`, ...) stay: until the next major version (**recommended**) or removed with step 9?
+1. How long do the old global functions (`postData`, ...) stay: until the next major version (**recommended**) or removed with step 9?

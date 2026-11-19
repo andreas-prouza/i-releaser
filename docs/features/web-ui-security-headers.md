@@ -1,6 +1,6 @@
 # Security headers: Content-Security-Policy
 
-- **Status:** draft
+- **Status:** ready (waits for steps 3 – 8)
 - **Type:** security
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 9
@@ -51,7 +51,7 @@ A Content-Security-Policy is not possible today: every page depends on inline sc
 - [ ] Browser test (or manual check of every page with the console open, see [browser tests](web-ui-browser-tests.md)): every page and every dialog (run a stage, logs, custom data, permissions, token, start of a workflow) without a violation of the policy.
 - [ ] Browser test (or manual check): a custom template with an inline script is blocked; the example of [scripts.md](../scripts.md#web-app-extensions) with a script file works.
 - [ ] Docs: [technik.md](../technik.md) (decision, like `CSRF`), [installation.md](../installation.md), [scripts.md](../scripts.md#web-app-extensions).
-- [ ] Changelog, `Before you update`: custom templates need script files; `C_CSP_REPORT_ONLY` for the transition.
+- [ ] Changelog, `Before you update`: custom templates need script files (example: [scripts.md](../scripts.md#scripts-of-custom-templates)); `C_CSP_REPORT_ONLY` for the transition.
 
 
 ## Non-goals
@@ -61,7 +61,12 @@ A Content-Security-Policy is not possible today: every page depends on inline sc
 * `Permissions-Policy`, `Cross-Origin-*` headers
 
 
+## Decisions (2026-11-19)
+
+* `C_CSP_REPORT_ONLY` for a transition period: yes.
+* No nonce: scripts of custom templates are files (see [scripts](web-ui-scripts.md#decisions-2026-11-19)).
+
+
 ## Open questions
 
-1. `C_CSP_REPORT_ONLY` as a way to keep old custom templates working for a while (**recommended**), or no switch?
-2. Question 1 of [scripts in files](web-ui-scripts.md#open-questions) (script files or a nonce for custom templates) decides whether the policy contains a nonce.
+None.

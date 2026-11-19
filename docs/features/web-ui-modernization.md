@@ -54,8 +54,8 @@ Analysis of the web front end, the answer to "complete redesign?", and the plan.
 | P1 | [Values can run as script (XSS)](../bugfixes/web-values-run-as-script.md) | security | finished 2026-11-17 |
 | P1 | [Permissions page: can't save, or removes permissions](../bugfixes/permissions-page-names-in-selectors.md) | bug (data loss) | finished 2026-11-17 |
 | P2 | [A stage name can turn off all buttons of the deployment page](../bugfixes/stage-name-breaks-deployment-page.md) | bug | finished 2026-11-17 |
-| P2 | [Objects table of the deployment page](../bugfixes/deployment-objects-table.md) | bug | with step 4, or before |
-| P3 | [Minor defects of the web pages](../bugfixes/minor-web-defects.md) | bug | with the steps |
+| P2 | [Objects table of the deployment page](../bugfixes/deployment-objects-table.md) | bug | finished 2026-11-19 |
+| P3 | [Minor defects of the web pages](../bugfixes/minor-web-defects.md) | bug | 5 of 18 fixed 2026-11-19, the others with the steps |
 
 
 ## Target
@@ -107,13 +107,13 @@ flowchart LR
 | 9 | [Security headers](web-ui-security-headers.md): Content-Security-Policy | S | draft |
 | – | [Browser tests](web-ui-browser-tests.md) (new package) | M | draft |
 
-Steps 4, 6, 7 and 8 are independent of each other. Pages which are not done yet keep working in the new layout, with their old scripts.
+Steps 4, 6, 7 and 8 are independent of each other. Pages which are not done yet keep working in the new layout, with their old scripts. All steps are on the branch `redesign` and released together (decision 8).
 
 
 ## Done when
 
 - [ ] All steps are `finished`.
-- [ ] The screenshots of [README.md](../../README.md) are new (`deployment`, `workflow-list`, `parallel`, `details`, `history`, `history-detail`, `object-list`, `http-token`, `rollback-started`, `rollback` in `docs/img/`).
+- [ ] The screenshots of [README.md](../../README.md) are new: `.venv/bin/python tests/screenshots.py` (see [technik.md](../technik.md#tests)).
 - [ ] [architektur.md](../architektur.md#gui) contains the decisions of this file (see below).
 - [ ] Changelog entry, with what owners of custom templates have to do before the update.
 
@@ -138,16 +138,18 @@ After the decisions below, the section `GUI` gets these rules (today's rules sta
 * New functions (dashboard, statistics, notifications). Ideas which came up are listed in the steps under `Non-goals`.
 
 
+## Decisions (2026-11-19)
+
+1. **Bootstrap:** Bootstrap 5.3 stays the base; the own stylesheet with design tokens goes on top.
+2. **Mockup first:** a mockup of the deployment page and the deployment list, light and dark, is approved before step 2 starts.
+3. **Dark mode:** yes. It follows the setting of the browser, with a switch in the navigation (remembered per browser).
+4. **Browser tests:** Playwright for Python as development package (see [browser tests](web-ui-browser-tests.md)).
+5. **Logo:** `logo2-icon.png` (the first image of [README.md](../../README.md)). `logo.png` is the logo of the developer and only stays next to "Developed by".
+6. **Small screens:** everything works from 768 px. Below that the navigation becomes a menu and wide tables scroll inside their box; nothing is optimised further.
+7. **Custom templates:** with the Content-Security-Policy (step 9) inline scripts and `on...=` in custom templates stop working. Accepted, with a migration note in the changelog, an example in [scripts.md](../scripts.md#web-app-extensions) and `C_CSP_REPORT_ONLY` for a transition period (see [scripts](web-ui-scripts.md#custom-templates)).
+8. **Release:** all steps on one branch (`redesign`), merged and released together. The steps are still done and finished one after the other.
+
+
 ## Open questions
 
-They affect all steps. A recommendation is given for each.
-
-1. **Bootstrap:** keep Bootstrap 5.3 as the base and put the own stylesheet on top (**recommended**: bootstrap-table needs it, it's already there, and it has a dark mode), or write all styles new as in the OBI extension?
-2. **Mockup first?** For the OBI extension the layout of the configuration page was approved with a mockup. Recommended here as well: one mockup of the deployment page and one of the deployment list, in light and dark, before step 2 starts. The wireframes in the steps show the structure, not the look.
-3. **Dark mode:** yes, following the setting of the browser, with a switch (**recommended**)?
-4. **Look:** the same language as the i-Releaser card of the OBI extension (status pills, stepper with circles, attention bar), so both look like one product (**recommended**)?
-5. **Logo:** the navigation uses `logo2-icon.png`, the login page `logo.png` (two different logos). Which one is the logo of i-Releaser?
-6. **Small screens:** [architektur.md](../architektur.md#gui) says "mobile-friendly if possible (low priority)". Proposal: everything works from 768 px; below that the navigation becomes a menu and wide tables scroll inside their box, nothing is optimised further.
-7. **Browser tests:** add Playwright as a development package (**recommended**, see [browser tests](web-ui-browser-tests.md))? Without it, each step has a list of manual checks.
-8. **Custom templates:** inline scripts and `onclick` in custom templates stop working with step 9. Accept that, with a migration note and an example (**recommended**, see [scripts](web-ui-scripts.md#custom-templates))?
-9. **Release:** one branch for all steps and one release, or release after each step (**recommended**: one branch per step, merged when the step is finished)?
+1. **Look:** the same language as the i-Releaser card of the OBI extension (status pills, stepper with circles, attention bar), so both look like one product? Decided with the approval of the mockup.

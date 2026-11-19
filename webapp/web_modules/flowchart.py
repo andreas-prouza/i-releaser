@@ -44,7 +44,9 @@ def generate_stage_button(mf: meta_file.Meta_File, stage : stages.Stage):
 
   btn_class = btn_class_list['None']
   btn_class=f' {btn_class_list.get(stage.get_dict().get("status", "None"),"None")}'
-  return f'<button type="button" id="{get_stage_as_html_id(stage)}" onClick="flow_button_fokus=this.id" class="btn {btn_class}">{escape(stage.name)}</button>'
+  waiting_for = mf.get_waiting_for(stage)
+  title = f' title="{escape("Waits for " + ", ".join(waiting_for))}"' if waiting_for else ''
+  return f'<button type="button" id="{get_stage_as_html_id(stage)}"{title} onClick="flow_button_fokus=this.id" class="btn {btn_class}">{escape(stage.name)}</button>'
 
 
 

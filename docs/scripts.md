@@ -180,7 +180,8 @@ See [workflow configuration](workflow.md#hooks).
 | Extension | How |
 |---|---|
 | Own routes (pages or API endpoints) | Python files in `webapp/custom/routes/`. They are loaded when the web app starts. Example: `webapp/custom/routes/test.py` adds `/custom_test/{test}`. |
-| Own HTML on the deployment page | `webapp/templates/custom_templates/deployment_status.html` is included in the deployment page, if it exists. E.g. a button which starts a rollback workflow for this deployment. |
+| Own HTML on the deployment page | `webapp/templates/custom_templates/deployment_status.html` is included in the deployment page, if it exists. E.g. a button which starts a rollback workflow for this deployment, see [below](#scripts-of-custom-templates). |
+| Own scripts and files for the pages | `webapp/static/custom/`, served as `/static/custom/...` |
 
 A custom route:
 
@@ -200,4 +201,68 @@ app.add_api_route('/custom/hello/{name}', hello, methods=['GET'])
 Custom routes need a login like all other routes, but they don't check [permissions](permissions.md) by themselves.
 Use `permission_config.check_user_permission(...)` like the routes in `webapp/routes/routes.py`.
 
-Both directories are not tracked by git.
+These directories are not tracked by git.
+
+### Scripts of custom templates
+
+Put JavaScript of a custom template into a file in `webapp/static/custom/`, not into the template:
+
+* No `<script>` with code and no `onclick="..."` in the template. Values for the script go into `data-*` attributes; the script finds its elements by them.
+* The template loads the file with `<script type="module" src="{{ url_for('static', path='custom/<name>.js') }}"></script>`.
+* Actions use `POST`. With a login session the web app rejects actions with `GET` (`405`), see [Web API](webapi.md).
+* `Swal` (SweetAlert2) and `fetch` are available on every page.
+
+This already works now. It's needed as soon as the web app sends a Content-Security-Policy (planned, see [security headers](features/web-ui-security-headers.md)): then the browser doesn't run inline scripts and `onclick` any more.
+
+Example: a button which starts the workflow `rollback_deployment` for a finished deployment. [`docs/examples/rollback/`](examples/rollback/) has both files, tested in `tests/test_web_browser.py`.
+
+```html
+<!-- webapp/templates/custom_templates/deployment_status.html -->
+{% if deployment_dict['general']['status'] == 'finished' %}
+  <button type="button" class="btn btn-sm btn-outline-secondary" data-rollback
+          data-project="{{ deployment_dict['general']['project'] }}"
+          data-version="{{ deployment_dict['general']['deploy_version'] }}">Roll back</button>
+  <script type="module" src="{{ url_for('static', path='custom/rollback.js') }}"></script>
+{% endif %}
+```
+
+```js
+// webapp/static/custom/rollback.js
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-rollback]');
+    if (!button) {
+        return;
+    }
+    const result = await Swal.fire({
+        title: 'Roll back this deployment?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Roll back',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            const response = await fetch('/api/start_workflow/rollback_deployment', {
+                method: 'POST', credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({project: button.dataset.project, version: button.dataset.version}),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                Swal.showValidationMessage(data.message);
+                return false;
+            }
+            return data;
+        },
+    });
+    if (result.isConfirmed) {
+        location.href = `/show_details/${result.value.meta_file.general.id}`;
+    }
+});
+```
+
+Moving an old custom template:
+
+| Before | After |
+|---|---|
+| `<img onclick="rollback_deployment('{{ project }}', {{ version }})">` | `<button data-rollback data-project="{{ project }}" data-version="{{ version }}">` |
+| `<script> function rollback_deployment(...) {...} </script>` in the template | The function in `webapp/static/custom/rollback.js`, started by a `click` listener |
+| `http_getData('/api/start_workflow/...?project=...')` (`GET`) | `fetch(..., {method: 'POST', body: JSON.stringify({...})})` |
+| `Rollback started!` before the server has answered | The dialog waits for the answer and shows its error |
+
+If the workflow has [`create_fields`](workflow.md#create-fields), they have to contain the fields the button sends (`$.project`, `$.version`).

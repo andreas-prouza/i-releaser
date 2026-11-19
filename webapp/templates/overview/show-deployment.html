@@ -111,8 +111,11 @@ input:checked + .slider:before {
     margin-bottom: 10px;
 }
 
+/* A flow which is wider than the page scrolls inside its box */
 .flow_parent {
-    position: relative; 
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .flow_container {
@@ -255,73 +258,26 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
     <br/>
 
     <h3>Objects to deploy</h3>
-    
-    <table id="object_list" class="table w-auto"
-            data-toggle="table" 
-            data-filter-control="true"
-            data-show-search-clear-button="true" 
-            data-show-columns="true"
-            data-pagination="true" 
-            data-page-list="[5, 10, 20, 50, 100, all]"
-            data-page-size="10"
-            data-pagination-h-align="left"
-            data-pagination-detail-h-align="left"
-            data-buttons-align="left"
-            data-search-align="left">
-        <thead>
-            <th data-field="ready">Ready<br/>
-                <label class="switch">
-                    <input type="checkbox" id="selectAll" onchange="toggleAll(this)">
-                    <span class="slider round"></span>
-                </label>
-            </th>
-            <th data-field="level" data-sortable="true" data-filter-control="select" data-filter-control-container="#level_filter">Level</th>
-            <th data-field="prod_lib" data-sortable="true" data-filter-control="input" data-filter-control-container="#prod_lib_filter">Prod Lib</th>
-            <th data-field="target_lib" data-sortable="true" data-filter-control="input" data-filter-control-container="#target_lib_filter">Target Lib</th>
-            <th data-field="name" data-sortable="true" data-filter-control="input" data-filter-control-container="#name_filter">Name</th>
-            <th data-field="type" data-sortable="true" data-filter-control="select" data-filter-control-container="#type_filter">Type</th>
-            <th data-field="attribute" data-sortable="true" data-filter-control="select" data-filter-control-container="#attribute_filter">Attribute</th>
-            <th data-field="source_only" data-sortable="true" data-filter-control="select" data-filter-control-container="#source_only_filter">Source Only</th>
-            <th data-field="status" data-sortable="true" data-filter-control="select" data-filter-control-container="#status_filter">Status</th>
-        </thead>
-        {% set ns = namespace(prev_level=-1) %}
 
-        {% for object in deployment_dict['objects'] %}
+    {% if objects_table['objects'] %}
+    {% if objects_table['can_change'] %}
+    <div id="object_toolbar" class="btn-group btn-group-sm" role="group" aria-label="Ready for the objects which match the filters">
+        <button type="button" class="btn btn-outline-secondary" data-objects-ready="true" title="Include the objects which match the filters">
+            <i class="bi bi-check2-all"></i> All ready</button>
+        <button type="button" class="btn btn-outline-secondary" data-objects-ready="false" title="Exclude the objects which match the filters">
+            <i class="bi bi-x-lg"></i> None ready</button>
+    </div>
+    {% endif %}
 
-            {% if ns.prev_level < 0 or ns.prev_level != object['level'] %}
-
-                {% set ns.prev_level = object['level'] %}
-                <tr>
-                    <td colspan="9" style="background-color: #e0e0e0; text-align: center; font-weight: bold;">Level {{ object['level'] }}</td>
-                </tr>
-            {% endif %}
-            <tr>
-                <td>
-                    <label class="switch">
-                        <input type="checkbox" class="obj-checkbox" {% if object['ready'] %}checked{% endif %}
-                            data-project="{{ deployment_dict['general']['project'] }}"
-                            data-version="{{ deployment_dict['general']['deploy_version'] }}"
-                            data-lib="{{ object['lib'] }}"
-                            data-name="{{ object['name'] }}"
-                            data-type="{{ object['type'] }}"
-                            onchange="set_source_ready_4_deployment(this, {{ deployment_dict['general']['id'] }}, this.dataset.lib, this.dataset.name, this.dataset.type, this.checked)">
-                        <span class="slider round"></span>
-                    </label>
-                </td>
-                <td>{{ object['level'] }}</td>
-                <td>{{ object['prod_lib'] }}</td>
-                <td>{{ object['lib'] }}</td>
-                <td>{{ object['name'] }}</td>
-                <td>{{ object['type'] }}</td>
-                <td>{{ object['attribute'] }}</td>
-                <td>{{ object['source_only'] }}</td>
-                <td><button type="button" class="btn  {{ btn_classes[object['deploy_status']] or 'btn-secondary' }}">{{ object['deploy_status'] }}</button></td>
-            </tr>
-        {% endfor %}
-    </table>
+    <!-- The rows come from the data block, see static/assets/js/deployment-objects.js -->
+    <table id="object_list" class="table"></table>
+    <script type="application/json" id="deployment-objects">{{ objects_table | tojson }}</script>
+    {% else %}
+    <p class="text-muted">This deployment has no objects.</p>
+    {% endif %}
 
     <hr>
-    
+
     <br/>
 
     <h3>Deployment history</h3>
@@ -350,6 +306,7 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 <script src="{{ url_for('static', path='assets/js/chart.js') }}"></script>
 
 <script src="{{ url_for('static', path='assets/js/prism.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/deployment-objects.js') }}"></script>
 
 <script type="text/javascript">
 
@@ -390,7 +347,7 @@ function print_flow_connections() {
     
     let canvas = document.getElementById("flowchart");
     canvas.height=flow_html_container.height;
-    canvas.width=window.innerWidth;
+    canvas.width=Math.max(flow_parent.clientWidth, document.getElementById("flow_html_container").scrollWidth);
     
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -556,6 +513,11 @@ function show_stage_steps(meta_file_id, stage_id, stage_name) {
                 highlight_code_blocks();
             }
         }).then((result) => {
+            // Replaced by another dialog (a log, run stage, ...): SweetAlert2 resolves it without a reason.
+            // The stage is kept, so the window opens again when that dialog is closed.
+            if (result.isDismissed && result.dismiss === undefined) {
+                return;
+            }
             last_show_stage_id=null;
             last_show_stage_name=null;
             current_meta_file_id=null;
@@ -755,7 +717,7 @@ function showLog(id) {
                 popup: 'logs'
             }
         }).then((result) => {
-            if (stage_id != null && last_show_stage_id != null) {
+            if (last_show_stage_id != null) {
                 show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
             }
         });
@@ -1162,61 +1124,6 @@ function reset_deployment_status(meta_file_id) {
 }
 
 
-
-async function set_source_ready_4_deployment(obj, meta_file_id, lib, name, type, checked) {
-
-    await postData(`/api/set_source_ready_4_deployment/${meta_file_id}`, { lib: lib, name: name, type: type, checked: checked }).then(async (data) => {
-        if (data['status'] == 'error') {
-            obj.checked = !checked;
-            console.log(data); // JSON data parsed by `data.json()` call
-            show_http_error(data['message'], true);
-        }
-    });
-}
-
-
-
-async function toggleAll(masterCheckbox) {
-    // Get all row checkboxes
-    //const checkboxes = document.querySelectorAll('.obj-checkbox');
-    const newState = masterCheckbox.checked;
-
-    const $table = $('#object_list'); // Make sure 
-    
-    // Get ALL data from the table (even hidden pages)
-    const allData = $table.bootstrapTable('getData');
-    console.log(allData);
-
-    const meta_file_id = '{{ deployment_dict['general']['id'] }}';
-
-    for (const cb of allData) {
-        console.log(`${cb.name}: ${cb.ready.toString().includes('checked=""')}`);
-
-        // Only trigger update if the state is actually changing
-        if (cb.ready.toString().includes('checked=""') !== newState) {
-            
-            // Extract data from attributes to call your existing function
-            const lib = cb.target_lib;
-            const name = cb.name;
-            const type = cb.type;
-            // Trigger your backend update function
-            try {
-                await set_source_ready_4_deployment(cb, meta_file_id, lib, name, type, newState);
-                // 3. Update the HTML string manually for the table refresh
-                if (newState) {
-                    cb.ready = cb.ready.replace('<input type="checkbox"', '<input type="checkbox" checked=""');
-                } else {
-                    cb.ready = cb.ready.replace('checked=""', '');
-                }
-                console.log(`Set ${name} to ${newState}`);
-                $table.bootstrapTable('load', allData);
-            } catch (error) {
-                console.error(error);
-                break;
-            }
-        }
-    };
-}
 
 </script>
 

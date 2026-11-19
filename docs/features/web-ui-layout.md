@@ -122,6 +122,6 @@ Pages which are not redesigned yet are shown in the new layout with their old co
 
 ## Open questions
 
-1. Questions 1 – 6 of the [modernization](web-ui-modernization.md#open-questions) (Bootstrap, mockup, dark mode, look, logo, small screens).
+1. The look: decided with the approval of the mockup ([modernization](web-ui-modernization.md#open-questions)). Bootstrap, dark mode, logo and small screens are decided.
 2. Names in the navigation: `Configuration` → `Settings`, `Object list` → `Objects`. OK?
 3. Projects: today a sub-menu of the navigation and buttons above the list. Proposal: only in the deployment list. Or keep them in the navigation as well?

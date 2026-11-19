@@ -46,6 +46,8 @@ Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2**
 | P3 | [Object list: any file on the server can be given](object-list-path-not-restricted.md) | security | code review | finished |
 | P3 | [Start script of the web app](webapp-service-script.md) | bug | code review | finished |
 | P3 | [Minor code defects](minor-code-defects.md) | bug | code review | finished |
+| P3 | [Processes which start at the same time can fail while creating the log directory](log-dir-race.md) | bug | flaky test | finished |
+| P2 | [A stage which waits for parallel stages is `ready` too early](merging-stage-ready-too-early.md) | bug | screenshots | finished |
 
 
 ## Defects of the web front end
@@ -59,8 +61,8 @@ Found in the analysis of the web front end of 2026-11-16 (see [modernization](..
 | P1 | [Object names, commands and names from the configuration can run as script (XSS)](web-values-run-as-script.md) | security | partly reproduced | finished |
 | P1 | [Permissions page: can't save, or removes permissions, if a name contains special characters](permissions-page-names-in-selectors.md) | bug (data loss) | reproduced | finished |
 | P2 | [A stage name can turn off all buttons of the deployment page](stage-name-breaks-deployment-page.md) | bug | reproduced | finished |
-| P2 | [Deployment page: defects of the table "Objects to deploy"](deployment-objects-table.md) | bug | reproduced | ready |
-| P3 | [Minor defects of the web pages](minor-web-defects.md) | bug | seen / code review | ready |
+| P2 | [Deployment page: defects of the table "Objects to deploy"](deployment-objects-table.md) | bug | reproduced | finished |
+| P3 | [Minor defects of the web pages](minor-web-defects.md) | bug | seen / code review | ready (5 of 18 fixed) |
 
 
 ## Related improvements (`docs/features/`)

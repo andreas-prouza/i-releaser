@@ -203,6 +203,7 @@ app.add_api_route('/api/set_check_error/{meta_file_id}/{stage_id}/{action_id}/{c
 
 
 app.add_api_route('/api/set_source_ready_4_deployment/{meta_file_id}', routes.set_source_ready_4_deployment, methods=['POST'])
+app.add_api_route('/api/set_objects_ready/{meta_file_id}', routes.set_objects_ready, methods=['POST'])
 
 
 app.add_api_route('/api/get_stage_steps_html/{meta_file_id}/{stage_id}', routes.get_stage_steps_html, methods=['GET'])

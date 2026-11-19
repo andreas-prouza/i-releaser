@@ -17,12 +17,12 @@
 
     <h3>Log file <code>{{ logfile }}</code></h3>
     
-    <label for="cars">Number of lines:</label>
+    <label for="number_of_lines">Number of lines:</label>
 
     <select name="number_of_lines" id="number_of_lines" data-logfile="{{ logfile }}" onchange="location.href='/log/' + encodeURIComponent(this.dataset.logfile) + '/' + this.value">
         <option value="100" {% if number_of_lines == 100 %}selected{%endif%}>100</option>
         <option value="500" {% if number_of_lines == 500 %}selected{%endif%}>500</option>
-        <option value="1000" {% if number_of_lines == 1090 %}selected{%endif%}>1.000</option>
+        <option value="1000" {% if number_of_lines == 1000 %}selected{%endif%}>1.000</option>
         <option value="10000" {% if number_of_lines == 10000 %}selected{%endif%}>10.000</option>
     </select>
 

@@ -70,22 +70,25 @@ One line which says what the deployment waits for, with the buttons for it. The 
 | Case | Text | Buttons |
 |---|---|---|
 | A stage failed | `Stage {name} failed in step {step}.` | `Show log` (of the failed run), `Continue`, `Run all steps` |
-| A stage is in process | `Stage {name} is running: step {n} of {m}.` | – |
+| A stage is in process | `Stage {name} is running: step {n} of {m}.`; with parallel steps `steps {n} and {k} of {m} at the same time`. If the next stage waits for parallel stages (`after_stages_finished`): `{next} starts when {a} and {b} are finished.` | `Show output` (of the running step) |
 | A stage waits for the processing service | `Stage {name} waits for the processing service.` (and that the service isn't running, if so) | `Remove from queue` |
 | A stage is ready | `Stage {name} is ready to run.` | `Run stage` |
 | Deployment finished or canceled | no bar | |
 
-Buttons are only shown with the permission `run` for that stage. With parallel stages the bar shows the first stage; the others are in the flow.
+Buttons are only shown with the permission `run` for that stage. With parallel stages the bar shows the first stage of the first case; the others are in the flow (e.g. one branch failed while the other is still running: the failed one).
 
 ### Stage flow
 
 * `web_modules/stage_flow.py` computes the layout from the workflow: for each stage a column (the longest way from `START`) and a row (the first next stage stays in the row, others get rows below), and the connections. Each stage once. A connection back to an earlier stage doesn't change the columns.
 * A template renders it: the stages in a CSS grid, the connections as one inline SVG from the same data. No canvas, no script to draw, no generated ids from names: `data-stage-id`.
-* A stage shows a circle with an icon for its status (finished, failed, in process, ready, queued; otherwise its number), its name and its status. The line to a stage is green if the stage before is finished.
+* Parallel stages (`next_stages` with several stages, e.g. `test_wf`: `START` → `STAGE 2.1` and `STAGE 2.2` → `STAGE 3`): one row per branch. The line forks after the stage and joins before the stage which waits for them (`after_stages_finished`), in the gap between the columns, never across a stage.
+* A stage shows a circle with an icon for its status (finished, failed, in process, ready, queued; otherwise its number), its name and its status. Stages which run at the same time each show theirs.
+* A stage whose `after_stages_finished` are not all finished shows `waits for {stages}` (from `waiting_for` of the stage). It's `new` until then, so it has no run button (fixed in the backend: [merging stage](../bugfixes/merging-stage-ready-too-early.md)).
+* The line out of a stage is green when the stage is finished. The last piece into a stage is green only when all stages before it are finished, so a join shows what the next stage still waits for.
 * A click (or Enter) on a stage selects it and shows its steps below. The selected stage is in the URL (`#stage=35`), so a reload and a link keep it. Without it: the failed stage, else the running, else the first ready, else the last finished.
 * A flow which is wider than the page scrolls inside its box.
 * Above it: `{n} of {m} finished` with the progress bar.
-* `flowchart.py`, `chart.js` and the canvas are removed.
+* `flowchart.py`, `chart.js` and the canvas are removed. The images `run-green.png`, `undo.png`, ... stay in `static/assets/img/`: custom templates use them (e.g. `undo.png` for a rollback button).
 
 ### Steps of the selected stage
 
@@ -95,6 +98,7 @@ Buttons are only shown with the permission `run` for that stage. With parallel s
   * Opened: the full command (one part per line, with a copy button), the switch `check error` (only with the permission `change check error`, disabled in finished and canceled deployments), earlier runs.
   * A failed step is open.
 * Sub-steps are rows below their step, indented, collapsed if there are more than 10 and none failed.
+* Parallel steps (`parallel`, `parallel_group`, see [workflow](../workflow.md#parallel-steps)): the steps of a group are shown together, with a bar on the left and a line `Group {name}: {n} steps run at the same time, the next step waits for all of them`. Several steps of a group can be running at once, each with its own status, time and log. The same for parallel sub-steps of a script.
 * Empty values are left out or shown as `–`.
 
 ### Logs
@@ -125,7 +129,9 @@ The requirements of [objects table](../bugfixes/deployment-objects-table.md), an
 
 ## Acceptance criteria
 
-- [ ] Test `stage_flow`: a sequence; parallel branches which join (`parallel_example`); a stage reached from two stages exists once; a connection back to an earlier stage ends; a workflow without `next_stages`.
+- [ ] Test `stage_flow`: a sequence; parallel branches which join (`test_wf`, `parallel_example`); a stage reached from two stages exists once; a connection back to an earlier stage ends; a workflow without `next_stages`; branches of different length (a line that skips a column runs in a free row, not across a stage).
+- [ ] Test: the colours of the lines of a join: one branch finished, the other running → the line into the next stage is grey.
+- [ ] Test: the steps of a stage with a parallel group: the group line, two running steps, the step after the group `new`.
 - [ ] Test: the page of workflows with the stage names of [stage names](../bugfixes/stage-name-breaks-deployment-page.md).
 - [ ] Test: the attention bar for each case of the table, and none for finished and canceled deployments.
 - [ ] Test: users without `run`, `cancel workflow`, `edit-custom-data` or `change check error` don't get the buttons (users `intern`, `runner`, `stranger` of the tests); with the permission for one stage only, only there.
@@ -159,4 +165,4 @@ The requirements of [objects table](../bugfixes/deployment-objects-table.md), an
 3. Objects: the level as a column with the default order by level (**recommended**), or headings per level (needs the group extension of bootstrap-table, and a heading can't be sorted or filtered)?
 4. Processing history: as tab `Actions` in the page (**recommended**), or behind a button as today?
 5. Actions without permission: hidden (**recommended**), or shown disabled with the reason as tooltip?
-6. The mockup of this page (question 2 of the [modernization](web-ui-modernization.md#open-questions)).
+6. The mockup (the canvas [i-Releaser web UI mockup](https://claude.ai/artifact/HQqeugdfJgXrLDZLn2tRX7), artboards for a failed linear deployment and for `test_wf` with parallel stages and a parallel step group) of this page (question 2 of the [modernization](web-ui-modernization.md#open-questions)).

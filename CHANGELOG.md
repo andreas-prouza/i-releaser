@@ -32,12 +32,14 @@
 * Web API: [consistent status codes and errors](docs/webapi.md#responses-and-errors)
 * Local settings in `etc/settings.py` (see [configuration files](docs/installation.md#configuration-files))
 * Web app: requests don't block each other
-* [Tests](docs/technik.md#tests) in `tests/`, run on GitHub
+* [Tests](docs/technik.md#tests) in `tests/`, run on GitHub; browser tests with Playwright (development only)
 * FastAPI 0.125, `starlette` 0.50 (see [FastAPI and pydantic](docs/technik.md#fastapi-and-pydantic))
 * Web pages load no files from other servers any more; `/docs` uses a local Swagger UI, `/redoc` is turned off
 * Web pages: names of objects, stages, users and commands with special characters (`'`, `<`, `->`, spaces, `.`, `#`) are shown as text and don't break pages. The permissions page saves them correctly
+* Deployment page, objects: one row per object (the level is a column), `All ready` / `None ready` for the objects which match the filters in one request ([`set_objects_ready`](docs/webapi.md#steps-and-objects)), switches which can't be used are disabled, no sideways scrolling
 * `/api/save_permissions` keeps users and roles which are not sent; delete with `deleted_users` / `deleted_roles` (see [Web API](docs/webapi.md#users-and-permissions))
 * Static files of the web app cleaned up (35 MB → 3 MB): Font Awesome, unused fonts, stylesheets and scripts removed; Bootstrap 5.3.9, bootstrap-table 1.28, SweetAlert2 11.26 (see [libraries](docs/technik.md#libraries-of-the-web-pages))
+* A stage with `after_stages_finished` stays `new` until those stages are finished (it was `ready`, but couldn't be run). The Web API lists them in `waiting_for` (see [parallel branches](docs/concepts.md#parallel-branches))
 * Removed: `deployment.py`, `stage_commands.json`, `flask_config.py`, `gen_commands.py`
 
 ## Before you update to 3.1.0
@@ -47,5 +49,7 @@
 * Own clients: `POST`, `Authorization: Bearer` and the new [error format](docs/webapi.md#responses-and-errors)
 * Generate new [API tokens](docs/permissions.md#api-tokens)
 * Check the [production checklist](docs/installation.md#production-checklist) (log level, `C_COOKIE_SECURE`) and the [reverse proxy](docs/installation.md#reverse-proxy) (`ProxyPreserveHost On`)
+* Custom templates: actions need `POST`; a `GET` like `http_getData('/api/start_workflow/...?...')` is rejected with `405`. Put their JavaScript into `webapp/static/custom/` (example and how to move an old template: [scripts of custom templates](docs/scripts.md#scripts-of-custom-templates))
 * Custom templates: Font Awesome icons (`fa-...`) are gone, use [Bootstrap Icons](https://icons.getbootstrap.com) (`bi bi-...`). Don't load `sweetalert2.all.min.js` or `popper.min.js` yourself, `base.html` provides `Swal` and Bootstrap
+* `etc/logger_config.py` and `webapp/etc/logger_config.py`: replace `if not Path.exists(LOG_DIR): os.makedirs(LOG_DIR)` by `os.makedirs(LOG_DIR, exist_ok=True)` (see [log directory](docs/bugfixes/log-dir-race.md))
 * Start the web app first, it updates the database (see [update](docs/installation.md#update))

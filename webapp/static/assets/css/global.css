@@ -24,3 +24,9 @@
 .zebra tr:nth-child(odd) {
   background-color: #ffffff; /* White */
 }
+
+/* The content column of base.html. A flex item doesn't get narrower than its content by default:
+   a wide flow chart or table made the whole page scroll sideways. Now they scroll inside their own box. */
+.app-content {
+	min-width: 0;
+}

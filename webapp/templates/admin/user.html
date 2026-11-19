@@ -56,15 +56,21 @@ function renew_key() {
         allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {
             if (result.isConfirmed) {
-                postData("/api/generate_user_key", { }).then((data) => {
-                    console.log(data); // JSON data parsed by `data.json()` call
-                    swalWithBootstrapButtons.fire(
-                    'Token successfully generated!',
-                    'Your token:<br/><br/>' + data['token'],
-                    'success'
-                    ).then((result) => {
-                            location.reload();
-                    });
+                http_post("/api/generate_user_key", {}).then(async (response) => {
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Unknown server error');
+                    }
+                    // The token is shown once and never written anywhere else (no console)
+                    const token = document.createElement('code');
+                    token.textContent = data['token'];
+                    const text = document.createElement('div');
+                    text.append('Your token (it is shown only once):', document.createElement('br'), token);
+                    return swalWithBootstrapButtons.fire({title: 'Token successfully generated!', html: text, icon: 'success'});
+                }).then(() => {
+                    location.reload();
+                }).catch((error) => {
+                    Swal.fire({icon: 'error', title: 'Error', text: error.message});
                 });
             }
     })
@@ -74,26 +80,29 @@ function renew_key() {
 function drop_key() {
     
     swalWithBootstrapButtons.fire({
-    title: 'Are you sure?',
-    text: "You want to delete your key",
+    title: 'Delete your token?',
+    text: "Clients which use it can't log in with it any more.",
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Yes, cancel',
-    cancelButtonText: 'No, ups!',
+    confirmButtonText: 'Delete token',
+    cancelButtonText: 'Keep it',
     reverseButtons: true
     }).then((result) => {
-        if (result.isConfirmed) {
-            postData("/api/drop_key", {}).then((data) => {
-                console.log(data); // JSON data parsed by `data.json()` call
-            });
-            swalWithBootstrapButtons.fire(
-            'Deleted!',
-            'Your key has been droped successfully.',
-            'success'
-            ).then((result) => {
-                    location.reload();
-            });
+        if (!result.isConfirmed) {
+            return;
         }
+        // "Deleted" only after the server has confirmed it
+        http_post("/api/drop_key", {}).then(async (response) => {
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || 'Unknown server error');
+            }
+            return swalWithBootstrapButtons.fire('Deleted', 'Your token has been deleted.', 'success');
+        }).then(() => {
+            location.reload();
+        }).catch((error) => {
+            Swal.fire({icon: 'error', title: 'Error', text: error.message});
+        });
     })
 }
 

@@ -1,5 +1,5 @@
 """The pages of the web app: where their files come from (docs/bugfixes/web-scripts-from-third-party-servers.md)"""
-import os, re
+import json, os, re
 
 import pytest
 
@@ -186,14 +186,13 @@ def test_deployment_page_escapes_values(nasty_server, nasty_deployment):
     check_no_markup_from_data(text, 'deployment page')
 
     # The values are there, as text
-    assert 'o&#39;brien' in text
     assert '&lt;img src=x onerror=' in text
     assert 'It&#39;s done' in text
     assert 'Prüfung &lt;1&gt;' in text
 
-    # The handler of an object reads its values from the element
-    assert 'data-name="o&#39;brien"' in text
-    assert 'this.dataset.name' in text
+    # The objects are data for the script of the table, not HTML
+    names = [o['name'] for o in get_objects_table(text)['objects']]
+    assert sorted(names) == sorted(name for name, _ in NASTY_OBJECTS)
 
 
 
@@ -495,3 +494,253 @@ def test_size_of_the_static_files():
     # 35 MB before the cleanup. Swagger UI is only loaded by /docs.
     assert size['other'] < 2 * 1024 * 1024
     assert size['swagger-ui'] < 2.5 * 1024 * 1024
+
+
+
+#-----------------------------------------------------------------------------------------------
+# Objects table of the deployment page (docs/bugfixes/deployment-objects-table.md)
+#-----------------------------------------------------------------------------------------------
+
+def get_objects_table(page: str) -> dict:
+    """The data block of the table "Objects to deploy" """
+
+    import html, json
+
+    match = re.search(r'<script type="application/json" id="deployment-objects">(.*?)</script>', page, re.S)
+    assert match, 'no data block of the objects'
+    # tojson escapes <, >, & and ' as \\u...: nothing in the block can end it or be read as HTML
+    assert '<' not in match.group(1) and "'" not in match.group(1)
+
+    return json.loads(html.unescape(match.group(1)) if '&' in match.group(1) else match.group(1))
+
+
+
+OBJECTS = [
+    # level, name, deploy_status
+    (1, 'orders', 'finished'),
+    (1, 'customer', 'finished'),
+    (1, "o'brien", 'new'),
+    (2, 'ordersl1', 'new'),
+    (2, 'orderd', 'new'),
+    (3, 'ord001', 'failed'),
+    (3, 'ord002', 'new'),
+    (3, 'ordsrv', 'new'),
+    (4, 'ordmenu', 'new'),
+]
+
+
+def add_objects(server, deployment: int, objects=OBJECTS) -> None:
+
+    import sqlite3
+
+    db = sqlite3.connect(os.path.join(server.directory, 'var', 'app.sqlite'), timeout=10)
+    for level, name, status in objects:
+        db.execute("""INSERT INTO deploy_objects (meta_file_id, level, prod_lib, lib, name, type, attribute, deploy_status, ready, properties)
+                      VALUES (?, ?, 'prodlib', 'devlib', ?, 'file', 'pf', ?, 1, '{}')""", (deployment, level, name, status))
+    db.commit()
+    db.close()
+
+
+
+@pytest.fixture()
+def objects_deployment(server, boss):
+
+    from test_web_deployment import cancel_open_deployments
+
+    cancel_open_deployments(boss, 'seq')
+    deployment = boss.create_deployment('seq_wf')
+    add_objects(server, deployment)
+
+    yield deployment
+
+    boss.post(f"/api/cancel_deployment/{deployment}")
+
+
+
+def ready_of(client, deployment: int) -> dict:
+    return {o['name']: bool(o['ready']) for o in client.get_deployment(deployment)['objects']}
+
+
+
+def test_objects_table_has_one_row_per_object(boss, objects_deployment):
+
+    _, _, text = boss.get(f"/show_details/{objects_deployment}", headers={'Accept': 'text/html'})
+    table = get_objects_table(text)
+
+    assert len(table['objects']) == len(OBJECTS)
+    assert [o['level'] for o in table['objects']] == sorted(o['level'] for o in table['objects'])
+    assert 'Level 1</td>' not in text
+
+    assert 'bootstrap-table.min.css' in text
+    assert 'assets/js/deployment-objects.js' in text
+
+    for row in table['objects']:
+        assert set(row) >= {'lib', 'name', 'type', 'level', 'ready', 'status', 'can_change'}
+
+
+
+def test_objects_table_without_objects(server, boss):
+
+    from test_web_deployment import cancel_open_deployments
+
+    cancel_open_deployments(boss, 'seq')
+    deployment = boss.create_deployment('seq_wf')
+
+    try:
+        _, _, text = boss.get(f"/show_details/{deployment}", headers={'Accept': 'text/html'})
+        assert 'This deployment has no objects.' in text
+        assert 'id="deployment-objects"' not in text
+    finally:
+        boss.post(f"/api/cancel_deployment/{deployment}")
+
+
+
+def test_switches_which_cant_be_used_are_disabled(server, boss, objects_deployment):
+
+    _, _, text = boss.get(f"/show_details/{objects_deployment}", headers={'Accept': 'text/html'})
+    table = get_objects_table(text)
+
+    assert table['can_change'] is True
+    assert {o['name']: o['can_change'] for o in table['objects']} == {name: status != 'finished' for _, name, status in OBJECTS}
+    assert 'data-objects-ready="true"' in text
+
+    # Without the permission `run`: nothing can be changed, no buttons
+    intern = server.client('intern')
+    _, _, text = intern.get(f"/show_details/{objects_deployment}", headers={'Accept': 'text/html'})
+    table = get_objects_table(text)
+    assert table['can_change'] is False
+    assert not any(o['can_change'] for o in table['objects'])
+    assert 'data-objects-ready' not in text
+
+    # Canceled deployment: nothing can be changed
+    boss.post(f"/api/cancel_deployment/{objects_deployment}")
+    _, _, text = boss.get(f"/show_details/{objects_deployment}", headers={'Accept': 'text/html'})
+    table = get_objects_table(text)
+    assert table['can_change'] is False
+    assert not any(o['can_change'] for o in table['objects'])
+
+
+
+def object_ids(*names) -> list:
+    return [{'lib': 'devlib', 'name': name, 'type': 'file'} for name in names]
+
+
+
+def test_set_objects_ready(server, boss, objects_deployment):
+
+    history_before = len(json.loads(boss.get(f"/api/show_processing_history/{objects_deployment}")[2]))
+
+    status, data = boss.post_json(f"/api/set_objects_ready/{objects_deployment}", {'ready': False, 'objects': object_ids('orders', "o'brien", 'ord001', 'ordmenu')})
+
+    assert status == 200, data
+    assert data['changed'] == 3
+    assert data['finished'] == object_ids('orders')
+
+    ready = ready_of(boss, objects_deployment)
+    assert ready['orders'] is True          # finished: unchanged
+    assert ready["o'brien"] is False
+    assert ready['ord001'] is False
+    assert ready['ordmenu'] is False
+    assert ready['ord002'] is True          # not given
+
+    # One entry in the processing history
+    history = json.loads(boss.get(f"/api/show_processing_history/{objects_deployment}")[2])
+    assert len(history) == history_before + 1
+    assert '3 objects' in history[-1]['details'] or '3 objects' in history[0]['details']
+
+    # And back
+    status, data = boss.post_json(f"/api/set_objects_ready/{objects_deployment}", {'ready': True, 'objects': object_ids("o'brien", 'ord001')})
+    assert status == 200 and data['changed'] == 2
+    assert ready_of(boss, objects_deployment)["o'brien"] is True
+
+
+
+def test_set_objects_ready_changes_nothing_if_an_object_is_unknown(boss, objects_deployment):
+
+    before = ready_of(boss, objects_deployment)
+
+    status, data = boss.post_json(f"/api/set_objects_ready/{objects_deployment}", {'ready': False, 'objects': object_ids('ord002', 'nothere')})
+
+    assert status == 404, data
+    assert 'nothere' in data['message']
+    assert ready_of(boss, objects_deployment) == before
+
+
+
+@pytest.mark.parametrize('body', [
+    {},
+    {'ready': True},
+    {'ready': True, 'objects': []},
+    {'ready': 'yes', 'objects': [{'lib': 'devlib', 'name': 'ord002', 'type': 'file'}]},
+    {'ready': True, 'objects': [{'lib': 'devlib', 'name': 'ord002'}]},
+    {'ready': True, 'objects': ['ord002']},
+])
+def test_set_objects_ready_checks_its_input(boss, objects_deployment, body):
+
+    status, data = boss.post_json(f"/api/set_objects_ready/{objects_deployment}", body)
+    assert status == 422, data
+
+
+
+def test_set_objects_ready_needs_run(server, objects_deployment):
+
+    intern = server.client('intern')
+    status, _ = intern.post_json(f"/api/set_objects_ready/{objects_deployment}", {'ready': False, 'objects': object_ids('ord002')})
+    assert status == 403
+
+
+
+def test_set_objects_ready_in_a_canceled_deployment(boss, objects_deployment):
+
+    boss.post(f"/api/cancel_deployment/{objects_deployment}")
+    status, _ = boss.post_json(f"/api/set_objects_ready/{objects_deployment}", {'ready': False, 'objects': object_ids('ord002')})
+    assert status == 409
+
+
+
+def test_set_objects_ready_needs_post_from_the_own_origin(server, boss, objects_deployment):
+
+    assert boss.get(f"/api/set_objects_ready/{objects_deployment}")[0] in [404, 405]
+
+    other = server.client('boss')
+    other.origin = 'http://evil.example'
+    assert other.post(f"/api/set_objects_ready/{objects_deployment}", {'ready': False, 'objects': object_ids('ord002')})[0] == 403
+
+
+
+#-----------------------------------------------------------------------------------------------
+# Minor defects (docs/bugfixes/minor-web-defects.md)
+#-----------------------------------------------------------------------------------------------
+
+def test_log_page_selects_the_number_of_lines(server, boss):
+
+    log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
+
+    for lines in [100, 500, 1000, 10000]:
+        _, _, text = boss.get(f"/log/{log}/{lines}", headers={'Accept': 'text/html'})
+        selected = re.findall(r'<option value="(\d+)"\s*selected', text)
+        assert selected == [str(lines)], lines
+
+    assert '<label for="number_of_lines">' in text
+
+
+
+def test_error_page(boss):
+
+    status, _, text = boss.get('/show_details/999999', headers={'Accept': 'text/html'})
+
+    assert status == 404
+    assert 'Deployment 999999 not found' in text
+    assert 'fucking' not in text.lower()
+    assert 'data-dismiss' not in text
+    # No form inside the form of the base template
+    assert text.count('<form') == 1
+
+
+
+def test_user_page_doesnt_log_the_token():
+
+    with open(os.path.join(ROOT_DIR, 'webapp', 'templates', 'admin', 'user.html'), encoding='utf-8') as f:
+        text = f.read()
+
+    assert 'console.' not in text

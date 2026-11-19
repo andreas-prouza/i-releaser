@@ -323,7 +323,7 @@ def show_details_by_id(request: Request, meta_file_id: int):
     editable_custom_fields = mf.get_editable_custom_fields()
     can_edit_custom_data = len(editable_custom_fields) > 0 and permission_config.is_user_allowed(current_user.get_user(), permissions.PermissionAction.EDIT_CUSTOM_DATA, mf.workflow.name)
 
-    return http_functions.get_html_response(request, 'overview/show-deployment.html', sidebar=get_sidebar_data(request), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error='', flow_html=flow['html'], flow_javascript=flow['java_script'], editable_custom_fields=editable_custom_fields, can_edit_custom_data=can_edit_custom_data)
+    return http_functions.get_html_response(request, 'overview/show-deployment.html', sidebar=get_sidebar_data(request), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error='', flow_html=flow['html'], flow_javascript=flow['java_script'], editable_custom_fields=editable_custom_fields, can_edit_custom_data=can_edit_custom_data, objects_table=get_objects_table(mf))
 
 
 
@@ -652,6 +652,84 @@ def set_source_ready_4_deployment(request: Request, meta_file_id: int, data: dic
     mf.save()
 
     return http_functions.get_json_response({})
+
+
+
+def set_objects_ready(request: Request, meta_file_id: int, data: dict = Body(...)):
+    """Includes or excludes several objects of a deployment in one request.
+
+    Body: {"objects": [{"lib": ..., "name": ..., "type": ...}, ...], "ready": true|false}
+    Finished objects are left unchanged and listed in the response. If an object doesn't exist, nothing is changed.
+    """
+
+    objects = data.get('objects')
+    ready = data.get('ready')
+
+    if not isinstance(ready, bool):
+        raise errors.Invalid_Input_Error("'ready' has to be true or false")
+
+    if not isinstance(objects, list) or len(objects) == 0:
+        raise errors.Invalid_Input_Error("'objects' has to be a list of objects")
+
+    for o in objects:
+        if not isinstance(o, dict) or not all(isinstance(o.get(key), str) for key in ['lib', 'name', 'type']):
+            raise errors.Invalid_Input_Error("Each object needs 'lib', 'name' and 'type'")
+
+    mf: meta_file.Meta_File = get_deployment(meta_file_id)
+
+    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name)
+
+    if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
+        raise errors.Conflict_Error(f"Can't change object status because deployment is already in status '{mf.status.value}'.")
+
+    found = [(o, mf.deploy_objects.get_deploy_object(lib=o['lib'], name=o['name'], type=o['type'])) for o in objects]
+
+    not_found = [f"{o['lib']}/{o['name']}({o['type']})" for o, obj in found if obj is None]
+    if not_found:
+        raise errors.Not_Found_Error(f"{len(not_found)} objects not found: {', '.join(not_found[:5])}{' ...' if len(not_found) > 5 else ''}")
+
+    changed = 0
+    finished = []
+
+    for o, obj in found:
+        if obj.deploy_status == Obj_Status.FINISHED:
+            finished.append({'lib': obj.lib, 'name': obj.name, 'type': obj.type})
+            continue
+        if obj.ready != ready:
+            obj.ready = ready
+            changed += 1
+
+    if changed > 0:
+        processing_user_data.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set {changed} objects ready={ready}", meta_file=mf)
+        mf.save()
+
+    return http_functions.get_json_response({'status': 'success', 'changed': changed, 'finished': finished})
+
+
+
+def get_objects_table(mf: meta_file.Meta_File) -> dict:
+    """Data of the table "Objects to deploy". The page decides nothing: which switch can be used is set here."""
+
+    can_change = mf.status not in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED] \
+                 and permission_config.is_user_allowed(current_user.get_user(), permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name)
+
+    rows = []
+    for obj in mf.deploy_objects:
+        rows.append({
+            'id': obj.id,
+            'ready': bool(obj.ready),
+            'level': obj.level,
+            'prod_lib': obj.prod_lib,
+            'lib': obj.lib,
+            'name': obj.name,
+            'type': obj.type,
+            'attribute': obj.attribute,
+            'source_only': 'yes' if obj.source_only else 'no',
+            'status': obj.deploy_status.value,
+            'can_change': can_change and obj.deploy_status != Obj_Status.FINISHED,
+        })
+
+    return {'meta_file_id': mf.id, 'can_change': can_change, 'objects': rows}
 
 
 

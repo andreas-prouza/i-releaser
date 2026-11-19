@@ -6,22 +6,11 @@ Error
 
 {% block content %}
 
-<div class="box box-info">
-    {% if error_text is not none %}
-    <div class="headline text-danger">{{error_text}}</div>
-    {% endif %}
-    <!-- /.box-header -->
-    
-    <form>
-      <input type=button onClick="location.href='/'" value='Back to overview'>
-  </form>
-  
-    <div class="alert alert-danger alert-dismissible">
-      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-      <h5><i class="bi bi-slash-circle"></i> A fucking error occured!</h5>
-      {{ error }}
-    </div>
-    
+<div class="alert alert-danger" role="alert">
+    <h5><i class="bi bi-slash-circle"></i> Error</h5>
+    {{ error }}
 </div>
+
+<a class="btn btn-secondary" href="/">Back to overview</a>
 
 {% endblock %}

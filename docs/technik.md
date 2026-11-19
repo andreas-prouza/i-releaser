@@ -12,6 +12,9 @@
 ```
 
 * Tests are in `tests/` and don't need an IBM i. Tests which do are marked with `@pytest.mark.ibmi` and not run by default.
+* Browser tests (`@pytest.mark.browser`, `tests/test_web_browser.py`) open the web app in Chromium with Playwright. They run with every `pytest` where Playwright and its browser are installed (`.venv/bin/python -m playwright install chromium`, once, about 150 MB outside the repository) and are skipped otherwise, e.g. on IBM i. Only them: `.venv/bin/pytest -m browser`.
+  A browser test fails on a script error, an error in the console, a failed request and a request to another server (`Page_Watch` in `tests/browser_tools.py`).
+* The screenshots of `README.md` are made from test data: `.venv/bin/python tests/screenshots.py` writes `docs/img/*.png` (`--out <dir>` to compare first). It runs the web app with own workflows, deployments and the [rollback example](scripts.md#scripts-of-custom-templates), and replaces the directory of the test copy. A browser test checks that it makes every picture of `README.md`.
 * `tests/web_server.py` runs the real web app for a test: a copy of the repository in a temporary directory, with its own configuration and database.
   `Client` behaves like a browser (session cookie, `Origin` header).
 * Other tests use a temporary database, see `setUp` in `tests/test_stage_flow.py`.
@@ -126,6 +129,7 @@ Criteria: see [architektur.md](architektur.md). Checked on 2026-11-01.
 |---|---|---|---|---|
 | `pytest` | Tests (`requirements-dev.txt`) | 14659 | 3583 | OK |
 | `pip-audit` | Check of the dependencies (`requirements-dev.txt`) | 1389 | 149 | OK |
+| `playwright` 1.65.2 (`microsoft/playwright-python`, Apache-2.0, checked 2026-11-19) | Browser tests (`requirements-dev.txt`) | 15115 | 1258 | OK |
 | `swagger-ui-dist` 5.35.0 (JavaScript, `webapp/static/assets/swagger-ui/`, checked 2026-11-17) | `/docs`, instead of the copy FastAPI loads from a CDN | 29085 | 9245 | OK |
 
 Removed: `starsessions` and `aiofiles` (not used anymore).

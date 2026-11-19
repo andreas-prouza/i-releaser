@@ -35,8 +35,8 @@ if LOG_NAME is None:
 # File name from current file
 # current_file = os.path.splitext(os.path.abspath(__file__))[0]
 
-if not Path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+# exist_ok: processes which start at the same time (gunicorn workers, processing services) create it together
+os.makedirs(LOG_DIR, exist_ok=True)
 
 file_handler = logging.FileHandler(filename=Path(LOG_DIR, f"{LOG_NAME}.log"))
 #stdout_handler = logging.StreamHandler(stream=sys.stdout)

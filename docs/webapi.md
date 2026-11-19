@@ -15,6 +15,7 @@ All actions of the web app are available as HTTP endpoints. They use the same [p
 
 `meta_file_id` is the internal id of a deployment (`general.id` in its JSON), not its version.
 Stage ids are in `general.open_stages[].id` and `general.processed_stages[].id`.
+`waiting_for` of a stage lists the stages of its `after_stages_finished` which are not finished yet: the stage stays `new` until it's empty (see [parallel branches](concepts.md#parallel-branches)).
 
 
 ## Authentication
@@ -124,6 +125,7 @@ Actions which change data are shown with `POST`. With an API token they also wor
 |---|---|---|---|
 | `POST` | `/api/set_check_error/{meta_file_id}/{stage_id}/{action_id}/{checked}` | `change check error` | Turn the error check of a step on (`true`) or off (`false`). Not possible for finished steps or deployments. |
 | `POST` | `/api/set_source_ready_4_deployment/{meta_file_id}` | `run` | Include or exclude an object: `{"lib": "devlib", "name": "orders", "type": "file", "checked": true}` |
+| `POST` | `/api/set_objects_ready/{meta_file_id}` | `run` | Include or exclude several objects: `{"objects": [{"lib": "devlib", "name": "orders", "type": "file"}, ...], "ready": true}`. Finished objects stay unchanged; the response lists them: `{"status": "success", "changed": 12, "finished": [{"lib": ..., "name": ..., "type": ...}]}`. An unknown object: `404`, nothing is changed. |
 | `GET` | `/api/deploy_object_lifecycle/{project}/{prod_lib}/{name}/{type}/{attribute}` | `read` | All deployments of an object |
 
 ### Logs and history

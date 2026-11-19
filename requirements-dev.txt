@@ -2,3 +2,5 @@
 
 pytest
 pip-audit
+# Browser tests (tests/test_web_browser.py), also: python -m playwright install chromium
+playwright==1.65.2
