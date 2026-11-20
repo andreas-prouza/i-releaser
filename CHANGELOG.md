@@ -1,4 +1,4 @@
-# 3.1.0
+# 4.0.0
 
 * Store source file name in deploy-objects
 * Add support to run sql scripts as deployment
@@ -51,7 +51,7 @@
 * A stage with `after_stages_finished` stays `new` until those stages are finished (it was `ready`, but couldn't be run). The Web API lists them in `waiting_for` (see [parallel branches](docs/concepts.md#parallel-branches))
 * Removed: `deployment.py`, `stage_commands.json`, `flask_config.py`, `gen_commands.py`
 
-## Before you update to 3.1.0
+## Before you update to 4.0.0
 
 * Move your changes of `etc/constants.py` to `etc/settings.py`, then `git checkout etc/constants.py` and `git pull`
 * Scripts: remove workarounds for `$` (e.g. `replace('$', '\\$')`), [commands](docs/workflow.md#commands) reach `cl` unchanged now
