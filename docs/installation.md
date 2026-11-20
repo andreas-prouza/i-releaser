@@ -58,7 +58,7 @@ Your configuration files are not tracked by git, so updates don't touch them.
 
 | File | Content | Details |
 |---|---|---|
-| `etc/settings.py` | Your values for the settings of `etc/constants.py`: processing mode, processing service, git branch names, timeouts, ... | [processing service](processing-service.md#settings) |
+| `etc/settings.py` | Your values for the settings of `etc/constants.py`: processing mode, processing service, git branch names, timeouts, `C_CSP_REPORT_ONLY`, ... | [processing service](processing-service.md#settings), [security headers](technik.md#content-security-policy) |
 | `etc/app.json` | Settings changed in the web app: processing mode (overrides `etc/settings.py`) and auto start of the processing service. Written by the web app. Replaces `etc/web_settings.json`. | [processing service](processing-service.md#set-up) |
 | `etc/workflows/*.json` | One workflow per file | [workflow configuration](workflow.md) |
 | `etc/default_step_action.json` | Commands of the processing steps, for all workflows | [workflow configuration](workflow.md#step-actions) |
@@ -127,18 +127,23 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
   ProxyPreserveHost On
   ProxyPass        / http://127.0.0.1:8080/
   ProxyPassReverse / http://127.0.0.1:8080/
+
+  # Browsers use only HTTPS for this host for a year (mod_headers)
+  Header always set Strict-Transport-Security "max-age=31536000"
 </VirtualHost>
 ```
 
 * `ProxyPreserveHost On` is necessary, so redirects (e.g. after the login) point to the proxy and not to `127.0.0.1`, and the check of the request origin works.
 * The address has to match `bind` in `webapp/etc/gunicorn.conf.py`.
-* The deployment page refreshes itself with server-sent events (`/api/watch_state/...`).
+* `Strict-Transport-Security` is set by the proxy, as only it knows that the address is HTTPS. The web app itself sends the other security headers and the Content-Security-Policy ([technik.md](technik.md#content-security-policy)).
+* The deployment page updates itself with server-sent events (`/api/watch_state/...`).
   If it doesn't refresh behind the proxy, make sure these responses are not compressed or buffered (e.g. by `mod_deflate`).
 
 
 ## Production checklist
 
-* **HTTPS only.** The session cookie and the API tokens are sent with every request. Set `C_COOKIE_SECURE = True` in `webapp/etc/global_cfg.py`.
+* **HTTPS only.** The session cookie and the API tokens are sent with every request. Set `C_COOKIE_SECURE = True` in `webapp/etc/global_cfg.py`, and `Strict-Transport-Security` in the [reverse proxy](#reverse-proxy).
+* **`C_CSP_REPORT_ONLY` only for a short time.** It turns the Content-Security-Policy into a report (the web app logs a warning at its start). Move your custom templates to script files and remove it.
 * **Keep `bind = "127.0.0.1:..."`** in `webapp/etc/gunicorn.conf.py`, so the web app is only reachable through the proxy.
 * **Log level `INFO`** (the default of the templates). Debug logs contain a lot of internal data.
   Users with the permission `admin` can open the logs in the web app (menu `Logs`).
@@ -162,7 +167,7 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
 |---|---|
 | Database: deployments, stages, steps, history, queue of the processing service | `var/app.sqlite` (and `var/backup/`, see below) |
 | Logs and generated files of each deployment | `meta/` |
-| Configuration and your scripts | `etc/`, `webapp/etc/`, `scripts/`, `webapp/custom/`, `webapp/templates/custom_templates/` |
+| Configuration and your scripts | `etc/`, `webapp/etc/`, `scripts/`, `webapp/custom/`, `webapp/templates/custom_templates/`, `webapp/static/custom/` |
 
 The database uses WAL mode: `var/app.sqlite-wal` and `var/app.sqlite-shm` belong to it.
 Either copy all three files while the web app and the processing service are stopped, or make an online copy:

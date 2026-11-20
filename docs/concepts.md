@@ -107,7 +107,7 @@ START ──► BUILD ──► TEST (UAT) ──► PROD ──► END
 Branches are merged by naming the same stage in the `next_stages` of several stages (`END` above). The merging stage becomes `ready`:
 
 * as soon as one of the branches leading to it is finished, or
-* only after the stages listed in its `after_stages_finished` are finished.
+* only after the stages listed in its `after_stages_finished` are finished. Until then it stays `new`; the Web API lists the stages it waits for in `waiting_for`, the deployment page in the tooltip of the stage.
 
 See [workflow configuration](workflow.md#parallel-branches).
 

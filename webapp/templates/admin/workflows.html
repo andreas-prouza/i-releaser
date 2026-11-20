@@ -1,107 +1,93 @@
 {% extends 'base.html' %}
 
-{% block title %}
+{#-
+  The workflows (docs/features/web-ui-admin-pages.md#workflows). Context: cards (admin_view.get_workflow_cards),
+  invalid_files (only for admin), startable (the start dialog, pages/start-workflow.js)
+-#}
+
+{% from 'components/ui.html' import page_header, code_block, empty_state %}
+{% from 'overview/deployment/macros.html' import stage_flow %}
+
+{% block title %}Workflows{% endblock %}
+{% block nav_active %}workflows{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', path='assets/css/prism.css') }}">
 {% endblock %}
+
+{% block page_header %}{{ page_header('Workflows', meta='What each workflow does, and the start of a deployment') }}{% endblock %}
 
 {% block content %}
 
-{% if invalid_files %}
-<div class="alert alert-danger">
-    <h5>Invalid workflow files</h5>
-    <ul>
-        {% for file, error in invalid_files.items() %}
+{%- if invalid_files %}
+<div class="alert alert-danger" role="alert">
+    <h2 class="h6">Invalid workflow files</h2>
+    <ul class="mb-0">
+        {%- for file, error in invalid_files.items() %}
         <li><code>{{ file }}</code>: {{ error }}</li>
-        {% endfor %}
+        {%- endfor %}
     </ul>
 </div>
-{% endif %}
+{%- endif %}
 
-<div class="box box-info">
+<div class="ir-workflows">
+    {%- for card in cards %}
+    <section class="ir-card ir-workflow" aria-labelledby="workflow-{{ loop.index }}-title" data-workflow="{{ card.name }}">
+        <div class="ir-section-head">
+            <div>
+                <h2 id="workflow-{{ loop.index }}-title">{{ card.name }}</h2>
+                <p class="ir-reason mb-0">Project {{ card.project }}{% for mark in card.marks %} · {{ mark }}{% endfor %}</p>
+            </div>
+            {%- if card.startable %}
+            <button type="button" class="btn btn-primary btn-sm" data-action="start-workflow" data-workflow="{{ card.name }}"><i class="bi bi-play-fill" aria-hidden="true"></i> Start</button>
+            {%- endif %}
+        </div>
 
-    <form>
-        <input type="button" onClick="location.href='/'" value='Back to overview'>
-    </form>
-    <br/>
-    <br/>
+        {{ stage_flow(card.flow, none, static=True, prefix='wf-' ~ loop.index) }}
 
-    <!-- /.box-header -->
+        <details class="ir-workflow-steps">
+            <summary>Steps of the stages</summary>
+            {%- for stage in card.stages %}
+            <h3>{{ stage.name }}{% if stage.description %} <span class="ir-reason">· {{ stage.description }}</span>{% endif %}</h3>
+            {%- if stage.steps %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th>Step</th><th>Type</th><th>Command</th><th>Parallel</th></tr></thead>
+                    <tbody>
+                    {%- for step in stage.steps %}
+                        <tr><td>{{ step.name }}</td><td>{{ step.environment }}</td><td><code class="ir-mono">{{ step.execute | or_dash }}</code></td>
+                            <td>{% if step.parallel %}{{ step.group or 'yes' }}{% else %}–{% endif %}</td></tr>
+                    {%- endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {%- else %}
+            <p class="ir-reason">No steps{% if stage.after %}: waits for {{ stage.after | join(', ') }}{% endif %}</p>
+            {%- endif %}
+            {%- endfor %}
+            {%- if card.create_fields or card.editable_fields or card.hooks %}
+            <dl class="ir-kv mt-3">
+                {%- if card.create_fields %}<dt>Create fields</dt><dd class="ir-mono">{{ card.create_fields | join(', ') }}</dd>{% endif %}
+                {%- if card.editable_fields %}<dt>Editable fields</dt><dd class="ir-mono">{{ card.editable_fields | join(', ') }}</dd>{% endif %}
+                {%- if card.hooks %}<dt>Hooks</dt><dd>{{ card.hooks | join(', ') }}</dd>{% endif %}
+            </dl>
+            {%- endif %}
+        </details>
 
-    <h3>Raw JSON file</h3>
-
-
-    <table class="table table-striped table-bordered">
-        <thead>
-            <tr>
-                <th>Action</th><th>Workflow</th>
-            </tr>
-        </thead>
-    {% for wf in workflows %}
-        <tr><td><input type="button" class="btn btn-primary" onClick="start_workflow('{{ wf.name }}')" value='Start'></td>
-            <td>
-                {{ wf.name }}<br\>
-                <details>
-                  <summary>Click to expand/collapse json</summary>
-                    <pre class="prettyprint lang-json">
-{{ wf | pretty_json }}
-                    </pre>
-                </details>
-            </td>
-        </tr>
-    {% endfor %}
-    </table>
+        <details class="ir-workflow-json">
+            <summary>JSON</summary>
+            {{ code_block(card.json, 'json', label='Copy the definition') }}
+        </details>
+    </section>
+    {%- else %}
+    <div class="ir-card">{{ empty_state('No workflow which you may see', icon='diagram-3') }}</div>
+    {%- endfor %}
 </div>
 
-<script src="{{ url_for('static', path='assets/js/sweetalert2.all.min.js') }}"></script>
-<script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
+<script type="application/json" id="start-workflows">{{ startable | tojson }}</script>
+{% endblock %}
 
-<script type="text/javascript">
-
-    (function(d) {
-
-    stylizePreElements = function() {
-    var preElements = document.getElementsByTagName("pre");
-    for (i = 0; i < preElements.length; ++i) {
-        var preElement = preElements[i];
-        preElement.className += "prettyprint";
-    }
-    };
-
-    injectPrettifyScript = function() {
-    // https://github.com/googlearchive/code-prettify
-    var scriptElement = document.createElement('script');
-    scriptElement.setAttribute("src", "https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js");
-    document.head.appendChild(scriptElement);
-    };
-
-    stylizePreElements();
-    injectPrettifyScript();
-
-    })(document)
-
-
-    async function start_workflow(wf_name) {
-        console.log(`start ${wf_name}`);
-        http_post(`/api/create_deployment/${wf_name}`)
-            .then((response) => {
-                if (!response.ok) {
-                    return response.json().then((data) => {
-                        throw new Error(data.message || 'Unknown server error');
-                    });
-                }
-                return response.json();
-            })
-            .then((data) => {
-                window.open(`/show_details/${data.meta_file.general.id}`,'_self');
-            })
-            .catch((error) => {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: error.message
-                });
-            });
-    }
-
-</script>
-
+{% block scripts %}
+<script src="{{ url_for('static', path='assets/js/prism.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/pages/start-workflow.js') }}"></script>
 {% endblock %}

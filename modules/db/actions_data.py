@@ -96,6 +96,25 @@ def _is_unsaved_log(log) -> bool:
 
 
 
+def save_action_status(action: da.Deploy_Action) -> None:
+    """
+    Only the status of a step, e.g. `in process` when it starts (docs/bugfixes/running-step-status-not-stored.md).
+    One UPDATE; everything else is saved with the deployment when the step has ended.
+    A step which isn't in the database yet (a new sub-step) is saved with the deployment.
+    """
+
+    if action.id is None:
+        return
+
+    with app_sqlite.get_db_connection() as conn:
+        conn.execute("UPDATE actions SET status = ? WHERE id = ?", (action.status.value, action.id))
+        conn.commit()
+
+    if action.saved_values is not None:
+        action.saved_values = {**action.saved_values, 'status': action.status.value}
+
+
+
 def _get_values(action: da.Deploy_Action) -> dict:
     return {
         'sequence': action.sequence,

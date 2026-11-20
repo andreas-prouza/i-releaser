@@ -1,108 +1,63 @@
 {% extends 'base.html' %}
 
-{% block title %}
-{% endblock %}
+{#-
+  The deployments of a project (docs/features/web-ui-lists.md#deployments).
+  Context: project, projects ([{name, open}]), rows (routes.deployment_list), startable (workflows for the start dialog).
+  Script: static/assets/js/pages/deployments.js
+-#}
+
+{% from 'components/ui.html' import page_header, empty_state %}
+
+{% block title %}Deployments · {{ project }}{% endblock %}
+{% block nav_active %}deployments{% endblock %}
 
 {% block css %}
-
-
-  <!-- Include the Bootstrap Table CSS for the table -->
-  <link href="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css">
-
+<link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
 {% endblock %}
 
-
+{% block page_header %}
+{% call page_header('Deployments', meta='Project ' ~ (project or '–')) %}
+    {%- if startable %}
+    <button type="button" class="btn btn-sm btn-primary" data-action="start-workflow"><i class="bi bi-play-fill" aria-hidden="true"></i> Start workflow</button>
+    {%- endif %}
+{% endcall %}
+{% endblock %}
 
 {% block content %}
 
-  <h1>Workflows <code>{{ project }}</code></h1> 
+<nav aria-label="Projects">
+    <ul class="nav nav-tabs ir-project-tabs">
+        {%- for p in projects %}
+        <li class="nav-item">
+            <a class="nav-link{% if p.name == project %} active{% endif %}" href="/project/{{ p.name | urlencode }}"{% if p.name == project %} aria-current="page"{% endif %}>
+                {{ p.name }}{% if p.open %} <span class="ir-count" title="Open deployments">{{ p.open }}<span class="visually-hidden"> open</span></span>{% endif %}</a>
+        </li>
+        {%- endfor %}
+    </ul>
+</nav>
 
-  {% set btn_colors = [
-      'btn-primary', 
-      'btn-success', 
-      'btn-info', 
-      'btn-warning', 
-      'btn-danger', 
-      'btn-secondary', 
-      'btn-dark'
-  ] %}
+<section class="ir-card ir-table-card ir-list" aria-label="Deployments of {{ project }}">
+    {%- if rows %}
+    <div id="deployments-toolbar" class="btn-group btn-group-sm" role="group" aria-label="Which deployments">
+        <input type="radio" class="btn-check" name="which" id="which-open" value="open" data-action="which-deployments" autocomplete="off">
+        <label class="btn btn-outline-secondary" for="which-open">Open</label>
+        <input type="radio" class="btn-check" name="which" id="which-all" value="all" data-action="which-deployments" autocomplete="off" checked>
+        <label class="btn btn-outline-secondary" for="which-all">All</label>
+    </div>
+    <table id="deployments" class="table table-hover"></table>
+    {%- else %}
+    {{ empty_state('No deployments in this project yet', icon='rocket-takeoff') }}
+    {%- endif %}
+</section>
 
-  {% set btn_classes = {
-      'finished': 'btn-success',
-      'failed': 'btn-danger',
-      'canceled': 'btn-danger',
-      'new': 'btn-info',
-      'ready': 'btn-primary',
-      'in process': 'btn-secondary'
-  } %}
-
-  <div class="btn-group" role="group">
-  {% for pr in sidebar['projects'] %}
-  <a href="/project/{{ pr }}">
-    <button type="button" {% if pr != project %}disabled{% endif %} class="btn {{ loop.cycle('btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger') }} mb-2">{{ pr }}</button>
-  </a>&nbsp;
-  {% endfor %}
-  </div>
-
-
-  <!-- /.box-header -->
-  <table id="deployments"
-  class="table w-auto"
-  data-toggle="table" 
-  data-filter-control="true"
-  data-show-search-clear-button="true" 
-  data-show-columns="true"
-  data-pagination="true" 
-  data-page-list="[5, 10, 20, 50, 100, all]"
-  data-page-size="10"
-  data-pagination-h-align="left"
-  data-pagination-detail-h-align="left"
-  data-buttons-align="left"
-  data-search-align="left">
-      <thead>
-          <tr>
-              <!--- <th>Auswahl</th> -->
-              {% if deployments|length > 0 %}
-                  {% for key, value in deployments[0].items() %}
-                    <th data-field="{{ key }}" data-sortable="true" data-filter-control={% if key == 'status' %}"select"{% else %}"input"{% endif %}  data-filter-control-container="#filter">{{ key }}</th>
-                  {% endfor %}
-              {% endif %}
-          </tr>
-      </thead>
-      <tbody>
-        {% for row in deployments %}
-          {% set deployments_index = loop.index0 %}
-        <tr>
-            {% for key, value in row.items() %}
-            <td style="white-space: nowrap;">
-                {% if key == 'status' %}
-                    <a href="/show_details/{{ deployment_details[deployments_index]['id'] }}">
-                    <button type="button" class="btn {{ btn_classes[value] or 'btn-secondary' }}">{{ value }} </button>
-                  </a>
-                {% else %}
-                    {{ value }}
-                {% endif %}
-            </td>
-            {% endfor %}
-        </tr>
-        {% endfor %}
-    </tbody>
-  </table>
-
+<script type="application/json" id="deployments-data">{{ rows | tojson }}</script>
+<script type="application/json" id="start-workflows">{{ startable | tojson }}</script>
 {% endblock %}
 
-
 {% block scripts %}
-
-  <!-- http://js-grid.com/getting-started/ -->
-  <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
-  <script src="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.min.js"></script>
-  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
-  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/extensions/resizable/bootstrap-table-resizable.min.js"></script>
-  <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
-
-  <script>
-
-  </script>
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table.min.js') }}"></script>
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-filter-control.min.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/app/tables.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/pages/deployments.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/pages/start-workflow.js') }}"></script>
 {% endblock %}

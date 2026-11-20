@@ -15,6 +15,8 @@ jobs:
           python-version: '3.13'
       - run: sudo apt-get install -y unixodbc
       - run: pip install -r requirements-dev.txt
+      # Chromium for the browser tests (tests/browser_tools.py)
+      - run: python -m playwright install --with-deps chromium
       - run: pytest
 
   audit:

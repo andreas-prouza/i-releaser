@@ -329,6 +329,8 @@ def get_state_marker(meta_file_id: int) -> tuple|None:
     """
     Small value which changes whenever the deployment changes, with its steps, objects and jobs.
     So a page which watches a deployment doesn't need to load all of it to find out.
+    A step which starts only changes its own row (`in process`): the number of running steps is part of it,
+    and the last entry of the processing history (docs/features/web-ui-live-updates.md).
     """
 
     with app_sqlite.get_db_connection() as conn:
@@ -339,8 +341,11 @@ def get_state_marker(meta_file_id: int) -> tuple|None:
 
         stages_row = conn.execute("SELECT group_concat(status), max(update_time) FROM stages WHERE meta_file_id = ?", (meta_file_id,)).fetchone()
         jobs_row = conn.execute("SELECT count(*), group_concat(status), max(id) FROM processing_jobs WHERE meta_file_id = ?", (meta_file_id,)).fetchone()
+        steps_row = conn.execute("""SELECT count(*) FROM actions WHERE status = 'in process'
+                                    AND stage_id IN (SELECT id FROM stages WHERE meta_file_id = ?)""", (meta_file_id,)).fetchone()
+        history_row = conn.execute("SELECT max(id) FROM processing_users WHERE meta_file_id = ?", (meta_file_id,)).fetchone()
 
-    return (*meta_file_row, *stages_row, *jobs_row)
+    return (*meta_file_row, *stages_row, *jobs_row, *steps_row, *history_row)
 
 
 

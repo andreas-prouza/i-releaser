@@ -1,107 +1,44 @@
 {% extends 'base.html' %}
 
-{% block title %}
-{% endblock %}
+{#-
+  Without navigation (sidebar=None). The form is sent to /login?next=<page>: the middleware logs in, /login
+  redirects to the page the login was shown for (routes.get_next_url). The limits of the login form: docs/technik.md#known-vulnerabilities
+-#}
+
+{% block title %}Log in{% endblock %}
 
 {% block content %}
 
-<style>
-  body {font-family: Arial, Helvetica, sans-serif;}
-  form {border: 3px solid #f1f1f1;}
-  
-  input[type=text], input[type=password] {
-    width: 100%;
-    padding: 12px 20px;
-    margin: 8px 0;
-    display: inline-block;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-  }
-  
-  button {
-    background-color: #04AA6D;
-    color: white;
-    padding: 14px 20px;
-    margin: 8px 0;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-  }
-  
-  button:hover {
-    opacity: 0.8;
-  }
-  
-  .cancelbtn {
-    width: auto;
-    padding: 10px 18px;
-    background-color: #f44336;
-  }
-  
-  .imgcontainer {
-    text-align: center;
-    margin: 24px 0 12px 0;
-  }
-  
-  img.logo {
-    max-width: 100%;
-  }
-  
-  .container {
-    padding: 16px;
-  }
-  
-  span.psw {
-    float: right;
-    padding-top: 16px;
-  }
-  
-  /* Change styles for span and cancel button on extra small screens */
-  @media screen and (max-width: 300px) {
-    span.psw {
-       display: block;
-       float: none;
-    }
-    .cancelbtn {
-       width: 100%;
-    }
-  }
-</style>
+<div class="ir-login ir-card">
 
-<div class="box box-info">
-    <h1>Login</b></h1>
-
-    <div class="imgcontainer">
-      <img src="{{ url_for('static', path='assets/img/logo.png') }}" class="logo" alt="logo">
+    <div class="ir-login-brand">
+        <img src="{{ url_for('static', path='assets/img/logo2-icon.png') }}" alt="">
+        <h1>i-Releaser</h1>
     </div>
 
     {% if error_text is not none %}
-    <div class="alert alert-danger alert-dismissible">
-      <h5><i class="icon fas fa-ban"></i>{{error_text}}</h5>
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-octagon" aria-hidden="true"></i> {{ error_text }}
     </div>
     {% endif %}
 
-    <form action="/" method="post">
-    
-      <div class="container">
-        <label for="user"><b>Username</b></label>
-        <input type="text" placeholder="Enter Username" name="user" required>
-    
-        <label for="password"><b>Password</b></label>
-        <input type="password" placeholder="Enter Password" name="password" required>
-            
-        <button type="submit">Login</button>
-        <label>
-          <input type="checkbox" checked="checked" name="remember">Remember me
-        </label>
-      </div>
-    
-      <div class="container" style="background-color:#f1f1f1">
-        <button type="button" class="cancelbtn">Cancel</button>
-        <span class="psw">Forgot <a href="#">password?</a></span>
-      </div>
+    <form method="post" action="/login?next={{ next_url | default('/') | urlencode }}">
+        <div class="mb-3">
+            <label class="form-label" for="login-user">User</label>
+            <input class="form-control" type="text" id="login-user" name="user" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+        </div>
+        <div class="mb-4">
+            <label class="form-label" for="login-password">Password</label>
+            <input class="form-control" type="password" id="login-password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Log in</button>
     </form>
-    
+
+    <div class="ir-developer">
+        <img src="{{ url_for('static', path='assets/img/logo.png') }}" alt="">
+        <span>Developed by <a href="https://prouza.at">Andreas Prouza</a></span>
+    </div>
+
 </div>
 
 {% endblock %}

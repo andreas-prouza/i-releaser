@@ -180,7 +180,8 @@ See [workflow configuration](workflow.md#hooks).
 | Extension | How |
 |---|---|
 | Own routes (pages or API endpoints) | Python files in `webapp/custom/routes/`. They are loaded when the web app starts. Example: `webapp/custom/routes/test.py` adds `/custom_test/{test}`. |
-| Own HTML on the deployment page | `webapp/templates/custom_templates/deployment_status.html` is included in the deployment page, if it exists. E.g. a button which starts a rollback workflow for this deployment. |
+| Own HTML on the deployment page | `webapp/templates/custom_templates/deployment_status.html` is included in the deployment page, if it exists. E.g. a button which starts a rollback workflow for this deployment, see [below](#scripts-of-custom-templates). |
+| Own scripts and files for the pages | `webapp/static/custom/`, served as `/static/custom/...` |
 
 A custom route:
 
@@ -200,4 +201,131 @@ app.add_api_route('/custom/hello/{name}', hello, methods=['GET'])
 Custom routes need a login like all other routes, but they don't check [permissions](permissions.md) by themselves.
 Use `permission_config.check_user_permission(...)` like the routes in `webapp/routes/routes.py`.
 
-Both directories are not tracked by git.
+These directories are not tracked by git.
+
+### Own pages
+
+A custom route can show a page in the layout of the web app: a template which extends `base.html`, rendered with the navigation data.
+
+```python
+# webapp/custom/routes/releases.py
+from fastapi import Request
+from index import app
+from routes import routes
+from web_modules import http_functions
+
+
+def releases(request: Request):
+    return http_functions.get_html_response(request, 'custom_templates/releases.html',
+                                            sidebar=routes.get_sidebar_data(request), releases=['6', '7'])
+
+
+app.add_api_route('/custom/releases', releases, methods=['GET'])
+```
+
+```html
+<!-- webapp/templates/custom_templates/releases.html -->
+{% extends 'base.html' %}
+{% from 'components/ui.html' import page_header, empty_state %}
+
+{% block title %}Releases{% endblock %}
+{% block nav_active %}deployments{% endblock %}
+{% block page_header %}{{ page_header('Releases', breadcrumb=[('Deployments', '/'), ('Releases', None)]) }}{% endblock %}
+
+{% block content %}
+  {% for release in releases %}<p>{{ release }}</p>{% else %}{{ empty_state('No releases') }}{% endfor %}
+{% endblock %}
+
+{% block scripts %}<script type="module" src="{{ url_for('static', path='custom/releases.js') }}"></script>{% endblock %}
+```
+
+| Block of `base.html` | Content |
+|---|---|
+| `title` | Name of the page in the browser tab (`<title> · i-Releaser`) |
+| `nav_active` | Entry of the navigation which is marked: `deployments`, `objects`, `workflows`, `settings`, `logs`, `user`. Empty: none |
+| `page_header` | Breadcrumb, the one `<h1>` of the page and its actions: macro `page_header(title, breadcrumb, meta, status)` |
+| `css` | More stylesheets |
+| `content`, `no_form_content` | The content. Neither is inside a `<form>` |
+| `scripts` | Scripts at the end of the page. `Swal`, jQuery and Bootstrap are already loaded |
+
+* `sidebar=routes.get_sidebar_data(request)` shows the navigation, `sidebar=None` a page without it.
+* The macros of [`templates/components/ui.html`](../webapp/templates/components/ui.html): `page_header`, `status_pill`, `icon_button`, `kv_list`, `section`, `empty_state`, `code_block`. Filters: `datetime`, `duration`, `or_dash`.
+* Colours from the tokens of `static/assets/css/app.css` (`var(--ir-text)`, `var(--ir-success)`, ...), so the page works in the dark mode too.
+
+### Scripts of custom templates
+
+Put JavaScript of a custom template into a file in `webapp/static/custom/`, not into the template:
+
+* No `<script>` with code and no `onclick="..."` in the template. Values for the script go into `data-*` attributes; the script finds its elements by them.
+* The template loads the file with `<script type="module" src="{{ url_for('static', path='custom/<name>.js') }}"></script>`.
+* Actions use `POST`. With a login session the web app rejects actions with `GET` (`405`), see [Web API](webapi.md).
+* `Swal` (SweetAlert2), jQuery and Bootstrap are available on every page. The helpers of the web app are ES modules, see below.
+
+The web app sends a [Content-Security-Policy](technik.md#content-security-policy): the browser doesn't run inline scripts and `onclick` of a template. `C_CSP_REPORT_ONLY = True` in `etc/settings.py` only reports them in the console of the browser, for the time you move your templates.
+
+Helpers (`webapp/static/assets/js/app/`). A script in `webapp/static/custom/` imports them with a relative path:
+
+```js
+import { post_json } from '../assets/js/app/api.js';
+```
+
+| Module | Function | |
+|---|---|---|
+| `api.js` | `get_json(url)`, `post_json(url, data)` | Request with JSON. A response with an error status throws an `Api_Error` with the `message` of the server (and `status`). An ended session (`401`) shows `Your session has ended` with a button to log in again |
+| `dialogs.js` | `confirm_action({title, text, confirm, cancel, danger, action})` | One dialog for an action which can't be undone. `action` (async) runs when it's confirmed; the dialog waits and shows its error. Returns the result of `action`, `null` if canceled |
+| | `choose({title, text, options})` | One of two ways (`options: [{value, label}, {value, label}]`), `null` if canceled |
+| | `toast(message)`, `reload_with_toast(message)` | The result of an action: a short message which disappears (after a reload) |
+| | `show_error(error)` | An error which stays until it's closed |
+| `dom.js` | `on_action(name, handler)`, `on_change(name, handler)` | Click or change of elements with `data-action="<name>"`, also of elements added later |
+| | `read_json(id)` | The data of `<script type="application/json" id="...">` |
+| | `element(tag, text)`, `escape_html(text)` | Elements with text; HTML only where the DOM can't be used |
+
+The old global functions `postData`, `async_postData`, `http_post`, `http_get` and `http_getData` (`web.deploy.js`) are removed. Use `post_json` and `get_json`.
+
+Example: a button which starts the workflow `rollback_deployment` for a finished deployment. [`docs/examples/rollback/`](examples/rollback/) has both files, tested in `tests/test_web_browser.py`.
+
+```html
+<!-- webapp/templates/custom_templates/deployment_status.html -->
+{% if deployment_dict['general']['status'] == 'finished' %}
+  <button type="button" class="btn btn-sm btn-outline-secondary" data-rollback
+          data-project="{{ deployment_dict['general']['project'] }}"
+          data-version="{{ deployment_dict['general']['deploy_version'] }}">Roll back</button>
+  <script type="module" src="{{ url_for('static', path='custom/rollback.js') }}"></script>
+{% endif %}
+```
+
+```js
+// webapp/static/custom/rollback.js
+import { post_json } from '../assets/js/app/api.js';
+import { confirm_action } from '../assets/js/app/dialogs.js';
+
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-rollback]');
+    if (!button) {
+        return;
+    }
+    const {project, version} = button.dataset;
+    const data = await confirm_action({
+        title: 'Roll back this deployment?',
+        text: `Starts the workflow rollback_deployment for ${project}, version ${version}.`,
+        confirm: 'Roll back', cancel: 'Keep it', danger: true,
+        action: () => post_json('/api/start_workflow/rollback_deployment', {project, version}),
+    });
+    if (data) {
+        location.href = `/show_details/${data.meta_file.general.id}`;
+    }
+});
+```
+
+`deployment_status.html` is shown in the header of the deployment page, beside its actions (`History`, `Cancel deployment`). Its context: `deployment_dict` (the data of [`/api/get_meta_file_json`](webapi.md): `general`, `custom_data`, `deploy_libs`, ...).
+
+Moving an old custom template:
+
+| Before | After |
+|---|---|
+| `<img onclick="rollback_deployment('{{ project }}', {{ version }})">` | `<button data-rollback data-project="{{ project }}" data-version="{{ version }}">` |
+| `<script> function rollback_deployment(...) {...} </script>` in the template | The function in `webapp/static/custom/rollback.js`, started by a `click` listener |
+| `http_getData('/api/start_workflow/...?project=...')` (`GET`) | `post_json('/api/start_workflow/...', {...})` of `app/api.js` (or `fetch` with `method: 'POST'`) |
+| `Rollback started!` before the server has answered | `confirm_action` waits for the answer and shows its error |
+
+If the workflow has [`create_fields`](workflow.md#create-fields), they have to contain the fields the button sends (`$.project`, `$.version`).

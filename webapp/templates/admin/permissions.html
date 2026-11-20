@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{#-
+  Users, roles and their permissions (docs/features/web-ui-permissions-page.md).
+  Context: state (permission_config.get_state), current (the user, in lower case). Script: static/assets/js/pages/permissions.js,
+  which builds the lists and the tables from the state and saves each change at once.
+-#}
+
+{% from 'components/ui.html' import page_header %}
+{% from 'admin/settings-tabs.html' import settings_tabs %}
+
+{% block title %}Permissions{% endblock %}
+{% block nav_active %}permissions{% endblock %}
+
+{% block page_header %}
+{% call page_header('Permissions', breadcrumb=[('Settings', '/settings'), ('Permissions', None)], meta='Users and roles, and what they may do. Each change is saved at once.') %}
+    <span class="ir-save-state" role="status" aria-live="polite"></span>
+{% endcall %}
+{% endblock %}
+
+{% block content %}
+{{ settings_tabs('permissions') }}
+
+<div class="ir-permissions">
+
+    <aside class="ir-card ir-perm-list" aria-label="Users and roles">
+        <input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search users and roles" data-action="perm-search">
+        <div class="ir-perm-group">
+            <h2>Users</h2>
+            <button type="button" class="btn btn-sm btn-outline-secondary ir-icon-btn" data-action="add-user" aria-label="Add a user" title="Add a user"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+        </div>
+        <ul class="ir-perm-names" id="perm-users"></ul>
+        <div class="ir-perm-group">
+            <h2>Roles</h2>
+            <button type="button" class="btn btn-sm btn-outline-secondary ir-icon-btn" data-action="add-role" aria-label="Add a role" title="Add a role"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+        </div>
+        <ul class="ir-perm-names" id="perm-roles"></ul>
+    </aside>
+
+    <section class="ir-card ir-perm-detail" id="perm-detail" aria-label="Permissions of the selected user or role"></section>
+
+</div>
+
+<script type="application/json" id="permissions-state">{{ state | tojson }}</script>
+<script type="application/json" id="permissions-current">{{ current | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='assets/js/pages/permissions.js') }}"></script>
+{% endblock %}

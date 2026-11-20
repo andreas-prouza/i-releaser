@@ -28,6 +28,14 @@ def create_processing_user(meta_file_id: int, action: processing_user.Action_typ
     
 
 
+def get_last_entry(meta_file_id: int) -> list:
+    """Number and id of the last entry of the processing history of a deployment: changes with each new entry"""
+
+    with app_sqlite.get_db_connection() as conn:
+        return list(conn.execute("SELECT count(*), max(id) FROM processing_users WHERE meta_file_id = ?", (meta_file_id,)).fetchone())
+
+
+
 def get_processing_user_by_meta_id(meta_file_id: int) -> list:
     
     with app_sqlite.get_db_connection() as conn:

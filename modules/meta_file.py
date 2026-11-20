@@ -252,8 +252,9 @@ class Meta_File:
         if len(existing_stages) > 0:
           for es in existing_stages:
             logging.debug(f"Stage ({next_stage}) already processed: {es.id}")
-            # Parallel branches lead to the same stage: only the first one activates it
-            stage_data.activate_stage(es.id)
+            # Parallel branches lead to the same stage: only one activates it, and only when the stages it waits for are finished.
+            # The finished status of this stage is saved already, so the last of several branches sees all of them finished.
+            stage_data.activate_stage(es.id, wait_for=es.after_stages_finished)
             from_stage.next_stage_ids.append(es.id)
             es.from_stage_id.append(from_stage.id)
           continue
@@ -396,7 +397,8 @@ class Meta_File:
     #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def reset_last_finished_stage(self, stage_id: int) -> s.Stage:
       """Sets the stage which has been finished last back to 'ready', so it can be run again.
-      Its next stages are set back to 'new', unless another finished stage leads to them as well.
+      Its next stages are set back to 'new', unless another finished stage leads to them as well
+      and they don't wait for this stage (after_stages_finished).
       The status of its steps stays, so they will only be run again with continue_run=False.
 
       Args:
@@ -415,10 +417,12 @@ class Meta_File:
 
       for next_stage_id in set(stage.next_stage_ids):
 
-        if any(next_stage_id in fs.next_stage_ids for fs in other_finished_stages):
+        next_stage = self.stages.get_stage(next_stage_id)
+        waits_for_this_stage = stage.name in (next_stage.after_stages_finished or [])
+
+        if not waits_for_this_stage and any(next_stage_id in fs.next_stage_ids for fs in other_finished_stages):
           continue
 
-        next_stage = self.stages.get_stage(next_stage_id)
         if next_stage.status in [stage_status.Status.READY, stage_status.Status.FAILED]:
           logging.info(f"Set next stage {next_stage.name} ({next_stage.id}) back to '{stage_status.Status.NEW.value}'")
           next_stage.status = stage_status.Status.NEW
@@ -482,6 +486,16 @@ class Meta_File:
 
       self.set_status_after_stage_run()
       self.check_deployment_finish()
+
+
+
+    def get_waiting_for(self, stage: s.Stage) -> list[str]:
+      """Names of the stages of `after_stages_finished` which are not finished yet. Empty for a finished stage."""
+
+      if stage.status == stage_status.Status.FINISHED:
+        return []
+
+      return self.get_stages_needs_2_get_finished(stage)
 
 
 
@@ -1012,6 +1026,13 @@ class Meta_File:
 
     def get_all_data_as_dict(self) -> dict:
 
+      # Why a stage doesn't become ready yet (after_stages_finished)
+      waiting_for = {stage.id: self.get_waiting_for(stage) for stage in self.stages}
+      processed_stages = self.get_processed_stages().get_dict()
+      open_stages = self.get_open_stages().get_dict()
+      for stage_dict in processed_stages + open_stages:
+        stage_dict['waiting_for'] = waiting_for.get(stage_dict['id'], [])
+
       dict = {}
       dict['general'] = {'workflow':        self.workflow.get_dict(),
                          'id':              self.id,
@@ -1024,8 +1045,8 @@ class Meta_File:
                          'meta_dir':        self.meta_dir,
                          'status':          self.status.value,
                          'object_list':     self.object_list,
-                         'processed_stages':  self.get_processed_stages().get_dict(),
-                         'open_stages':  self.get_open_stages().get_dict(),
+                         'processed_stages':  processed_stages,
+                         'open_stages':  open_stages,
                          'parallel_deployment_execution_allowed':  self.parallel_deployment_execution_allowed,
                         }
       dict['deploy_libs'] = {'main_lib':    self.main_deploy_lib,
@@ -1069,21 +1090,35 @@ class Meta_File:
       * ``page``: state of the deployment, its stages, its deployed objects, the deployment history
         and its jobs of the processing service
       * ``stages``: state of each stage including its processing steps (actions), by stage id
+      * ``parts``: one hash per part of the deployment page, so it updates only what has changed
+        (docs/features/web-ui-live-updates.md): ``header``, ``flow``, ``objects``, ``activity``
       """
+
+      jobs = [[job.id, job.status.value] for job in self.processing_jobs]
+      objects = self.deploy_objects.get_objects_as_list_of_dict()
+      run_history = [h['id'] for h in self.run_history.get_list()]
 
       page_state = {
         'status': self.status.value,
         'stages': [[stage.id, stage.status.value] for stage in self.stages],
-        'jobs': [[job.id, job.status.value] for job in self.processing_jobs],
-        'objects': [[obj['id'], obj['deploy_status']] for obj in self.deploy_objects.get_objects_as_list_of_dict()],
-        'run_history': [h['id'] for h in self.run_history.get_list()],
+        'jobs': jobs,
+        'objects': [[obj['id'], obj['deploy_status']] for obj in objects],
+        'run_history': run_history,
+      }
+
+      parts = {
+        'header': [self.status.value, str(self.update_time), jobs, self.custom_data],
+        'flow': [[[stage.id, stage.status.value] for stage in self.stages], jobs],
+        'objects': [[obj['id'], obj['deploy_status'], bool(obj['ready'])] for obj in objects],
+        'activity': [run_history, processing_user_data.get_last_entry(self.id)],
       }
 
       stage_states = {}
       for stage in self.stages:
         stage_states[stage.id] = Meta_File._state_hash([stage.status.value, Meta_File._get_action_state(stage.actions.get_actions_as_dict())])
 
-      return {'page': Meta_File._state_hash(page_state), 'stages': stage_states}
+      return {'page': Meta_File._state_hash(page_state), 'stages': stage_states,
+              'parts': {name: Meta_File._state_hash(value) for name, value in parts.items()}}
 
 
 

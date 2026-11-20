@@ -1,5 +1,7 @@
 # Auto refresh in `show-deployment.html`
 
+> Replaced by the [live updates](web-ui-live-updates.md) of the redesigned deployment page (2026-11-19): the page is not loaded again, the parts which changed are replaced.
+
 ## Current situation
 
 When a stage is running, I need manually refresh the page to see if it's finished or not

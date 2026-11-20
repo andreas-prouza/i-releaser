@@ -91,6 +91,16 @@ C_PHYSICAL_FILE_ATTRIBUTES =  ['sqltable', 'pf']
 
 
 #---------------------------------------------------------
+# Web app
+#---------------------------------------------------------
+# True: the Content-Security-Policy is only reported in the console of the browser, not enforced
+# (Content-Security-Policy-Report-Only). For the time an installation moves its custom templates to script files
+# (docs/features/web-ui-security-headers.md). The web app logs a warning at its start.
+C_CSP_REPORT_ONLY = False
+#---------------------------------------------------------
+
+
+#---------------------------------------------------------
 # Local settings
 #---------------------------------------------------------
 try:

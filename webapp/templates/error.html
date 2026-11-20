@@ -1,27 +1,24 @@
 {% extends 'base.html' %}
 
-{% block title %}
-Error
-{% endblock %}
+{#- Context: error (message), status_code, status_text, error_id (only for unexpected errors) -#}
+
+{% block title %}{{ status_text or 'Error' }}{% endblock %}
 
 {% block content %}
 
-<div class="box box-info">
-    {% if error_text is not none %}
-    <div class="headline text-danger">{{error_text}}</div>
-    {% endif %}
-    <!-- /.box-header -->
-    
-    <form>
-      <input type=button onClick="location.href='/'" value='Back to overview'>
-  </form>
-  
-    <div class="alert alert-danger alert-dismissible">
-      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-      <h5><i class="icon fas fa-ban"></i>A fucking error occured!</h5>
-      {{ error }}
+<div class="ir-error">
+    <p class="ir-error-code">Error {{ status_code or '' }}</p>
+    <h1>{{ status_text or 'Error' }}</h1>
+
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-octagon" aria-hidden="true"></i> {{ error }}
     </div>
-    
+
+    {% if error_id %}
+    <p class="text-body-secondary">The details are in the log of the web app, under the error id <code>{{ error_id }}</code>.</p>
+    {% endif %}
+
+    <a class="btn btn-outline-secondary" href="/"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to the deployments</a>
 </div>
 
 {% endblock %}

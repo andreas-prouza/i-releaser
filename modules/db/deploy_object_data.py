@@ -106,46 +106,6 @@ def delete_deploy_objects(meta_file_id: int) -> None:
 
 
 
-def get_deploy_object_list(filters: dict|None=None, workflows: list[str]|None=None) -> list[dict]:
-    """
-    Args:
-        workflows (list, optional): Only objects of deployments of these workflows
-    """
-
-    object_obj: list[dict] = []
-    
-    with app_sqlite.get_db_connection() as conn:
-
-        c = conn.cursor()
-        where = ""
-        params = []
-        if filters:
-            for key, value in filters.items():
-                where += f" AND {key} = ?"
-                params.append(value)
-
-        if workflows is not None:
-            where += f" AND do.meta_file_id IN (SELECT meta_file_id FROM workflow_definitions WHERE name IN ({', '.join('?' * len(workflows))}))"
-            params += workflows
-
-        sql = f"""SELECT  mf.project, do.prod_lib, do.name, do.type, do.attribute, DATETIME(max(mf.create_time)) latest_create_time, count(*) as count
-                      FROM deploy_objects do
-                      left join meta_files mf on do.meta_file_id = mf.id
-                  where 1=1 {where} 
-                  group by mf.project, do.prod_lib, do.name, do.type, do.attribute
-                  order by 6 desc 
-                  limit 1000"""
-
-        c.execute(sql, params)
-        object_rows = c.fetchall()
-
-        for row in object_rows:
-            object_obj.append(dict(row))
-
-    return object_obj
-
-
-
 def get_deploy_object_lifecycle(project: str, prod_lib: str, name: str, type: str, attribute: str, workflows: list[str]|None=None) -> list[dict]:
     """
     Args:

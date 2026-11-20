@@ -1,39 +1,66 @@
 {% extends 'base.html' %}
 
-{% block title %}
+{#-
+  A log file of the web app (docs/features/web-ui-admin-pages.md#logs). Context: logfile, logs, lines ([{text, level}], newest first),
+  number_of_lines, line_choices, level, levels, search. Script: static/assets/js/pages/log.js (level and search filter the loaded lines)
+-#}
+
+{% from 'components/ui.html' import page_header %}
+
+{% block title %}{{ logfile }} · Logs{% endblock %}
+{% block nav_active %}logs{% endblock %}
+
+{% block page_header %}
+{% call page_header(logfile, breadcrumb=[('Logs', None), (logfile, None)], meta='The newest lines first') %}
+    <a class="btn btn-sm btn-outline-secondary" href="/log/{{ logfile | urlencode }}/download"><i class="bi bi-download" aria-hidden="true"></i> Download</a>
+{% endcall %}
 {% endblock %}
 
 {% block content %}
+<section class="ir-card ir-log-page" aria-label="Lines of {{ logfile }}">
 
-<div class="box box-info">
+    <div class="ir-log-bar">
+        <div>
+            <label class="form-label" for="log-file">File</label>
+            <select class="form-select form-select-sm" id="log-file" data-action="log-file">
+                {%- for log in logs %}
+                <option value="{{ log }}"{% if log == logfile %} selected{% endif %}>{{ log }}</option>
+                {%- endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="number_of_lines">Lines</label>
+            <select class="form-select form-select-sm" name="number_of_lines" id="number_of_lines" data-action="log-lines" data-logfile="{{ logfile }}">
+                {%- for count in line_choices %}
+                <option value="{{ count }}" {% if number_of_lines == count %}selected{% endif %}>{{ '{:,}'.format(count) }}</option>
+                {%- endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="log-level">Level</label>
+            <select class="form-select form-select-sm" id="log-level" data-action="log-level">
+                {%- for value, text in levels.items() %}
+                <option value="{{ value }}"{% if value == level %} selected{% endif %}>{{ text }}</option>
+                {%- endfor %}
+            </select>
+        </div>
+        <div class="ir-log-search">
+            <label class="form-label" for="log-search">Search</label>
+            <input type="search" class="form-control form-control-sm" id="log-search" data-action="log-search" value="{{ search }}" placeholder="Text in the lines">
+        </div>
+        <div class="ir-log-bar-end">
+            <span class="ir-reason" id="log-count" role="status"></span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-action="log-refresh"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh</button>
+        </div>
+    </div>
 
-    <form>
-        <input type=button onClick="location.href='/'" value='Back to overview'>
-    </form>
-    <br/>
-    <br/>
-
-    <!-- /.box-header -->
-
-    <h3>Log file <code>{{ logfile }}</code></h3>
-    
-    <label for="cars">Number of lines:</label>
-
-    <select name="number_of_lines" id="number_of_lines" onchange="location.href='/log/{{ logfile }}/' + this.value">
-        <option value="100" {% if number_of_lines == 100 %}selected{%endif%}>100</option>
-        <option value="500" {% if number_of_lines == 500 %}selected{%endif%}>500</option>
-        <option value="1000" {% if number_of_lines == 1090 %}selected{%endif%}>1.000</option>
-        <option value="10000" {% if number_of_lines == 10000 %}selected{%endif%}>10.000</option>
-    </select>
-
-    <br/>
-    <br/>
-
-    <pre class="overflow-auto w-auto"><code>
-{% for row in content %}{{ row }}
-{% endfor %}
-</code>
+    <pre class="ir-log ir-log-file wrap" tabindex="0">
+        {%- for line in lines %}<span class="ir-log-line lvl-{{ line.level | lower }}" data-level="{{ line.level }}">{{ line.text }}
+</span>{% endfor -%}
     </pre>
-</div>
+</section>
+{% endblock %}
 
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='assets/js/pages/log.js') }}"></script>
 {% endblock %}

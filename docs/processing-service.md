@@ -35,7 +35,7 @@ shows the progress as usual  <--------  status of stage, steps and logs
 
 ## Set up
 
-In the web app (permission `admin`): `Settings` &rarr; `General` &rarr; `Processing of stages`.
+In the web app (permission `admin`): `Settings` &rarr; `Processing` (`/settings/processing`).
 Change the mode and start the service there. No restart is necessary.
 
 Or on the command line:
@@ -94,7 +94,7 @@ flowchart TD
 * **systemd:** if the web app runs as a systemd unit (`KillMode=control-group`, the default), systemd stops the service together with the web app.
   There run the service as its own unit and leave `Start automatically` off. Not relevant on IBM i.
 
-The current state is shown in the web app: `Settings` &rarr; `General` &rarr; `Processing of stages`.
+The current state is shown in the web app: `Settings` &rarr; `Processing` (`/settings/processing`).
 There you also find the last jobs with their status and error.
 
 

@@ -26,6 +26,7 @@ Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2**
 | P1 | [Login: user and password unquoted in the ODBC connection string](login-connection-string-injection.md) | security | code review | ready |
 | P1 | [Command placeholders: user input in shell commands, braces break commands](command-placeholders-with-user-input.md) | security / bug | code review | finished |
 | P1 | [Missing permission checks](missing-permission-checks.md) | security | code review | finished |
+| P1 | [Permissions for a stage with capital letters never apply](stage-permissions-case.md) | bug | reproduced | finished |
 | P1 | [Any custom data can be set when a deployment is created](custom-data-on-create-unrestricted.md) | security | code review | finished |
 | P1 | [OBI can't start a workflow: build list larger than the custom data limit](compile-list-over-custom-data-limit.md) | bug (regression) | reproduced | finished |
 | P1 | [DB deployment: names from custom data in CL commands unchecked](db-deployment-name-validation.md) | security | code review | finished |
@@ -46,6 +47,24 @@ Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2**
 | P3 | [Object list: any file on the server can be given](object-list-path-not-restricted.md) | security | code review | finished |
 | P3 | [Start script of the web app](webapp-service-script.md) | bug | code review | finished |
 | P3 | [Minor code defects](minor-code-defects.md) | bug | code review | finished |
+| P3 | [Processes which start at the same time can fail while creating the log directory](log-dir-race.md) | bug | flaky test | finished |
+| P2 | [A stage which waits for parallel stages is `ready` too early](merging-stage-ready-too-early.md) | bug | screenshots | finished |
+| P3 | [A running step is not shown as running](running-step-status-not-stored.md) | bug | reproduced | finished |
+
+
+## Defects of the web front end
+
+Found in the analysis of the web front end of 2026-11-16 (see [modernization](../features/web-ui-modernization.md)). "Reproduced" means in Chrome on a copy of the web app.
+`ready` in this table: specified, not implemented yet.
+
+| Priority | Defect | Type | Found by | Status |
+|---|---|---|---|---|
+| P1 | [The web app loads scripts from third-party servers](web-scripts-from-third-party-servers.md) | security | reproduced | finished |
+| P1 | [Object names, commands and names from the configuration can run as script (XSS)](web-values-run-as-script.md) | security | partly reproduced | finished |
+| P1 | [Permissions page: can't save, or removes permissions, if a name contains special characters](permissions-page-names-in-selectors.md) | bug (data loss) | reproduced | finished |
+| P2 | [A stage name can turn off all buttons of the deployment page](stage-name-breaks-deployment-page.md) | bug | reproduced | finished |
+| P2 | [Deployment page: defects of the table "Objects to deploy"](deployment-objects-table.md) | bug | reproduced | finished |
+| P3 | [Minor defects of the web pages](minor-web-defects.md) | bug | seen / code review | finished |
 
 
 ## Related improvements (`docs/features/`)

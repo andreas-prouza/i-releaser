@@ -1,13 +1,14 @@
 import logging
 import os, re
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
 from fastapi.middleware.cors import CORSMiddleware
 
 from etc import global_cfg
 from routes import webmiddleware
+from web_modules import http_functions
 
 
 
@@ -25,10 +26,20 @@ class RedactToken(logging.Filter):
 
 
 
+def show_api_docs(request: Request):
+    """Swagger UI from the files of the web app (static/assets/swagger-ui), started by a script file:
+    the page works with the Content-Security-Policy, without an inline script (docs/features/web-ui-security-headers.md)"""
+
+    return http_functions.get_html_response(request, 'docs.html', openapi_url='/openapi.json')
+
+
+
 def setup_fastapi(lifespan=None) -> FastAPI:
     
-    app: FastAPI = FastAPI(lifespan=lifespan)
+    # The default pages of FastAPI load Swagger UI and ReDoc from other servers
+    app: FastAPI = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
     setup_middleware(app)
+    app.add_api_route('/docs', show_api_docs, methods=['GET'], include_in_schema=False)
 
     logging.getLogger('uvicorn.access').addFilter(RedactToken())
 

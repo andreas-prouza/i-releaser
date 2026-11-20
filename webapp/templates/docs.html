@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+{#- /docs: Swagger UI from the files of the web app, started by static/assets/js/swagger-init.js (no inline script, see initial.show_api_docs) -#}
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Web API · i-Releaser</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='assets/swagger-ui/swagger-ui.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', path='assets/img/favicon.png') }}">
+</head>
+<body>
+    <div id="swagger-ui" data-openapi-url="{{ openapi_url }}"></div>
+    <script src="{{ url_for('static', path='assets/swagger-ui/swagger-ui-bundle.js') }}"></script>
+    <script src="{{ url_for('static', path='assets/js/swagger-init.js') }}"></script>
+</body>
+</html>

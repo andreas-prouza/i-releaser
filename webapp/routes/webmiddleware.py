@@ -1,6 +1,7 @@
 import logging
 import re
 import uuid
+from http import HTTPStatus
 from urllib.parse import urlparse
 
 from fastapi import Request
@@ -8,6 +9,7 @@ from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from web_modules import http_functions
+from etc import constants
 from modules import current_user, errors
 from web_modules import app_login
 from web_modules import server_sessions
@@ -33,12 +35,35 @@ def get_path(request: Request) -> str:
 
 
 
+# Only script files of the web app; style attributes are set by SweetAlert2 and bootstrap-table (docs/features/web-ui-security-headers.md)
+CONTENT_SECURITY_POLICY = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; "
+                           "connect-src 'self'; media-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+
+SECURITY_HEADERS = {
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'same-origin',
+    'X-Frame-Options': 'DENY',
+}
+
+
+
+def get_csp_header_name() -> str:
+    return 'Content-Security-Policy-Report-Only' if getattr(constants, 'C_CSP_REPORT_ONLY', False) else 'Content-Security-Policy'
+
+
+
 class CacheControlMiddleware(BaseHTTPMiddleware):
-    
+    """Headers of every response: caching, and the security headers (the Content-Security-Policy for HTML)"""
+
     async def dispatch(self, request, call_next):
         response = await call_next(request)
         if 'cache-control' not in response.headers:
             response.headers['Cache-Control'] = 'max-age=0'
+        for name, value in SECURITY_HEADERS.items():
+            if name.lower() not in response.headers:
+                response.headers[name] = value
+        if response.headers.get('content-type', '').startswith('text/html'):
+            response.headers[get_csp_header_name()] = CONTENT_SECURITY_POLICY
         return response
    
 
@@ -78,6 +103,8 @@ class WebMiddleware(BaseHTTPMiddleware):
     def get_error_response(self, request: Request, e: Exception) -> JSONResponse | HTMLResponse:
         """Errors for the caller are shown. For all others the caller only gets an id to find the details in the log."""
 
+        error_id = None
+
         if isinstance(e, errors.App_Error):
             logging.info(f"{request.method} {get_path(request)}: {type(e).__name__}: {e}")
             message = str(e)
@@ -89,8 +116,8 @@ class WebMiddleware(BaseHTTPMiddleware):
             status_code = 500
 
         if self.wants_html(request):
-            sidebar = routes.get_sidebar_data(request) if hasattr(request.state, 'session') else None
-            response = http_functions.get_html_response(request, 'error.html', sidebar=sidebar, error=message)
+            response = http_functions.get_html_response(request, 'error.html', sidebar=self.get_sidebar(request), error=message,
+                                                        status_code=status_code, status_text=self.get_status_text(status_code), error_id=error_id)
             response.status_code = status_code
             return response
 
@@ -98,9 +125,35 @@ class WebMiddleware(BaseHTTPMiddleware):
 
 
 
+    def get_sidebar(self, request: Request) -> dict | None:
+        """The navigation of the error page: only for logged-in users, and the error page must not fail itself"""
+
+        if not hasattr(request.state, 'session') or current_user.get_user() is None:
+            return None
+
+        try:
+            return routes.get_sidebar_data(request)
+        except Exception as e:
+            logging.exception(e)
+            return None
+
+
+
+    def get_status_text(self, status_code: int) -> str:
+        try:
+            return HTTPStatus(status_code).phrase
+        except ValueError:
+            return 'Error'
+
+
+
     def wants_html(self, request: Request) -> bool:
 
         if get_path(request).startswith('/api/'):
+            return False
+
+        # Scripts of the pages (static/assets/js/app/api.js), also when they load a part of a page: errors and 401 as JSON
+        if request.headers.get('x-requested-with', '').lower() == 'fetch':
             return False
 
         accept: str = request.headers.get("accept") or ""

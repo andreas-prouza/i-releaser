@@ -42,8 +42,8 @@ if LOG_NAME is None:
 # File name from current file
 # current_file = os.path.splitext(os.path.abspath(__file__))[0]
 
-if not Path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+# exist_ok: processes which start at the same time (gunicorn workers, processing services) create it together
+os.makedirs(LOG_DIR, exist_ok=True)
 
 logging.basicConfig(format=LOG_FORMAT, filename=Path(LOG_DIR, LOG_NAME), level=LOG_LEVEL)
 #logging.getLogger().addFilter(thread_id_filter)

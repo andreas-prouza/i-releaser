@@ -1,1226 +1,217 @@
 {% extends 'base.html' %}
 
-{% block title %}
+{#-
+  The deployment page (docs/features/web-ui-deployment-page.md).
+  Context: deployment_dict (also for the custom template deployment_status.html), page (web_modules/deployment_view.get_page),
+  objects_table (routes.get_objects_table). Script: static/assets/js/pages/deployment.js
+-#}
+
+{% from 'components/ui.html' import page_header, status_pill, code_block, empty_state %}
+{% from 'overview/deployment/macros.html' import button, stage_flow, attention_bar, steps_panel %}
+
+{% set general = deployment_dict['general'] %}
+
+{% block title %}{{ general['project'] }} {{ general['deploy_version'] }} · {{ general['status'] }}{% endblock %}
+{% block nav_active %}deployments{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', path='assets/css/prism.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
+{% endblock %}
+
+{% block page_header %}
+<div data-part="header">
+{%- set meta = general['workflow']['name'] ~ ' · created ' ~ (general['create_time'] | datetime) ~ ' · updated ' ~ (general['update_time'] | datetime) ~ ' · id ' ~ general['id'] -%}
+{% call page_header(general['project'] ~ ' · Version ' ~ general['deploy_version'],
+                    breadcrumb=[('Deployments', '/'), (general['project'], '/project/' ~ (general['project'] | urlencode)), ('Version ' ~ general['deploy_version'], None)],
+                    meta=meta, status=general['status']) %}
+    {% include 'custom_templates/deployment_status.html' ignore missing %}
+    {% for a in page.actions %}{{ button(a) }}{% endfor %}
+{% endcall %}
+</div>
 {% endblock %}
 
 {% block content %}
-<style>
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 20px;
-}
+<div class="ir-deployment">
 
-.switch input { 
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
+    {#- Live updates (pages/deployment.js): shown while the connection is lost -#}
+    <div class="ir-reconnecting" role="status" hidden><i class="bi bi-wifi-off" aria-hidden="true"></i> Reconnecting …</div>
 
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  -webkit-transition: .4s;
-  transition: .4s;
-}
+    {#- The parts with data-part are replaced in place when they change (docs/features/web-ui-live-updates.md) -#}
 
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 13px;
-  width: 13px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  -webkit-transition: .4s;
-  transition: .4s;
-}
-
-input:checked + .slider {
-  background-color: #2196F3;
-}
-
-input:focus + .slider {
-  box-shadow: 0 0 1px #2196F3;
-}
-
-input:checked + .slider:before {
-  -webkit-transform: translateX(18px);
-  -ms-transform: translateX(18px);
-  transform: translateX(18px);
-}
-
-/* Rounded sliders */
-.slider.round {
-  border-radius: 34px;
-}
-
-.slider.round:before {
-  border-radius: 50%;
-}
-
-.actions td {
-    padding-right: 10px;
-}
-
-.sweet_container {
-    text-align: left!Important;
-}
-
-.stage_info th {
-    text-align: left;
-}
-
-.logs pre {
-    overflow-x: auto;
-    white-space: pre-wrap;
-    white-space: -moz-pre-wrap;
-    white-space: -pre-wrap;
-    white-space: -o-pre-wrap;
-    word-wrap: break-word;
-    text-align: left;
-}
-
-.json pre {
-    text-align: left;
-}
-
-.run {
-    cursor: pointer;
-}
-
-.stage_row+.stage_row, .grid+.grid {
-    margin-top: 1rem;
-}
-
-.stage_row :nth-child(odd){
-  background-color:lightgray;
-}
-.stage_row :nth-child(even){
-  background-color:white;
-}
-
-.flow_step {
-    margin-right: 40px;
-    margin-bottom: 10px;
-}
-
-.flow_parent {
-    position: relative; 
-}
-
-.flow_container {
-    width: max-content;
-}
-
-#flowchart {
-    z-index: -1;
-}
-
-.flow_child {
-    display: inline-block;
-    position: absolute;
-    left: 0;
-    top: 0;
-}
-
-pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
-.string { color: green; }
-.number { color: darkorange; }
-.boolean { color: blue; }
-.null { color: magenta; }
-.key { color: #2196F3; }
-
-
-.nowrap {
-    text-wrap: nowrap;
-}
-
-.json-container {
-    text-wrap: revert;
-}
-
-</style>
-
-<link rel="stylesheet" href="{{ url_for('static', path='assets/css/prism.css') }}">
-
-<script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
-
-
-{% set btn_classes = {
-    'finished': 'btn-success',
-    'failed': 'btn-danger',
-    'canceled': 'btn-danger',
-    'new': 'btn-info',
-    'ready': 'btn-primary',
-    'in process': 'btn-secondary'
-} %}
-
-<div class="box box-info">
-
-    <form>
-        <input type=button onClick="location.href='/'" value='Back to overview'>
-    </form>
-    <br/>
-    <br/>
-
-    <!-- /.box-header -->
-    <div style="position: relative;">
-    <div>
-        <h2>Projekt: <code>{{ deployment_dict['general']['project'] }} </code>&nbsp;&nbsp;&nbsp;&nbsp;
-            Workflow: <code>{{ deployment_dict['general']['workflow']['name'] }} </code>&nbsp;&nbsp;&nbsp;&nbsp;
-            Version: <code>{{ deployment_dict['general']['deploy_version'] }} </code></h2>
-        <br/>
-        <h3>Status: 
-            <button type="button" onClick="window.location.reload();" class="btn {{ btn_classes[deployment_dict['general']['status']] or 'btn-secondary' }}">{{ deployment_dict['general']['status'] }} </button>
-            {% if deployment_dict['general']['status'] in ['ready', 'failed', 'new', 'in process'] %}
-                <img class="run" title="Cancel deployment" src="{{ url_for('static', path='assets/img/cancel.png') }}" 
-                onclick="cancel_deployment({{ deployment_dict['general']['id'] }})">
-            {% endif %}
-            {% if deployment_dict['general']['status'] in ['new', 'in process'] and (now - deployment_dict['general']['update_time']).total_seconds() > 60 %}
-                <img class="run" title="Reset deployment status" src="{{ url_for('static', path='assets/img/undo.png') }}" 
-                onclick="reset_deployment_status({{ deployment_dict['general']['id'] }})">
-            {% endif %}
-            {% include 'custom_templates/deployment_status.html' ignore missing %}
-        </h3>
-        <div style="position: absolute; bottom: 0; right: 100px;">
-            <a class="run" onclick="show_processing_history({{ deployment_dict['general']['id'] }})" title="Show history">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-clock-history" viewBox="0 0 16 16">
-                <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z" fill="#198754"/>
-                <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"  fill="#0dcaf0"/>
-                <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5"/>
-            </svg>
-            </a>
-        </div>
-    </div>
-    </div>
-    <table class="table table-striped table-bordered">
-        <tr>
-            <th>Id</th><td> {{ deployment_dict['general']['id'] }}</td>
-            <th>Directory</th><td colspan="2">{{ deployment_dict['general']['meta_dir'] }}</td>
-        </tr>
-        <tr>
-            <th>Created</th><td> {{ deployment_dict['general']['create_time'] }}</td>
-            <th>Last update</th><td> {{ deployment_dict['general']['update_time'] }}</td>
-        </tr>
-        <tr>
-            <td colspan="5">
-                <table class="table table-bordered"><tr>
-                <th>Deployment lib (from)</th><td>{{ deployment_dict['deploy_libs']['main_lib'] }}</td>
-                <th>Backup lib (to)</th><td>{{ deployment_dict['deploy_libs']['backup_lib'] }}</td>
-                <th>Remote lib (to)</th><td>{{ deployment_dict['deploy_libs']['remote_lib'] }}</td>
-                </tr></table>
-            </td>
-        </tr>
-        {% if deployment_dict.get('custom_data') or can_edit_custom_data %}
-        <tr>
-            <th>Custom data
-                {% if can_edit_custom_data %}
-                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" title="Edit custom data" onclick="edit_custom_data({{ deployment_dict['general']['id'] }})">edit</button>
-                {% endif %}
-            </th>
-            <td colspan="3">
-                <details>
-                    <summary>Show custom data</summary>
-                    <pre><code class="language-json">{{ (deployment_dict.get('custom_data') or {}) | tojson(indent=2) }}</code></pre>
+    {#- Details -#}
+    <section class="ir-card ir-details" aria-label="Details" data-part="details">
+        <dl class="ir-kv">
+            <dt>Libraries</dt>
+            <dd class="ir-libs">
+                <span><span class="ir-reason">from</span> <span class="ir-mono">{{ deployment_dict['deploy_libs']['main_lib'] | or_dash }}</span></span>
+                <span><span class="ir-reason">backup</span> <span class="ir-mono">{{ deployment_dict['deploy_libs']['backup_lib'] | or_dash }}</span></span>
+                <span><span class="ir-reason">remote</span> <span class="ir-mono">{{ deployment_dict['deploy_libs']['remote_lib'] | or_dash }}</span></span>
+            </dd>
+            <dt>Directory</dt>
+            <dd class="ir-copy-line">
+                <span class="ir-mono">{{ general['meta_dir'] | or_dash }}</span>
+                {%- if general['meta_dir'] %}
+                <button type="button" class="ir-copy-inline" data-copy-text="{{ general['meta_dir'] }}" aria-label="Copy the directory" title="Copy the directory"><i class="bi bi-copy" aria-hidden="true"></i></button>
+                {%- endif %}
+            </dd>
+            {%- if general['commit'] %}
+            <dt>Commit</dt>
+            <dd class="ir-mono">{{ general['commit'] }}</dd>
+            {%- endif %}
+            <dt>Custom data</dt>
+            <dd>
+                {%- set custom = deployment_dict.get('custom_data') or {} %}
+                {%- if custom %}
+                <details class="ir-custom-data">
+                    <summary>{{ custom | length }} field{{ '' if custom | length == 1 else 's' }}</summary>
+                    {{ code_block(custom | pretty_json, 'json', label='Copy the custom data') }}
                 </details>
-            </td>
-        </tr>
-        {% endif %}
-    </table>
+                {%- else %}–{% endif %}
+            </dd>
+        </dl>
+    </section>
 
-    <hr>
-
-    <div class="progress">
-        <div class="progress-bar" role="progressbar" aria-label="Basic example" style="width: {{ progress }}%" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
-    </div>
-    
-    <br/>
-    
-    <!--canvas id="flowchart" style="position: absolute; top: 0; left: 0; "></canvas-->
-    <div id="flow_parent" class="flow_parent">
-        <canvas id="flowchart" class="flow_child border"></canvas>
-        {{  flow_html|safe  }}
+    {#- Attention bar -#}
+    <div data-part="attention">
+    {%- if page.attention %}
+    {{ attention_bar(page.attention) }}
+    {%- endif -%}
     </div>
 
-    <hr>
+    {#- Stages -#}
+    <section class="ir-section ir-stages" aria-labelledby="stages-title" data-part="flow">
+        <div class="ir-section-head">
+            <h2 id="stages-title">Stages</h2>
+            <div class="ir-progress-line">
+                <span>{{ page.progress.finished }} of {{ page.progress.total }} finished</span>
+                <div class="progress" role="progressbar" aria-label="Finished stages" aria-valuenow="{{ page.progress.percent }}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar" style="width: {{ page.progress.percent }}%"></div>
+                </div>
+            </div>
+        </div>
+        {{ stage_flow(page.flow, page.selected_stage_id) }}
+    </section>
 
-    <!--pre>{{  flow_html  }}</pre-->
-    
-    <br/>
+    {#- Steps of the selected stage -#}
+    <div id="stage-steps-container">
+        {%- if page.steps %}{{ steps_panel(page.steps) }}{% endif %}
+    </div>
 
-    <h3>Objects to deploy</h3>
-    
-    <table id="object_list" class="table w-auto"
-            data-toggle="table" 
-            data-filter-control="true"
-            data-show-search-clear-button="true" 
-            data-show-columns="true"
-            data-pagination="true" 
-            data-page-list="[5, 10, 20, 50, 100, all]"
-            data-page-size="10"
-            data-pagination-h-align="left"
-            data-pagination-detail-h-align="left"
-            data-buttons-align="left"
-            data-search-align="left">
-        <thead>
-            <th data-field="ready">Ready<br/>
-                <label class="switch">
-                    <input type="checkbox" id="selectAll" onchange="toggleAll(this)">
-                    <span class="slider round"></span>
-                </label>
-            </th>
-            <th data-field="level" data-sortable="true" data-filter-control="select" data-filter-control-container="#level_filter">Level</th>
-            <th data-field="prod_lib" data-sortable="true" data-filter-control="input" data-filter-control-container="#prod_lib_filter">Prod Lib</th>
-            <th data-field="target_lib" data-sortable="true" data-filter-control="input" data-filter-control-container="#target_lib_filter">Target Lib</th>
-            <th data-field="name" data-sortable="true" data-filter-control="input" data-filter-control-container="#name_filter">Name</th>
-            <th data-field="type" data-sortable="true" data-filter-control="select" data-filter-control-container="#type_filter">Type</th>
-            <th data-field="attribute" data-sortable="true" data-filter-control="select" data-filter-control-container="#attribute_filter">Attribute</th>
-            <th data-field="source_only" data-sortable="true" data-filter-control="select" data-filter-control-container="#source_only_filter">Source Only</th>
-            <th data-field="status" data-sortable="true" data-filter-control="select" data-filter-control-container="#status_filter">Status</th>
-        </thead>
-        {% set ns = namespace(prev_level=-1) %}
+    {#- Objects -#}
+    <section class="ir-section" aria-labelledby="objects-title">
+        <div class="ir-section-head">
+            <h2 id="objects-title">Objects <span class="ir-count" data-objects-count>{{ objects_table['objects'] | length }}</span></h2>
+        </div>
+        {%- if objects_table['objects'] %}
+        {%- if objects_table['can_change'] %}
+        <div id="object_toolbar" class="btn-group btn-group-sm" role="group" aria-label="Ready for the objects which match the filters">
+            <button type="button" class="btn btn-outline-secondary" data-objects-ready="true" title="Include the objects which match the filters">
+                <i class="bi bi-check2-all" aria-hidden="true"></i> All ready</button>
+            <button type="button" class="btn btn-outline-secondary" data-objects-ready="false" title="Exclude the objects which match the filters">
+                <i class="bi bi-x-lg" aria-hidden="true"></i> None ready</button>
+        </div>
+        {%- endif %}
+        <div class="ir-card ir-table-card">
+            <table id="object_list" class="table"></table>
+        </div>
+        {%- else %}
+        <div class="ir-card">{{ empty_state('This deployment has no objects') }}</div>
+        {%- endif %}
+    </section>
 
-        {% for object in deployment_dict['objects'] %}
+    {#- Activity -#}
+    <section class="ir-section" aria-labelledby="activity-title" data-part="activity">
+        <div class="ir-section-head">
+            <h2 id="activity-title">Activity</h2>
+        </div>
+        <div class="ir-card">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="activity-actions-tab" data-bs-toggle="tab" data-bs-target="#activity-actions" type="button" role="tab" aria-controls="activity-actions" aria-selected="true">
+                        Actions <span class="ir-count">{{ page.actions_history | length }}</span></button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="activity-runs-tab" data-bs-toggle="tab" data-bs-target="#activity-runs" type="button" role="tab" aria-controls="activity-runs" aria-selected="false">
+                        Run logs <span class="ir-count">{{ page.run_logs | length }}</span></button>
+                </li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane show active" id="activity-actions" role="tabpanel" aria-labelledby="activity-actions-tab" tabindex="0">
+                    {%- if page.actions_history %}
+                    <!-- Cells from the template, escaped by Jinja: bootstrap-table must not escape them again (app/tables.js) -->
+                    <table class="table table-sm" data-toggle="table" data-escape="false" data-pagination="true" data-page-size="10" data-pagination-h-align="left" data-pagination-detail-h-align="left">
+                        <thead><tr>
+                            <th data-sortable="true">Time</th><th data-sortable="true">User</th><th data-sortable="true">Action</th><th data-sortable="true">Stage</th><th>Details</th>
+                        </tr></thead>
+                        <tbody>
+                        {%- for row in page.actions_history %}
+                            <tr><td class="text-nowrap">{{ row.timestamp | datetime }}</td><td>{{ row.user | or_dash }}</td><td>{{ (row.action or '') | replace('_', ' ') | or_dash }}</td><td>{{ row.stage | or_dash }}</td><td>{{ row.details | or_dash }}</td></tr>
+                        {%- endfor %}
+                        </tbody>
+                    </table>
+                    {%- else %}
+                    {{ empty_state('Nobody has done anything with this deployment yet', icon='clock-history') }}
+                    {%- endif %}
+                </div>
+                <div class="tab-pane" id="activity-runs" role="tabpanel" aria-labelledby="activity-runs-tab" tabindex="0">
+                    {%- if page.run_logs %}
+                    <table class="table table-sm ir-run-logs">
+                        <thead><tr><th>Time</th><th><span class="visually-hidden">Log</span></th></tr></thead>
+                        <tbody>
+                        {%- for run in page.run_logs %}
+                            <tr><td class="text-nowrap">{{ run.create_time | datetime }}</td>
+                                <td><button type="button" class="btn btn-sm btn-outline-secondary" data-action="show-log" data-log-source="deployment" data-run-id="{{ run.id }}" data-title="Run of {{ run.create_time | datetime }}">Log</button></td></tr>
+                        {%- endfor %}
+                        </tbody>
+                    </table>
+                    {%- else %}
+                    {{ empty_state('No logs yet', icon='file-earmark-text') }}
+                    {%- endif %}
+                </div>
+            </div>
+        </div>
+    </section>
 
-            {% if ns.prev_level < 0 or ns.prev_level != object['level'] %}
-
-                {% set ns.prev_level = object['level'] %}
-                <tr>
-                    <td colspan="9" style="background-color: #e0e0e0; text-align: center; font-weight: bold;">Level {{ object['level'] }}</td>
-                </tr>
-            {% endif %}
-            <tr>
-                <td>
-                    <label class="switch">
-                        <input type="checkbox" class="obj-checkbox" {% if object['ready'] %}checked{% endif %}
-                            data-project="{{ deployment_dict['general']['project'] }}"
-                            data-version="{{ deployment_dict['general']['deploy_version'] }}"
-                            data-lib="{{ object['lib'] }}"
-                            data-name="{{ object['name'] }}"
-                            data-type="{{ object['type'] }}"
-                            onchange="set_source_ready_4_deployment(this, {{ deployment_dict['general']['id'] }}, '{{ object['lib'] }}', '{{ object['name'] }}', '{{ object['type'] }}', this.checked)">
-                        <span class="slider round"></span>
-                    </label>
-                </td>
-                <td>{{ object['level'] }}</td>
-                <td>{{ object['prod_lib'] }}</td>
-                <td>{{ object['lib'] }}</td>
-                <td>{{ object['name'] }}</td>
-                <td>{{ object['type'] }}</td>
-                <td>{{ object['attribute'] }}</td>
-                <td>{{ object['source_only'] }}</td>
-                <td><button type="button" class="btn  {{ btn_classes[object['deploy_status']] or 'btn-secondary' }}">{{ object['deploy_status'] }}</button></td>
-            </tr>
-        {% endfor %}
-    </table>
-
-    <hr>
-    
-    <br/>
-
-    <h3>Deployment history</h3>
-    <table class="table table-striped table-bordered w-auto">
-        <thead>
-            <th>Timestamp</th><th>Log</th>
-        </thead>
-        {% for history in deployment_dict['run_history'] %}
-        <tr>
-            <td>{{ history['create_time'] }}</td>
-            <td><img src="{{ url_for('static', path='assets/img/log.png') }}" 
-                onclick="showLog({{ history['id'] }})"></td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <hr>
-    
-    <br/>
 </div>
 
+{#- Logs: one dialog over the page, the steps stay as they are behind it -#}
+<div class="modal fade" id="log-dialog" tabindex="-1" aria-labelledby="log-dialog-title" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="log-dialog-title">Log</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="ir-log-toolbar">
+                    <ul class="nav nav-tabs" role="tablist" id="log-tabs">
+                        <li class="nav-item" role="presentation"><button type="button" class="nav-link active" role="tab" data-action="log-tab" data-log-type="output" aria-selected="true">Output</button></li>
+                        <li class="nav-item" role="presentation"><button type="button" class="nav-link" role="tab" data-action="log-tab" data-log-type="errors" aria-selected="false">Errors</button></li>
+                    </ul>
+                    <div class="ir-log-buttons">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="log-wrap" data-action="log-wrap" checked>
+                            <label class="form-check-label" for="log-wrap">Wrap lines</label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-action="log-copy"><i class="bi bi-copy" aria-hidden="true"></i> Copy</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-action="log-download"><i class="bi bi-download" aria-hidden="true"></i> Download</button>
+                    </div>
+                </div>
+                <pre class="ir-log wrap" id="log-text" tabindex="0"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="deployment-page">{{ page_data | tojson }}</script>
+<script type="application/json" id="deployment-objects">{{ objects_table | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table.min.js') }}"></script>
-<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-resizable.min.js') }}"></script>
 <script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-filter-control.min.js') }}"></script>
-
-<script src="{{ url_for('static', path='assets/js/web.deploy.js') }}"></script>
-<script src="{{ url_for('static', path='assets/js/chart.js') }}"></script>
-<script src="{{ url_for('static', path='assets/js/json.js') }}"></script>
-
+<script type="module" src="{{ url_for('static', path='assets/js/app/tables.js') }}"></script>
 <script src="{{ url_for('static', path='assets/js/prism.js') }}"></script>
-
-<script type="text/javascript">
-
-    
-    (function(d) {
-
-        print_flow_connections();
-
-        //let flow_html_container = document.getElementById("flow_html_container");
-        //flow_html_container.addEventListener("", print_flow_connections());
-
-        //const observer = new MutationObserver(print_flow_connections);
-        //observer.observe(flow_html_container, { attributes: true, childList: true, characterData: true });
-
-        //new ResizeObserver(print_flow_connections).observe(flow_html_container);
-
-        const details_list = document.getElementsByClassName("details_step");
-        for (const el of details_list) {
-            el.addEventListener("toggle",function() {
-                print_flow_connections()
-            })
-        }
-
-        addEventListener("resize", (event) => {
-            print_flow_connections();
-        });
-
-
-    })(document)
-
-
-
-function print_flow_connections() {
-
-    let flow_parent = document.getElementById("flow_parent");
-    let flow_html_container = document.getElementById("flow_html_container").getBoundingClientRect();
-    flow_parent.style.height=flow_html_container.height;
-    
-    let canvas = document.getElementById("flowchart");
-    canvas.height=flow_html_container.height;
-    canvas.width=window.innerWidth;
-    
-    const context = canvas.getContext('2d');
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    
-    {{ flow_javascript | safe}}
-}
-
-
-
-var last_show_stage_id = null;
-var last_show_stage_name = null;
-var current_meta_file_id = null;
-
-
-function show_http_error(error, reload=false) {
- 
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: error
-    }).then(()=>{
-        if (reload) {
-            location.reload();
-        }
-    })
-}
-
-
-
-{% if can_edit_custom_data %}
-const editable_custom_fields = {{ editable_custom_fields | tojson }};
-
-// Text shown in the input field for the current value
-function custom_field_text(field) {
-    if (!field.exists || field.value === null) {
-        return '';
-    }
-    return typeof field.value === 'object' ? JSON.stringify(field.value) : String(field.value);
-}
-
-
-// Converts the entered text back to the type the field had before
-function parse_custom_field_value(field, text) {
-    if (!field.exists || field.value === null) {
-        return text;
-    }
-    if (typeof field.value === 'number') {
-        const number = Number(text);
-        if (text.trim() === '' || Number.isNaN(number)) {
-            throw new Error(`'${field.path}' needs to be a number`);
-        }
-        return number;
-    }
-    if (typeof field.value === 'boolean') {
-        if (!['true', 'false'].includes(text.trim().toLowerCase())) {
-            throw new Error(`'${field.path}' needs to be true or false`);
-        }
-        return text.trim().toLowerCase() === 'true';
-    }
-    if (typeof field.value === 'object') {
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            throw new Error(`'${field.path}' needs to be valid JSON`);
-        }
-    }
-    return text;
-}
-
-
-function edit_custom_data(meta_file_id) {
-
-    const form = document.createElement('div');
-    form.style.textAlign = 'left';
-
-    const inputs = editable_custom_fields.map((field, index) => {
-        const label = document.createElement('label');
-        label.className = 'form-label fw-bold mt-2';
-        label.htmlFor = `custom_field_${index}`;
-        label.textContent = field.path;
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.id = `custom_field_${index}`;
-        input.className = 'form-control';
-        input.value = custom_field_text(field);
-
-        form.appendChild(label);
-        form.appendChild(input);
-        return input;
-    });
-
-    Swal.fire({
-        title: 'Edit custom data',
-        html: form,
-        showCancelButton: true,
-        confirmButtonText: 'Save',
-        focusConfirm: false,
-        preConfirm: () => {
-            const fields = {};
-            try {
-                editable_custom_fields.forEach((field, index) => {
-                    const text = inputs[index].value;
-                    if (text !== custom_field_text(field)) {
-                        fields[field.path] = parse_custom_field_value(field, text);
-                    }
-                });
-            } catch (e) {
-                Swal.showValidationMessage(e.message);
-                return false;
-            }
-            return fields;
-        }
-    }).then((result) => {
-        if (!result.isConfirmed) {
-            return;
-        }
-        if (Object.keys(result.value).length === 0) {
-            return;
-        }
-        postData(`/api/edit_custom_data/${meta_file_id}`, { fields: result.value })
-            .then((response) => {
-                if (response['status'] !== 'success') {
-                    show_http_error(response['message']);
-                    return;
-                }
-                location.reload();
-            })
-            .catch((error) => {
-                show_http_error(error.message);
-            });
-    });
-}
-{% endif %}
-
-
-
-function show_stage_steps(meta_file_id, stage_id, stage_name) {
-
-    last_show_stage_id = stage_id;
-    last_show_stage_name = stage_name;
-    current_meta_file_id = meta_file_id;
-
-    http_getData(`/api/get_stage_steps_html/${meta_file_id}/${stage_id}`).then((data) => {
-        console.log(data); 
-        
-        if (data['status'] == 'error') {
-            show_http_error(data['message']);
-            return;
-        }
-
-        html = data['html'];
-        
-        Swal.fire({
-            title: `Steps for ${stage_name} (${stage_id})`,
-            html: html,
-            width: 'auto',
-            customClass: {
-                htmlContainer: 'sweet_container',
-                table: 'table',
-            },
-            didOpen: () => {
-                highlight_code_blocks();
-            }
-        }).then((result) => {
-            last_show_stage_id=null;
-            last_show_stage_name=null;
-            current_meta_file_id=null;
-        });
-    });
-}
-
-
-
-function highlight_code_blocks() {
-    const codeBlocks = Swal.getHtmlContainer().querySelectorAll('code');
-    codeBlocks.forEach((block) => {
-        console.log('codeBlock', block);
-        Prism.highlightElement(block);
-    });
-}
-
-
-
-//------------------------------------------------------------------------------
-// Auto refresh
-//
-// Server push (SSE) of the state signature of the deployment.
-// * The stage steps window is updated in place, if its stage (or one of its steps) changed.
-// * The page is reloaded if the deployment, a stage or an object changed.
-//   If a dialog is open, the reload is postponed until it has been closed.
-//------------------------------------------------------------------------------
-
-const AUTO_REFRESH_META_FILE_ID = '{{ deployment_dict['general']['id'] }}';
-
-var auto_refresh_signature = null;
-var auto_refresh_pending_reload = false;
-var auto_refresh_source = null;
-
-
-function is_stage_steps_window_open() {
-    // The steps window gets replaced by log windows, while last_show_stage_id stays set
-    if (last_show_stage_id == null || !Swal.isVisible()) {
-        return false;
-    }
-    const container = Swal.getHtmlContainer();
-    return container != null && container.querySelector('table.stage_info') != null;
-}
-
-
-async function refresh_stage_steps_window(stage_id) {
-    const data = await http_getData(`/api/get_stage_steps_html/${AUTO_REFRESH_META_FILE_ID}/${stage_id}`);
-
-    // The user may have closed or replaced the window meanwhile
-    if (data['status'] == 'error' || !is_stage_steps_window_open() || last_show_stage_id != stage_id) {
-        return;
-    }
-    Swal.getHtmlContainer().innerHTML = data['html'];
-    highlight_code_blocks();
-}
-
-
-function auto_refresh_handle_signature(signature) {
-
-    if (signature['status'] == 'error') {
-        // e.g. session expired. Stop silently instead of showing an error
-        console.log('Auto refresh stopped', signature['message']);
-        if (auto_refresh_source) {
-            auto_refresh_source.close();
-        }
-        return;
-    }
-
-    const previous = auto_refresh_signature;
-    auto_refresh_signature = signature;
-
-    if (previous == null) {
-        return;
-    }
-
-    if (is_stage_steps_window_open()) {
-        const stage_id = last_show_stage_id;
-        if (previous['stages'][stage_id] != signature['stages'][stage_id]) {
-            refresh_stage_steps_window(stage_id);
-        }
-    }
-
-    if (previous['page'] != signature['page']) {
-        auto_refresh_pending_reload = true;
-    }
-
-    if (auto_refresh_pending_reload && !Swal.isVisible()) {
-        location.reload();
-    }
-}
-
-
-function start_auto_refresh() {
-    auto_refresh_source = new EventSource(`/api/watch_state/${AUTO_REFRESH_META_FILE_ID}`);
-
-    auto_refresh_source.onmessage = (event) => {
-        auto_refresh_handle_signature(JSON.parse(event.data));
-    };
-
-    auto_refresh_source.onerror = (error) => {
-        // Permanent failure (e.g. session expired, not found) or the connection dropped: close instead of
-        // letting the browser's automatic EventSource retry hammer the server forever.
-        console.error('Auto refresh connection failed', error);
-        auto_refresh_source.close();
-    };
-}
-
-
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        if (auto_refresh_source) {
-            auto_refresh_source.close();
-        }
-    }
-    else if (!auto_refresh_source || auto_refresh_source.readyState == EventSource.CLOSED) {
-        start_auto_refresh();
-    }
-});
-
-
-start_auto_refresh();
-
-
-
-function showActionLog(type, id) {
-    let html = '';
-
-    http_getData(`/api/get_action_log/${id}`).then((data) => {
-        console.log(data); // JSON data parsed by `data.json()` call
-
-        if (data['status'] == 'error') {
-            show_http_error(data['message']);
-            return;
-        }
-
-        html = data['stdout'];
-        if (type == 'error'){
-            html = data['stderr'];
-        }
-        html = html.replaceAll("&", '&amp;');
-        html = html.replaceAll("<", '&lt;');	 
-        html = html.replaceAll(">", '&gt;');     
-        html = html.replaceAll("\"", '&quot;');  
-        html = html.replaceAll("\'", '&#39;');   
-        
-        html = html.replaceAll('\\n', '\n');
-        html = html.replaceAll(/(.*) +([A-Z]+) +([^ ]+ +[^ ]+ +\([0-9]+\)): (.*)/g, "<tr><td style='white-space: nowrap;'>$1</td><td style='white-space: nowrap;'>$2</td><td style='white-space: nowrap;'>$3</td><td>$4</td></tr>");   
-        html = '<table class="table table-striped table-bordered w-auto">' + html + '</table>';
-
-        Swal.fire({
-            icon: type,
-            title: 'Log',
-            html: '<pre class="logs">'+html+'</pre>',
-            width: 'auto',
-            customClass: {
-                popup: 'logs'
-            }
-        }).then((result) => {
-            if (last_show_stage_id != null) {
-                show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
-            }
-        });
-    });
-}
-
-
-
-function showLog(id) {
-    let html = '';
-
-    http_getData(`/api/get_activity_log/${id}`).then((data) => {
-        console.log(data); // JSON data parsed by `data.json()` call
-        
-        if (data['status'] == 'error') {
-            show_http_error(data['message']);
-            return;
-        }
-
-        html = data['log'];
-
-        html = html.replaceAll("&", '&amp;');
-        html = html.replaceAll("<", '&lt;');	 
-        html = html.replaceAll(">", '&gt;');     
-        html = html.replaceAll("\"", '&quot;');  
-        html = html.replaceAll("\'", '&#39;');   
-        
-        html = html.replaceAll('\\n', '\n');
-        html = html.replaceAll(/(.*) +([A-Z]+) +([^ ]+ +[^ ]+ +\([0-9]+\)): (.*)/g, "<tr><td style='white-space: nowrap;'>$1</td><td style='white-space: nowrap;'>$2</td><td style='white-space: nowrap;'>$3</td><td>$4</td></tr>");   
-        html = '<table class="table table-striped table-bordered w-auto">' + html + '</table>';
-
-        Swal.fire({
-            icon: 'info',
-            title: 'Log',
-            html: '<pre class="logs">'+html+'</pre>',
-            width: 'auto',
-            customClass: {
-                popup: 'logs'
-            }
-        }).then((result) => {
-            if (stage_id != null && last_show_stage_id != null) {
-                show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
-            }
-        });
-    });
-}
-
-
-function show_processing_history(meta_file_id) {
-    let html = '';
-
-    http_getData(`/api/show_processing_history/${meta_file_id}`).then((data) => {
-        console.log(data); // JSON data parsed by `data.json()` call
-        
-        if (data['status'] == 'error') {
-            show_http_error(data['message']);
-            return;
-        }
-        
-        let tableRows = data.map(item => {
-            return `<tr>
-                <td>${item.timestamp}</td>
-                <td>${item.user}</td>
-                <td>${item.action}</td>
-                <td>${item.stage ? item.stage : ''}</td>
-                <td>${item.details ? item.details : ''}</td>
-            </tr>`;
-        }).join('');
-        html = `<table class="table table-striped table-bordered w-auto">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>User</th>
-                    <th>Action</th>
-                    <th>Stage</th>
-                    <th>Details</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${tableRows}
-            </tbody>
-        </table>`;
-
-
-        Swal.fire({
-            icon: 'info',
-            title: 'Processing history',
-            html: '<pre class="logs">'+html+'</pre>',
-            width: 'auto',
-            customClass: {
-                popup: 'logs'
-            }
-        });
-    });
-}
-
-
-
-async function run_stage(meta_file_id, stage_id, stage_name) {
-
-    Swal.fire({
-        icon: 'question',
-        title: `Run stage ${stage_name} (${stage_id})?`,
-        input: 'radio',
-        width: 'auto',
-        inputOptions: {
-            'continue': 'Continue processing',
-            'run_all': 'Run all steps from the beginning.'
-            },
-        inputValue: 'continue',
-        showCancelButton: true,
-        showLoaderOnConfirm: true,
-        preConfirm: (option) => {
-            return postData(`/api/run_stage/${meta_file_id}/${stage_id}/${option}`)
-            .then(response => {
-                
-                console.log(response);
-                if (response['status'] == 'error') {
-                    show_http_error(response['message'], true);
-                    return false;
-                }
-                console.log("input");
-                return response;
-            });
-        },
-        allowOutsideClick: () => !Swal.isLoading()
-    }).then((result) => {
-        console.log("Ergebnis:");
-        console.log(result);
-        if (result.isConfirmed) {
-
-            if (result.value.status == 'success') {
-                let icon = 'success';
-                let title = 'Stage run in progress';
-                let text = '';
-                let timer = 1500;
-
-                // The stage is in the queue of the processing service, but nobody takes it from there
-                if (result.value.mode == 'service' && !result.value.service_running) {
-                    icon = 'warning';
-                    title = 'Stage is queued';
-                    text = 'The processing service is not running. The stage will be run as soon as the service has been started.';
-                    timer = 6000;
-                }
-
-                Swal.fire({
-                    position: 'top-end',
-                    icon: icon,
-                    title: title,
-                    text: text,
-                    showConfirmButton: false,
-                    timer: timer
-                }).then(()=>{
-                    if (last_show_stage_id != null) {
-                        show_stage_steps(current_meta_file_id, last_show_stage_id, last_show_stage_name);
-                    }
-                    else {
-                        location.reload();
-                    }
-                })
-                return;
-            }
-            else {
-                console.log("Error 2");
-                show_http_error(result.value.error, true);
-                return;
-            }
-        }
-    })
-}
-
-
-
-
-
-
-function set_check_error(obj, meta_file_id, stage_id, action_id, checked) {
-    postData(`/api/set_check_error/${meta_file_id}/${stage_id}/${action_id}/${checked}`).then((data) => {
-        console.log(data); // JSON data parsed by `data.json()` call
-        if (data['status'] == 'error') {
-            obj.checked = !checked;
-            show_http_error(data['message']);
-        }
-    });
-}
-
-
-
-function cancel_deployment(meta_file_id) {
-
-    const swalWithBootstrapButtons = Swal.mixin({
-    customClass: {
-        confirmButton: 'btn btn-success',
-        cancelButton: 'btn btn-danger'
-    },
-    buttonsStyling: false
-    })
-
-    swalWithBootstrapButtons.fire({
-        title: 'Are you sure?',
-        text: "You are going to cancel the deployment forever!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, cancel',
-        cancelButtonText: 'No, ups!',
-        reverseButtons: true
-        }).then((result) => {
-        if (result.isConfirmed) {
-            postData(`/api/cancel_deployment/${meta_file_id}`)
-                .then((response) => {
-                    console.log(response); // JSON data parsed by `response.json()` call
-                    if (response['status'] !== 'success') {
-                        show_http_error(response['message']);
-                        return;
-                    }
-                    swalWithBootstrapButtons.fire(
-                        'Canceled!',
-                        'This deployment has been canceled.',
-                        'success'
-                    ).then((result) => {
-                                location.reload();
-                    });
-                })
-                .catch((error) => {
-                    show_http_error(error.message);
-                });
-        } else if (
-            /* Read more about handling dismissals below */
-            result.dismiss === Swal.DismissReason.cancel
-        ) {
-            swalWithBootstrapButtons.fire(
-            'Canceled',
-            'Your cancelation has been canceled :-)',
-            'error'
-            )
-        }
-    })
-    
-}
-
-
-
-
-
-function cancel_job(job_id) {
-
-    const swalWithBootstrapButtons = Swal.mixin({
-    customClass: {
-        confirmButton: 'btn btn-success',
-        cancelButton: 'btn btn-danger'
-    },
-    buttonsStyling: false
-    })
-
-    swalWithBootstrapButtons.fire({
-        title: 'Remove from queue?',
-        text: "The stage is waiting for the processing service. It will not be run, if you remove it from the queue.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, remove',
-        cancelButtonText: 'No, keep it',
-        reverseButtons: true
-        }).then((result) => {
-        if (result.isConfirmed) {
-            postData(`/api/cancel_job/${job_id}`)
-                .then((response) => {
-                    console.log(response);
-                    if (response['status'] !== 'success') {
-                        show_http_error(response['message'], true);
-                        return;
-                    }
-                    location.reload();
-                })
-                .catch((error) => {
-                    show_http_error(error.message, true);
-                });
-        }
-    })
-
-}
-
-
-
-function reset_stage_status(meta_file_id, stage_id) {
-
-    const swalWithBootstrapButtons = Swal.mixin({
-    customClass: {
-        confirmButton: 'btn btn-success',
-        cancelButton: 'btn btn-danger'
-    },
-    buttonsStyling: false
-    })
-
-    swalWithBootstrapButtons.fire({
-        title: 'Are you sure?',
-        text: "You are going to reset the stage status!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, reset',
-        cancelButtonText: 'No, ups!',
-        reverseButtons: true
-        }).then((result) => {
-        if (result.isConfirmed) {
-            postData(`/api/reset_stage_status/${meta_file_id}/${stage_id}`)
-                .then((response) => {
-                    console.log(response);
-                    if (response['status'] !== 'success') {
-                        show_http_error(`HTTP error! status: ${response['message']}`, true);
-                        return;
-                    }
-                })
-                .then(() => {
-                        
-                    swalWithBootstrapButtons.fire(
-                    'Reset!',
-                    'The stage status has been reset.',
-                    'success'
-                    ).then((result) => {
-                            location.reload();
-                    });
-                })
-                .catch((error) => {
-                    show_http_error(error.message, true);
-                });
-        } else if (
-            /* Read more about handling dismissals below */
-            result.dismiss === Swal.DismissReason.cancel
-        ) {
-            swalWithBootstrapButtons.fire(
-            'Canceled',
-            'Your reset has been canceled :-)',
-            'error'
-            )
-        }
-    })
-    
-}
-
-
-
-function reset_last_finished_stage(meta_file_id, stage_id, stage_name) {
-
-    const swalWithBootstrapButtons = Swal.mixin({
-    customClass: {
-        confirmButton: 'btn btn-success',
-        cancelButton: 'btn btn-danger'
-    },
-    buttonsStyling: false
-    })
-
-    swalWithBootstrapButtons.fire({
-        title: `Reset stage ${stage_name} (${stage_id})?`,
-        html: "The stage will be set back to <code>ready</code>, the stages after it to <code>new</code>.<br/>" +
-              "Its steps keep their status. Choose <i>Run all steps from the beginning</i> to run them again.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, reset',
-        cancelButtonText: 'No, ups!',
-        reverseButtons: true
-        }).then((result) => {
-        if (result.isConfirmed) {
-            postData(`/api/reset_last_finished_stage/${meta_file_id}/${stage_id}`)
-                .then((response) => {
-                    console.log(response);
-                    if (response['status'] !== 'success') {
-                        show_http_error(response['message'], true);
-                        return;
-                    }
-
-                    swalWithBootstrapButtons.fire(
-                    'Reset!',
-                    'The stage status has been reset.',
-                    'success'
-                    ).then((result) => {
-                            location.reload();
-                    });
-                })
-                .catch((error) => {
-                    show_http_error(error.message, true);
-                });
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-            swalWithBootstrapButtons.fire(
-            'Canceled',
-            'Your reset has been canceled :-)',
-            'error'
-            )
-        }
-    })
-
-}
-
-
-
-function reset_deployment_status(meta_file_id) {
-
-    const swalWithBootstrapButtons = Swal.mixin({
-    customClass: {
-        confirmButton: 'btn btn-success',
-        cancelButton: 'btn btn-danger'
-    },
-    buttonsStyling: false
-    })
-
-    swalWithBootstrapButtons.fire({
-        title: 'Are you sure?',
-        text: "You are going to reset the deployment status!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, reset',
-        cancelButtonText: 'No, ups!',
-        reverseButtons: true
-        }).then((result) => {
-        if (result.isConfirmed) {
-            postData(`/api/reset_deployment_status/${meta_file_id}`)
-                .then((response) => {
-                    console.log(response);
-                    console.log('Hier 1');
-                    if (response['status'] !== 'success') {
-                        console.log('Hier 2');
-                        show_http_error(`HTTP error! status: ${response['message']}`, true);
-                        return;
-                    }
-
-                    console.log('Hier 3');
-                    swalWithBootstrapButtons.fire(
-                    'Reset!',
-                    'The deployment status has been reset.',
-                    'success'
-                    ).then((result) => {
-                            location.reload();
-                    });
-                })
-                .catch((error) => {
-                    show_http_error(error.message, true);
-                });
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-            swalWithBootstrapButtons.fire(
-            'Canceled',
-            'Your reset has been canceled :-)',
-            'error'
-            )
-        }
-    })
-    
-}
-
-
-
-async function set_source_ready_4_deployment(obj, meta_file_id, lib, name, type, checked) {
-
-    await postData(`/api/set_source_ready_4_deployment/${meta_file_id}`, { lib: lib, name: name, type: type, checked: checked }).then(async (data) => {
-        if (data['status'] == 'error') {
-            obj.checked = !checked;
-            console.log(data); // JSON data parsed by `data.json()` call
-            show_http_error(data['message'], true);
-        }
-    });
-}
-
-
-
-async function toggleAll(masterCheckbox) {
-    // Get all row checkboxes
-    //const checkboxes = document.querySelectorAll('.obj-checkbox');
-    const newState = masterCheckbox.checked;
-
-    const $table = $('#object_list'); // Make sure 
-    
-    // Get ALL data from the table (even hidden pages)
-    const allData = $table.bootstrapTable('getData');
-    console.log(allData);
-
-    const meta_file_id = '{{ deployment_dict['general']['id'] }}';
-
-    for (const cb of allData) {
-        console.log(`${cb.name}: ${cb.ready.toString().includes('checked=""')}`);
-
-        // Only trigger update if the state is actually changing
-        if (cb.ready.toString().includes('checked=""') !== newState) {
-            
-            // Extract data from attributes to call your existing function
-            const lib = cb.target_lib;
-            const name = cb.name;
-            const type = cb.type;
-            // Trigger your backend update function
-            try {
-                await set_source_ready_4_deployment(cb, meta_file_id, lib, name, type, newState);
-                // 3. Update the HTML string manually for the table refresh
-                if (newState) {
-                    cb.ready = cb.ready.replace('<input type="checkbox"', '<input type="checkbox" checked=""');
-                } else {
-                    cb.ready = cb.ready.replace('checked=""', '');
-                }
-                console.log(`Set ${name} to ${newState}`);
-                $table.bootstrapTable('load', allData);
-            } catch (error) {
-                console.error(error);
-                break;
-            }
-        }
-    };
-}
-
-</script>
-
+<script type="module" src="{{ url_for('static', path='assets/js/pages/deployment.js') }}"></script>
 {% endblock %}

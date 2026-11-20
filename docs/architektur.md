@@ -38,6 +38,15 @@ Reviewed packages and approved exceptions: see [technik.md](technik.md#package-p
 * Use HTML templates with a template engine (Jinja2)
 * Use `Sweetalert2` for popups and input where it makes sense.  
   E.g. when creating or editing records
+* One layout for all pages: `base.html` with its blocks, the page header and the other parts of a page as macros of `templates/components/ui.html` (see [layout](features/web-ui-layout.md))
+* Colours, spacing and fonts only from the tokens of `static/assets/css/app.css` (light and dark). Text and status colours have a contrast of at least 4.5 : 1 in both themes (tested)
+* A status is shown with the macro `status_pill`; the mapping status → colour, icon and text is only in `web_modules/status_view.py`
+* Icons: Bootstrap Icons
+* Dark mode follows the browser, with a switch in the navigation. Everything works from 768 px; below 992 px the navigation is a panel over the page
+* Scripts only in files (ES modules in `static/assets/js/`, no build step). No inline scripts, no `on...=` attributes, no values inside JavaScript in templates: data comes from `data-*` attributes or a JSON block (see [scripts](features/web-ui-scripts.md#rules)). The Content-Security-Policy of the web app blocks everything else (see [security headers](features/web-ui-security-headers.md))
+* No HTML built from data as text, neither in Python nor in JavaScript
+* Requests with `app/api.js`, dialogs with `app/dialogs.js`: actions which can't be undone ask once, the result is a toast. Larger content (logs, steps) is part of the page or a panel
+* All files local. Libraries pinned and listed in [technik.md](technik.md#package-prüfung)
 
 
 # Update

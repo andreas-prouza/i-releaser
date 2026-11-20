@@ -1,0 +1,1740 @@
+/*
+ * The stylesheet of the web app (docs/features/web-ui-layout.md#styles), on top of Bootstrap 5.3.
+ *
+ * 1. Design tokens (--ir-...), light and dark. Colours, spacing and fonts only from here.
+ * 2. Bootstrap, SweetAlert2 and Prism set from the tokens
+ * 3. Layout of base.html: navigation, top bar, content
+ * 4. Components of templates/components/ui.html
+ * 5. Old pages, until their step of the redesign
+ *
+ * The theme is data-bs-theme on <html> (static/assets/js/app/theme.js).
+ * tests/test_web_layout.py checks the contrast of the text and status colours.
+ */
+
+
+/* ---------------------------------------------------------------------------------------------
+   1. Tokens
+   --------------------------------------------------------------------------------------------- */
+
+:root,
+[data-bs-theme=light] {
+    --ir-bg: #f5f6f8;
+    --ir-surface: #ffffff;
+    --ir-surface-2: #f1f3f5;
+    --ir-border: #dde1e6;
+    --ir-line: #c3c9d0;
+    --ir-text: #1f2328;
+    --ir-muted: #5a6169;
+    --ir-link: #0b5ed7;
+    --ir-primary: #0b5ed7;
+    --ir-primary-hover: #0a53be;
+    --ir-primary-text: #ffffff;
+    --ir-focus: #86b7fe;
+    --ir-code-bg: #f1f3f5;
+
+    /* The navigation is dark in both themes */
+    --ir-nav-bg: #15191e;
+    --ir-nav-text: #c5ccd3;
+    --ir-nav-muted: #8b949e;
+    --ir-nav-active: #26313d;
+    --ir-nav-strong: #ffffff;
+    --ir-nav-line: rgba(255, 255, 255, 0.12);
+
+    /* One colour per kind of status (web_modules/status_view.py) */
+    --ir-neutral: #5a6169;
+    --ir-ready: #0b5ed7;
+    --ir-running: #066878;
+    --ir-queued: #8a5300;
+    --ir-success: #146c43;
+    --ir-danger: #b02a37;
+    --ir-canceled: #6b4c9a;
+
+    /* Bootstrap needs some colours as r, g, b */
+    --ir-surface-rgb: 255, 255, 255;
+    --ir-text-rgb: 31, 35, 40;
+    --ir-primary-rgb: 11, 94, 215;
+    --ir-success-rgb: 20, 108, 67;
+    --ir-danger-rgb: 176, 42, 55;
+}
+
+[data-bs-theme=dark] {
+    --ir-bg: #0d1117;
+    --ir-surface: #161b22;
+    --ir-surface-2: #1c222b;
+    --ir-border: #30363d;
+    --ir-line: #444c56;
+    --ir-text: #e6edf3;
+    --ir-muted: #9ba5b0;
+    --ir-link: #58a6ff;
+    --ir-primary: #4493f8;
+    --ir-primary-hover: #6aa8fa;
+    --ir-primary-text: #0d1117;
+    --ir-focus: #1f6feb;
+    --ir-code-bg: #1c222b;
+
+    --ir-nav-bg: #090c10;
+    --ir-nav-active: #1f2a37;
+
+    --ir-neutral: #9ba5b0;
+    --ir-ready: #58a6ff;
+    --ir-running: #39c5cf;
+    --ir-queued: #d29922;
+    --ir-success: #3fb950;
+    --ir-danger: #f8716a;
+    --ir-canceled: #b9a1e8;
+
+    --ir-surface-rgb: 22, 27, 34;
+    --ir-text-rgb: 230, 237, 243;
+    --ir-primary-rgb: 68, 147, 248;
+    --ir-success-rgb: 63, 185, 80;
+    --ir-danger-rgb: 248, 113, 106;
+}
+
+:root {
+    --ir-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+    --ir-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --ir-font-size: 0.875rem;
+    --ir-font-size-sm: 0.8125rem;
+
+    --ir-space-1: 4px;
+    --ir-space-2: 8px;
+    --ir-space-3: 12px;
+    --ir-space-4: 16px;
+    --ir-space-5: 24px;
+    --ir-space-6: 32px;
+
+    --ir-radius: 6px;
+    --ir-radius-lg: 10px;
+
+    --ir-nav-width: 232px;
+    --ir-nav-width-collapsed: 64px;
+}
+
+
+/* ---------------------------------------------------------------------------------------------
+   2. Libraries from the tokens
+   --------------------------------------------------------------------------------------------- */
+
+/* Bootstrap: cards, tables, inputs and menus are on the surface, the page is on --ir-bg (see body) */
+:root,
+[data-bs-theme=light],
+[data-bs-theme=dark] {
+    --bs-body-font-family: var(--ir-font);
+    --bs-font-sans-serif: var(--ir-font);
+    --bs-font-monospace: var(--ir-mono);
+    --bs-body-font-size: var(--ir-font-size);
+    --bs-body-bg: var(--ir-surface);
+    --bs-body-bg-rgb: var(--ir-surface-rgb);
+    --bs-body-color: var(--ir-text);
+    --bs-body-color-rgb: var(--ir-text-rgb);
+    --bs-secondary-color: var(--ir-muted);
+    --bs-secondary-bg: var(--ir-surface-2);
+    --bs-tertiary-bg: var(--ir-surface-2);
+    --bs-border-color: var(--ir-border);
+    --bs-link-color: var(--ir-link);
+    --bs-link-color-rgb: var(--ir-primary-rgb);
+    --bs-link-hover-color: var(--ir-primary-hover);
+    --bs-link-hover-color-rgb: var(--ir-primary-rgb);
+    --bs-primary: var(--ir-primary);
+    --bs-primary-rgb: var(--ir-primary-rgb);
+    --bs-success: var(--ir-success);
+    --bs-success-rgb: var(--ir-success-rgb);
+    --bs-danger: var(--ir-danger);
+    --bs-danger-rgb: var(--ir-danger-rgb);
+    --bs-code-color: var(--ir-text);
+    --bs-border-radius: var(--ir-radius);
+    --bs-border-radius-lg: var(--ir-radius-lg);
+}
+
+body {
+    background-color: var(--ir-bg);
+}
+
+.btn {
+    --bs-btn-font-size: var(--ir-font-size);
+}
+
+.btn-sm {
+    --bs-btn-font-size: var(--ir-font-size-sm);
+}
+
+.form-control,
+.form-select {
+    font-size: var(--ir-font-size);
+}
+
+.btn-primary {
+    --bs-btn-color: var(--ir-primary-text);
+    --bs-btn-bg: var(--ir-primary);
+    --bs-btn-border-color: var(--ir-primary);
+    --bs-btn-hover-color: var(--ir-primary-text);
+    --bs-btn-hover-bg: var(--ir-primary-hover);
+    --bs-btn-hover-border-color: var(--ir-primary-hover);
+    --bs-btn-active-color: var(--ir-primary-text);
+    --bs-btn-active-bg: var(--ir-primary-hover);
+    --bs-btn-active-border-color: var(--ir-primary-hover);
+    --bs-btn-disabled-color: var(--ir-primary-text);
+    --bs-btn-disabled-bg: var(--ir-primary);
+    --bs-btn-disabled-border-color: var(--ir-primary);
+}
+
+/* The normal button of the mockup: surface, border, text */
+.btn-outline-secondary {
+    --bs-btn-color: var(--ir-text);
+    --bs-btn-bg: var(--ir-surface);
+    --bs-btn-border-color: var(--ir-border);
+    --bs-btn-hover-color: var(--ir-text);
+    --bs-btn-hover-bg: var(--ir-surface-2);
+    --bs-btn-hover-border-color: var(--ir-line);
+    --bs-btn-active-color: var(--ir-text);
+    --bs-btn-active-bg: var(--ir-surface-2);
+    --bs-btn-active-border-color: var(--ir-line);
+    --bs-btn-disabled-color: var(--ir-muted);
+    --bs-btn-disabled-bg: var(--ir-surface);
+    --bs-btn-disabled-border-color: var(--ir-border);
+}
+
+.btn-outline-danger {
+    --bs-btn-color: var(--ir-danger);
+    --bs-btn-bg: var(--ir-surface);
+    --bs-btn-border-color: color-mix(in srgb, var(--ir-danger) 45%, transparent);
+    --bs-btn-hover-color: var(--ir-danger);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--ir-danger) 9%, var(--ir-surface));
+    --bs-btn-hover-border-color: var(--ir-danger);
+    --bs-btn-active-color: var(--ir-danger);
+    --bs-btn-active-bg: color-mix(in srgb, var(--ir-danger) 14%, var(--ir-surface));
+    --bs-btn-active-border-color: var(--ir-danger);
+}
+
+:focus-visible {
+    outline: 2px solid var(--ir-focus);
+    outline-offset: 2px;
+}
+
+pre {
+    text-wrap: wrap;
+}
+
+/* SweetAlert2 defines its colours on :root */
+:root[data-bs-theme] {
+    --swal2-background: var(--ir-surface);
+    --swal2-color: var(--ir-text);
+    --swal2-input-background: var(--ir-surface);
+    --swal2-footer-border-color: var(--ir-border);
+    --swal2-footer-color: var(--ir-muted);
+    --swal2-close-button-color: var(--ir-muted);
+}
+
+/* Buttons of the dialogs of app/dialogs.js are Bootstrap buttons without margin */
+.ir-dialog-actions {
+    gap: var(--ir-space-2);
+}
+
+.swal2-input,
+.swal2-textarea,
+.swal2-select {
+    color: var(--ir-text);
+    border-color: var(--ir-border);
+}
+
+/* Prism (JSON of workflows and custom data). prism.css is loaded after this file: html makes these rules win */
+html pre[class*=language-],
+html :not(pre) > code[class*=language-] {
+    background: var(--ir-code-bg);
+    border-radius: var(--ir-radius);
+}
+
+html .ir-code pre[class*=language-] {
+    margin: 0;
+    padding: var(--ir-space-3) 44px var(--ir-space-3) var(--ir-space-4);
+}
+
+[data-bs-theme=dark] code[class*=language-],
+[data-bs-theme=dark] pre[class*=language-] {
+    color: var(--ir-text);
+    text-shadow: none;
+}
+
+[data-bs-theme=dark] .token.punctuation,
+[data-bs-theme=dark] .token.comment {
+    color: #8b949e;
+}
+
+[data-bs-theme=dark] .token.property,
+[data-bs-theme=dark] .token.number,
+[data-bs-theme=dark] .token.boolean,
+[data-bs-theme=dark] .token.constant {
+    color: #79c0ff;
+}
+
+[data-bs-theme=dark] .token.string {
+    color: #a5d6ff;
+}
+
+[data-bs-theme=dark] .token.keyword,
+[data-bs-theme=dark] .token.function {
+    color: #ff7b72;
+}
+
+[data-bs-theme=dark] .token.operator {
+    color: var(--ir-text);
+    background: none;
+}
+
+
+/* ---------------------------------------------------------------------------------------------
+   3. Layout of base.html
+   --------------------------------------------------------------------------------------------- */
+
+.app-shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+.app-main {
+    flex: 1 1 auto;
+    /* A flex item doesn't get narrower than its content by default: wide tables and the flow chart
+       would make the whole page scroll sideways. Now they scroll inside their own box. */
+    min-width: 0;
+    padding: 20px var(--ir-space-6) 48px;
+}
+
+.app-debug-banner {
+    margin: 0 0 var(--ir-space-4);
+    padding: var(--ir-space-2) var(--ir-space-3);
+    border: 1px solid color-mix(in srgb, var(--ir-danger) 40%, transparent);
+    border-radius: var(--ir-radius);
+    background: color-mix(in srgb, var(--ir-danger) 9%, var(--ir-surface));
+    color: var(--ir-danger);
+    font-weight: 600;
+}
+
+/* Navigation: a column on wide screens, a panel over the page below 992 px (Bootstrap offcanvas-lg) */
+.app-nav {
+    --bs-offcanvas-width: 264px;
+    --bs-offcanvas-bg: var(--ir-nav-bg);
+    --bs-offcanvas-color: var(--ir-nav-text);
+    flex: 0 0 var(--ir-nav-width);
+    width: var(--ir-nav-width);
+}
+
+.app-nav-inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-1);
+    height: 100%;
+    padding: var(--ir-space-4) var(--ir-space-3);
+    background: var(--ir-nav-bg);
+    color: var(--ir-nav-text);
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+@media (min-width: 992px) {
+    .app-nav-inner {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+    }
+}
+
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 6px;
+    margin-bottom: var(--ir-space-3);
+    color: var(--ir-nav-strong);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.app-brand:hover {
+    color: var(--ir-nav-strong);
+}
+
+.app-brand img {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+}
+
+.app-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.app-nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--ir-space-3);
+    width: 100%;
+    height: 40px;
+    padding: 0 var(--ir-space-3);
+    border: 0;
+    border-radius: var(--ir-radius);
+    background: transparent;
+    color: var(--ir-nav-text);
+    font-size: var(--ir-font-size);
+    text-align: left;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.app-nav-link > .bi:first-child {
+    flex: 0 0 20px;
+    font-size: 1.125rem;
+    text-align: center;
+}
+
+.app-nav-link:hover,
+.app-nav-link:focus-visible,
+.app-nav-link.active,
+.app-nav-link[aria-expanded=true] {
+    background: var(--ir-nav-active);
+    color: var(--ir-nav-strong);
+}
+
+.app-nav-link .app-nav-more {
+    margin-left: auto;
+    font-size: 0.75rem;
+}
+
+.app-nav-sep {
+    height: 1px;
+    margin: 10px 6px;
+    background: var(--ir-nav-line);
+}
+
+.app-nav-spacer {
+    flex: 1 1 auto;
+    min-height: var(--ir-space-5);
+}
+
+.app-nav-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-1);
+    margin-top: var(--ir-space-3);
+    padding-top: var(--ir-space-3);
+    border-top: 1px solid var(--ir-nav-line);
+}
+
+.app-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: var(--ir-radius);
+    background: transparent;
+    color: var(--ir-nav-text);
+}
+
+.app-nav-btn:hover {
+    background: var(--ir-nav-active);
+    color: var(--ir-nav-strong);
+}
+
+.app-nav-btn .bi {
+    font-size: 1.125rem;
+}
+
+.app-topbar .app-nav-btn .bi {
+    font-size: 1.5rem;
+}
+
+.app-version {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--ir-nav-muted);
+}
+
+.app-nav .dropdown-menu {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* The icon of the switches: the one for the other state is hidden */
+[data-bs-theme=dark] .ir-when-light,
+[data-bs-theme=light] .ir-when-dark,
+.ir-nav-collapsed .ir-when-open,
+:root:not(.ir-nav-collapsed) .ir-when-collapsed {
+    display: none;
+}
+
+/* Collapsed: icons only, they stay links. Only on wide screens: the panel of small screens always has its texts. */
+@media (min-width: 992px) {
+    .ir-nav-collapsed .app-nav {
+        flex-basis: var(--ir-nav-width-collapsed);
+        width: var(--ir-nav-width-collapsed);
+    }
+
+    .ir-nav-collapsed .app-nav-text {
+        display: none;
+    }
+
+    .ir-nav-collapsed .app-nav-link,
+    .ir-nav-collapsed .app-brand {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .ir-nav-collapsed .app-nav-footer {
+        flex-direction: column;
+    }
+}
+
+/* Small screens: a bar with the menu button instead of the navigation */
+.app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    display: flex;
+    align-items: center;
+    gap: var(--ir-space-2);
+    height: 52px;
+    padding: 0 var(--ir-space-3);
+    background: var(--ir-nav-bg);
+    color: var(--ir-nav-text);
+}
+
+.app-topbar .app-brand {
+    margin: 0;
+}
+
+@media (max-width: 767.98px) {
+    .app-main {
+        padding: var(--ir-space-4) var(--ir-space-4) var(--ir-space-6);
+    }
+}
+
+/* Pages without navigation: login */
+.app-main-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: var(--ir-space-4);
+}
+
+
+/* ---------------------------------------------------------------------------------------------
+   4. Components (templates/components/ui.html)
+   --------------------------------------------------------------------------------------------- */
+
+/* Page header */
+.ir-page-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-2);
+    margin-bottom: var(--ir-space-5);
+}
+
+.ir-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+.ir-breadcrumb li + li::before {
+    content: "/";
+    margin: 0 6px;
+}
+
+.ir-breadcrumb a {
+    text-decoration: none;
+}
+
+.ir-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.ir-page-header-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ir-space-4);
+}
+
+.ir-page-title {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ir-page-title-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-3);
+}
+
+.ir-page-title h1 {
+    margin: 0;
+    font-size: 1.625rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.ir-page-meta {
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+.ir-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-2);
+}
+
+/* Status pill */
+.ir-pill {
+    --k: var(--ir-neutral);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ir-space-1);
+    padding: 1px 9px 1px 7px;
+    border: 1px solid color-mix(in srgb, var(--k) 35%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--k) 12%, transparent);
+    color: var(--k);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 20px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.k-neutral { --k: var(--ir-neutral); }
+.k-ready { --k: var(--ir-ready); }
+.k-running { --k: var(--ir-running); }
+.k-queued { --k: var(--ir-queued); }
+.k-success { --k: var(--ir-success); }
+.k-danger { --k: var(--ir-danger); }
+.k-canceled { --k: var(--ir-canceled); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .ir-spin {
+        display: inline-block;
+        animation: ir-spin 1.2s linear infinite;
+    }
+}
+
+@keyframes ir-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Button with only an icon */
+.ir-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+}
+
+/* Section and card */
+.ir-card {
+    padding: var(--ir-space-4) var(--ir-space-5);
+    border: 1px solid var(--ir-border);
+    border-radius: var(--ir-radius-lg);
+    background: var(--ir-surface);
+}
+
+.ir-section {
+    margin-bottom: var(--ir-space-5);
+}
+
+.ir-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ir-space-3);
+    margin-bottom: var(--ir-space-3);
+}
+
+.ir-section-head h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.ir-section-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ir-space-2);
+}
+
+/* Key and value */
+.ir-kv {
+    display: grid;
+    grid-template-columns: minmax(100px, max-content) minmax(0, 1fr);
+    gap: var(--ir-space-2) var(--ir-space-4);
+    margin: 0;
+    align-items: baseline;
+}
+
+.ir-kv dt {
+    font-size: var(--ir-font-size-sm);
+    font-weight: 400;
+    color: var(--ir-muted);
+}
+
+.ir-kv dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.ir-mono {
+    font-family: var(--ir-mono);
+    font-size: var(--ir-font-size-sm);
+}
+
+/* Empty state */
+.ir-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ir-space-2);
+    padding: var(--ir-space-6) var(--ir-space-4);
+    color: var(--ir-muted);
+    text-align: center;
+}
+
+.ir-empty .bi {
+    font-size: 1.75rem;
+}
+
+.ir-empty p {
+    margin: 0;
+}
+
+/* Code block with copy button */
+.ir-code {
+    position: relative;
+}
+
+.ir-code pre {
+    margin: 0;
+    padding: var(--ir-space-3) 44px var(--ir-space-3) var(--ir-space-4);
+    border-radius: var(--ir-radius);
+    background: var(--ir-code-bg);
+    color: var(--ir-text);
+    font-family: var(--ir-mono);
+    font-size: var(--ir-font-size-sm);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.ir-copy {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--ir-border);
+    border-radius: var(--ir-radius);
+    background: var(--ir-surface);
+    color: var(--ir-muted);
+}
+
+.ir-copy:hover {
+    color: var(--ir-text);
+}
+
+/* Login and error page */
+.ir-login {
+    width: 100%;
+    max-width: 380px;
+    padding: var(--ir-space-6);
+}
+
+.ir-login-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ir-space-2);
+    margin-bottom: var(--ir-space-5);
+    text-align: center;
+}
+
+.ir-login-brand img {
+    width: 64px;
+    height: 64px;
+}
+
+.ir-login-brand h1 {
+    margin: 0;
+    font-size: 1.375rem;
+    font-weight: 600;
+}
+
+.ir-developer {
+    display: flex;
+    align-items: center;
+    gap: var(--ir-space-2);
+    margin-top: var(--ir-space-5);
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+.ir-developer img {
+    width: 28px;
+    height: auto;
+}
+
+.ir-error {
+    max-width: 640px;
+}
+
+.ir-error h1 {
+    margin-bottom: var(--ir-space-4);
+    font-size: 1.625rem;
+    font-weight: 600;
+}
+
+.ir-error-code {
+    font-family: var(--ir-mono);
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+
+/* Small helpers */
+.ir-reason {
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+.ir-count {
+    display: inline-block;
+    min-width: 1.5em;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--ir-surface-2);
+    color: var(--ir-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* A button without permission: focusable, with the reason as tooltip (macro action_button) */
+.btn.ir-not-allowed {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.ir-copy-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: var(--ir-radius);
+    background: transparent;
+    color: var(--ir-muted);
+}
+
+.ir-copy-inline:hover {
+    background: var(--ir-surface-2);
+    color: var(--ir-text);
+}
+
+
+/* ---------------------------------------------------------------------------------------------
+   Deployment page (templates/overview/show-deployment.html, overview/deployment/macros.html)
+   --------------------------------------------------------------------------------------------- */
+
+.ir-deployment {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-5);
+}
+
+.ir-deployment > .ir-section {
+    margin-bottom: 0;
+}
+
+/* Parts which are replaced in place: no box of their own */
+.ir-deployment > [data-part="attention"]:empty {
+    display: none;
+}
+
+.ir-reconnecting {
+    align-self: flex-start;
+    padding: var(--ir-space-1) var(--ir-space-3);
+    border: 1px solid color-mix(in srgb, var(--ir-queued) 40%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ir-queued) 10%, var(--ir-surface));
+    color: var(--ir-queued);
+    font-size: var(--ir-font-size-sm);
+    font-weight: 600;
+}
+
+.ir-reconnecting[hidden] {
+    display: none;
+}
+
+.ir-libs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+}
+
+.ir-copy-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ir-custom-data summary {
+    cursor: pointer;
+}
+
+.ir-custom-data .ir-code {
+    margin-top: var(--ir-space-2);
+}
+
+/* Attention bar */
+.ir-attention {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-3);
+    padding: var(--ir-space-3) var(--ir-space-4);
+    border: 1px solid color-mix(in srgb, var(--k) 40%, transparent);
+    border-radius: var(--ir-radius-lg);
+    background: color-mix(in srgb, var(--k) 9%, var(--ir-surface));
+}
+
+.ir-attention-icon {
+    display: inline-flex;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--k);
+    color: var(--ir-surface);
+}
+
+.ir-attention-text {
+    flex: 1 1 260px;
+    margin: 0;
+}
+
+.ir-attention-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ir-space-2);
+}
+
+/* Stage flow (web_modules/stage_flow.py: the sizes of the grid come from there) */
+.ir-progress-line {
+    display: flex;
+    align-items: center;
+    gap: var(--ir-space-3);
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+.ir-progress-line .progress {
+    width: 160px;
+    height: 6px;
+}
+
+.ir-flow-scroll {
+    overflow-x: auto;
+    padding: var(--ir-space-4) 0;
+    border: 1px solid var(--ir-border);
+    border-radius: var(--ir-radius-lg);
+    background: var(--ir-surface);
+}
+
+.ir-flow {
+    position: relative;
+    display: grid;
+    box-sizing: border-box;
+}
+
+.ir-flow-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.ir-line {
+    fill: none;
+    stroke: var(--ir-line);
+    stroke-width: 2;
+}
+
+.ir-line.done {
+    stroke: var(--ir-success);
+}
+
+.ir-line.back {
+    stroke-dasharray: 5 4;
+}
+
+.ir-arrow {
+    fill: var(--ir-line);
+}
+
+.ir-arrow.done {
+    fill: var(--ir-success);
+}
+
+.ir-flow-node {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    padding: 6px 4px 0;
+    border: 0;
+    border-radius: var(--ir-radius);
+    background: transparent;
+    color: var(--ir-text);
+    text-align: center;
+}
+
+.ir-flow-node:hover .ir-flow-circle {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--k) 18%, transparent);
+}
+
+.ir-flow-circle {
+    display: inline-flex;
+    flex: 0 0 32px;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-bottom: 4px;
+    border: 2px solid var(--k);
+    border-radius: 50%;
+    background: var(--ir-surface);
+    color: var(--k);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.ir-flow-node.k-success .ir-flow-circle,
+.ir-flow-node.k-danger .ir-flow-circle,
+.ir-flow-node.k-running .ir-flow-circle {
+    background: var(--k);
+    color: var(--ir-surface);
+}
+
+.ir-flow-node.selected .ir-flow-circle {
+    box-shadow: 0 0 0 3px var(--ir-surface), 0 0 0 5px var(--ir-primary);
+}
+
+.ir-flow-name,
+.ir-flow-status {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ir-flow-name {
+    font-weight: 600;
+}
+
+.ir-flow-node.selected .ir-flow-name {
+    color: var(--ir-primary);
+}
+
+.ir-flow-status {
+    font-size: 0.75rem;
+    color: var(--ir-muted);
+}
+
+/* Steps of the selected stage */
+.ir-steps {
+    padding: var(--ir-space-3) var(--ir-space-4);
+}
+
+.ir-steps-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ir-space-3);
+}
+
+.ir-steps-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-3);
+    min-width: 0;
+}
+
+.ir-steps-title h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.ir-steps-count {
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+.ir-steps-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ir-space-2);
+}
+
+.ir-steps:not(.open) .ir-when-open,
+.ir-steps.open .ir-when-closed {
+    display: none;
+}
+
+.ir-steps-description {
+    margin: var(--ir-space-2) 0 0;
+    color: var(--ir-muted);
+}
+
+/* Up to 100 and more steps: the panel scrolls inside, the page doesn't get longer */
+.ir-steps-body {
+    max-height: 70vh;
+    margin-top: var(--ir-space-3);
+    overflow-y: auto;
+    border-top: 1px solid var(--ir-border);
+}
+
+.ir-steps-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ir-space-3) var(--ir-space-6);
+    padding: var(--ir-space-3) 0;
+}
+
+.ir-steps-history details {
+    display: inline;
+}
+
+.ir-steps-history ul {
+    margin: var(--ir-space-2) 0 0;
+    padding-left: var(--ir-space-5);
+    font-size: var(--ir-font-size-sm);
+}
+
+.ir-steps-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-2) var(--ir-space-4);
+    padding: var(--ir-space-2) 0;
+    background: var(--ir-surface);
+}
+
+.ir-steps-toolbar input[type=search] {
+    width: 280px;
+    max-width: 100%;
+}
+
+.ir-steps-toolbar .form-check {
+    margin: 0;
+}
+
+.ir-steps-nothing {
+    margin: var(--ir-space-3) 0;
+    color: var(--ir-muted);
+}
+
+.ir-step {
+    border-top: 1px solid var(--ir-border);
+}
+
+.ir-step-row {
+    display: flex;
+    align-items: center;
+    gap: var(--ir-space-2);
+}
+
+.ir-step-toggle {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: 20px 3.5rem minmax(6rem, 14rem) 4.5rem 4rem minmax(0, 1fr) 9.5rem;
+    align-items: center;
+    gap: var(--ir-space-2);
+    min-width: 0;
+    padding: 7px 4px;
+    border: 0;
+    background: transparent;
+    color: var(--ir-text);
+    text-align: left;
+}
+
+.ir-step-toggle:hover {
+    background: var(--ir-surface-2);
+}
+
+.ir-step-icon {
+    color: var(--k);
+}
+
+.ir-step-seq,
+.ir-step-type,
+.ir-step-where,
+.ir-step-time {
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+    white-space: nowrap;
+}
+
+.ir-step-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ir-step-cmd {
+    overflow: hidden;
+    color: var(--ir-muted);
+    font-size: var(--ir-font-size-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ir-step-logs {
+    display: flex;
+    flex: 0 0 auto;
+    gap: var(--ir-space-1);
+    min-width: 7.5rem;
+    justify-content: flex-end;
+}
+
+.ir-step-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-2);
+    padding: var(--ir-space-1) var(--ir-space-2) var(--ir-space-3) calc(20px + 3.5rem + var(--ir-space-3));
+}
+
+.ir-step-detail[hidden] {
+    display: none;
+}
+
+.ir-step-check {
+    display: flex;
+    align-items: center;
+    gap: var(--ir-space-2);
+    margin: 0;
+}
+
+.ir-step-runs h4 {
+    margin: 0 0 var(--ir-space-1);
+    font-size: var(--ir-font-size-sm);
+    font-weight: 600;
+}
+
+.ir-step-runs ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ir-step-runs li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-2);
+    font-size: var(--ir-font-size-sm);
+}
+
+.ir-step-runs .btn-link {
+    padding: 0;
+}
+
+.ir-sub-steps {
+    margin: 0 0 var(--ir-space-2) calc(20px + var(--ir-space-4));
+    border-left: 2px solid var(--ir-border);
+    padding-left: var(--ir-space-2);
+}
+
+.ir-step-group {
+    margin: var(--ir-space-1) 0;
+    border-left: 3px solid var(--ir-running);
+    padding-left: var(--ir-space-2);
+}
+
+.ir-step-group-head {
+    margin: 0;
+    padding: 6px 4px;
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+.ir-step-fold {
+    border-top: 1px solid var(--ir-border);
+}
+
+.ir-step-fold > summary {
+    padding: 7px 4px;
+    color: var(--ir-muted);
+    cursor: pointer;
+}
+
+.ir-step-fold[open] > summary {
+    color: var(--ir-text);
+}
+
+.ir-filtered {
+    display: none !important;
+}
+
+@media (max-width: 1199.98px) {
+    .ir-step-toggle {
+        grid-template-columns: 20px 3rem minmax(6rem, 12rem) minmax(0, 1fr) 8.5rem;
+    }
+
+    .ir-step-type,
+    .ir-step-where {
+        display: none;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .ir-step-toggle {
+        grid-template-columns: 20px 2.5rem minmax(0, 1fr);
+    }
+
+    .ir-step-cmd,
+    .ir-step-time {
+        display: none;
+    }
+
+    .ir-step-detail {
+        padding-left: var(--ir-space-5);
+    }
+}
+
+/* bootstrap-table: titles at the top of the head, also beside columns with a filter below the title */
+.bootstrap-table .table thead th {
+    vertical-align: top;
+}
+
+/* Lists (docs/features/web-ui-lists.md) */
+.ir-project-tabs {
+    margin-bottom: -1px;
+}
+
+.ir-project-tabs .nav-link.active {
+    background: var(--ir-surface);
+}
+
+.ir-list .ir-clickable {
+    cursor: pointer;
+}
+
+/* Admin pages (docs/features/web-ui-admin-pages.md) */
+.ir-settings-tabs {
+    margin-bottom: var(--ir-space-4);
+}
+
+.ir-settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-4);
+}
+
+.ir-settings > .ir-section {
+    margin-bottom: 0;
+}
+
+.ir-inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-2);
+}
+
+.ir-log-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-3);
+}
+
+.ir-log-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--ir-space-3);
+}
+
+.ir-log-bar label {
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-muted);
+}
+
+.ir-log-search {
+    flex: 1 1 220px;
+}
+
+.ir-log-bar-end {
+    display: flex;
+    align-items: center;
+    gap: var(--ir-space-3);
+    margin-left: auto;
+}
+
+.ir-log-file {
+    max-height: 70vh;
+}
+
+.ir-log-line.lvl-warning {
+    color: var(--ir-queued);
+}
+
+.ir-log-line.lvl-error,
+.ir-log-line.lvl-critical {
+    color: var(--ir-danger);
+    font-weight: 600;
+}
+
+.ir-workflows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-4);
+}
+
+.ir-workflow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-3);
+}
+
+.ir-workflow .ir-section-head {
+    margin-bottom: 0;
+}
+
+.ir-workflow-steps h3 {
+    margin: var(--ir-space-3) 0 var(--ir-space-1);
+    font-size: var(--ir-font-size);
+    font-weight: 600;
+}
+
+.ir-workflow summary {
+    cursor: pointer;
+}
+
+.ir-flow-node.static {
+    cursor: default;
+}
+
+.ir-perm-chip {
+    display: inline-block;
+    margin: 2px 4px 2px 0;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ir-primary) 12%, var(--ir-surface));
+    color: var(--ir-text);
+    font-size: var(--ir-font-size-sm);
+}
+
+.ir-perm-chip.inherited {
+    background: var(--ir-surface-2);
+    color: var(--ir-muted);
+}
+
+/* Permissions page (templates/admin/permissions.html) */
+.ir-permissions {
+    display: grid;
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+    gap: var(--ir-space-4);
+    align-items: start;
+}
+
+@media (max-width: 991.98px) {
+    .ir-permissions {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.ir-perm-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-2);
+    padding: var(--ir-space-3);
+}
+
+.ir-perm-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: var(--ir-space-2);
+}
+
+.ir-perm-group h2 {
+    margin: 0;
+    font-size: var(--ir-font-size-sm);
+    font-weight: 600;
+    color: var(--ir-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ir-perm-names {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ir-perm-name {
+    display: block;
+    width: 100%;
+    padding: 6px var(--ir-space-2);
+    border: 0;
+    border-radius: var(--ir-radius);
+    background: transparent;
+    color: var(--ir-text);
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.ir-perm-name:hover {
+    background: var(--ir-surface-2);
+}
+
+.ir-perm-name[aria-current=true] {
+    background: color-mix(in srgb, var(--ir-primary) 12%, var(--ir-surface));
+    color: var(--ir-primary);
+    font-weight: 600;
+}
+
+.ir-perm-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ir-space-4);
+    min-width: 0;
+}
+
+.ir-perm-detail[aria-busy=true] {
+    opacity: 0.7;
+}
+
+.ir-perm-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ir-space-3);
+}
+
+.ir-perm-head h2 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.ir-perm-infos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--ir-space-3);
+}
+
+.ir-perm-roles legend {
+    font-size: var(--ir-font-size);
+    font-weight: 600;
+}
+
+.ir-perm-table th[scope=col] {
+    min-width: 5.5rem;
+    font-size: var(--ir-font-size-sm);
+    font-weight: 600;
+    text-align: center;
+    vertical-align: bottom;
+}
+
+.ir-perm-table th[scope=row] {
+    white-space: nowrap;
+}
+
+.ir-perm-table th[scope=row] small {
+    display: block;
+    margin: 0 !important;
+}
+
+.ir-perm-table td {
+    text-align: center;
+}
+
+.ir-perm-level-1 {
+    padding-left: var(--ir-space-4) !important;
+}
+
+.ir-perm-level-2 {
+    padding-left: calc(var(--ir-space-6) + var(--ir-space-2)) !important;
+    font-weight: 400;
+}
+
+.ir-perm-workflow th {
+    font-weight: 600;
+}
+
+.ir-perm-remove {
+    padding: 0 var(--ir-space-1);
+    color: var(--ir-muted);
+}
+
+.ir-inherited:disabled {
+    opacity: 0.45;
+}
+
+.ir-perm-add-control {
+    display: flex;
+    gap: var(--ir-space-2);
+    max-width: 420px;
+}
+
+.ir-perm-add td {
+    padding-left: calc(var(--ir-space-6) + var(--ir-space-2));
+    text-align: left;
+}
+
+.ir-save-state {
+    font-size: var(--ir-font-size-sm);
+    color: var(--ir-success);
+}
+
+.ir-save-state.error {
+    color: var(--ir-danger);
+}
+
+/* Objects and activity */
+.ir-table-card {
+    padding: var(--ir-space-2) var(--ir-space-4);
+    overflow-x: auto;
+}
+
+#object_toolbar {
+    margin-bottom: var(--ir-space-2);
+}
+
+.ir-deployment .tab-content {
+    padding-top: var(--ir-space-3);
+}
+
+.ir-run-logs {
+    width: auto;
+}
+
+/* Log dialog */
+.ir-log-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--ir-space-2);
+    margin-bottom: var(--ir-space-3);
+}
+
+.ir-log-toolbar .nav-tabs {
+    flex: 1 1 auto;
+}
+
+.ir-log-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ir-space-2);
+}
+
+.ir-log-buttons .form-check {
+    margin: 0 var(--ir-space-2) 0 0;
+}
+
+.ir-log {
+    min-height: 8rem;
+    margin: 0;
+    padding: var(--ir-space-3) var(--ir-space-4);
+    border-radius: var(--ir-radius);
+    background: var(--ir-code-bg);
+    color: var(--ir-text);
+    font-family: var(--ir-mono);
+    font-size: var(--ir-font-size-sm);
+    white-space: pre;
+    overflow: auto;
+}
+
+.ir-log.wrap {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.ir-log.empty {
+    color: var(--ir-muted);
+}
+
+
+/* ---------------------------------------------------------------------------------------------
+   5. Old pages, until their step of the redesign
+   --------------------------------------------------------------------------------------------- */
+
+/* Settings: tables of the permissions (docs/features/web-ui-permissions-page.md) */
+.thick-outer-border {
+    border: 5px solid var(--ir-text);
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.thick-outer-border th,
+.thick-outer-border td {
+    border: 1px solid var(--ir-line);
+    padding: 10px;
+    text-align: left;
+}
+
+.zebra tr:nth-child(even) {
+    background-color: var(--ir-surface-2);
+}
+
+.zebra tr:nth-child(odd) {
+    background-color: var(--ir-surface);
+}
