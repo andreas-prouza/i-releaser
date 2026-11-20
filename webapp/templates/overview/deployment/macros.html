@@ -1,0 +1,228 @@
+{#-
+  Parts of the deployment page (docs/features/web-ui-deployment-page.md). The data comes from web_modules/deployment_view.py,
+  the behaviour from static/assets/js/pages/deployment.js. Values are escaped by Jinja; no script code here.
+-#}
+{% from 'components/ui.html' import status_pill, kv_list, code_block, action_button %}
+
+
+{#- Icons of the circles of the flow by state of the stage; other states show the number of the stage -#}
+{% set FLOW_ICONS = {'finished': 'check-lg', 'failed': 'x-lg', 'running': 'arrow-repeat', 'ready': 'play-fill', 'queued': 'clock'} %}
+
+{#- Style of the buttons by action -#}
+{% set BUTTON_STYLE = {
+    'run-stage': ('primary', 'play-fill'),
+    'reset-stage': ('outline-secondary', 'arrow-counterclockwise'),
+    'reset-last-finished': ('outline-secondary', 'arrow-counterclockwise'),
+    'reset-deployment': ('outline-secondary', 'arrow-counterclockwise'),
+    'cancel-deployment': ('outline-danger', 'slash-circle'),
+    'edit-custom-data': ('outline-secondary', 'pencil'),
+    'show-log': ('outline-secondary', 'file-earmark-text'),
+    'remove-from-queue': ('outline-secondary', 'x-circle'),
+} %}
+
+
+{% macro button(a) -%}
+{%- set style = BUTTON_STYLE.get(a.name, ('outline-secondary', None)) -%}
+{%- set variant = 'outline-secondary' if a.name == 'run-stage' and a.data.get('option') == 'run_all' else style[0] -%}
+{{ action_button(a, variant=variant, icon=style[1]) }}
+{%- endmacro %}
+
+
+
+{#-
+  The stages as grid, the connections as SVG over it (web_modules/stage_flow.py).
+  static: without status and selection (the definition of a workflow); prefix: unique ids of the markers when a page has several flows
+-#}
+{% macro stage_flow(flow, selected_id, static=False, prefix='ir') -%}
+{%- set size = flow.css() -%}
+<div class="ir-flow-scroll">
+  <div class="ir-flow" style="width: {{ size.width }}px; height: {{ size.height }}px; padding-left: {{ size.margin }}px; grid-template-columns: repeat({{ size.columns }}, {{ size.col_width }}px); grid-template-rows: repeat({{ size.rows }}, {{ size.row_height }}px); column-gap: {{ size.col_gap }}px; row-gap: {{ size.row_gap }}px;">
+    <svg class="ir-flow-lines" width="{{ size.width }}" height="{{ size.height }}" viewBox="0 0 {{ size.width }} {{ size.height }}" aria-hidden="true" focusable="false">
+      <defs>
+        <marker id="{{ prefix }}-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path class="ir-arrow done" d="M0 0 L8 4 L0 8 z"></path></marker>
+        <marker id="{{ prefix }}-arrow-todo" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path class="ir-arrow" d="M0 0 L8 4 L0 8 z"></path></marker>
+      </defs>
+      {%- for line in flow.connections %}
+      <path class="ir-line{% if line.done %} done{% endif %}{% if line.back %} back{% endif %}" d="{{ line.d }}" data-kind="{{ line.kind }}" data-target="{{ line.target }}"{% if line.source %} data-source="{{ line.source }}"{% endif %}{% if line.kind == 'in' %} marker-end="url(#{{ prefix }}-arrow-{{ 'done' if line.done else 'todo' }})"{% endif %}></path>
+      {%- endfor %}
+    </svg>
+    {%- for node in flow.nodes %}
+    {%- set icon = FLOW_ICONS.get(node.state) %}
+    {%- if static %}
+    <div class="ir-flow-node static k-neutral" style="grid-column: {{ node.col + 1 }}; grid-row: {{ node.row + 1 }};" data-stage="{{ node.name }}"{% if node.after %} title="Starts after {{ node.after | join(', ') }}"{% endif %}>
+      <span class="ir-flow-circle" aria-hidden="true">{{ node.number }}</span>
+      <span class="ir-flow-name">{{ node.name }}</span>
+      {%- if node.after %}<span class="ir-flow-status">after {{ node.after | join(', ') }}</span>{% endif %}
+    </div>
+    {%- else %}
+    <button type="button" class="ir-flow-node k-{{ node.view.kind }}{% if node.id == selected_id %} selected{% endif %}" style="grid-column: {{ node.col + 1 }}; grid-row: {{ node.row + 1 }};"
+            data-action="select-stage" data-stage-id="{{ node.id }}" data-state="{{ node.state }}" aria-pressed="{{ 'true' if node.id == selected_id else 'false' }}"
+            aria-label="Stage {{ node.name }}: {{ node.view.text }}{% if node.waiting_for %}, waits for {{ node.waiting_for | join(', ') }}{% endif %}">
+      <span class="ir-flow-circle" aria-hidden="true">{% if icon %}<i class="bi bi-{{ icon }}{% if node.state == 'running' %} ir-spin{% endif %}"></i>{% else %}{{ node.number }}{% endif %}</span>
+      <span class="ir-flow-name" aria-hidden="true">{{ node.name }}</span>
+      <span class="ir-flow-status" aria-hidden="true">{% if node.waiting_for %}waits for {{ node.waiting_for | join(', ') }}{% else %}{{ node.view.text }}{% endif %}</span>
+    </button>
+    {%- endif %}
+    {%- endfor %}
+  </div>
+</div>
+{%- endmacro %}
+
+
+
+{#- What the deployment waits for (deployment_view.get_attention) -#}
+{% macro attention_bar(a) -%}
+<section class="ir-attention k-{{ a.kind }}" aria-label="What the deployment waits for" data-stage-id="{{ a.stage_id }}">
+  <span class="ir-attention-icon" aria-hidden="true"><i class="bi bi-{{ a.icon }}{% if a.kind == 'running' %} ir-spin{% endif %}"></i></span>
+  <p class="ir-attention-text">{% for text, strong in a.text %}{% if strong %}<strong>{{ text }}</strong>{% else %}{{ text }}{% endif %}{% endfor %}</p>
+  {%- if a.buttons %}
+  <div class="ir-attention-actions">{% for b in a.buttons %}{{ button(b) }}{% endfor %}</div>
+  {%- endif %}
+</section>
+{%- endmacro %}
+
+
+
+{#- One step: a row which opens its details; Log and Errors of the last run beside it -#}
+{% macro step_row(step) -%}
+{%- set last = step.runs[0] if step.runs else none -%}
+<div class="ir-step k-{{ step.view.kind }}" data-step-id="{{ step.id }}" data-status="{{ step.status }}" data-search="{{ step.search }}">
+  <div class="ir-step-row">
+    <button type="button" class="ir-step-toggle" data-action="toggle-step" aria-expanded="{{ 'true' if step.open else 'false' }}" aria-controls="step-{{ step.id }}-detail">
+      <span class="ir-step-icon" title="{{ step.view.text }}"><i class="bi bi-{{ step.view.icon }}{% if step.view.spin %} ir-spin{% endif %}" aria-hidden="true"></i><span class="visually-hidden">{{ step.view.text }}</span></span>
+      <span class="ir-step-seq">{{ step.sequence }}</span>
+      <span class="ir-step-name">{{ step.name }}</span>
+      <span class="ir-step-type">{{ step.environment }}</span>
+      <span class="ir-step-where">{{ 'remote' if step.remote else 'local' }}</span>
+      <code class="ir-step-cmd">{{ step.cmd }}</code>
+      <span class="ir-step-time">{% if last %}{{ last.time | datetime }}{% else %}not run{% endif %}</span>
+    </button>
+    <div class="ir-step-logs">
+      {%- if last and last.has_output %}
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-action="show-log" data-run-id="{{ last.id }}" data-log-type="output" data-title="{{ step.name }} · {{ last.time | datetime }}">Log</button>
+      {%- endif %}
+      {%- if last and last.has_errors %}
+      <button type="button" class="btn btn-sm btn-outline-danger" data-action="show-log" data-run-id="{{ last.id }}" data-log-type="errors" data-title="{{ step.name }} · {{ last.time | datetime }}">Errors</button>
+      {%- endif %}
+    </div>
+  </div>
+  <div class="ir-step-detail" id="step-{{ step.id }}-detail"{% if not step.open %} hidden{% endif %}>
+    {%- if step.cmd_parts %}
+    {{ code_block(step.cmd_parts | join('\n'), label='Copy the command') }}
+    {%- endif %}
+    <div class="form-check form-switch ir-step-check">
+      <input class="form-check-input" type="checkbox" role="switch" id="check-error-{{ step.id }}" data-action="check-error" data-action-id="{{ step.id }}"
+             {%- if step.check_error %} checked{% endif %}{% if not step.can_change_check.allowed %} disabled title="{{ step.can_change_check.reason }}"{% endif %}>
+      <label class="form-check-label" for="check-error-{{ step.id }}">Check error</label>
+      {%- if not step.can_change_check.allowed %}<span class="ir-reason">{{ step.can_change_check.reason }}</span>{% endif %}
+    </div>
+    {%- if step.runs | length > 1 %}
+    <div class="ir-step-runs">
+      <h4>Earlier runs</h4>
+      <ul>
+        {%- for run in step.runs[1:] %}
+        <li>
+          <span>{{ run.time | datetime }}</span> {{ status_pill(run.view.value) }}
+          {%- if run.has_output %} <button type="button" class="btn btn-sm btn-link" data-action="show-log" data-run-id="{{ run.id }}" data-log-type="output" data-title="{{ step.name }} · {{ run.time | datetime }}">Log</button>{% endif %}
+          {%- if run.has_errors %} <button type="button" class="btn btn-sm btn-link" data-action="show-log" data-run-id="{{ run.id }}" data-log-type="errors" data-title="{{ step.name }} · {{ run.time | datetime }}">Errors</button>{% endif %}
+        </li>
+        {%- endfor %}
+      </ul>
+    </div>
+    {%- endif %}
+  </div>
+  {%- if step.sub_steps %}
+  <div class="ir-sub-steps">
+    {%- if step.sub_collapsed %}
+    <details class="ir-step-fold">
+      <summary>{{ step.sub_steps | length }} sub-steps</summary>
+      {{ step_items(step.sub_steps) }}
+    </details>
+    {%- else %}
+    {{ step_items(step.sub_steps) }}
+    {%- endif %}
+  </div>
+  {%- endif %}
+</div>
+{%- endmacro %}
+
+
+
+{#- Steps, groups of parallel steps and folded runs of finished steps -#}
+{% macro step_items(items) -%}
+{%- for item in items %}
+{%- if item.kind == 'step' %}
+{{ step_row(item) }}
+{%- elif item.kind == 'group' %}
+<div class="ir-step-group" data-status="{{ item.status }}">
+  <p class="ir-step-group-head"><i class="bi bi-diagram-2" aria-hidden="true"></i> Group <strong>{{ item.name or 'without name' }}</strong>: {{ item['items'] | length }} steps run at the same time, the next step waits for all of them{% if item.running > 1 %} ({{ item.running }} running){% endif %}</p>
+  {{ step_items(item['items']) }}
+</div>
+{%- elif item.kind == 'fold' %}
+<details class="ir-step-fold" data-status="finished">
+  <summary>{{ item.count }} finished steps</summary>
+  {{ step_items(item['items']) }}
+</details>
+{%- endif %}
+{%- endfor %}
+{%- endmacro %}
+
+
+
+{#- The panel of the steps of the selected stage (deployment_view.get_steps_view). Its head stays visible when the steps are closed. -#}
+{% macro steps_panel(v) -%}
+<section class="ir-steps ir-card" id="stage-steps" aria-labelledby="stage-steps-title" data-stage-id="{{ v.stage.id }}"
+         data-problem="{{ 'true' if v.problem else 'false' }}" data-latest-error="{{ v.latest_error or '' }}">
+  <div class="ir-steps-head">
+    <div class="ir-steps-title">
+      <h2 id="stage-steps-title">{{ v.stage.name }}</h2>
+      {{ status_pill(v.stage.view.value) }}
+      <span class="ir-steps-count">{{ v.finished }} of {{ v.total }} steps finished</span>
+    </div>
+    <div class="ir-steps-actions">
+      {%- for b in v.buttons %}{{ button(b) }}{% endfor %}
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-action="toggle-steps" aria-expanded="false" aria-controls="stage-steps-body">
+        <i class="bi bi-chevron-down ir-when-closed" aria-hidden="true"></i><i class="bi bi-chevron-up ir-when-open" aria-hidden="true"></i>
+        <span class="ir-when-closed">Show steps</span><span class="ir-when-open">Hide steps</span>
+      </button>
+    </div>
+  </div>
+  {%- if v.stage.description or v.stage.waiting_for %}
+  <p class="ir-steps-description">{{ v.stage.description or '' }}{% if v.stage.waiting_for %}{% if v.stage.description %} · {% endif %}Waits for {{ v.stage.waiting_for | join(', ') }}{% endif %}</p>
+  {%- endif %}
+
+  <div class="ir-steps-body" id="stage-steps-body" hidden>
+    <div class="ir-steps-info">
+      {{ kv_list(v.details, mono=['Remote dir', 'Build dir', 'Library mapping']) }}
+      {%- if v.history %}
+      {%- set latest = v.history[0] %}
+      <div class="ir-steps-history">
+        <span class="ir-reason">Last action:</span> {{ (latest.action or '') | replace('_', ' ') }} by {{ latest.user | or_dash }}, {{ latest.timestamp | datetime }}
+        {%- if v.history | length > 1 %}
+        <details>
+          <summary>All {{ v.history | length }} actions</summary>
+          <ul>{% for row in v.history %}<li>{{ row.timestamp | datetime }} · {{ row.user | or_dash }} · {{ (row.action or '') | replace('_', ' ') }}{% if row.details %} · {{ row.details }}{% endif %}</li>{% endfor %}</ul>
+        </details>
+        {%- endif %}
+      </div>
+      {%- endif %}
+    </div>
+
+    {%- if v['items'] %}
+    <div class="ir-steps-toolbar">
+      <input type="search" class="form-control form-control-sm" placeholder="Filter by name or command" aria-label="Filter the steps" data-action="filter-steps">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="only-problems" data-action="only-problems">
+        <label class="form-check-label" for="only-problems">Only failed and running</label>
+      </div>
+    </div>
+    <div class="ir-step-list">
+      {{ step_items(v['items']) }}
+    </div>
+    <p class="ir-steps-nothing" hidden>No step matches the filter.</p>
+    {%- else %}
+    <p class="ir-steps-nothing">This stage has no steps.</p>
+    {%- endif %}
+  </div>
+</section>
+{%- endmacro %}

@@ -1,6 +1,6 @@
 # New permissions page
 
-- **Status:** draft
+- **Status:** finished (2026-11-20; tested with `tests/test_permissions_page.py`, `tests/test_web_browser.py` and in headless Chrome, not on IBM i)
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 7
@@ -27,7 +27,7 @@
 ## Feature
 
 ```
-Settings / Permissions                      [Unsaved changes]   [Discard] [Save]
+Settings / Permissions                                        Saved 18:56:47
 
 Users            [+]   |  runner
  boss                  |  Description [                    ]  Mail [               ]
@@ -51,8 +51,8 @@ Roles            [+]   |                    read  start  run  check  cancel  edi
 * **One table per user or role:** the rows are `General`, each workflow and its stages; the columns are the permissions. A checkbox only exists where the permission is checked on that level. `admin` is a switch of its own above the table.
 * **Effective permissions:** a permission which the user already has from a role or from a higher level is shown as given (grey), with where it comes from.
 * **Roles** can have permissions for workflows and stages, as users.
-* **Save:** changes are collected in the page. `Unsaved changes` appears with the first change; `Save` sends them, `Discard` reads the saved state again. Leaving the page with unsaved changes asks.
-* **No lost changes:** the page sends the version of the permissions it was loaded with. If the file has changed since then, the server answers `409` and the page offers to load the current state.
+* **Save with each change:** a checkbox, a new or removed workflow or stage, a role of a user, a new or deleted user or role is saved at once (as today). `description` and `mail` are saved when the field is left. The head shows `Saved {time}` or the error; a failed change is undone on the page.
+* **No lost changes:** each change sends the version of the permissions the page knows, and gets the new version back. If the file has changed since then (another session, an edit of the file), the server answers `409`, nothing is changed, and the page offers to load the current state.
 * **Administrators:** the server rejects a change after which no user has `admin`. Removing the own `admin` permission asks for confirmation.
 * **Names:** any name works (the page keeps the permissions as data, not in CSS classes). The server checks new names: not empty, no control characters, at most 64 characters, unique.
 * **Delete:** asks once, and says how many users have the role.
@@ -62,14 +62,24 @@ Roles            [+]   |                    read  start  run  check  cancel  edi
 
 ## Acceptance criteria
 
-- [ ] Test `save_permissions`: an old version → `409`, nothing changed; the current version → saved.
-- [ ] Test: a change which leaves no user with `admin` (own permission, role, deleting the user or the role) → `409`, nothing changed.
-- [ ] Test: names with space, `.`, `#`, `$`, `@`, `'` for users, roles, workflows and stages are saved and read unchanged; an empty name and a name which exists are rejected.
-- [ ] Test: permissions of a role for a workflow and a stage are saved and count for its users.
-- [ ] Test: users without `admin` get `403` for the page and the endpoints.
-- [ ] Test: the effective permissions of a user with a role (a function used by the page).
-- [ ] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)): change two checkboxes of two users → `Unsaved changes` → `Save` → after a reload both are saved and nothing else changed in `user_permissions.json`; `Discard`; add a workflow and a stage to a user; the conflict message with a second session.
-- [ ] Docs: [permissions.md](../permissions.md), [webapi.md](../webapi.md).
+- [x] Test `save_permissions`: an old version → `409`, nothing changed; the current version → saved, the answer has the new version.
+- [x] Test: a change which leaves no user with `admin` (own permission, role, deleting the user or the role) → `409`, nothing changed.
+- [x] Test: names with space, `.`, `#`, `$`, `@`, `'` for users, roles, workflows and stages are saved and read unchanged; an empty name and a name which exists are rejected.
+- [x] Test: permissions of a role for a workflow and a stage are saved and count for its users.
+- [x] Test: users without `admin` get `403` for the page and the endpoints.
+- [x] Test: the effective permissions of a user with a role (a function used by the page).
+- [x] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)): change two checkboxes of two users → two requests, `Saved` → after a reload both are saved and nothing else changed in `user_permissions.json`; a change which the server refuses is undone on the page with the message; add a workflow and a stage to a user; edit `description`; the conflict message with a second session.
+- [x] Docs: [permissions.md](../permissions.md), [webapi.md](../webapi.md).
+
+
+## Implementation (2026-11-20)
+
+* Page `/settings/permissions` (`templates/admin/permissions.html`, `pages/permissions.js`), entry `Permissions` in the navigation below `Settings`. The selected user or role is in the URL (`#user=anna`). The tab `Permission` of the settings and its script (about 400 lines) are removed.
+* The state of the page comes from `permission_config.get_state()` (also `GET /api/permissions`): users, roles, the permissions per level (`LEVEL_ACTIONS`), the workflows with their stages, the `version` (hash of the file) and per user and role the effective permissions (`get_effective`).
+* A change sends only the user or role it changes, with the version, to `save_permissions`, and loads the state again. `add_permission` and `save_permissions` take `version`; they check it and change the file under one lock, on copies: nothing changes if a check fails.
+* Roles: their permissions for workflows and stages are saved now (before only `general`).
+* A user whose permission has a role which doesn't exist is refused (`422`). Deleting a role removes it from its users.
+* The columns: the two permissions which are not checked yet at the end, with their note.
 
 
 ## Non-goals
@@ -79,8 +89,13 @@ Roles            [+]   |                    read  start  run  check  cancel  edi
 * Groups or users from IBM i
 
 
+## Decisions (2026-11-19)
+
+1. Save with each change, as today (not an explicit `Save`), with the conflict check per change.
+2. `deploy` and `4-eyes check` are shown with the note `not checked yet`.
+3. `description` and `mail` can be edited.
+
+
 ## Open questions
 
-1. Explicit `Save` (**recommended**), or save with each click as today (then with the conflict check per change)?
-2. `deploy` and `4-eyes check`: shown with a note (**recommended**), or hidden until they are checked?
-3. Is editing `description` and `mail` wanted?
+None.

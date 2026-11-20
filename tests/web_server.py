@@ -72,14 +72,28 @@ WORKFLOWS = {
 
 
 
+def ignore_installation_files(directory: str, names: list) -> set:
+    """Files of the web app which are not part of the repository: logs, sessions, and the custom templates and
+    scripts of the installation (gitignored). Tests which need a custom template write their own."""
+
+    ignored = set(shutil.ignore_patterns('__pycache__', 'log', 'sessions', '*.pid')(directory, names))
+
+    if os.path.basename(directory) == 'custom_templates':
+        ignored |= {name for name in names if name != '.gitkeep'}
+    if os.path.basename(directory) == 'static' and 'custom' in names:
+        ignored.add('custom')
+
+    return ignored
+
+
+
 def copy_repository(target: str) -> None:
     """Only what's part of the repository and the templates. No local configuration."""
 
     for directory in ['modules', 'serviceapp', os.path.join('etc', 'examples'), os.path.join('scripts', 'examples')]:
         shutil.copytree(os.path.join(ROOT_DIR, directory), os.path.join(target, directory), ignore=shutil.ignore_patterns('__pycache__'))
 
-    shutil.copytree(os.path.join(ROOT_DIR, 'webapp'), os.path.join(target, 'webapp'),
-                    ignore=shutil.ignore_patterns('__pycache__', 'log', 'sessions', '*.pid'))
+    shutil.copytree(os.path.join(ROOT_DIR, 'webapp'), os.path.join(target, 'webapp'), ignore=ignore_installation_files)
 
     for file in ['VERSION', os.path.join('etc', 'constants.py'), os.path.join('scripts', '__init__.py')]:
         shutil.copy(os.path.join(ROOT_DIR, file), os.path.join(target, file))

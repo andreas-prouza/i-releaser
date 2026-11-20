@@ -1,6 +1,6 @@
 # Deployment page: updates without reloading the page
 
-- **Status:** draft
+- **Status:** finished (2026-11-19; tested with `tests/test_live_updates.py`, `tests/test_web_browser_live.py` and in headless Chrome, not on IBM i)
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 5
@@ -48,15 +48,26 @@ sequenceDiagram
 
 ## Acceptance criteria
 
-- [ ] Test: the signature contains `page`, `stages` and `parts`. `parts.objects` only changes with an object, `parts.flow` with a stage or job, `parts.activity` with a new entry; `page` and `stages` as before.
-- [ ] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)):
+- [x] Test: the signature contains `page`, `stages` and `parts`. `parts.objects` only changes with an object, `parts.flow` with a stage or job, `parts.activity` with a new entry; `page` and `stages` as before.
+- [x] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)):
   * run a stage: its status, the attention bar and the steps change while the page is **not** loaded again (a value set in `window` before is still there);
   * a filter of the objects table, its page, the scroll position and an opened step survive a change;
   * an open log dialog stays open during a change;
   * stop and start the web app: `Reconnecting ...` is shown, then the page is current again, including what changed meanwhile;
   * an ended session shows the message.
-- [ ] Measurement: 10 open pages without changes cause no more database load than today (0.11 ms per check, see [performance](performance-blocking-handlers.md#measurements)). Numbers in this file.
-- [ ] Docs: [webapi.md](../webapi.md) (`watch_state`).
+- [x] Measurement: 10 open pages without changes cause no more database load than today (0.11 ms per check, see [performance](performance-blocking-handlers.md#measurements)). Numbers in this file: the marker check costs 0.020 ms of SQL instead of 0.009 ms (+0.011 ms), about 0.12 ms per check with the connection instead of 0.11 ms (20 stages, 60 steps, 2026-11-19). The small increase is needed: a step which starts changes only its own row (see Implementation). 10 open pages: still about 0.006 % of a core.
+- [x] Docs: [webapi.md](../webapi.md) (`watch_state`).
+
+
+## Implementation (2026-11-19)
+
+* `Meta_File.get_state_signature` has `parts`: `header` (status, update time, jobs, custom data), `flow` (status of the stages, jobs), `objects` (status and `ready` of the objects), `activity` (runs, last entry of the processing history). `page` and `stages` are unchanged.
+* `meta_file_data.get_state_marker` also counts the running steps of the deployment and reads the last entry of its processing history: since the [running step](../bugfixes/running-step-status-not-stored.md) fix a step which starts changes only its own row. Sub-steps which start are shown when they end (or with the next change).
+* The page (`pages/deployment.js`) loads itself in the background (`GET /show_details/{id}`, at most once a second) and replaces the parts `header`, `details`, `attention`, `flow`, `activity` which changed (`data-part`). The attention bar is also replaced when a stage changes (it says which step runs). Kept: the open custom data, the tab of the activity, the selected stage.
+* The objects: `GET /api/deployment_objects/{id}` and `load` of bootstrap-table, on the same page of the table; the filters stay. The number of objects in the title follows.
+* The steps panel: loaded again when its stage changes, or the header or the flow (its buttons depend on the deployment). Open steps, folded rows, filter and scroll position stay.
+* After an action (run, reset, cancel, custom data) the page shows a toast and loads all parts once: no `location.reload()` any more.
+* Connection lost: `Reconnecting …` above the page, new tries after 2, 5, 10 and then every 30 seconds; each try first loads a part of the page, so an ended session (`401`) shows `Your session has ended` and stops the updates. After the connection is back, all parts are loaded once.
 
 
 ## Non-goals
@@ -68,4 +79,4 @@ sequenceDiagram
 
 ## Open questions
 
-None of its own. It waits for the decisions of the [deployment page](web-ui-deployment-page.md#open-questions).
+None. The [deployment page](web-ui-deployment-page.md#decisions-2026-11-19) is finished; its auto refresh (reload of the page when `page` changes, steps panel in place) is what this step replaces.

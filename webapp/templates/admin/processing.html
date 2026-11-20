@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{#-
+  Settings, processing of stages (docs/features/web-ui-admin-pages.md#settings, docs/processing-service.md).
+  Context: processing (admin_view.get_processing). Script: static/assets/js/pages/processing.js, which replaces
+  the part data-part="processing" after an action instead of loading the page again.
+-#}
+
+{% from 'components/ui.html' import page_header, empty_state %}
+{% from 'admin/settings-tabs.html' import settings_tabs %}
+
+{% block title %}Processing · Settings{% endblock %}
+{% block nav_active %}settings{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
+{% endblock %}
+
+{% block page_header %}{{ page_header('Settings', meta='The installation, the processing of stages and the permissions') }}{% endblock %}
+
+{% block content %}
+
+{{ settings_tabs('processing') }}
+
+{%- set p = processing %}
+<div class="ir-settings" data-part="processing">
+
+    <section class="ir-card ir-section" aria-labelledby="processing-title">
+        <div class="ir-section-head"><h2 id="processing-title">Processing of stages</h2></div>
+        <dl class="ir-kv">
+            <dt>Mode</dt>
+            <dd class="ir-inline-form">
+                <label class="visually-hidden" for="processing-mode">Mode</label>
+                <select id="processing-mode" class="form-select form-select-sm w-auto">
+                    {%- for mode in p.modes %}
+                    <option value="{{ mode }}"{% if mode == p.mode %} selected{% endif %}>{{ mode }}</option>
+                    {%- endfor %}
+                </select>
+                <button type="button" class="btn btn-sm btn-primary" data-action="set-processing-mode">Change</button>
+                <span class="ir-reason">from {{ p.mode_source }}</span>
+            </dd>
+
+            <dt>Processing service</dt>
+            <dd>
+                <div class="ir-inline-form">
+                    <span class="ir-pill k-{{ p.service_kind }}" data-service="{{ p.service }}"><i class="bi bi-{{ 'check-lg' if p.running else 'dash-circle' }}" aria-hidden="true"></i>{{ p.service }}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="processing-service" data-command="start"{% if p.running %} disabled{% endif %}>Start</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="processing-service" data-command="stop"{% if not p.running %} disabled{% endif %}>Stop</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="processing-service" data-command="restart">Restart</button>
+                </div>
+                {%- if p.mode == 'service' and not p.running %}
+                <p class="ir-reason mt-2 mb-0">Stages stay in the queue until the service has been started.</p>
+                {%- endif %}
+                <div class="form-check form-switch mt-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="service-auto-start" data-action="service-auto-start"{% if p.auto_start %} checked{% endif %}>
+                    <label class="form-check-label" for="service-auto-start">Start automatically</label>
+                    <span class="ir-reason">Running stages are not affected.</span>
+                </div>
+                {%- if p.auto_start_paused %}
+                <p class="ir-reason mt-1 mb-0" id="service-auto-start-paused">Auto start is paused, because the service has been stopped. It's active again after the next start.</p>
+                {%- elif p.auto_start and p.mode != 'service' %}
+                <p class="ir-reason mt-1 mb-0">Auto start is only active in mode service.</p>
+                {%- endif %}
+            </dd>
+        </dl>
+    </section>
+
+    <section class="ir-card ir-section ir-table-card" aria-labelledby="jobs-title">
+        <div class="ir-section-head"><h2 id="jobs-title">Jobs <span class="ir-count">{{ p.jobs | length }}</span></h2></div>
+        {%- if p.jobs %}
+        <table id="jobs" class="table table-sm"></table>
+        {%- else %}
+        {{ empty_state('No stage has been run by the processing service yet', icon='cpu') }}
+        {%- endif %}
+        <script type="application/json" id="jobs-data">{{ p.jobs | tojson }}</script>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table.min.js') }}"></script>
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-filter-control.min.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/app/tables.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/pages/processing.js') }}"></script>
+{% endblock %}

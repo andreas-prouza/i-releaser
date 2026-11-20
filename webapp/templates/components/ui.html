@@ -1,0 +1,117 @@
+{#-
+  Components of the pages (docs/features/web-ui-layout.md#components). Their styles are in static/assets/css/app.css.
+
+    {% from 'components/ui.html' import page_header, status_pill %}
+
+  Values are escaped like everywhere in the templates; pass Markup only for HTML of a template.
+-#}
+
+
+{#- The status of a deployment, stage, step, object or job: colour, icon and text (web_modules/status_view.py) -#}
+{% macro status_pill(status) -%}
+{%- set view = status_view(status) -%}
+<span class="ir-pill k-{{ view.kind }}" data-status="{{ view.value }}"><i class="bi bi-{{ view.icon }}{% if view.spin %} ir-spin{% endif %}" aria-hidden="true"></i>{{ view.text }}</span>
+{%- endmacro %}
+
+
+{#-
+  Breadcrumb, the one <h1> of the page, an optional status and a meta line. Actions go into the call block:
+
+    {% call page_header('Deployments') %}<button ...>Start</button>{% endcall %}
+
+  breadcrumb: list of (text, url); the last entry is the current page (url None)
+-#}
+{% macro page_header(title, breadcrumb=[], meta=None, status=None) -%}
+<header class="ir-page-header">
+  {%- if breadcrumb %}
+  <nav aria-label="Breadcrumb">
+    <ol class="ir-breadcrumb">
+      {%- for text, url in breadcrumb %}
+      <li>{% if url and not loop.last %}<a href="{{ url }}">{{ text }}</a>{% else %}<span aria-current="page">{{ text }}</span>{% endif %}</li>
+      {%- endfor %}
+    </ol>
+  </nav>
+  {%- endif %}
+  <div class="ir-page-header-row">
+    <div class="ir-page-title">
+      <div class="ir-page-title-line">
+        <h1>{{ title }}</h1>
+        {%- if status is not none %} {{ status_pill(status) }}{% endif %}
+      </div>
+      {%- if meta %}
+      <div class="ir-page-meta">{{ meta }}</div>
+      {%- endif %}
+    </div>
+    {%- if caller is defined %}
+    <div class="ir-page-actions">{{ caller() }}</div>
+    {%- endif %}
+  </div>
+</header>
+{%- endmacro %}
+
+
+{#- A button with only an icon: the label is read by screen readers and shown as tooltip. attrs: more attributes, e.g. {'data-stage-id': 5} -#}
+{% macro icon_button(icon, label, attrs={}, class='btn-outline-secondary', size='sm') -%}
+<button type="button" class="btn {{ class }}{% if size %} btn-{{ size }}{% endif %} ir-icon-btn" aria-label="{{ label }}" title="{{ label }}"{% if attrs %} {{ attrs | xmlattr }}{% endif %}><i class="bi bi-{{ icon }}" aria-hidden="true"></i></button>
+{%- endmacro %}
+
+
+{#-
+  The button of an action (web_modules/deployment_view.action): data-action="<name>" and its data-* attributes.
+  Without permission it's disabled with the reason as tooltip and for screen readers (aria-disabled: it stays
+  focusable, so the tooltip can be read; app/dom.js on_action ignores it).
+-#}
+{% macro action_button(a, variant='outline-secondary', icon=None, size='sm') -%}
+<button type="button" class="btn{% if size %} btn-{{ size }}{% endif %} btn-{{ variant }}{% if not a.allowed %} ir-not-allowed{% endif %}" data-action="{{ a.name }}"
+  {%- for key, value in a.data.items() %} data-{{ key | replace('_', '-') }}="{{ value }}"{% endfor %}
+  {%- if not a.allowed %} aria-disabled="true" title="{{ a.reason }}"{% endif %}>
+  {%- if icon %}<i class="bi bi-{{ icon }}" aria-hidden="true"></i> {% endif %}{{ a.label }}
+  {%- if not a.allowed %}<span class="visually-hidden"> ({{ a.reason }})</span>{% endif -%}
+</button>
+{%- endmacro %}
+
+
+{#- Pairs of key and value instead of a table. items: list of (key, value); empty values are shown as – -#}
+{% macro kv_list(items, mono=[]) -%}
+<dl class="ir-kv">
+  {%- for key, value in items %}
+  <dt>{{ key }}</dt>
+  <dd{% if key in mono %} class="ir-mono"{% endif %}>{{ value | or_dash }}</dd>
+  {%- endfor %}
+</dl>
+{%- endmacro %}
+
+
+{#-
+  A titled part of a page. The call block gets 'body', and 'actions' if has_actions:
+
+    {% call(part) section('Objects', has_actions=True) %}
+      {% if part == 'actions' %}<button ...>All ready</button>{% else %}<table>...</table>{% endif %}
+    {% endcall %}
+-#}
+{% macro section(title, id=None, has_actions=False, card=True) -%}
+<section class="ir-section{% if card %} ir-card{% endif %}"{% if id %} id="{{ id }}"{% endif %} aria-labelledby="{{ id or title | lower | replace(' ', '-') }}-title">
+  <div class="ir-section-head">
+    <h2 id="{{ id or title | lower | replace(' ', '-') }}-title">{{ title }}</h2>
+    {%- if has_actions %}
+    <div class="ir-section-actions">{{ caller('actions') }}</div>
+    {%- endif %}
+  </div>
+  {{ caller('body') }}
+</section>
+{%- endmacro %}
+
+
+{#- "No deployments yet", "This deployment has no objects" -#}
+{% macro empty_state(text, icon='inbox') -%}
+<div class="ir-empty"><i class="bi bi-{{ icon }}" aria-hidden="true"></i><p>{{ text }}</p></div>
+{%- endmacro %}
+
+
+{#- Commands, JSON, paths: monospace with a copy button (static/assets/js/app/components.js). language: for Prism, e.g. 'json' -#}
+{% macro code_block(text, language=None, label='Copy') -%}
+<div class="ir-code">
+  <pre><code{% if language %} class="language-{{ language }}"{% endif %}>{{ text }}</code></pre>
+  <button type="button" class="ir-copy" data-copy aria-label="{{ label }}" title="{{ label }}"><i class="bi bi-copy" aria-hidden="true"></i></button>
+</div>
+{%- endmacro %}

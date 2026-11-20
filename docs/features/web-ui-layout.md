@@ -1,6 +1,6 @@
 # Layout and styles: base layout, navigation, components
 
-- **Status:** draft
+- **Status:** finished (2026-11-19; tested with `tests/test_web_layout.py`, `tests/test_web_browser.py` and in headless Chrome, not on IBM i)
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 2
@@ -47,9 +47,9 @@
 
 ### Navigation
 
-* Entries: `Deployments`, `Objects`, `Workflows`; for users with `admin`: `Settings`, `Logs` (with the log files below it); the user (opens the user page), `Log out`; at the bottom the switch to collapse, the theme switch and the version.
-* The projects are not in the navigation any more: the deployment list has them (see [lists](web-ui-lists.md)).
-* Collapsed: icons only, the text as tooltip. The state is remembered in the browser (`localStorage`).
+* Entries: `Deployments`, `Objects`, `Workflows`; for users with `admin`: `Settings`, `Logs` (opens a menu with the log files, also when collapsed); the user (opens the user page), `Log out`; at the bottom the switch to collapse, the theme switch and the version.
+* The projects are not in the navigation any more: the deployment list has them (until [lists](web-ui-lists.md) as the buttons above the list of today).
+* Collapsed: icons only, the text as tooltip. Every entry stays a link and can be clicked. The state is remembered in the browser (`localStorage`).
 * Below 992 px the navigation is hidden and opens over the page with a menu button.
 * The active entry is set by the page (`nav_active`), not by a parameter. Links don't carry `sidebar_active` any more; old links with it still work.
 * `Developed by` moves to the login page and the user page.
@@ -101,17 +101,30 @@ Pages which are not redesigned yet are shown in the new layout with their old co
 
 ## Acceptance criteria
 
-- [ ] Test: every page has a `<title>` with its name, and exactly one `<h1>`.
-- [ ] Test: the active entry of each page, without `sidebar_active`: list, deployment (→ `Deployments`), objects, workflows, settings, a log, user.
-- [ ] Test: `Settings` and `Logs` are only in the navigation of users with `admin`.
-- [ ] Test: no template has a form inside a form; `base.html` has no form.
-- [ ] Test: the login page has only user, password and the button, and no navigation. The tests of the login still pass.
-- [ ] Test: the error page for an unknown deployment has status 404, the message, and no other text of the old page.
-- [ ] Test: `status_pill` for every value of the status classes (`Meta_file_status`, stage, step, object, job) has a text and an icon; an unknown value doesn't fail.
-- [ ] Test: the filters `datetime`, `duration`, `or_dash`.
-- [ ] Test: custom route with a template which extends `base.html` and fills `content` and `scripts` still works.
-- [ ] Looked at in Chrome with test data, light and dark, at 1440 px, 1024 px and 768 px: no horizontal scrolling, navigation collapsed and open. With [browser tests](web-ui-browser-tests.md): the collapsed state and the theme survive a reload.
-- [ ] Docs: [scripts.md](../scripts.md) (blocks of `base.html` for custom routes), [architektur.md](../architektur.md#gui).
+- [x] Test: every page has a `<title>` with its name, and exactly one `<h1>`.
+- [x] Test: the active entry of each page, without `sidebar_active`: list, deployment (→ `Deployments`), objects, workflows, settings, a log, user.
+- [x] Test: `Settings` and `Logs` are only in the navigation of users with `admin`.
+- [x] Test: no template has a form inside a form; `base.html` has no form.
+- [x] Test: the login page has only user, password and the button, and no navigation. The tests of the login still pass.
+- [x] Test: the error page for an unknown deployment has status 404, the message, and no other text of the old page.
+- [x] Test: `status_pill` for every value of the status classes (`Meta_file_status`, stage, step, object, job) has a text and an icon; an unknown value doesn't fail.
+- [x] Test: the filters `datetime`, `duration`, `or_dash`.
+- [x] Test: custom route with a template which extends `base.html` and fills `content` and `scripts` still works.
+- [x] Looked at in Chrome with test data, light and dark, at 1440 px, 1024 px and 768 px: no horizontal scrolling, navigation collapsed and open. With [browser tests](web-ui-browser-tests.md): the collapsed state and the theme survive a reload.
+- [x] Docs: [scripts.md](../scripts.md#own-pages) (blocks of `base.html` for custom routes), [architektur.md](../architektur.md#gui).
+
+
+## Implementation (2026-11-19)
+
+* Files: `templates/base.html`, `templates/components/ui.html` (macros), `static/assets/css/app.css` (replaces `global.css`), `static/assets/js/app/theme.js` (theme and navigation, in `<head>`), `static/assets/js/app/components.js` (copy button), `web_modules/status_view.py`, `web_modules/template_filters.py`.
+* Navigation: Bootstrap `offcanvas-lg` (a panel below 992 px, no own script). Collapsed: class `ir-nav-collapsed` on `<html>`, set before the page is drawn. `Logs` is a menu (Bootstrap dropdown), so the log files can be opened when collapsed too.
+* `routes.get_sidebar_data` returns `current_user`, `is_admin`, `logs`, `app_version`. The projects for the buttons of the list come from `routes.get_readable_projects()`.
+* Status kinds: the six of the spec and `queued` (amber, as in the mockup). The `running` colour of the mockup (`#087990`) had a contrast of 4.0 : 1 on its pill; it is `#066878` now (5.0 : 1). `tests/test_web_layout.py` checks the contrast of all text and status colours in both themes.
+* Login: the form is sent to `/login?next=<page>`, and `/login` redirects (303) to that page. Before, the form was sent to the URL of the page, which failed with `405` on pages without `POST` (e.g. a log, `/docs`) and asked to send the form again on a reload. `next` is only a path of the web app (no other host, no `/login`); tested.
+* Error page: status code and text, the message, the error id of unexpected errors, a link to the deployments. The navigation only for logged-in users.
+* Pages which are not redesigned yet got only the page header (title, breadcrumb, actions): the deployment page shows its status as pill and `History`, `Reset status` and `Cancel deployment` as buttons with text; the custom template `deployment_status.html` is in the actions of the header. The `Back to overview` buttons are gone. The settings page uses the colour tokens in its old styles, so its tabs can be read in the dark mode.
+* `assets/img/cancel.png` is not used by the web app any more, but stays for custom templates (like `undo.png`, see [static assets](web-ui-static-assets.md)).
+* Settings still scrolls sideways at 1024 px (its tables, see [admin pages](web-ui-admin-pages.md)); the browser test checks all other pages.
 
 
 ## Non-goals
@@ -120,8 +133,14 @@ Pages which are not redesigned yet are shown in the new layout with their old co
 * A settings page for the theme or other options per user on the server
 
 
+## Decisions (2026-11-19)
+
+1. The look: the [mockup](https://claude.ai/artifact/HQqeugdfJgXrLDZLn2tRX7) is approved as it is. Bootstrap, dark mode, logo and small screens were decided before.
+2. Names in the navigation: `Configuration` → `Settings`, `Object list` → `Objects`.
+3. Projects: only in the deployment list, not in the navigation.
+4. The navigation can be collapsed to its icons; the icons stay links (wish of the user, as in the mockup).
+
+
 ## Open questions
 
-1. The look: decided with the approval of the mockup ([modernization](web-ui-modernization.md#open-questions)). Bootstrap, dark mode, logo and small screens are decided.
-2. Names in the navigation: `Configuration` → `Settings`, `Object list` → `Objects`. OK?
-3. Projects: today a sub-menu of the navigation and buttons above the list. Proposal: only in the deployment list. Or keep them in the navigation as well?
+None.

@@ -6,8 +6,13 @@ The tests are skipped if Playwright or its Chromium is not installed:
     .venv/bin/pip install -r requirements-dev.txt
     .venv/bin/python -m playwright install chromium
 
-Use the fixtures by importing them into a test module: `from browser_tools import browser, browser_context, Page_Watch, open_page`
+The fixtures `browser` and `browser_context` are registered in conftest.py; import the helpers: `from browser_tools import Page_Watch, open_page`
+
+The pages have a Content-Security-Policy without 'unsafe-eval': `page.wait_for_function` evaluates its expression with
+eval and is blocked. Use `wait_until` (page.evaluate is not affected).
 """
+import time
+
 import pytest
 
 
@@ -123,3 +128,22 @@ def open_page(context, server, path: str, user: str|None='boss', wait: str='netw
 def horizontal_overflow(page) -> int:
     """Pixels the page is wider than the window"""
     return page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+
+
+
+def wait_until(page, expression: str, timeout: float = 30000) -> None:
+    """Waits until a JavaScript expression of the page is true. Like page.wait_for_function, which the
+    Content-Security-Policy of the web app blocks (it uses eval). Errors while the page changes are tried again."""
+
+    end = time.time() + timeout / 1000
+    last_error = None
+
+    while True:
+        try:
+            if page.evaluate(expression):
+                return
+        except Exception as e:
+            last_error = e
+        if time.time() > end:
+            raise TimeoutError(f"Not true within {timeout} ms: {expression}" + (f" (last error: {last_error})" if last_error else ''))
+        page.wait_for_timeout(100)

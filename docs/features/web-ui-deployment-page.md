@@ -1,6 +1,6 @@
 # New layout of the deployment page
 
-- **Status:** draft
+- **Status:** finished (2026-11-19; tested with `tests/test_deployment_page.py`, `tests/test_web_browser_deployment.py`, `tests/test_web_browser.py` and in headless Chrome, not on IBM i)
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 4
@@ -61,7 +61,7 @@ Activity    [Actions] [Run logs]
 * Breadcrumb, title `<project> · Version <n>`, the status as pill, the workflow, times (`datetime` filter) and the id in one meta line.
 * Actions on the right, as buttons with text: `Cancel deployment`, `Reset status` (only while the deployment hangs, as today). The include `custom_templates/deployment_status.html` is shown before them.
 * Libraries, directory and custom data as key and value list. Custom data: collapsed, highlighted JSON, `Edit` opens the dialog of today.
-* An action is only shown if the user has the permission for it (the server checks it as before).
+* An action the user has no permission for is shown disabled, with the missing permission as reason (tooltip and text for screen readers). The server checks it as before.
 
 ### Attention bar
 
@@ -75,7 +75,7 @@ One line which says what the deployment waits for, with the buttons for it. The 
 | A stage is ready | `Stage {name} is ready to run.` | `Run stage` |
 | Deployment finished or canceled | no bar | |
 
-Buttons are only shown with the permission `run` for that stage. With parallel stages the bar shows the first stage of the first case; the others are in the flow (e.g. one branch failed while the other is still running: the failed one).
+Without the permission `run` for that stage the buttons are disabled, with the reason. With parallel stages the bar shows the first stage of the first case; the others are in the flow (e.g. one branch failed while the other is still running: the failed one).
 
 ### Stage flow
 
@@ -92,7 +92,10 @@ Buttons are only shown with the permission `run` for that stage. With parallel s
 
 ### Steps of the selected stage
 
-* Part of the page, not a popup. Loaded from `GET /show_details/{meta_file_id}/stage/{stage_id}` (a rendered part of the page).
+* Part of the page, not a popup: a panel below the flow. Loaded from `GET /show_details/{meta_file_id}/stage/{stage_id}` (a rendered part of the page), so only the steps of the selected stage are loaded.
+* A stage can have more than 100 steps. The panel has at most about 70 % of the window height and its own scroll bar, so the objects and the activity stay right below it. Its head stays visible: name, status, `{n} of {m} steps finished`, `Run stage`, `Reset`, and the button to open or close the steps.
+* The steps are collapsed by default. They open by themselves only if there is a problem (a failed stage or step): then the panel scrolls to the latest failed step. A click on a stage in the flow, or `#stage=35` in the URL, opens them too.
+* A filter field (name and command) and the switch `Only failed and running`. Runs of more than 10 finished steps in a row are folded into one row (`24 finished steps`), which opens with a click.
 * Head: name, status, description; host, local or remote, and only if set: remote dir, build dir, library mapping. Who ran or reset the stage (last entry, all entries on request). Buttons `Run stage` (asks `Continue` / `Run all steps from the beginning`, as today) and `Reset` (as today: a hanging stage, or the last finished stage).
 * One row per step: status icon, sequence, name, type (`PASE`, `QSYS`, `SCRIPT`), local or remote, the command in one line, the time of the last run, buttons `Log` and `Errors` (only if there is output).
   * Opened: the full command (one part per line, with a copy button), the switch `check error` (only with the permission `change check error`, disabled in finished and canceled deployments), earlier runs.
@@ -129,25 +132,42 @@ The requirements of [objects table](../bugfixes/deployment-objects-table.md), an
 
 ## Acceptance criteria
 
-- [ ] Test `stage_flow`: a sequence; parallel branches which join (`test_wf`, `parallel_example`); a stage reached from two stages exists once; a connection back to an earlier stage ends; a workflow without `next_stages`; branches of different length (a line that skips a column runs in a free row, not across a stage).
-- [ ] Test: the colours of the lines of a join: one branch finished, the other running → the line into the next stage is grey.
-- [ ] Test: the steps of a stage with a parallel group: the group line, two running steps, the step after the group `new`.
-- [ ] Test: the page of workflows with the stage names of [stage names](../bugfixes/stage-name-breaks-deployment-page.md).
-- [ ] Test: the attention bar for each case of the table, and none for finished and canceled deployments.
-- [ ] Test: users without `run`, `cancel workflow`, `edit-custom-data` or `change check error` don't get the buttons (users `intern`, `runner`, `stranger` of the tests); with the permission for one stage only, only there.
-- [ ] Test: the steps of a stage: sub-steps, earlier runs, commands with `<`, `&` and quotes as text, `Log` only with output, `403` without `read`.
-- [ ] Test: `deployment_objects`: all objects, `403` without `read`. The criteria of [objects table](../bugfixes/deployment-objects-table.md).
-- [ ] Test: no `None` and no microseconds in the page of a deployment with empty values.
-- [ ] Test: the custom template `deployment_status.html` is included in the header.
-- [ ] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)):
+- [x] Test `stage_flow`: a sequence; parallel branches which join (`test_wf`, `parallel_example`); a stage reached from two stages exists once; a connection back to an earlier stage ends; a workflow without `next_stages`; branches of different length (a line that skips a column runs in a free row, not across a stage).
+- [x] Test: the colours of the lines of a join: one branch finished, the other running → the line into the next stage is grey.
+- [x] Test: the steps of a stage with a parallel group: the group line, two running steps, the step after the group `new` (with prepared data, and with real steps in `tests/test_running_step_status.py`).
+- [x] Test: the page of workflows with the stage names of [stage names](../bugfixes/stage-name-breaks-deployment-page.md).
+- [x] Test: the attention bar for each case of the table, and none for finished and canceled deployments.
+- [x] Test: users without `run`, `cancel workflow`, `edit-custom-data` or `change check error` get the buttons disabled with the reason (users `intern`, `runner`, `stranger` of the tests); with the permission for one stage only, only there they are enabled.
+- [x] Test: the steps of a stage: sub-steps, earlier runs, commands with `<`, `&` and quotes as text, `Log` only with output, `403` without `read`.
+- [x] Test: `deployment_objects`: all objects, `403` without `read`. The criteria of [objects table](../bugfixes/deployment-objects-table.md).
+- [x] Test: no `None` and no microseconds in the page of a deployment with empty values.
+- [x] Test: the custom template `deployment_status.html` is included in the header.
+- [x] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)):
   * select a stage → its steps; the selection survives a reload;
+  * a failed deployment opens with the steps of the failed stage, scrolled to the failed step; a finished one with the steps closed;
+  * a stage with 120 steps: the panel scrolls inside, the filter and `Only failed and running` work;
   * run a stage with `Continue` → one dialog, one toast, the status changes;
   * open and close a log → the steps are unchanged, an opened step stays open;
   * cancel a deployment → one dialog; canceling the dialog shows nothing;
   * edit custom data;
   * no error in the console, no horizontal scrolling at 1440 px, 1024 px and 768 px.
-- [ ] Measurement: the page of a deployment with 20 stages and 500 objects is not slower than today (59 ms, see [performance](performance-blocking-handlers.md#measurements)). Numbers in this file.
-- [ ] Docs: [webapi.md](../webapi.md) (new endpoints), [scripts.md](../scripts.md#web-app-extensions), screenshots of [README.md](../../README.md).
+- [x] Measurement: the page of a deployment with 20 stages and 500 objects is not slower than today (59 ms, see [performance](performance-blocking-handlers.md#measurements)). Numbers in this file: 57 ms (before 58 ms on the same computer, 2026-11-19).
+- [x] Docs: [webapi.md](../webapi.md) (new endpoints), [scripts.md](../scripts.md#web-app-extensions), screenshots of [README.md](../../README.md).
+
+
+## Implementation (2026-11-19)
+
+* Server: `web_modules/deployment_view.py` (actions with permission and reason, attention bar, selected stage, steps grouped), `web_modules/stage_flow.py` (layout of the flow), routes `show_details_by_id`, `show_stage_steps`, `get_deployment_objects`. `flowchart.py`, `chart.js`, the canvas and the three templates of the steps window are removed.
+* Templates: `overview/show-deployment.html`, `overview/deployment/macros.html` (flow, attention bar, steps panel, step rows), `overview/deployment/stage-steps.html` (the part of the page). The macro `action_button` of `components/ui.html` shows an action disabled with the reason.
+* Script: `pages/deployment.js` and `pages/deployment-objects.js`. The page is in no `LEGACY_TEMPLATES` any more.
+* The flow is a CSS grid with the sizes of `stage_flow.py`; the stages are buttons (`data-stage-id`), the connections one SVG. The last piece into a stage is one path for all connections into it.
+* Selected without `#stage=`: the failed, the running, the waiting (queue), the first ready stage, else the last finished stage which has steps (not `END`).
+* The steps panel: the head with `Run stage` and `Reset` stays visible, the steps open by themselves only for a problem (`data-problem`), scrolled to the latest failed step (`data-latest-error`). A refresh by the auto refresh keeps open steps, folded rows, filter and scroll position.
+* Running stage: `Stage {name} is running: step {n} of {m}.` uses the status `in process` of a step, stored since the [running step](../bugfixes/running-step-status-not-stored.md) fix. Between two steps (no step `in process`) the bar says `{n} of {m} steps finished`.
+* The step number is its position in the stage (`sequence` of a step counts within its processing step); sub-steps `{n}.{i}`.
+* Logs: a Bootstrap modal with the tabs `Output` and `Errors`, `Wrap lines`, `Copy` (without the clipboard of the browser on http: the text is selected) and `Download`.
+* Requests of the scripts send `X-Requested-With: fetch`: the web app answers errors and a missing login of parts of pages as JSON ([Web API](../webapi.md#responses-and-errors)).
+* Found on the way: [permissions for stages with capital letters](../bugfixes/stage-permissions-case.md) never applied (fixed); the test copy of the web app took the custom templates of the installation (fixed in `tests/web_server.py`).
 
 
 ## Non-goals
@@ -158,11 +178,16 @@ The requirements of [objects table](../bugfixes/deployment-objects-table.md), an
 * Showing the compile list
 
 
+## Decisions (2026-11-19)
+
+1. Steps: part of the page, as a panel with its own scroll bar (up to 100 and more steps), collapsible and closed by default. It opens by itself only in case of a problem and jumps to the latest error.
+2. Run and reset: only in the attention bar and in the head of the steps, not below each stage of the flow.
+3. Objects: the level is a column, ordered by level by default (done with the [objects table](../bugfixes/deployment-objects-table.md)).
+4. Processing history: tab `Actions` of the section `Activity`.
+5. Actions without permission: shown disabled, with the missing permission as reason.
+6. The look: the approved mockup.
+
+
 ## Open questions
 
-1. Steps as part of the page below the flow (**recommended**: logs then need only one dialog, and the steps can be linked), or a dialog as today?
-2. Run and reset: only in the attention bar and in the head of the steps (**recommended**), or also below each stage of the flow as today?
-3. Objects: the level as a column with the default order by level (**recommended**), or headings per level (needs the group extension of bootstrap-table, and a heading can't be sorted or filtered)?
-4. Processing history: as tab `Actions` in the page (**recommended**), or behind a button as today?
-5. Actions without permission: hidden (**recommended**), or shown disabled with the reason as tooltip?
-6. The mockup (the canvas [i-Releaser web UI mockup](https://claude.ai/artifact/HQqeugdfJgXrLDZLn2tRX7), artboards for a failed linear deployment and for `test_wf` with parallel stages and a parallel step group) of this page (question 2 of the [modernization](web-ui-modernization.md#open-questions)).
+None.

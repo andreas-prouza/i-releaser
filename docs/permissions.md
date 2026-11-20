@@ -32,7 +32,12 @@ Each permission can be given on three levels:
 
 Permissions don't include each other. E.g. a user who may run stages also needs `read` to open the deployment page.
 
-Administrators maintain users, roles and permissions in the web app (`Settings`). Changes of the file are loaded automatically.
+Administrators maintain users, roles and permissions in the web app (`Permissions`, below `Settings`): one table per user or role, with a row for `General`, each workflow and its stages. Changes of the file are loaded automatically.
+
+* Each change is saved at once. If the permissions have been changed meanwhile (another administrator, an edit of the file), nothing is saved and the page offers to load the current state.
+* A change after which no user would have `admin` (own, or from a role) is refused.
+* Roles can have permissions for workflows and stages, like users. A permission a user has from a role or from a higher level (`General`, the workflow) is shown grey, with where it comes from.
+* Names of workflows and stages are compared without case.
 
 
 ## Permissions
@@ -109,10 +114,10 @@ run the stages `build` and `test` (role) and `prod` (own permission), and read a
 
 ## API tokens
 
-Each user can generate a personal API token on the user page (`/user`).
+Each user can generate a personal API token on the user page (`My account`, `/user`). It also shows the roles of the user and the permissions they have in the end.
 A request with the token acts with the permissions of that user. See [Web API](webapi.md#authentication).
 
 * A user has one token. Generating a new one replaces the old one.
-* The token is shown only once. i-Releaser only stores its hash (`webapp/etc/keys.json`).
+* The token is shown only once, with a button to copy it. i-Releaser only stores its hash (`webapp/etc/keys.json`).
 * The user page shows when it was created and used last.
 * Delete the token on the user page when it's not needed anymore.

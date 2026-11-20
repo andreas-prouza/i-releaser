@@ -9,6 +9,8 @@ from fastapi import Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from web_modules import status_view, template_filters
+
 
 
 class DateEncoder(json.JSONEncoder):
@@ -57,11 +59,15 @@ def get_templates() -> Jinja2Templates:
         service_path += '/'
 
     def format_json(value):
-        return json.dumps(value, indent=4)
+        # Shown as text in the page (escaped by Jinja): umlauts as they are, times as text
+        return json.dumps(value, indent=4, ensure_ascii=False, default=str)
 
     templates = Jinja2Templates(directory=f"{service_path}templates")
     templates.env.filters["pretty_json"] = format_json
     templates.env.filters["get_type"] = lambda v: type(v).__name__
+    templates.env.filters.update(template_filters.FILTERS)
+    # For the macro status_pill (templates/components/ui.html)
+    templates.env.globals["status_view"] = status_view.get_status_view
 
     return templates
 

@@ -119,7 +119,8 @@ class TestGroups(Parallel_Test):
         parent = self.add_script(start)
         self.run_stage()
 
-        self.assertEqual(status, [Cmd_Status.NEW])
+        # Not ended yet: `in process`, or `new` if its thread hasn't started (docs/bugfixes/running-step-status-not-stored.md)
+        self.assertIn(status[0], [Cmd_Status.NEW, Cmd_Status.IN_PROCESS])
         self.assertEqual(parent.sub_actions[0].status, Cmd_Status.FINISHED)
 
 

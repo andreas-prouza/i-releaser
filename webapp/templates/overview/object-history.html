@@ -1,0 +1,28 @@
+{#- GET /list-objects/history: the deployments of an object, a part of the object list. Context: rows, title -#}
+{% from 'components/ui.html' import status_pill, empty_state %}
+<div class="ir-object-history" data-title="{{ title }}">
+    {%- if rows %}
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr><th>Deployment</th><th>Workflow</th><th>Status</th><th>Object status</th><th>Time</th><th>Target library</th><th>Source</th></tr>
+            </thead>
+            <tbody>
+            {%- for row in rows %}
+                <tr>
+                    <td class="text-nowrap"><a href="/show_details/{{ row.meta_file_id }}">{{ row.project }} {{ row.version | or_dash }}</a></td>
+                    <td>{{ row.workflow | or_dash }}</td>
+                    <td>{{ status_pill(row.deployment_status) }}</td>
+                    <td>{{ status_pill(row.object_status) }}</td>
+                    <td class="text-nowrap">{{ row.create_time | datetime }}</td>
+                    <td class="ir-mono">{{ row.lib | or_dash }}</td>
+                    <td>{% if row.source %}<code class="ir-mono">{{ row.source }}</code>{% else %}–{% endif %}</td>
+                </tr>
+            {%- endfor %}
+            </tbody>
+        </table>
+    </div>
+    {%- else %}
+    {{ empty_state('No deployment of this object which you may see', icon='boxes') }}
+    {%- endif %}
+</div>

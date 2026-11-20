@@ -8,6 +8,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import pytest
 
+# Fixtures of the browser tests, registered once: a session fixture imported into two test modules would start Playwright twice
+from browser_tools import browser, browser_context  # noqa: F401
+
 
 @pytest.fixture(autouse=True)
 def no_local_app_settings(tmp_path, monkeypatch):

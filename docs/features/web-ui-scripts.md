@@ -1,6 +1,6 @@
 # Scripts in files: modules, shared helpers, rules
 
-- **Status:** draft
+- **Status:** finished (2026-11-19; tested with `tests/test_web_scripts.py`, `tests/test_web_browser.py` and in headless Chrome, not on IBM i)
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 3
@@ -29,7 +29,7 @@ static/assets/js/
   app/tables.js     defaults of bootstrap-table
   app/theme.js      theme and navigation (from step 2)
   pages/<page>.js   one file per page
-  web.deploy.js     old global functions, kept for custom templates (deprecated)
+  web.deploy.js     old global functions, kept for custom templates until step 9 (deprecated)
 ```
 
 * ES modules (`<script type="module" src="...">`), no build step, no new package. The libraries stay normal scripts, loaded by `base.html`.
@@ -69,20 +69,31 @@ A test checks the rules for all templates and own scripts. Templates which are n
 
 * Scripts of custom templates are files in `webapp/static/custom/` (kept by updates, like `webapp/custom/`), loaded by the custom template with `<script type="module" src="{{ url_for('static', path='custom/...js') }}">`.
 * They can import the helpers (`import { post_json } from '../assets/js/app/api.js'`), which are documented in [scripts.md](../scripts.md). `Swal` stays global.
-* `postData`, `http_post`, `http_get` and `http_getData` stay as global functions in `web.deploy.js` until the next major version.
+* `postData`, `async_postData`, `http_post`, `http_get` and `http_getData` stay as global functions in `web.deploy.js` until [step 9](web-ui-security-headers.md), marked as deprecated in [scripts.md](../scripts.md#scripts-of-custom-templates). Step 9 removes them together with the inline scripts which use them; the changelog of the release says so under `Before you update`.
 * The context of `deployment_status.html` is documented: `deployment_dict` and where it's shown (see [deployment page](web-ui-deployment-page.md#header)).
-* [scripts.md](../scripts.md#scripts-of-custom-templates) has the rollback button as example in the new form, with a table how to move an old template (done 2026-11-19, the files in [`docs/examples/rollback/`](../examples/rollback/), tested by `tests/test_web_browser.py`). It works with the current pages, so installations can move their templates before step 9. Until step 3 it uses `fetch` instead of `api.js`.
+* [scripts.md](../scripts.md#scripts-of-custom-templates) has the rollback button as example in the new form, with a table how to move an old template (the files in [`docs/examples/rollback/`](../examples/rollback/), tested by `tests/test_web_browser.py`). It works with the current pages, so installations can move their templates before step 9. Since step 3 it uses `api.js` and `dialogs.js`.
 * Until step 9 old custom templates keep working unchanged.
 
 
 ## Acceptance criteria
 
-- [ ] Test: the rules 1, 2 and 6 for all templates outside `LEGACY_TEMPLATES` and all own scripts; the list contains no template which follows the rules.
-- [ ] Test: own scripts use `innerHTML`, `insertAdjacentHTML` or `document.write` only where a list in the test allows it (rendered parts from the server).
-- [ ] Test: Python code of the web app contains no HTML tags in strings (`flowchart.py` is on the list until step 4).
-- [ ] Test: a custom template with a script file in `static/custom/` is rendered and its file is delivered.
-- [ ] Browser test (or manual check, see [browser tests](web-ui-browser-tests.md)): an error of the server is shown with its message; an ended session shows `Your session has ended`; a confirmed action shows one dialog and one toast.
-- [ ] Docs: [scripts.md](../scripts.md#web-app-extensions) (custom templates, helpers), [installation.md](../installation.md) (`webapp/static/custom/` is kept by updates), [architektur.md](../architektur.md#gui).
+- [x] Test: the rules 1, 2 and 6 for all templates outside `LEGACY_TEMPLATES` and all own scripts; the list contains no template which follows the rules.
+- [x] Test: own scripts use `innerHTML`, `insertAdjacentHTML` or `document.write` only where a list in the test allows it (rendered parts from the server).
+- [x] Test: Python code of the web app contains no HTML tags in strings (`flowchart.py` is on the list until step 4).
+- [x] Test: a custom template with a script file in `static/custom/` is rendered and its file is delivered.
+- [x] Browser test (or manual check, see [browser tests](web-ui-browser-tests.md)): an error of the server is shown with its message; an ended session shows `Your session has ended`; a confirmed action shows one dialog and one toast.
+- [x] Docs: [scripts.md](../scripts.md#scripts-of-custom-templates) (custom templates, helpers), [installation.md](../installation.md) (`webapp/static/custom/` is kept by updates), [architektur.md](../architektur.md#gui), [technik.md](../technik.md#scripts-of-the-web-pages).
+
+
+## Implementation (2026-11-19)
+
+* Helpers: `app/api.js`, `app/dialogs.js`, `app/dom.js`, `app/tables.js` (and from step 2 `app/theme.js`, `app/components.js` for the copy button of `code_block`).
+* `dialogs.js` also has `reload_with_toast(message)`: for a change the page shows only after a reload, the toast comes after it (`sessionStorage`).
+* `dom.js` also has `on_change(name, handler)` (selects) and `element(tag, text)`.
+* `tables.js` turns on `escape`. The two lists which bootstrap-table reads from the HTML of their template (deployments, objects) set `data-escape="false"`: their cells are escaped by Jinja already, and are moved to JSON data in [lists](web-ui-lists.md).
+* Moved in this step: the user page (token dialogs), the workflows page (start: now asks once, the error of the server is shown in the dialog) and the log page (number of lines). The empty script of the deployment list is gone. `LEGACY_TEMPLATES`: the deployment page and its three templates of the steps (step 4), the object list (step 6), the settings (steps 7 and 8).
+* `chart.js` writes nothing to the console any more; it's removed in step 4.
+* `web.deploy.js` is marked as deprecated; its functions go with step 9 (decision 2026-11-19).
 
 
 ## Non-goals
@@ -94,8 +105,9 @@ A test checks the rules for all templates and own scripts. Templates which are n
 ## Decisions (2026-11-19)
 
 * Custom templates: scripts as files in `webapp/static/custom/`, no nonce. The policy stays strict.
+* The old global functions (`postData`, ...) are removed with step 9, not kept until the next major version. All steps are released together (decision 8 of the [modernization](web-ui-modernization.md#decisions-2026-11-19)), so custom templates move once: to script files and to `app/api.js` or `fetch`.
 
 
 ## Open questions
 
-1. How long do the old global functions (`postData`, ...) stay: until the next major version (**recommended**) or removed with step 9?
+None.

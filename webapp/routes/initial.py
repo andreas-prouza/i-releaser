@@ -1,14 +1,14 @@
 import logging
 import os, re
 
-from fastapi import FastAPI
-from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
 from fastapi.middleware.cors import CORSMiddleware
 
 from etc import global_cfg
 from routes import webmiddleware
+from web_modules import http_functions
 
 
 
@@ -26,17 +26,11 @@ class RedactToken(logging.Filter):
 
 
 
-def show_api_docs():
-    """Swagger UI from the files of the web app (static/assets/swagger-ui)"""
+def show_api_docs(request: Request):
+    """Swagger UI from the files of the web app (static/assets/swagger-ui), started by a script file:
+    the page works with the Content-Security-Policy, without an inline script (docs/features/web-ui-security-headers.md)"""
 
-    return get_swagger_ui_html(
-        openapi_url='/openapi.json',
-        title='i-Releaser Web API',
-        swagger_js_url='/static/assets/swagger-ui/swagger-ui-bundle.js',
-        swagger_css_url='/static/assets/swagger-ui/swagger-ui.css',
-        swagger_favicon_url='/static/assets/img/favicon.png',
-        oauth2_redirect_url=None,
-    )
+    return http_functions.get_html_response(request, 'docs.html', openapi_url='/openapi.json')
 
 
 

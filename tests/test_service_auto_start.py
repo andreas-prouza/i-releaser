@@ -1,5 +1,5 @@
 """Auto start of the processing service by the web app (docs/features/processing-service-auto-start.md)"""
-import os, signal, subprocess, sys, time
+import re, os, signal, subprocess, sys, time
 
 import pytest
 
@@ -127,8 +127,8 @@ def test_stop_in_the_web_app_pauses_the_auto_start(server):
     time.sleep(3)
     assert not server.is_service_running()
 
-    _, _, text = boss.get('/settings', headers={'Accept': 'text/html'})
-    assert 'id="service_auto_start" onchange="set_service_auto_start(this)" checked' in text
+    _, _, text = boss.get('/settings/processing', headers={'Accept': 'text/html'})
+    assert re.search(r'id="service-auto-start" data-action="service-auto-start" checked>', text)
     assert 'Auto start is paused' in text
 
     # Active again after the next start
@@ -232,7 +232,7 @@ def test_failed_start_does_not_stop_the_web_app(server):
 
     # The web app answers, while the auto start is still waiting for the service
     start = time.time()
-    status, _, _ = server.client('boss').get('/settings', headers={'Accept': 'text/html'})
+    status, _, _ = server.client('boss').get('/settings/processing', headers={'Accept': 'text/html'})
     assert status == 200
     assert time.time() - start < 5
 
@@ -241,7 +241,7 @@ def test_failed_start_does_not_stop_the_web_app(server):
         assert time.time() < end, server.read_logs()
         time.sleep(0.5)
 
-    assert server.client('boss').get('/settings', headers={'Accept': 'text/html'})[0] == 200
+    assert server.client('boss').get('/settings/processing', headers={'Accept': 'text/html'})[0] == 200
 
 
 
@@ -255,10 +255,10 @@ def test_old_settings_file_is_taken_over(server):
     assert not os.path.exists(server.path('etc', 'web_settings.json'))
     assert server.read_app_settings() == {'C_PROCESSING_MODE': 'service'}
 
-    _, _, text = server.client('boss').get('/settings', headers={'Accept': 'text/html'})
+    _, _, text = server.client('boss').get('/settings/processing', headers={'Accept': 'text/html'})
     assert '<option value="service" selected>' in text
     assert 'from web app' in text
-    assert 'id="service_auto_start" onchange="set_service_auto_start(this)" >' in text
+    assert 'id="service-auto-start" data-action="service-auto-start">' in text
 
 
 

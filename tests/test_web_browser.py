@@ -6,7 +6,7 @@ import json, os, sqlite3
 
 import pytest
 
-from browser_tools import browser, browser_context, open_page, horizontal_overflow
+from browser_tools import open_page, horizontal_overflow, wait_until
 from web_server import ALL, USERS, WORKFLOWS, Web_Server
 
 
@@ -97,7 +97,7 @@ def test_pages_have_no_errors(server, browser_context, names_deployment, user):
     log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
     paths = ['/', '/project/names', '/list-objects', '/workflows', '/user', f"/show_details/{names_deployment}"]
     if user == 'boss':
-        paths += ['/settings', f"/log/{log}", '/docs']
+        paths += ['/settings', '/settings/processing', '/settings/permissions', f"/log/{log}", '/docs']
 
     for path in paths:
         page, watch = open_page(browser_context, server, path, user=user)
@@ -120,14 +120,18 @@ def test_stage_names_dont_break_the_deployment_page(server, browser_context, nam
 
     page, watch = open_page(browser_context, server, f"/show_details/{names_deployment}")
 
-    assert page.evaluate("typeof run_stage") == 'function'
-    assert page.locator('button[id^=flow_stage_]').all_inner_texts() == ['START', 'A->B', "It's <b>x</b>", 'QA?', 'END']
+    assert page.locator('.ir-flow-node .ir-flow-name').all_inner_texts() == ['START', 'A->B', "It's <b>x</b>", 'QA?', 'END']
 
     # The dialog to run the stage after START, whose name contains '>'
-    page.locator('img[title="Run Stage"]').first.click()
+    page.locator('.ir-attention [data-action="run-stage"]').click()
     page.wait_for_selector('.swal2-popup')
-    assert page.locator('.swal2-title').inner_text() .startswith('Run stage A->B')
+    assert page.locator('.swal2-title').inner_text() == 'Run A->B?'
     page.locator('.swal2-cancel').click()
+
+    # The steps of a stage with markup in its name
+    page.locator('.ir-flow-node', has_text="It's <b>x</b>").click()
+    wait_until(page, "document.querySelector('#stage-steps h2').textContent === \"It's <b>x</b>\"")
+    assert '#stage=' in page.url
 
     watch.assert_clean()
 
@@ -138,39 +142,34 @@ def test_values_dont_run_as_script(server, browser_context, names_deployment):
     page, watch = open_page(browser_context, server, f"/show_details/{names_deployment}")
 
     # Steps of START: the command contains the attack
-    page.locator('img[title="Open details"]').first.click()
-    page.wait_for_selector('.swal2-popup table.stage_info')
-    # A long command is folded
-    page.locator('.swal2-html-container details').first.evaluate("details => details.open = true")
-    assert ATTACK in page.locator('.swal2-html-container').inner_text()
-    assert page.locator('.swal2-html-container img[src="x"]').count() == 0
+    page.locator('.ir-flow-node', has_text='START').click()
+    wait_until(page, "document.querySelector('#stage-steps h2').textContent === 'START'")
+    nasty = page.locator('.ir-step', has_text='nasty')
+    nasty.locator('[data-action="toggle-step"]').click()
+    assert ATTACK in page.locator('#stage-steps').inner_text()
+    assert page.locator('#stage-steps img[src="x"]').count() == 0
 
     # Its log: the output of the command
-    page.locator('.swal2-html-container img[onclick^="showActionLog"]').nth(1).click()
-    page.wait_for_function("Swal.getTitle() && Swal.getTitle().textContent === 'Log'")
-    assert ATTACK in page.locator('.swal2-html-container').inner_text()
-    page.locator('.swal2-confirm').click()
-    page.wait_for_selector('.swal2-popup table.stage_info')
-    page.evaluate("Swal.close()")
+    nasty.locator('[data-action="show-log"]').first.click()
+    page.wait_for_selector('#log-dialog.show')
+    assert ATTACK in page.locator('#log-text').inner_text()
+    page.locator('#log-dialog .btn-close').click()
+    page.wait_for_selector('#log-dialog', state='hidden')
 
     # Switch of the object with the attack as name: an entry in the processing history
     row = page.locator('#object_list tbody tr', has_text='onerror')
     row.locator('.obj-ready').click()
-    page.wait_for_function("document.querySelectorAll('.swal2-popup').length === 0")
     page.wait_for_timeout(500)
-
-    page.locator('a[title="Show history"]').click()
-    page.wait_for_selector('.swal2-popup')
-    assert ATTACK in page.locator('.swal2-html-container').inner_text()
-    page.evaluate("Swal.close()")
+    page.reload(wait_until='networkidle')
+    assert ATTACK in page.locator('#activity-actions').inner_text()
 
     assert page.evaluate("typeof window.xss") == 'undefined'
 
     # History of the object in the object list
     page2, watch2 = open_page(browser_context, server, '/list-objects')
     page2.locator('button[data-name*="onerror"]').first.click()
-    page2.wait_for_selector('.swal2-popup')
-    assert ATTACK in page2.locator('.swal2-title').inner_text()
+    page2.wait_for_selector('#object-history.show')
+    assert ATTACK in page2.locator('#object-history-title').inner_text()
     assert page2.evaluate("typeof window.xss") == 'undefined'
 
     watch.assert_clean()
@@ -190,7 +189,7 @@ def test_objects_table_none_ready_for_the_filtered_objects(server, browser_conte
     assert page.locator('#object_list tbody td', has_text='Level ').count() == 0
 
     page.select_option('.bootstrap-table-filter-control-type', 'pgm')
-    page.wait_for_function("$('#object_list').bootstrapTable('getData').length === 12")
+    wait_until(page, "$('#object_list').bootstrapTable('getData').length === 12")
 
     watch.clear()
     page.locator('[data-objects-ready="false"]').click()
@@ -228,16 +227,122 @@ def test_objects_with_special_characters_can_be_switched(server, browser_context
 
 
 
-@pytest.mark.parametrize('width', [1440, 1024])
-def test_no_horizontal_scrolling(server, browser_context, names_deployment, width):
+@pytest.mark.parametrize('width', [1440, 1024, 768])
+@pytest.mark.parametrize('collapsed', [False, True])
+def test_no_horizontal_scrolling(server, browser_context, names_deployment, width, collapsed):
 
-    browser_context.pages and None
-    for path in [f"/show_details/{names_deployment}", '/', '/list-objects', '/workflows']:
+    # Settings: its tables are wider until docs/features/web-ui-admin-pages.md
+    log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
+    if collapsed:
+        browser_context.add_init_script("localStorage.setItem('ir-nav', 'collapsed')")
+
+    for path in [f"/show_details/{names_deployment}", '/', '/list-objects', '/workflows', '/user', f"/log/{log}", '/show_details/999999']:
         page, watch = open_page(browser_context, server, path)
         page.set_viewport_size({'width': width, 'height': 900})
         page.wait_for_timeout(300)
         assert horizontal_overflow(page) <= 0, f"{path} at {width} px"
         page.close()
+
+
+
+#-----------------------------------------------------------------------------------------------
+# docs/features/web-ui-layout.md
+#-----------------------------------------------------------------------------------------------
+
+def is_collapsed(page) -> bool:
+    return page.evaluate("document.documentElement.classList.contains('ir-nav-collapsed')")
+
+
+def theme(page) -> str:
+    return page.evaluate("document.documentElement.dataset.bsTheme")
+
+
+def nav_width(page) -> float:
+    return page.locator('#app-nav').bounding_box()['width']
+
+
+
+def test_theme_and_collapsed_navigation_survive_a_reload(server, browser_context):
+
+    page, watch = open_page(browser_context, server, '/workflows')
+    assert theme(page) == 'light'
+    assert not is_collapsed(page)
+    assert nav_width(page) > 200
+
+    page.locator('[data-theme-toggle]').click()
+    page.locator('[data-nav-toggle]').click()
+    assert theme(page) == 'dark'
+    assert is_collapsed(page)
+    assert page.locator('[data-theme-toggle]').get_attribute('aria-label') == 'Switch to light mode'
+    assert page.locator('[data-nav-toggle]').get_attribute('aria-label') == 'Expand navigation'
+
+    page.reload(wait_until='networkidle')
+    assert theme(page) == 'dark'
+    assert is_collapsed(page)
+    assert nav_width(page) < 80
+    # Collapsed: only icons, the text as tooltip
+    assert not page.locator('[data-nav="objects"] .app-nav-text').is_visible()
+    assert page.locator('[data-nav="objects"]').get_attribute('title') == 'Objects'
+
+    # The icons stay links
+    page.locator('[data-nav="objects"]').click()
+    page.wait_for_url('**/list-objects')
+    assert theme(page) == 'dark' and is_collapsed(page)
+    assert page.locator('[data-nav="objects"]').get_attribute('aria-current') == 'page'
+
+    page.locator('[data-nav-toggle]').click()
+    page.locator('[data-theme-toggle]').click()
+    page.reload(wait_until='networkidle')
+    assert theme(page) == 'light' and not is_collapsed(page)
+
+    watch.assert_clean()
+
+
+
+def test_theme_follows_the_browser(server, browser):
+
+    context = browser.new_context(color_scheme='dark')
+    try:
+        page, watch = open_page(context, server, '/')
+        assert theme(page) == 'dark'
+
+        # A choice of the user wins over the browser
+        page.locator('[data-theme-toggle]').click()
+        page.reload(wait_until='networkidle')
+        assert theme(page) == 'light'
+        watch.assert_clean()
+    finally:
+        context.close()
+
+
+
+def test_logs_menu(server, browser_context):
+
+    log = sorted(os.listdir(os.path.join(server.web_dir, 'log')))[0]
+    page, watch = open_page(browser_context, server, '/')
+    page.locator('[data-nav-toggle]').click()
+
+    page.locator('[data-nav="logs"]').click()
+    page.locator('#app-nav .dropdown-menu a', has_text=log).click()
+    page.wait_for_url(f"**/log/{log}")
+    assert page.locator('[data-nav="logs"]').get_attribute('class').split().count('active') == 1
+
+    watch.assert_clean()
+
+
+
+def test_navigation_on_small_screens(server, browser_context):
+
+    page, watch = open_page(browser_context, server, '/')
+    page.set_viewport_size({'width': 768, 'height': 900})
+    page.wait_for_timeout(300)
+
+    assert not page.locator('#app-nav [data-nav="workflows"]').is_visible()
+    page.locator('.app-topbar [data-bs-toggle="offcanvas"]').click()
+    page.locator('#app-nav [data-nav="workflows"]').click()
+    page.wait_for_url('**/workflows')
+
+    watch.assert_clean()
 
 
 
@@ -249,10 +354,12 @@ def test_log_of_the_deployment_history_closes_without_error(server, browser_cont
 
     page, watch = open_page(browser_context, server, f"/show_details/{names_deployment}")
 
-    page.locator('img[onclick^="showLog"]').first.click()
-    page.wait_for_selector('.swal2-popup')
-    page.locator('.swal2-confirm').click()
-    page.wait_for_timeout(500)
+    page.locator('#activity-runs-tab').click()
+    page.locator('#activity-runs [data-action="show-log"]').first.click()
+    page.wait_for_selector('#log-dialog.show')
+    assert page.locator('#log-text').inner_text() != ''
+    page.locator('#log-dialog .btn-close').click()
+    page.wait_for_selector('#log-dialog', state='hidden')
 
     watch.assert_clean()
 
@@ -262,24 +369,109 @@ def test_token_dialogs(server, browser_context):
 
     page, watch = open_page(browser_context, server, '/user')
 
-    page.locator('button[onclick="renew_key()"]').click()
+    page.locator('[data-action="renew-token"]').click()
     page.locator('.swal2-confirm').click()
-    page.wait_for_function("Swal.getTitle() && Swal.getTitle().textContent === 'Token successfully generated!'")
+    wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Token generated'")
     text = page.locator('.swal2-html-container').inner_text()
     assert 'shown only once' in text
     token = page.locator('.swal2-html-container code').inner_text()
     assert len(token) > 20
     assert not any(token in message for message in watch.console)
 
-    page.locator('.swal2-confirm').click()
+    with page.expect_navigation():
+        page.locator('.swal2-confirm').click()
     page.wait_for_load_state('networkidle')
 
-    page.locator('button[onclick="drop_key()"]').click()
+    # Canceled: nothing is sent, no second dialog
+    page.locator('[data-action="delete-token"]').click()
     assert page.locator('.swal2-confirm').inner_text() == 'Delete token'
-    watch.clear()
-    page.locator('.swal2-confirm').click()
-    page.wait_for_function("Swal.getTitle() && Swal.getTitle().textContent === 'Deleted'")
+    page.locator('.swal2-cancel').click()
+    page.wait_for_timeout(500)
+    assert not page.locator('.swal2-popup').is_visible()
+    assert watch.posts('/api/drop_key') == []
+
+    # Confirmed: one dialog, then one toast (after the reload)
+    page.locator('[data-action="delete-token"]').click()
+    with page.expect_navigation():
+        page.locator('.swal2-confirm').click()
+    page.wait_for_selector('.swal2-toast')
+    assert page.locator('.swal2-toast .swal2-title').inner_text() == 'Token deleted'
+    assert page.locator('.swal2-popup:not(.swal2-toast)').count() == 0
     assert len(watch.posts('/api/drop_key')) == 1
+    assert page.locator('[data-action="delete-token"]').count() == 0
+
+    watch.assert_clean()
+
+
+
+#-----------------------------------------------------------------------------------------------
+# docs/features/web-ui-scripts.md
+#-----------------------------------------------------------------------------------------------
+
+def test_error_of_the_server_is_shown_with_its_message(server, browser_context):
+
+    page, watch = open_page(browser_context, server, '/workflows')
+    page.route('**/api/start_workflow/**', lambda route: route.fulfill(
+        status=409, content_type='application/json', body=json.dumps({'status': 'error', 'message': 'Deployment of seq is still running'})))
+
+    page.locator('[data-action="start-workflow"][data-workflow="seq_wf"]').click()
+    assert page.locator('.swal2-title').inner_text() == 'Start seq_wf?'
+    page.locator('.swal2-confirm').click()
+    page.wait_for_selector('.swal2-validation-message', state='visible')
+    assert page.locator('.swal2-validation-message').inner_text() == 'Deployment of seq is still running'
+
+    watch.assert_clean(allow=('/api/start_workflow/',))
+
+
+
+def test_ended_session_is_shown(server, browser_context):
+
+    page, watch = open_page(browser_context, server, '/workflows?x=1')
+    page.route('**/api/start_workflow/**', lambda route: route.fulfill(
+        status=401, content_type='application/json', body=json.dumps({'status': 'error', 'message': 'You are not logged in'})))
+
+    page.locator('[data-action="start-workflow"][data-workflow="seq_wf"]').click()
+    page.locator('.swal2-confirm').click()
+    wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Your session has ended'")
+    assert page.locator('.swal2-confirm').inner_text() == 'Log in'
+
+    with page.expect_request('**/login?next=*') as login:
+        page.locator('.swal2-confirm').click()
+    assert login.value.url.endswith('/login?next=%2Fworkflows%3Fx%3D1')
+
+    watch.assert_clean(allow=('/api/start_workflow/',))
+
+
+
+def test_start_a_workflow(server, browser_context):
+
+    page, watch = open_page(browser_context, server, '/workflows')
+
+    page.locator('[data-action="start-workflow"][data-workflow="hidden_wf"]').click()
+    with page.expect_navigation():
+        page.locator('.swal2-confirm').click()
+    page.wait_for_load_state('networkidle')
+
+    deployment = int(page.url.rstrip('/').split('/')[-1])
+    boss = server.client('boss')
+    try:
+        assert boss.get_deployment(deployment)['general']['workflow']['name'] == 'hidden_wf'
+    finally:
+        boss.post(f"/api/cancel_deployment/{deployment}")
+
+    watch.assert_clean()
+
+
+
+def test_number_of_lines_of_a_log(server, browser_context):
+
+    log = sorted(os.listdir(os.path.join(server.web_dir, 'log')))[0]
+    page, watch = open_page(browser_context, server, f"/log/{log}")
+
+    with page.expect_navigation():
+        page.locator('[data-action="log-lines"]').select_option('500')
+    assert page.url.endswith(f"/log/{log}/500")
+    assert page.locator('[data-action="log-lines"]').input_value() == '500'
 
     watch.assert_clean()
 
@@ -313,20 +505,38 @@ def read_permissions(server) -> dict:
 
 
 
+def saved(page, action):
+    """Does the change and waits until the page has saved it and loaded the new state"""
+    with page.expect_response(lambda response: response.url.endswith('/api/permissions')):
+        action()
+    wait_until(page, "document.querySelector('.ir-save-state').textContent.startsWith('Saved')")
+
+
+def toggle(page, level: str, permission: str, workflow: str = '', stage: str = ''):
+    """The checkbox of a permission: by the data of the page, names as they are"""
+    return page.locator(f'[data-action="perm-toggle"][data-level="{level}"][data-perm="{permission}"]').filter(
+        has=None).and_(page.locator(f'[data-workflow="{workflow}"][data-stage="{stage}"]'))
+
+
+
 def test_permissions_page_saves_names_with_special_characters(permission_server, browser_context):
 
     before = read_permissions(permission_server)
 
-    page, watch = open_page(browser_context, permission_server, '/settings')
-    page.locator('.tablinks', has_text='Permission').click()
+    page, watch = open_page(browser_context, permission_server, '/settings/permissions#user=intern')
+    assert page.locator('#perm-detail h2').inner_text() == 'intern'
 
-    page.locator('[data-kind="user-general"][data-user="intern"][data-value="run"]').click()
-    page.wait_for_function("Swal.getTitle() && Swal.getTitle().textContent === 'Permissions has been saved'")
+    saved(page, lambda: toggle(page, 'general', 'run').check())
+    assert set(read_permissions(permission_server)['users']['intern']['permissions']['general']) == {'read', 'start workflow', 'run'}
+
+    # A user, a workflow and a stage with special characters
+    page.locator('.ir-perm-name', has_text='a.b').click()
+    saved(page, lambda: toggle(page, 'stage', 'change check error', 'my.workflow', 'STAGE 2.1').check())
 
     after = read_permissions(permission_server)
-    assert set(after['users']['intern']['permissions']['general']) == {'read', 'start workflow', 'run'}
+    assert set(after['users']['a.b']['permissions']['workflows']['my.workflow']['stages']['STAGE 2.1']) == {'run', 'change check error'}
 
-    # The page sends the permissions in the order of its checkboxes: compare them as sets
+    # Nothing else changed (the page sends only the user it changes)
     def as_sets(user_data: dict) -> dict:
         permissions = user_data['permissions']
         return {
@@ -336,7 +546,7 @@ def test_permissions_page_saves_names_with_special_characters(permission_server,
             'roles': set(user_data.get('roles', [])),
         }
 
-    for user in ['a.b', 'dev#1', 'boss', 'stranger', 'runner']:
+    for user in ['dev#1', 'boss', 'stranger', 'runner']:
         assert as_sets(after['users'][user]) == as_sets(before['users'][user]), user
     assert set(after['roles']) == {'old role'}
 
@@ -344,18 +554,78 @@ def test_permissions_page_saves_names_with_special_characters(permission_server,
 
 
 
-def test_permissions_page_shows_save_errors(permission_server, browser_context):
+def test_permissions_page_undoes_a_refused_change(permission_server, browser_context):
 
-    page, watch = open_page(browser_context, permission_server, '/settings')
+    page, watch = open_page(browser_context, permission_server, '/settings/permissions#user=intern')
     page.route('**/api/save_permissions', lambda route: route.fulfill(status=500, content_type='application/json',
                                                                       body='{"status": "error", "message": "disk full"}'))
-    page.locator('.tablinks', has_text='Permission').click()
-    page.locator('[data-kind="user-general"][data-user="intern"][data-value="run"]').click()
+    toggle(page, 'general', 'run').check()
 
-    page.wait_for_function("Swal.getTitle() && Swal.getTitle().textContent === 'Failed to save permission'")
+    wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Not saved'")
     assert 'disk full' in page.locator('.swal2-html-container').inner_text()
+    page.locator('.swal2-confirm').click()
+    assert not toggle(page, 'general', 'run').is_checked()
+    assert page.locator('.ir-save-state').inner_text() == 'Not saved'
 
-    watch.assert_clean(allow=('/api/save_permissions', 'Error saving permission'))
+    watch.assert_clean(allow=('/api/save_permissions',))
+
+
+
+def test_permissions_page_workflow_stage_and_description(permission_server, browser_context):
+
+    page, watch = open_page(browser_context, permission_server, '/settings/permissions#user=stranger')
+
+    page.locator('.ir-perm-add-control select').last.select_option('par_wf')
+    saved(page, lambda: page.locator('[data-action="add-workflow"]').click())
+    page.locator('.ir-perm-add-control select', has=page.locator('option', has_text='Add a stage of par_wf')).select_option('A')
+    saved(page, lambda: page.locator('[data-action="add-stage"][data-workflow="par_wf"]').click())
+    saved(page, lambda: toggle(page, 'stage', 'run', 'par_wf', 'A').check())
+
+    page.locator('#perm-description').fill('Externer Prüfer')
+    saved(page, lambda: page.locator('#perm-mail').click())
+
+    user = read_permissions(permission_server)['users']['stranger']
+    assert user['permissions']['workflows']['par_wf'] == {'general': [], 'stages': {'A': ['run']}}
+    assert user['detailed_infos']['description'] == 'Externer Prüfer'
+
+    watch.assert_clean()
+
+
+
+def test_permissions_page_conflict_with_another_session(permission_server, browser_context):
+
+    page, watch = open_page(browser_context, permission_server, '/settings/permissions#user=intern')
+
+    # Another administrator changes the permissions meanwhile
+    boss = permission_server.client('boss')
+    version = json.loads(boss.get('/api/permissions')[2])['version']
+    assert boss.post_json('/api/save_permissions', {'version': version, 'user_permissions': {'runner': {'permissions': {'general': ['read', 'cancel workflow'], 'workflows': {}}}}})[0] == 200
+
+    toggle(page, 'general', 'run').check()
+    wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Changed meanwhile'")
+    page.locator('.swal2-confirm').click()
+
+    # The current state: the change of the other session, not the click
+    page.locator('.ir-perm-name', has_text='runner').click()
+    assert toggle(page, 'general', 'cancel workflow').is_checked()
+    assert 'run' not in read_permissions(permission_server)['users']['intern']['permissions']['general']
+
+    watch.assert_clean(allow=('/api/save_permissions',))
+
+
+
+def test_permissions_page_asks_before_removing_the_own_admin(permission_server, browser_context):
+
+    page, watch = open_page(browser_context, permission_server, '/settings/permissions#user=boss')
+
+    page.locator('#perm-admin').uncheck()
+    assert page.locator('.swal2-title').inner_text() == 'Remove your own admin permission?'
+    page.locator('.swal2-cancel').click()
+    assert page.locator('#perm-admin').is_checked()
+    assert 'admin' in read_permissions(permission_server)['users']['boss']['permissions']['general']
+    assert watch.posts('/api/save_permissions') == []
+
+    watch.assert_clean()
 
 
 
@@ -477,3 +747,43 @@ def test_screenshots_script(browser, tmp_path):
     import re
     pictures = {name for name in re.findall(r'docs/img/([\w-]+)\.png', readme) if name != 'logo2-icon'}
     assert pictures == set(screenshots.SCREENSHOTS)
+
+
+
+#-----------------------------------------------------------------------------------------------
+# docs/features/web-ui-security-headers.md
+#-----------------------------------------------------------------------------------------------
+
+OLD_CUSTOM_TEMPLATE = """<button type="button" id="old-button" onclick="window.handler_ran = 1">Old</button>
+<script>window.inline_ran = 1;</script>
+"""
+
+
+@pytest.fixture()
+def old_template_server(browser):
+    s = Web_Server()
+    with open(os.path.join(s.web_dir, 'templates', 'custom_templates', 'deployment_status.html'), 'w') as f:
+        f.write(OLD_CUSTOM_TEMPLATE)
+    s.start()
+    yield s
+    s.close()
+
+
+
+def test_inline_script_of_a_custom_template_is_blocked(old_template_server, browser_context):
+
+    boss = old_template_server.client('boss')
+    deployment = boss.create_deployment('hidden_wf')
+
+    page, watch = open_page(browser_context, old_template_server, f"/show_details/{deployment}")
+    page.locator('#old-button').click()
+
+    assert page.evaluate("typeof window.inline_ran") == 'undefined'
+    assert page.evaluate("typeof window.handler_ran") == 'undefined'
+    # The browser reports both
+    violations = [message for message in watch.console if 'Content Security Policy' in message]
+    assert len(violations) >= 2, watch.console
+
+    # The rest of the page works
+    assert page.locator('.ir-flow-node').count() == 2
+    watch.assert_clean(allow=('Content Security Policy',))

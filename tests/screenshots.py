@@ -14,6 +14,7 @@ import argparse, os, shutil, sqlite3, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from browser_tools import wait_until
 from web_server import ROOT_DIR, Web_Server
 
 
@@ -97,7 +98,7 @@ OBJECTS = [
 
 # Shown on every page of the test server, and the directory of the test copy
 CLEAN_PAGE = """(directory) => {
-    document.querySelectorAll('.alert-danger').forEach((alert) => {
+    document.querySelectorAll('.alert-danger, .app-debug-banner').forEach((alert) => {
         if (alert.textContent.includes('Local debugging mode')) alert.remove();
     });
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -207,33 +208,36 @@ def make_screenshots(out_dir: str, browser=None) -> list[str]:
         def popup():
             page.wait_for_selector('.swal2-popup', state='visible')
             page.wait_for_timeout(400)
-            # Logs contain the directory of the test copy too
             page.evaluate(CLEAN_PAGE, server.directory)
             return page.locator('.swal2-popup')
-
-        def close_popup():
-            page.evaluate("Swal.close()")
-            page.wait_for_timeout(300)
 
         current = f"/show_details/{ids['current']}"
 
         open_page(current)
         save('deployment', height=620)
 
-        page.locator('img[title="Open details"]').nth(1).click()
-        page.wait_for_selector('.swal2-popup table.stage_info')
-        save('details', popup())
-        close_popup()
+        # The steps of the stage BUILD, one step opened
+        page.locator('.ir-flow-node', has_text='BUILD').click()
+        wait_until(page, "document.querySelector('#stage-steps h2').textContent === 'BUILD'")
+        page.locator('#stage-steps [data-action="toggle-step"]').last.click()
+        page.wait_for_timeout(300)
+        page.evaluate(CLEAN_PAGE, server.directory)
+        save('details', page.locator('#stage-steps'))
 
-        page.locator('a[title="Show history"]').click()
-        save('history', popup())
-        close_popup()
+        activity = page.locator('section[aria-labelledby="activity-title"]')
+        activity.scroll_into_view_if_needed()
+        save('history', activity)
 
-        page.locator('img[onclick^="showLog"]').last.click()
-        save('history-detail', popup())
-        close_popup()
+        # The log of a step
+        page.locator('#stage-steps [data-action="show-log"]').last.click()
+        page.wait_for_selector('#log-dialog.show')
+        page.wait_for_timeout(400)
+        page.evaluate(CLEAN_PAGE, server.directory)
+        save('history-detail', page.locator('#log-dialog .modal-content'))
+        page.locator('#log-dialog .btn-close').click()
+        page.wait_for_selector('#log-dialog', state='hidden')
 
-        table = page.locator('.bootstrap-table')
+        table = page.locator('.bootstrap-table').first
         table.scroll_into_view_if_needed()
         save('object-list', table)
 
@@ -241,7 +245,7 @@ def make_screenshots(out_dir: str, browser=None) -> list[str]:
         save('workflow-list', height=520)
 
         open_page(f"/show_details/{ids['parallel']}")
-        save('parallel', page.locator('#flow_html_container'))
+        save('parallel', page.locator('.ir-flow-scroll'))
 
         open_page('/user')
         save('http-token', height=360)
@@ -255,7 +259,7 @@ def make_screenshots(out_dir: str, browser=None) -> list[str]:
             page.locator('.swal2-confirm').click()
         page.wait_for_load_state('networkidle')
         page.evaluate(CLEAN_PAGE, server.directory)
-        page.locator('details', has_text='Show custom data').evaluate("details => details.open = true")
+        page.locator('details.ir-custom-data').evaluate("details => details.open = true")
         save('rollback-started', height=620)
 
         context.close()

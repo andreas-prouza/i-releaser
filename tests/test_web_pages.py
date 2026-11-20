@@ -54,7 +54,7 @@ def test_pages_load_nothing_from_other_servers(server, boss):
     log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
 
     try:
-        for path in ['/', '/list-objects', '/workflows', '/settings', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
+        for path in ['/', '/list-objects', '/workflows', '/settings', '/settings/processing', '/settings/permissions', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
             status, _, text = boss.get(path, headers={'Accept': 'text/html'})
             assert status in [200, 404], path
             assert '<html' in text.lower(), path
@@ -71,8 +71,10 @@ def test_pages_load_nothing_from_other_servers(server, boss):
 def test_templates_and_scripts_load_nothing_from_other_servers():
 
     web_dir = os.path.join(ROOT_DIR, 'webapp')
-    own_files = [os.path.join(web_dir, 'static', 'assets', 'js', name) for name in ['web.deploy.js', 'chart.js']]
-    own_files.append(os.path.join(web_dir, 'static', 'assets', 'css', 'global.css'))
+    own_files = [os.path.join(web_dir, 'static', 'assets', 'js', 'swagger-init.js'), os.path.join(web_dir, 'static', 'assets', 'css', 'app.css')]
+    for folder in ['app', 'pages']:
+        directory = os.path.join(web_dir, 'static', 'assets', 'js', folder)
+        own_files += [os.path.join(directory, name) for name in os.listdir(directory)]
 
     for directory, _, names in os.walk(os.path.join(web_dir, 'templates')):
         # Templates of the installation are not part of the repository
@@ -201,17 +203,14 @@ def test_deployment_page_has_no_script_generated_from_stage_names(nasty_server, 
     boss = nasty_server.client('boss')
     _, _, text = boss.get(f"/show_details/{nasty_deployment}", headers={'Accept': 'text/html'})
 
-    # Stages are identified by their id. A code of the name can contain characters which are not allowed in JavaScript names.
-    variables = re.findall(r'^\s*let (\S+) = document\.getElementById\("([^"]+)"\);', text, re.M)
-    variables = [v for v in variables if v[1] not in ['flow_parent', 'flowchart']]
-    assert len(variables) == len(NASTY_STAGES) + 2
-    for variable, element_id in variables:
-        assert re.fullmatch(r'flow_stage_\d+', variable), variable
-        assert variable == element_id
-        assert f'id="{element_id}"' in text
+    # No script code in the page: stages are identified by their id, the names are only text
+    for attributes, content in re.findall(r'<script\b([^>]*)>(.*?)</script>', text, re.S):
+        assert 'application/json' in attributes or not content.strip(), content[:80]
 
-    for connection in re.findall(r'^\s*connectItems\((.*)\);', text, re.M):
-        assert re.fullmatch(r'flow_stage_\d+, flow_stage_\d+, "\w+", "\w+"', connection), connection
+    stage_ids = re.findall(r'class="ir-flow-node[^"]*"[^>]*data-action="select-stage" data-stage-id="([^"]+)"', text)
+    assert len(stage_ids) == len(NASTY_STAGES) + 2
+    assert all(re.fullmatch(r'\d+', stage_id) for stage_id in stage_ids)
+    assert 'Prüfung &lt;1&gt;' in text and "It&#39;s done" in text
 
 
 
@@ -231,7 +230,12 @@ def test_steps_of_a_stage_escape_values(nasty_server, nasty_deployment):
     # Commands are shown as text, the parts of a long command on their own lines
     assert "echo &#39;&lt;b&gt;&amp;&#34;&#39;" in html
     assert "&lt;img src=x onerror=" in html
-    assert "characters&#39;\n\necho" in html
+    assert "characters&#39;\necho" in html
+
+    # The same part of the page under its own URL
+    status, _, part = boss.get(f"/show_details/{nasty_deployment}/stage/{stages['START']['id']}", headers={'Accept': 'text/html'})
+    assert status == 200
+    assert part.strip() == html.strip()
 
 
 
@@ -242,8 +246,19 @@ def test_object_list_escapes_values(nasty_server, nasty_deployment):
 
     assert status == 200
     check_no_markup_from_data(text, 'object list')
-    assert 'data-name="o&#39;brien"' in text
-    assert 'data-prod-lib="lib&#39;x"' in text
+
+    # The rows come as data (escaped by the script of the page, see test_scripts_escape_values_of_the_server)
+    rows = __import__('json').loads(boss.get('/api/deploy_objects?limit=100')[2])['rows']
+    assert {"o'brien", ATTACK, 'a"b&c'} <= {row['name'] for row in rows}
+
+    # The history of an object: a part of the page from the server
+    from urllib.parse import urlencode
+    query = urlencode({'project': 'nasty', 'prod_lib': "lib'x", 'name': ATTACK, 'type': 'file', 'attribute': 'pf'})
+    status, _, history = boss.get(f"/list-objects/history?{query}", headers={'Accept': 'text/html'})
+    assert status == 200
+    check_no_markup_from_data(history, 'object history')
+    assert 'data-title="&lt;img src=x' in history
+    assert '/show_details/' in history
 
 
 
@@ -260,9 +275,8 @@ def test_templates_have_no_values_in_inline_javascript():
                 text = f.read()
             for handler in re.findall(r'\son\w+\s*=\s*"([^"]*)"', text, re.I):
                 assert not re.search(r"'\s*\{\{", handler), f"{name}: {handler}"
-            # Data is never marked as safe. The two buttons and the flow chart are HTML of flowchart.py, which escapes its values.
-            for expression in re.findall(r'\{\{([^}]*\|\s*safe\s*)\}\}', text):
-                assert expression.split('|')[0].strip() in ['run_stage_button', 'reset_stage_button', 'flow_html', 'flow_javascript'], f"{name}: {expression}"
+            # Data is never marked as safe
+            assert not re.search(r'\|\s*safe\b', text), name
 
 
 
@@ -270,13 +284,14 @@ def test_scripts_escape_values_of_the_server():
 
     with open(os.path.join(ROOT_DIR, 'webapp', 'templates', 'overview', 'show-deployment.html'), encoding='utf-8') as f:
         deployment_page = f.read()
-    with open(os.path.join(ROOT_DIR, 'webapp', 'templates', 'overview', 'list-objects.html'), encoding='utf-8') as f:
+    with open(os.path.join(ROOT_DIR, 'webapp', 'static', 'assets', 'js', 'pages', 'objects.js'), encoding='utf-8') as f:
         object_list = f.read()
 
-    # Processing history and object history are tables built by JavaScript
-    assert '${item.details' not in deployment_page and '${item.user}' not in deployment_page
-    assert 'escape_html(item.details)' in deployment_page
-    assert '${row[key]}</' not in object_list and '>${row[key]}' not in object_list
+    # The processing history is a table of the template, the history of an object a part of a page from the server
+    assert '<script>' not in deployment_page and '${' not in deployment_page
+    assert '{{ row.details | or_dash }}' in deployment_page
+    # The button of the history: values of the row only escaped
+    assert '${row[key]}' not in object_list
     assert 'escape_html(row[key])' in object_list
 
 
@@ -360,15 +375,19 @@ def test_save_permissions_rejects_unknown_users(permission_server):
 def test_permissions_page_keeps_names_out_of_selectors(permission_server):
 
     boss = permission_server.client('boss')
-    status, _, text = boss.get('/settings', headers={'Accept': 'text/html'})
+    status, _, text = boss.get('/settings/permissions', headers={'Accept': 'text/html'})
     assert status == 200
 
-    # Names are data-* attributes of the checkboxes, and the page compares them as text
-    assert 'data-kind="user-stage-permission" data-user="a.b"' in text
-    assert 'data-stage="STAGE 2.1"' in text
-    assert 'data-kind="user-general" data-user="dev#1"' in text
+    # Names are data of the page (a JSON block); the script builds the table with the DOM and compares names as text
+    state = __import__('json').loads(__import__('html').unescape(re.search(r'id="permissions-state">(.*?)</script>', text, re.S).group(1)))
+    assert state['users']['a.b']['permissions']['workflows']['my.workflow']['stages']['STAGE 2.1'] == ['run']
+    assert 'dev#1' in state['users']
     assert 'class="user-' not in text and 'class="role-' not in text
-    assert not re.search(r'querySelectorAll\(`[^`]*\$\{(user|role|workflow|stage)', text)
+
+    with open(os.path.join(ROOT_DIR, 'webapp', 'static', 'assets', 'js', 'pages', 'permissions.js'), encoding='utf-8') as f:
+        script = f.read()
+    assert not re.search(r'querySelector(All)?\(`[^`]*\$\{', script)
+    assert 'innerHTML' not in script
 
 
 
@@ -385,6 +404,8 @@ STATIC_FILES_WITHOUT_REFERENCE = [
     r'assets/swagger-ui/(LICENSE|NOTICE|swagger-ui-bundle\.js\.LICENSE\.txt)',
     # scripts of an installation (custom templates)
     r'custom/.*',
+    # Images of the old pages: custom templates may use them (docs/features/web-ui-static-assets.md, requirement 5)
+    r'assets/img/(cancel|run-green|undo|inspect|log|error-log)\.png',
 ]
 
 
@@ -402,12 +423,15 @@ def get_own_sources() -> str:
     web_dir = os.path.join(ROOT_DIR, 'webapp')
     text = ''
 
-    for top in ['templates', 'web_modules', 'routes', os.path.join('static', 'assets', 'css'), os.path.join('static', 'assets', 'bootstrap', 'font')]:
+    # Own scripts import their modules (pages/*.js -> app/*.js)
+    own_scripts = [os.path.join('static', 'assets', 'js', 'app'), os.path.join('static', 'assets', 'js', 'pages')]
+
+    for top in ['templates', 'web_modules', 'routes', os.path.join('static', 'assets', 'css'), os.path.join('static', 'assets', 'bootstrap', 'font')] + own_scripts:
         for directory, _, names in os.walk(os.path.join(web_dir, top)):
             if os.path.basename(directory) in ['custom_templates', '__pycache__']:
                 continue
             for name in names:
-                if name.endswith(('.html', '.py', '.css')):
+                if name.endswith(('.html', '.py', '.css', '.js')):
                     with open(os.path.join(directory, name), encoding='utf-8') as f:
                         text += f.read()
 
@@ -438,7 +462,7 @@ def test_files_of_the_pages_exist(server, boss):
     checked = set()
 
     try:
-        for path in ['/', '/list-objects', '/workflows', '/settings', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
+        for path in ['/', '/list-objects', '/workflows', '/settings', '/settings/processing', '/settings/permissions', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
             _, _, text = boss.get(path, headers={'Accept': 'text/html'})
             urls = re.findall(r'<(?:script|img|link)\b[^>]*?\b(?:src|href)\s*=\s*["\']([^"\']+)', text, re.I)
             assert urls, path
@@ -452,7 +476,7 @@ def test_files_of_the_pages_exist(server, boss):
     finally:
         boss.post(f"/api/cancel_deployment/{deployment}")
 
-    # Run buttons of the flow chart are images written by flowchart.py
+    # Images of the old pages, kept for custom templates (e.g. undo.png of the rollback example)
     for image in ['run-green.png', 'undo.png']:
         assert boss.get(f"/static/assets/img/{image}")[0] == 200
 
@@ -463,7 +487,7 @@ def test_one_icon_set_and_each_library_once():
     sources = get_own_sources()
     assert not re.search(r'class="[^"]*\bfa[srb]?\b|\bfa-(solid|regular|[a-z]+)\b', sources)
     assert 'fontawesome' not in sources
-    assert 'popper' not in sources.replace('contains Popper', '')
+    assert 'popper' not in sources.replace('contains Popper', '').replace('data-bs-popper-config', '')
 
     with open(os.path.join(ROOT_DIR, 'webapp', 'templates', 'base.html'), encoding='utf-8') as f:
         base = f.read()
@@ -572,7 +596,7 @@ def test_objects_table_has_one_row_per_object(boss, objects_deployment):
     assert 'Level 1</td>' not in text
 
     assert 'bootstrap-table.min.css' in text
-    assert 'assets/js/deployment-objects.js' in text
+    assert 'assets/js/pages/deployment.js' in text
 
     for row in table['objects']:
         assert set(row) >= {'lib', 'name', 'type', 'level', 'ready', 'status', 'can_change'}
@@ -588,8 +612,9 @@ def test_objects_table_without_objects(server, boss):
 
     try:
         _, _, text = boss.get(f"/show_details/{deployment}", headers={'Accept': 'text/html'})
-        assert 'This deployment has no objects.' in text
-        assert 'id="deployment-objects"' not in text
+        assert 'This deployment has no objects' in text
+        assert get_objects_table(text)['objects'] == []
+        assert 'id="object_list"' not in text
     finally:
         boss.post(f"/api/cancel_deployment/{deployment}")
 
@@ -733,8 +758,8 @@ def test_error_page(boss):
     assert 'Deployment 999999 not found' in text
     assert 'fucking' not in text.lower()
     assert 'data-dismiss' not in text
-    # No form inside the form of the base template
-    assert text.count('<form') == 1
+    # The message and a link back, no form (minor defects 9 and 10)
+    assert '<form' not in text
 
 
 

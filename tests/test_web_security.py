@@ -207,7 +207,7 @@ def test_last_use_of_a_token_is_shown(server):
 
     server.client().get('/api/get_projects', headers={'Authorization': f"Bearer {token}"})
 
-    assert re.search(r'Last used</th><td><code>\d{4}-', boss.get('/user', headers={'Accept': 'text/html'})[2])
+    assert re.search(r'<dt>Last used</dt>\s*<dd>\d{4}-\d\d-\d\d \d\d:\d\d:\d\d</dd>', boss.get('/user', headers={'Accept': 'text/html'})[2])
 
 
 

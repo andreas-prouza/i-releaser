@@ -64,6 +64,8 @@ All errors have the same format:
 | 422 | Invalid input |
 | 500 | Unexpected error. The message contains an error id to find the details in the log. |
 
+Pages of the web app (`/show_details/...`, ...) answer errors and a missing login with an HTML page. With the header `X-Requested-With: fetch` they answer with JSON as above (the scripts of the pages send it, see `static/assets/js/app/api.js`).
+
 
 ## Example: create a deployment and run a stage
 
@@ -116,8 +118,9 @@ Actions which change data are shown with `POST`. With an API token they also wor
 | `POST` | `/api/cancel_job/{job_id}` | `run` | Remove a stage from the queue of the [processing service](processing-service.md), as long as it hasn't started |
 | `POST` | `/api/reset_stage_status/{meta_file_id}/{stage_id}` | `run` | Set a stage which hangs in `in process` back to `ready`. Possible one minute after its last change, and not while it's in the processing service. |
 | `POST` | `/api/reset_last_finished_stage/{meta_file_id}/{stage_id}` | `run` | Set the last finished stage back to `ready` (see [workflow](workflow.md#reset-the-last-finished-stage)). `stage_id` has to be the last finished stage. |
-| `GET` | `/api/get_stage_steps_html/{meta_file_id}/{stage_id}` | `read` | HTML of the steps of a stage (used by the web app) |
-| `GET` | `/api/watch_state/{meta_file_id}` | `read` | Server-sent events with a hash of the deployment's state whenever it changes (used by the web app for its auto refresh) |
+| `GET` | `/show_details/{meta_file_id}/stage/{stage_id}` | `read` | HTML of the steps of a stage, a part of the deployment page (used by the web app) |
+| `GET` | `/api/get_stage_steps_html/{meta_file_id}/{stage_id}` | `read` | Deprecated, removed in the next major version: the same HTML as `{"html": ...}` |
+| `GET` | `/api/watch_state/{meta_file_id}` | `read` | Server-sent events with hashes of the deployment's state whenever it changes: `page` (the deployment, its stages, jobs, objects and runs), `stages` (one per stage, with its steps, by stage id) and `parts` (`header`, `flow`, `objects`, `activity`: the parts of the deployment page). Used by the web app for its live updates and by the OBI extension |
 
 ### Steps and objects
 
@@ -126,6 +129,9 @@ Actions which change data are shown with `POST`. With an API token they also wor
 | `POST` | `/api/set_check_error/{meta_file_id}/{stage_id}/{action_id}/{checked}` | `change check error` | Turn the error check of a step on (`true`) or off (`false`). Not possible for finished steps or deployments. |
 | `POST` | `/api/set_source_ready_4_deployment/{meta_file_id}` | `run` | Include or exclude an object: `{"lib": "devlib", "name": "orders", "type": "file", "checked": true}` |
 | `POST` | `/api/set_objects_ready/{meta_file_id}` | `run` | Include or exclude several objects: `{"objects": [{"lib": "devlib", "name": "orders", "type": "file"}, ...], "ready": true}`. Finished objects stay unchanged; the response lists them: `{"status": "success", "changed": 12, "finished": [{"lib": ..., "name": ..., "type": ...}]}`. An unknown object: `404`, nothing is changed. |
+| `GET` | `/api/deployment_objects/{meta_file_id}` | `read` | The objects of a deployment as rows of the table of the deployment page: `{"meta_file_id": 6, "can_change": true, "objects": [{"id", "ready", "level", "prod_lib", "lib", "name", "type", "attribute", "source_only", "status", "status_view", "can_change"}]}` |
+| `GET` | `/api/deploy_objects` | `read` (only objects of readable workflows) | The object list, one row per object, page by page: `?search=&filter={"project": "erp", "type": "pgm"}&sort=name&order=asc&offset=0&limit=25` → `{"total": 1101, "rows": [{"project", "prod_lib", "name", "type", "attribute", "last_deployment", "deployments"}]}`. Filters: `project`, `type`, `attribute` (value), `prod_lib`, `name` (part); at most 500 rows |
+| `GET` | `/list-objects/history?project=&prod_lib=&name=&type=&attribute=` | `read` | HTML of the deployments of an object, a part of the object list (used by the web app) |
 | `GET` | `/api/deploy_object_lifecycle/{project}/{prod_lib}/{name}/{type}/{attribute}` | `read` | All deployments of an object |
 
 ### Logs and history
@@ -150,8 +156,11 @@ Actions which change data are shown with `POST`. With an API token they also wor
 |---|---|---|---|
 | `POST` | `/api/generate_user_key` | login | New API token for the logged-in user: `{"token": "..."}`. Replaces the old one. |
 | `POST` | `/api/drop_key` | login | Delete the API token of the logged-in user |
-| `POST` | `/api/add_permission` | `admin` | Add a user or role: `{"type": "user"\|"role", "name": "anna", "general": ["read"]}` |
-| `POST` | `/api/save_permissions` | `admin` | Replace the permissions of the given users and roles (`{"user_permissions": {...}, "role_permissions": {...}}`, like `etc/user_permissions.json`). Users and roles which are not given stay unchanged. To delete some: `"deleted_users": ["anna"]`, `"deleted_roles": ["developer"]`. Unknown users or roles: `422` (add them with `add_permission`). |
+| `GET` | `/api/permissions` | `admin` | Users, roles, their permissions, the workflows and the `version` of the permissions (used by the permissions page) |
+| `POST` | `/api/add_permission` | `admin` | Add a user or role: `{"type": "user"\|"role", "name": "anna", "general": ["read"], "version": "..."}`. Names: not empty, no control characters, at most 64 characters, unique (`422`, `409`) |
+| `POST` | `/api/save_permissions` | `admin` | Replace the permissions of the given users and roles (`{"user_permissions": {...}, "role_permissions": {...}}`, like `etc/user_permissions.json`, with `detailed_infos` for description and mail). Users and roles which are not given stay unchanged. To delete some: `"deleted_users": ["anna"]`, `"deleted_roles": ["developer"]`. Unknown users or roles: `422` (add them with `add_permission`). Nothing is changed if afterwards no user would have `admin` (`409`). |
+
+`version` (optional, from `/api/permissions` or the answer of the last change): the change is only made if the permissions haven't changed since, otherwise `409`. The answer contains the new `version`.
 
 
 ## Details

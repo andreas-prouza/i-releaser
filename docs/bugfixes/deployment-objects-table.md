@@ -50,7 +50,7 @@
 * `All ready` / `None ready` are buttons in the toolbar of the table instead of the switch in the header. They apply to the objects which match the filters, on all pages.
 * `set_objects_ready` changes nothing if one object is unknown (`404`). Only objects whose value changes are counted and logged; no change, no entry in the processing history.
 * `Source Only` shows `yes` / `no` instead of `True` / `None`.
-* Number 7 had a second cause: the content column of `base.html` (Bootstrap `.col` in a `flex-nowrap` row) got as wide as its widest content. It has `min-width: 0` now (`.app-content` in `global.css`). This also stops the sideways scrolling of the deployment list and the object list at 1024 px. `Settings` still scrolls at 1024 px (its plain tables, see [admin pages](../features/web-ui-admin-pages.md)).
+* Number 7 had a second cause: the content column of `base.html` (Bootstrap `.col` in a `flex-nowrap` row) got as wide as its widest content. It has `min-width: 0` now (`.app-content` in `global.css`, since the [layout](../features/web-ui-layout.md) `.app-main` in `app.css`). This also stops the sideways scrolling of the deployment list and the object list at 1024 px. `Settings` still scrolls at 1024 px (its plain tables, see [admin pages](../features/web-ui-admin-pages.md)).
 * The old functions `toggleAll` and `set_source_ready_4_deployment` of the page are removed.
 
 

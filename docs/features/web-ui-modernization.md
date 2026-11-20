@@ -1,6 +1,6 @@
 # Modernization of the web front end
 
-- **Status:** draft
+- **Status:** finished (2026-11-20; all steps finished and tested, not on IBM i. Open: the run of the browser tests on GitHub, see [browser tests](web-ui-browser-tests.md))
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** User request 2026-11-16 (like the UI refresh of the OBI extension)
@@ -55,7 +55,7 @@ Analysis of the web front end, the answer to "complete redesign?", and the plan.
 | P1 | [Permissions page: can't save, or removes permissions](../bugfixes/permissions-page-names-in-selectors.md) | bug (data loss) | finished 2026-11-17 |
 | P2 | [A stage name can turn off all buttons of the deployment page](../bugfixes/stage-name-breaks-deployment-page.md) | bug | finished 2026-11-17 |
 | P2 | [Objects table of the deployment page](../bugfixes/deployment-objects-table.md) | bug | finished 2026-11-19 |
-| P3 | [Minor defects of the web pages](../bugfixes/minor-web-defects.md) | bug | 5 of 18 fixed 2026-11-19, the others with the steps |
+| P3 | [Minor defects of the web pages](../bugfixes/minor-web-defects.md) | bug | finished 2026-11-20 |
 
 
 ## Target
@@ -97,30 +97,30 @@ flowchart LR
 |---|---|---|---|
 | – | The three P1 bugfixes above | S each | finished |
 | 1 | [Static assets: local, pinned, cleaned up](web-ui-static-assets.md) | S | finished |
-| 2 | [Layout and styles](web-ui-layout.md): base layout, navigation, design tokens, components, login and error page | L | draft |
-| 3 | [Scripts in files](web-ui-scripts.md): modules, shared helpers, rules, contract for custom templates | M | draft |
-| 4 | [Deployment page](web-ui-deployment-page.md): header, stage flow, steps, objects, logs | L | draft |
-| 5 | [Live updates](web-ui-live-updates.md): no reload of the page | M | draft |
-| 6 | [Lists](web-ui-lists.md): deployments, objects, start of a workflow | M | draft |
-| 7 | [Permissions page](web-ui-permissions-page.md) | M | draft |
-| 8 | [Admin pages](web-ui-admin-pages.md): settings, logs, workflows, user | M | draft |
-| 9 | [Security headers](web-ui-security-headers.md): Content-Security-Policy | S | draft |
-| – | [Browser tests](web-ui-browser-tests.md) (new package) | M | draft |
+| 2 | [Layout and styles](web-ui-layout.md): base layout, navigation, design tokens, components, login and error page | L | finished |
+| 3 | [Scripts in files](web-ui-scripts.md): modules, shared helpers, rules, contract for custom templates | M | finished |
+| 4 | [Deployment page](web-ui-deployment-page.md): header, stage flow, steps, objects, logs | L | finished |
+| 5 | [Live updates](web-ui-live-updates.md): no reload of the page | M | finished |
+| 6 | [Lists](web-ui-lists.md): deployments, objects, start of a workflow | M | finished |
+| 7 | [Permissions page](web-ui-permissions-page.md) | M | finished |
+| 8 | [Admin pages](web-ui-admin-pages.md): settings, logs, workflows, user | M | finished |
+| 9 | [Security headers](web-ui-security-headers.md): Content-Security-Policy | S | finished |
+| – | [Browser tests](web-ui-browser-tests.md) (new package) | M | ready (only the run on GitHub is missing) |
 
-Steps 4, 6, 7 and 8 are independent of each other. Pages which are not done yet keep working in the new layout, with their old scripts. All steps are on the branch `redesign` and released together (decision 8).
+Steps 4, 6, 7 and 8 are independent of each other. During the work, pages which were not done yet kept working in the new layout, with their old scripts (removed with step 9, decision 10). All steps are on the branch `redesign` and released together (decision 8).
 
 
 ## Done when
 
-- [ ] All steps are `finished`.
-- [ ] The screenshots of [README.md](../../README.md) are new: `.venv/bin/python tests/screenshots.py` (see [technik.md](../technik.md#tests)).
-- [ ] [architektur.md](../architektur.md#gui) contains the decisions of this file (see below).
-- [ ] Changelog entry, with what owners of custom templates have to do before the update.
+- [x] All steps are `finished`.
+- [x] The screenshots of [README.md](../../README.md) are new: `.venv/bin/python tests/screenshots.py` (see [technik.md](../technik.md#tests)).
+- [x] [architektur.md](../architektur.md#gui) contains the decisions of this file (see below).
+- [x] Changelog entry, with what owners of custom templates have to do before the update.
 
 
-## Proposed changes of architektur.md
+## Changes of architektur.md
 
-After the decisions below, the section `GUI` gets these rules (today's rules stay):
+Done (2026-11-20). The section `GUI` got these rules (the earlier rules stay):
 
 * Scripts only in files. No inline scripts, no `on...=` attributes, no values inside JavaScript in templates.
 * No HTML built from data as text, neither in Python nor in JavaScript.
@@ -148,8 +148,10 @@ After the decisions below, the section `GUI` gets these rules (today's rules sta
 6. **Small screens:** everything works from 768 px. Below that the navigation becomes a menu and wide tables scroll inside their box; nothing is optimised further.
 7. **Custom templates:** with the Content-Security-Policy (step 9) inline scripts and `on...=` in custom templates stop working. Accepted, with a migration note in the changelog, an example in [scripts.md](../scripts.md#web-app-extensions) and `C_CSP_REPORT_ONLY` for a transition period (see [scripts](web-ui-scripts.md#custom-templates)).
 8. **Release:** all steps on one branch (`redesign`), merged and released together. The steps are still done and finished one after the other.
+9. **Look:** the same language as the i-Releaser card of the OBI extension (status pills, stepper with circles, attention bar). The [mockup](https://claude.ai/artifact/HQqeugdfJgXrLDZLn2tRX7) (deployment page linear and with parallel stages, deployment list, light and dark) is approved as it is.
+10. **Old script functions:** `postData`, `http_post`, ... are removed with step 9 (see [scripts](web-ui-scripts.md#decisions-2026-11-19)).
 
 
 ## Open questions
 
-1. **Look:** the same language as the i-Releaser card of the OBI extension (status pills, stepper with circles, attention bar), so both look like one product? Decided with the approval of the mockup.
+None.

@@ -1,11 +1,11 @@
 import asyncio
-import logging, os, json
+import copy, logging, os, json
 from typing import List
 from pathlib import Path
 
 from fastapi import Body, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 
 # Custom modules
 import etc.global_cfg as global_cfg
@@ -13,12 +13,13 @@ from etc import constants
 
 from modules import action_type, current_user, errors, files, permissions, version
 from modules import deploy_version, meta_file
-from modules import workflow, processing_service, processing_settings
-from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data, processing_job_data
+from modules import workflow, processing_service, processing_settings, json_path
+from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data, processing_job_data, deployment_list_data
 from modules.deploy_object import Deploy_Object
 
 from web_modules import http_functions
-from web_modules import flowchart, app_login
+from web_modules import admin_view, app_login, deployment_view, template_filters
+from web_modules.status_view import get_status_view
 from modules import permission_config
 from modules.object_status import Status as Obj_Status
 
@@ -91,68 +92,132 @@ def get_readable_workflow_names() -> List[str]|None:
 
 
 
-def get_sidebar_data(request: Request):
-    x ={}
+def get_readable_projects() -> List[str]:
+    """Projects of the workflows the current user may read"""
+    return list(dict.fromkeys(wf['default_project'] for wf in get_readable_workflows()))
+
+
+
+def get_sidebar_data(request: Request) -> dict:
+    """
+    Data of the navigation of base.html. Pass it as `sidebar` (also in custom routes, see docs/scripts.md#own-pages).
+    The page marks its entry with the block `nav_active`; the parameter `?sidebar_active=` of old links is ignored.
+    """
 
     session = request.state.session
+    user = session.get('current_user', None)
+    admin = is_admin()
 
-    x['projects'] = list(dict.fromkeys(wf['default_project'] for wf in get_readable_workflows()))
-    current_user = session.get('current_user', None)
-    x['current_user'] = current_user.upper() if current_user is not None else None
-    x['logs'] = os.listdir('log/') if is_admin() else []
-    x['active'] = request.query_params.get('sidebar_active', 'deployments')
-    x['app_version'] = version.APP_VERSION
-    logging.debug(f"Sidebar: {x}")
+    return {
+        'current_user': user.upper() if user is not None else None,
+        'is_admin': admin,
+        'logs': sorted(os.listdir('log/')) if admin else [],
+        'app_version': version.APP_VERSION,
+    }
 
-    return x
 
+
+
+def get_startable_workflows(project: str|None=None) -> List[dict]:
+    """Workflows the current user may start (of one project), with the fields of `create_fields` for the start dialog"""
+
+    result = []
+    user = current_user.get_user()
+
+    for wf in workflow.Workflow.get_all_workflows_json():
+        if project is not None and wf.get('default_project') != project:
+            continue
+        if not permission_config.is_user_allowed(user, permissions.PermissionAction.START_WORKFLOW, wf['name']):
+            continue
+
+        fields = []
+        for path in wf.get('create_fields') or []:
+            try:
+                keys = json_path.parse(path)
+            except Exception:
+                continue
+            # Only fields with names; a position in a list can't be entered
+            if keys and all(isinstance(key, str) for key in keys):
+                fields.append({'path': path, 'keys': keys, 'label': '.'.join(keys)})
+
+        result.append({'name': wf['name'], 'project': wf.get('default_project'), 'fields': fields})
+
+    return result
+
+
+
+def deployment_list(request: Request, project: str):
+    """The deployments of a project (docs/features/web-ui-lists.md#deployments)"""
+
+    readable = get_readable_workflow_names()
+    counts = deployment_list_data.get_open_counts(readable)
+    projects = [{'name': p, 'open': counts.get(p, 0)} for p in get_readable_projects()]
+
+    deployments = get_readable_deployments(deploy_version.Deploy_Version.get_deployments(project)['deployments'])
+    stages = deployment_list_data.get_current_stages(project)
+
+    rows = []
+    for d in deployments:
+        stage = stages.get(d['meta_file_id']) if d.get('status') not in deployment_list_data.CLOSED else None
+        rows.append({
+            'id': d['meta_file_id'],
+            'version': d.get('version'),
+            'status': d.get('status'),
+            'status_view': get_status_view(d.get('status')).__dict__,
+            'open': d.get('status') not in deployment_list_data.CLOSED,
+            'workflow': d.get('workflow_name') or '–',
+            'stage': stage['name'] if stage else '–',
+            'stage_view': get_status_view(stage['status']).__dict__ if stage else None,
+            'created': template_filters.format_datetime(d.get('create_time')),
+            'updated': template_filters.format_datetime(d.get('update_time')),
+        })
+
+    return http_functions.get_html_response(request, 'overview/list-deployments.html', sidebar=get_sidebar_data(request),
+                                            project=project, projects=projects, rows=rows, startable=get_startable_workflows(project))
 
 
 
 def index(request: Request):
 
     session = request.state.session
+    project = session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
 
-    project= session.get('current_project', None) or global_cfg.C_DEFAULT_PROJECT
-
-    dv = get_readable_deployments(deploy_version.Deploy_Version.get_deployments(project)['deployments'])
-
-    deployments: list = []
-    for d in dv:
-        deployments.append({
-            'version': d.get('version', None),
-            'status': d.get('status', None),
-            'workflow': d.get('workflow_name', None),
-            'create_time': str(d.get('create_time', None)).split('.')[0] if d.get('create_time', None) is not None else None,
-            'update_time': str(d.get('update_time', None)).split('.')[0] if d.get('update_time', None) is not None else None,
-            'meta_file_id': d.get('meta_file_id', None)
-        })
-
-    logging.debug("Send response")
-
-    #current_user=session['current_user'],
-    return http_functions.get_html_response(request,
-                                'overview/list-deployments.html',
-                                project=project,
-                                sidebar=get_sidebar_data(request),
-                                deployment_details=dv,
-                                deployments=deployments)
-
-
+    return deployment_list(request, project)
 
 
 
 def list_objects(request: Request):
+    """The page; the rows come page by page from /api/deploy_objects"""
 
-    do = deploy_object_data.get_deploy_object_list(filters={}, workflows=get_readable_workflow_names())
+    readable = get_readable_workflow_names()
+    filters = {column: deployment_list_data.get_object_values(column, readable) for column in deployment_list_data.OBJECT_FILTER_EXACT}
 
-    logging.debug(f"List objects. {len(do)} objects found.")
+    return http_functions.get_html_response(request, 'overview/list-objects.html', sidebar=get_sidebar_data(request), filters=filters)
 
-    #current_user=session['current_user'],
-    return http_functions.get_html_response(request,
-                                'overview/list-objects.html',
-                                sidebar=get_sidebar_data(request),
-                                deployment_objects=do)
+
+
+def get_deploy_objects(request: Request, search: str='', filter: str='', sort: str='', order: str='desc', offset: int=0, limit: int=25):
+    """One page of the object list: {total, rows}. `filter`: JSON {column: value} of the filters of the table"""
+
+    try:
+        filters = json.loads(filter) if filter else {}
+    except ValueError:
+        raise errors.Invalid_Input_Error("'filter' has to be JSON")
+    if not isinstance(filters, dict):
+        raise errors.Invalid_Input_Error("'filter' has to be a JSON object")
+
+    return http_functions.get_json_response(deployment_list_data.get_objects(search=search, filters=filters, sort=sort, order=order, offset=offset, limit=limit,
+                                                                             workflows=get_readable_workflow_names()))
+
+
+
+def object_history(request: Request, project: str, prod_lib: str, name: str, type: str, attribute: str):
+    """The deployments of an object, a part of the object list"""
+
+    rows = deployment_list_data.get_object_history(project, prod_lib, name, type, attribute, workflows=get_readable_workflow_names())
+
+    return http_functions.get_html_response(request, 'overview/object-history.html', rows=rows,
+                                            title=f"{name}.{type} ({attribute}) in {prod_lib}")
 
 
 
@@ -175,20 +240,21 @@ def list_deployments(request: Request, project: str):
 
 
 def select_project(request: Request, project: str):
+    """The list of a project, without a redirect: the URL can be shared. `/` shows this project afterwards."""
 
-    available_projects = get_sidebar_data(request)['projects']
-    if (project not in available_projects):
-        logging.error(f"Project '{project}' is not in list of {available_projects}.")
-        project = available_projects[0] if len(available_projects) > 0 else None
+    available_projects = get_readable_projects()
 
-    session = request.state.session
-    session['current_project'] = project
+    if project not in available_projects:
+        logging.info(f"Project '{project}' is not in list of {available_projects}.")
+        return index(request)
 
-    return RedirectResponse('/', status_code=302)
+    request.state.session['current_project'] = project
+
+    return deployment_list(request, project)
 
 
 
-def show_log(request: Request, log: str, number_of_lines: int=100):
+def show_log(request: Request, log: str, number_of_lines: int=100, level: str='all', q: str=''):
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
 
@@ -197,32 +263,72 @@ def show_log(request: Request, log: str, number_of_lines: int=100):
     if log not in os.listdir('log/'):
         raise errors.Not_Found_Error(f"Log {log} not found")
 
-    data = []
-    file = files.readFile(f"log/{log}").splitlines()
-    data = file[-number_of_lines:]
-    logging.debug(f"reverse data")
-    data = list(reversed(data))
+    if number_of_lines not in admin_view.LOG_LINES:
+        number_of_lines = admin_view.LOG_LINES[0]
+    if level not in admin_view.LOG_LEVELS:
+        level = 'all'
 
-    logging.debug("Send response")
-    return http_functions.get_html_response(request, 'admin/log.html', sidebar=get_sidebar_data(request), logfile=log, content=data, number_of_lines=number_of_lines)
+    lines = files.readFile(f"log/{log}").splitlines()[-number_of_lines:]
+
+    return http_functions.get_html_response(request, 'admin/log.html', sidebar=get_sidebar_data(request), logfile=log,
+                                            logs=sorted(os.listdir('log/')), lines=admin_view.get_log_lines(lines),
+                                            number_of_lines=number_of_lines, line_choices=admin_view.LOG_LINES,
+                                            level=level, levels=admin_view.LOG_LEVELS, search=q)
+
+
+
+def download_log(request: Request, log: str):
+    """The whole log file"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    if log not in os.listdir('log/'):
+        raise errors.Not_Found_Error(f"Log {log} not found")
+
+    # Read at once: the log grows (and may be rotated) while it would be sent piece by piece
+    with open(os.path.join('log', log), 'rb') as f:
+        content = f.read()
+
+    return Response(content=content, media_type='text/plain; charset=utf-8', headers={'Content-Disposition': f'attachment; filename="{log}"'})
+
+
+
+def get_next_url(request: Request) -> str:
+    """
+    The page to open after the login: `?next=` of /login, or the page the login was shown for.
+    Only paths of this web app: no other host (//host, /\\host), no scheme.
+    """
+
+    path = request.scope['path']
+    target = request.query_params.get('next', '/') if path == '/login' else path + (f"?{request.url.query}" if request.url.query else '')
+
+    if not target.startswith('/') or target.startswith('//') or '\\' in target or any(ord(c) < 32 for c in target) or target.startswith(('/login', '/logout')):
+        return '/'
+
+    return target
 
 
 
 async def login(request: Request):
     session = request.state.session
+    next_url = get_next_url(request)
+
     if session.get('is_logged_in', False):
-        return RedirectResponse("/", status_code=302)
-    return http_functions.get_html_response(request, 'login.html', sidebar=None, error_text=session.get('error_text', None))
+        # 303: the browser opens the page with GET, a reload doesn't send the form again
+        return RedirectResponse(next_url, status_code=303)
+
+    return http_functions.get_html_response(request, 'login.html', sidebar=None, error_text=session.get('error_text', None), next_url=next_url)
 
 
 
 def show_user(request: Request):
 
     session = request.state.session
-    user_keys=app_login.get_user_keys()
+    user_keys = app_login.get_user_keys()
     user_key = user_keys.get(session['current_user'], None)
 
-    return http_functions.get_html_response(request, 'admin/user.html', sidebar=get_sidebar_data(request), user_key=user_key)
+    return http_functions.get_html_response(request, 'admin/user.html', sidebar=get_sidebar_data(request), user_key=user_key,
+                                            account=admin_view.get_account(session.get('current_user')))
 
 
 
@@ -258,45 +364,32 @@ def show_workflows(request: Request):
     logging.debug('Call workflows')
 
     wf = get_readable_workflows()
-    wf_json = json.dumps(wf, default=str, indent=4)
     invalid_files = workflow.Workflow.get_invalid_workflow_files() if is_admin() else {}
+    startable = get_startable_workflows()
 
-    logging.debug("Send response")
-    return http_functions.get_html_response(request, 'admin/workflows.html', sidebar=get_sidebar_data(request), workflows=wf, workflow_json=wf_json, projects=list(dict.fromkeys(w['default_project'] for w in wf)), invalid_files=invalid_files)
+    return http_functions.get_html_response(request, 'admin/workflows.html', sidebar=get_sidebar_data(request),
+                                            cards=admin_view.get_workflow_cards(wf, [w['name'] for w in startable]),
+                                            invalid_files=invalid_files, startable=startable)
 
-
-
-# Newest jobs of the processing service which are listed in the settings
-SETTINGS_NUMBER_OF_JOBS = 30
 
 
 def show_settings(request: Request):
-
-    logging.debug('Call settings')
+    """Settings, general part (docs/features/web-ui-admin-pages.md#settings)"""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
 
-    keys=app_login.get_user_keys()
+    return http_functions.get_html_response(request, 'admin/settings.html', sidebar=get_sidebar_data(request),
+                                            general=admin_view.get_general(global_cfg.C_DEFAULT_PROJECT, app_login.get_user_keys()))
 
-    logging.debug("Send response")
-    return http_functions.get_html_response(request, 'admin/settings.html',
-        sidebar=get_sidebar_data(request),
-        permission_actions=permissions.PermissionAction,
-        allowed_users=permission_config.PermissionKonfig.get_user_list(),
-        user_permissions=permission_config.PermissionKonfig.user_permissions,
-        role_permissions=permission_config.PermissionKonfig.role_permissions,
-        default_project=global_cfg.C_DEFAULT_PROJECT,
-        workflows=workflow.Workflow.get_all_workflows_json(),
-        port='????',
-        path=Path(os.path.dirname(__file__)),
-        keys=keys,
-        processing_mode=processing_settings.get_processing_mode(),
-        processing_mode_source=processing_settings.get_processing_mode_source(),
-        processing_service_running=processing_service.notify(),
-        service_auto_start=processing_settings.get_service_auto_start(),
-        service_auto_start_paused=processing_settings.is_service_auto_start_paused(),
-        processing_jobs=[job.get_dict() for job in reversed(processing_job_data.get_jobs(limit=SETTINGS_NUMBER_OF_JOBS))]
-        )
+
+
+def show_processing(request: Request):
+    """Settings, processing of stages: mode, processing service, jobs"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    return http_functions.get_html_response(request, 'admin/processing.html', sidebar=get_sidebar_data(request),
+                                            processing=admin_view.get_processing())
 
 
 
@@ -314,16 +407,28 @@ def show_details_by_id(request: Request, meta_file_id: int):
     mf: meta_file.Meta_File = get_deployment(meta_file_id)
     permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
 
-    flow = flowchart.get_flowchar_html(request, mf)
-    mf_dict = mf.get_all_data_as_dict()
+    page = deployment_view.get_page(mf)
 
-    mf_json = json.dumps(mf_dict, default=str, indent=4)
-    progress = (len(mf.workflow.stages) - len(mf.get_open_stages())) / len(mf.workflow.stages)
-    progress = progress * 100
-    editable_custom_fields = mf.get_editable_custom_fields()
-    can_edit_custom_data = len(editable_custom_fields) > 0 and permission_config.is_user_allowed(current_user.get_user(), permissions.PermissionAction.EDIT_CUSTOM_DATA, mf.workflow.name)
+    # For the script of the page: no values inside JavaScript (docs/features/web-ui-scripts.md#rules)
+    can_edit = any(a['name'] == 'edit-custom-data' and a['allowed'] for a in page['actions'])
+    page_data = {
+        'meta_file_id': mf.id,
+        'selected_stage_id': page['selected_stage_id'],
+        'editable_fields': page['editable_fields'] if can_edit else [],
+    }
 
-    return http_functions.get_html_response(request, 'overview/show-deployment.html', sidebar=get_sidebar_data(request), progress=progress, deployment_json=mf_json, deployment_dict=mf_dict, error='', flow_html=flow['html'], flow_javascript=flow['java_script'], editable_custom_fields=editable_custom_fields, can_edit_custom_data=can_edit_custom_data, objects_table=get_objects_table(mf))
+    return http_functions.get_html_response(request, 'overview/show-deployment.html', sidebar=get_sidebar_data(request),
+                                            deployment_dict=mf.get_all_data_as_dict(), page=page, page_data=page_data, objects_table=get_objects_table(mf))
+
+
+
+def show_stage_steps(request: Request, meta_file_id: int, stage_id: int):
+    """The panel of the steps of a stage, a part of the deployment page"""
+
+    mf: meta_file.Meta_File = get_deployment(meta_file_id)
+    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
+
+    return http_functions.get_html_response(request, 'overview/deployment/stage-steps.html', steps=deployment_view.get_steps_view(mf, get_stage(mf, stage_id)))
 
 
 
@@ -726,6 +831,7 @@ def get_objects_table(mf: meta_file.Meta_File) -> dict:
             'attribute': obj.attribute,
             'source_only': 'yes' if obj.source_only else 'no',
             'status': obj.deploy_status.value,
+            'status_view': get_status_view(obj.deploy_status).__dict__,
             'can_change': can_change and obj.deploy_status != Obj_Status.FINISHED,
         })
 
@@ -734,15 +840,23 @@ def get_objects_table(mf: meta_file.Meta_File) -> dict:
 
 
 
+def get_deployment_objects(request: Request, meta_file_id: int):
+    """The rows of the objects table of the deployment page"""
+
+    mf: meta_file.Meta_File = get_deployment(meta_file_id)
+    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
+
+    return http_functions.get_json_response(get_objects_table(mf))
+
+
+
 def get_stage_steps_html(request: Request, meta_file_id: int, stage_id: int):
+    """Deprecated, until the next major version: GET /show_details/{meta_file_id}/stage/{stage_id} returns the same part of the page"""
 
     logging.debug(f"Get html for stage steps: {stage_id}, {meta_file_id=}")
 
-    mf_obj: meta_file.Meta_File = get_deployment(meta_file_id)
-    permission_config.check_user_permission(permissions.PermissionAction.READ, mf_obj.workflow.name)
-
-    html = flowchart.generate_stage_steps_html(request, mf_obj, get_stage(mf_obj, stage_id))
-    return http_functions.get_json_response({'html': html}, status=200)
+    response = show_stage_steps(request, meta_file_id, stage_id)
+    return http_functions.get_json_response({'html': response.body.decode()}, status=200)
 
 
 
@@ -835,36 +949,69 @@ def get_projects(request: Request):
 
 
 
-def add_permission(request: Request, data: dict = Body(...)):
-    type: str = data['type']
-    name: str = data['name']
-    roles: List[str] = data.get('roles', [])
-    general: List[str] = data['general']
-
-    logging.debug(f"Add permission of type {type} with name {name} for roles {roles}, {general=}")
-
-    permission_execution = {
-        'user': permission_config.PermissionKonfig.add_user_permission,
-        'role': permission_config.PermissionKonfig.add_role_permission
-    }
+def show_permissions(request: Request):
+    """The permissions page (docs/features/web-ui-permissions-page.md)"""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
 
-    if type not in permission_execution:
+    return http_functions.get_html_response(request, 'admin/permissions.html', sidebar=get_sidebar_data(request),
+                                            state=permission_config.get_state(), current=(current_user.get_user() or '').lower())
+
+
+
+def get_permissions(request: Request):
+    """Users, roles, their permissions and the version of the permissions, for a change with `version`"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    return http_functions.get_json_response(permission_config.get_state())
+
+
+
+def add_permission(request: Request, data: dict = Body(...)):
+    """Adds a user or a role. With `version`: only if the permissions haven't changed since (409 otherwise)."""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    type = data.get('type')
+    general = data.get('general', [])
+    roles: List[str] = data.get('roles', [])
+
+    if type not in ('user', 'role'):
         raise errors.Invalid_Input_Error(f"Unknown permission type '{type}'")
+    if not isinstance(general, list):
+        raise errors.Invalid_Input_Error("'general' has to be a list")
 
     try:
         general_actions = [permissions.PermissionAction(action) for action in general]
     except ValueError as e:
         raise errors.Invalid_Input_Error(str(e))
 
-    permission_execution[type](name=name, general=general_actions)
+    logging.debug(f"Add permission of type {type} with name {data.get('name')} for roles {roles}, {general=}")
 
-    return http_functions.get_json_response({"status": "success"})
+    with permission_config.CHANGE_LOCK:
+        permission_config.PermissionKonfig.check_reload(force=True)
+        permission_config.check_version(data.get('version'))
+
+        if type == 'user':
+            name = permission_config.check_name(data.get('name'), list(permission_config.PermissionKonfig.user_permissions), 'user')
+            permission_config.PermissionKonfig.add_user_permission(name=name, general=general_actions)
+        else:
+            name = permission_config.check_name(data.get('name'), list(permission_config.PermissionKonfig.role_permissions), 'role')
+            permission_config.PermissionKonfig.add_role_permission(name=name, general=general_actions)
+
+        version = permission_config.get_version()
+
+    return http_functions.get_json_response({"status": "success", "name": name.lower(), "version": version})
 
 
 
 def save_permissions(request: Request, data: dict = Body(...)):
+    """
+    Changes users and roles. Users and roles which are not sent stay unchanged; deleted only with `deleted_users` / `deleted_roles`.
+    With `version`: only if the permissions haven't changed since (409 otherwise). Nothing is changed if afterwards
+    no user would have `admin` (409).
+    """
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
 
@@ -874,35 +1021,67 @@ def save_permissions(request: Request, data: dict = Body(...)):
     role_permissions = data.get('role_permissions', {})
     deleted_users = data.get('deleted_users', [])
     deleted_roles = data.get('deleted_roles', [])
+    version = data.get('version')
 
     if not all(isinstance(value, dict) for value in [user_permissions, role_permissions]) or not all(isinstance(value, list) for value in [deleted_users, deleted_roles]):
         raise errors.Invalid_Input_Error("user_permissions and role_permissions have to be objects, deleted_users and deleted_roles lists")
+    if version is not None and not isinstance(version, str):
+        raise errors.Invalid_Input_Error("'version' has to be a string")
 
-    permission_config.PermissionKonfig.check_reload()
+    with permission_config.CHANGE_LOCK:
+        konfig = permission_config.PermissionKonfig
+        konfig.check_reload(force=True)
+        permission_config.check_version(version)
 
-    unknown_users = user_permissions.keys() - permission_config.PermissionKonfig.user_permissions.keys()
-    unknown_roles = role_permissions.keys() - permission_config.PermissionKonfig.role_permissions.keys()
-    if unknown_users or unknown_roles:
-        raise errors.Invalid_Input_Error(f"Unknown users or roles: {', '.join(sorted(unknown_users | unknown_roles))}")
+        # Changed on copies: nothing changes if a check fails
+        users = copy.deepcopy(konfig.user_permissions)
+        roles = copy.deepcopy(konfig.role_permissions)
 
-    for user in deleted_users:
-        user_permissions.pop(user, None)
-        permission_config.PermissionKonfig.user_permissions.pop(user, None)
+        unknown_users = user_permissions.keys() - users.keys()
+        unknown_roles = role_permissions.keys() - roles.keys()
+        if unknown_users or unknown_roles:
+            raise errors.Invalid_Input_Error(f"Unknown users or roles: {', '.join(sorted(unknown_users | unknown_roles))}")
 
-    permission_config.PermissionKonfig.convert_permissions('user', user_permissions)
-    for user, perm in user_permissions.items():
-        permission_config.PermissionKonfig.user_permissions[user].permissions.general = perm.permissions.general
-        permission_config.PermissionKonfig.user_permissions[user].permissions.workflows = perm.permissions.workflows
-        permission_config.PermissionKonfig.user_permissions[user].roles = perm.roles
+        for user in deleted_users:
+            user_permissions.pop(user, None)
+            users.pop(user, None)
 
-    for role in deleted_roles:
-        role_permissions.pop(role, None)
-        permission_config.PermissionKonfig.role_permissions.pop(role, None)
+        for role in deleted_roles:
+            role_permissions.pop(role, None)
+            roles.pop(role, None)
+            for user in users.values():
+                user.roles = [r for r in user.roles if r != role]
 
-    permission_config.PermissionKonfig.convert_permissions('role', role_permissions)
-    for role, perm in role_permissions.items():
-        permission_config.PermissionKonfig.role_permissions[role].permissions.general = perm.permissions.general
+        try:
+            sent_infos = {user: (value or {}).get('detailed_infos') for user, value in user_permissions.items()}
+            konfig.convert_permissions('user', user_permissions)
+            konfig.convert_permissions('role', role_permissions)
+        except (ValueError, AttributeError, TypeError) as e:
+            raise errors.Invalid_Input_Error(f"Invalid permissions: {e}")
 
-    permission_config.PermissionKonfig.save_permissions()
+        for user, perm in user_permissions.items():
+            users[user].permissions.general = perm.permissions.general
+            users[user].permissions.workflows = perm.permissions.workflows
+            users[user].roles = perm.roles
+            if sent_infos.get(user) is not None:
+                users[user].detailed_infos.description = perm.detailed_infos.description
+                users[user].detailed_infos.mail = perm.detailed_infos.mail
 
-    return http_functions.get_json_response({"status": "success"})
+        for role, perm in role_permissions.items():
+            roles[role].permissions.general = perm.permissions.general
+            roles[role].permissions.workflows = perm.permissions.workflows
+
+        missing_roles = sorted({role for user in users.values() for role in user.roles if role not in roles})
+        if missing_roles:
+            raise errors.Invalid_Input_Error(f"Unknown roles: {', '.join(missing_roles)}")
+
+        if not permission_config.has_admin(users, roles):
+            raise errors.Conflict_Error("After this change no user would have the permission admin")
+
+        konfig.user_permissions = users
+        konfig.role_permissions = roles
+        konfig.allowed_users = list(users.keys())
+        konfig.save_permissions()
+        new_version = permission_config.get_version()
+
+    return http_functions.get_json_response({"status": "success", "version": new_version})

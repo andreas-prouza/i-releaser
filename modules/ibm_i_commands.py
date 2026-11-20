@@ -16,7 +16,7 @@ from modules import stages as s
 from modules import action_type
 from modules.cmd_status import Status as Cmd_Status
 
-from modules.db import processing_user_data, run_history_data
+from modules.db import actions_data, processing_user_data, run_history_data
 from modules.permission_config import check_user_permission
 from scripts import *
 
@@ -125,6 +125,11 @@ class IBM_i_commands:
 
     if continue_run and (action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and not action.check_error)):
       return
+
+    # Shown as running while it runs (docs/bugfixes/running-step-status-not-stored.md).
+    # A step which stays `in process` after a crash is run again with `Continue`, like a new one.
+    action.status = Cmd_Status.IN_PROCESS
+    actions_data.save_action_status(action)
 
     start_time = time.perf_counter()
     execute_time = start_time

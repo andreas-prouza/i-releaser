@@ -1,6 +1,6 @@
 # Lists: deployments, objects, start of a workflow
 
-- **Status:** draft
+- **Status:** finished (2026-11-20; tested with `tests/test_lists.py`, `tests/test_web_browser_lists.py` and in headless Chrome, not on IBM i)
 - **Type:** improvement
 - **Priority:** P2
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 6
@@ -67,17 +67,26 @@ Version   Status       Workflow        Stage             Created              La
 
 ## Acceptance criteria
 
-- [ ] Test: `/project/test` shows the deployments of `test` without a redirect; `/` afterwards shows `test` too; an unknown project → the default project, as today.
-- [ ] Test: users only see projects and deployments of workflows they may read (existing tests still pass).
-- [ ] Test: the column `Stage` for a failed, a running, a queued, a ready, a finished and a canceled deployment; with parallel stages the first one.
-- [ ] Test: the number of open deployments per project.
-- [ ] Test: the list has no column name of the database and no `None`.
-- [ ] Test `deploy_objects`: search, filter by project and type, sort, offset and limit, the total number; an object which is not among the newest 1,000 is found; only objects of readable workflows.
-- [ ] Test: the history of an object with `'` and `<` in its name is shown as text; `403` / empty without `read`.
-- [ ] Test: `Start workflow` is only in the page of users with `start workflow` for a workflow of the project.
-- [ ] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)): filter and sort the deployments; open a deployment by its row; page through the objects and search; start a workflow with a field of `create_fields`, and the new deployment has the value in its custom data.
-- [ ] Measurement: the deployment list of a project with 2,000 deployments, before and after (time of the response, size of the page). Numbers in this file.
-- [ ] Docs: [webapi.md](../webapi.md) (`deploy_objects`), screenshots of [README.md](../../README.md).
+- [x] Test: `/project/test` shows the deployments of `test` without a redirect; `/` afterwards shows `test` too; an unknown project → the default project, as today.
+- [x] Test: users only see projects and deployments of workflows they may read (existing tests still pass).
+- [x] Test: the column `Stage` for a failed, a running, a queued, a ready, a finished and a canceled deployment; with parallel stages the first one.
+- [x] Test: the number of open deployments per project.
+- [x] Test: the list has no column name of the database and no `None`.
+- [x] Test `deploy_objects`: search, filter by project and type, sort, offset and limit, the total number; an object which is not among the newest 1,000 is found; only objects of readable workflows.
+- [x] Test: the history of an object with `'` and `<` in its name is shown as text; `403` / empty without `read`.
+- [x] Test: `Start workflow` is only in the page of users with `start workflow` for a workflow of the project.
+- [x] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)): filter and sort the deployments; open a deployment by its row; page through the objects and search; start a workflow with a field of `create_fields`, and the new deployment has the value in its custom data.
+- [x] Measurement: the deployment list of a project with 2,000 deployments, before and after (time of the response, size of the page). Numbers in this file: 2,000 deployments, median of 10, 2026-11-20: before 28 ms and 2,044 KB, after 31 ms and 610 KB (the rows as data; two more queries for `Stage` and the numbers of the tabs).
+- [x] Docs: [webapi.md](../webapi.md) (`deploy_objects`), screenshots of [README.md](../../README.md) (renewed at the end of the [modernization](web-ui-modernization.md)).
+
+
+## Implementation (2026-11-20)
+
+* Server: `modules/db/deployment_list_data.py` (open deployments per project, the stage of each deployment of a list, objects page by page, history of an object); routes `deployment_list`, `select_project` (no redirect any more), `get_deploy_objects`, `object_history`, `get_startable_workflows`.
+* Deployment list: the rows are a JSON block, bootstrap-table with `escape`; `Open | All` with `filterBy`. A click on the row opens the deployment (not while text is selected).
+* `Stage`: failed, else running (`in process`, preparation), else waiting for the processing service, else ready; the first stage (by id) of these. `–` for finished and canceled deployments.
+* Objects: bootstrap-table with server-side paging through `app/api.js` (errors and an ended session as on the other pages). The selects of the filters get their values from the server (`project`, `type`, `attribute`). `%` and `_` in a search are characters. The old query of the newest 1,000 objects (`deploy_object_data.get_deploy_object_list`, which built SQL from the names of its filters) is removed.
+* Start of a workflow: `pages/start-workflow.js`, used by the deployment list and the page `Workflows` (which shows `Start` only with the permission now). A field of `create_fields` with a position in a list (`$.a[0]`) can't be entered and is left out; empty fields are not sent.
 
 
 ## Non-goals
@@ -88,9 +97,14 @@ Version   Status       Workflow        Stage             Created              La
 * Custom data as columns of the list (it differs per workflow)
 
 
+## Decisions (2026-11-19)
+
+1. Start of a workflow in the web app: kept, with the dialog and one input field per path of `create_fields`.
+2. Projects as tabs above the list.
+3. The biggest project has fewer than 2,000 deployments: the deployment list is loaded at once (sorting, filters and paging in the browser). The objects are loaded page by page from the server, as described.
+4. The column `Stage` is wanted.
+
+
 ## Open questions
 
-1. Start of a workflow in the web app: is it used, or are deployments always created by the OBI extension or the Web API (with commit and object list)? Proposal: keep `Start`, with the dialog as confirmation. Are the input fields for `create_fields` wanted?
-2. Projects as tabs above the list (**recommended**), or one list of all projects with a filter?
-3. How many deployments per project and how many different objects exist in your installation? With many thousands of deployments the list should load its rows page by page too (as the objects).
-4. Is the column `Stage` wanted?
+None.

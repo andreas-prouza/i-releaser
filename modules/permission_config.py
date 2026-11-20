@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from typing import Dict, List
 from fastapi import Request
@@ -84,17 +85,24 @@ def is_permission_allowed(current_permission: permissions.Permissions, action : 
   if action in current_permission.general:
     return True
 
-  if workflow is not None and workflow in current_permission.workflows:
-    current_wf: dict = current_permission.workflows[workflow]
+  if workflow is None:
+    return False
 
-    if permissions.PermissionAction(action) in current_wf['general']:
+  # Names of workflows and stages are compared without case: the permissions page saves them as they are
+  # written in the workflow (e.g. `PROD`), docs/permissions.md writes them in lower case (docs/bugfixes/stage-permissions-case.md)
+  workflows = {name.lower(): value for name, value in current_permission.workflows.items()}
+  current_wf: dict|None = workflows.get(workflow.lower())
+
+  if current_wf is None:
+    return False
+
+  if permissions.PermissionAction(action) in current_wf['general']:
+    return True
+
+  if stage is not None:
+    stages = {name.lower(): value for name, value in current_wf['stages'].items()}
+    if permissions.PermissionAction(action) in stages.get(stage.lower(), []):
       return True
-
-    if stage is not None and stage.lower() in current_wf['stages']:
-      current_stage = current_wf['stages'][stage.lower()]
-
-      if permissions.PermissionAction(action) in current_stage:
-        return True
 
   return False
 
@@ -182,11 +190,12 @@ class PermissionKonfig:
 
 
   @staticmethod
-  def check_reload():
-    
+  def check_reload(force: bool=False):
+    """force: read the file now, not only every few seconds (before a change)"""
+
     current_time = time.time()
 
-    if current_time - PermissionKonfig.__last_loaded > PermissionKonfig.__reload_interval:
+    if force or current_time - PermissionKonfig.__last_loaded > PermissionKonfig.__reload_interval:
 
       file_hash = files.get_file_hash(constants.C_USER_PERMISSIONS)
 
@@ -279,3 +288,182 @@ class PermissionKonfig:
         )
 
       user_permissions[user] = new_permi
+
+
+
+#-----------------------------------------------------------------------------------------------
+# Permissions page (docs/features/web-ui-permissions-page.md)
+#-----------------------------------------------------------------------------------------------
+
+Action = permissions.PermissionAction
+
+# Which permission is checked on which level (docs/permissions.md#permissions-1): the page offers only these
+# In the order of the columns: the permissions which are not checked yet at the end
+ORDER = [Action.ADMIN, Action.READ, Action.START_WORKFLOW, Action.RUN_WORKFLOW, Action.CHANGE_CHECK_ERROR, Action.CANCEL_WORKFLOW,
+         Action.EDIT_CUSTOM_DATA, Action.DEPLOY, Action.FOUR_EYES_CHECK]
+
+LEVEL_ACTIONS = {
+  'general': [a.value for a in ORDER],
+  'workflow': [a.value for a in ORDER if a != Action.ADMIN],
+  'stage': [Action.RUN_WORKFLOW.value, Action.CHANGE_CHECK_ERROR.value],
+}
+NOT_CHECKED = [Action.DEPLOY.value, Action.FOUR_EYES_CHECK.value]
+
+MAX_NAME_LENGTH = 64
+
+# A version check and the change it allows happen together
+CHANGE_LOCK = threading.Lock()
+
+
+
+def get_version() -> str:
+  """Changes with every change of the file of the permissions (also an edit by hand)"""
+  try:
+    return files.get_file_hash(constants.C_USER_PERMISSIONS) or ''
+  except OSError:
+    return ''
+
+
+
+def check_version(version: str|None) -> None:
+  """
+  Raises:
+      errors.Conflict_Error: The permissions have been changed since the page read them
+  """
+  if version is not None and version != get_version():
+    raise errors.Conflict_Error("The permissions have been changed meanwhile (in another session or in the file). Load the current state and try again.")
+
+
+
+def check_name(name, existing: list[str], what: str) -> str:
+  """
+  A new user or role: not empty, no control characters, at most MAX_NAME_LENGTH characters, unique (without case).
+
+  Raises:
+      errors.Invalid_Input_Error
+  """
+
+  if not isinstance(name, str) or name.strip() == '':
+    raise errors.Invalid_Input_Error(f"The name of the {what} is empty")
+  if any(ord(c) < 32 or ord(c) == 127 for c in name):
+    raise errors.Invalid_Input_Error(f"The name of the {what} contains control characters")
+  if len(name) > MAX_NAME_LENGTH:
+    raise errors.Invalid_Input_Error(f"The name of the {what} is longer than {MAX_NAME_LENGTH} characters")
+  if name.strip().lower() in [e.lower() for e in existing]:
+    raise errors.Conflict_Error(f"The {what} {name} exists already")
+
+  return name.strip()
+
+
+
+def has_admin(users: dict, roles: dict) -> bool:
+  """At least one user has `admin`, own or from a role"""
+
+  for user in users.values():
+    if Action.ADMIN in user.permissions.general:
+      return True
+    for role in user.roles:
+      role_obj = roles.get(role) or roles.get(str(role).lower())
+      if role_obj is not None and Action.ADMIN in role_obj.permissions.general:
+        return True
+  return False
+
+
+
+def _values(actions) -> list[str]:
+  return [a.value if isinstance(a, Action) else str(a) for a in actions or []]
+
+
+
+def _lower_keys(data: dict) -> dict:
+  return {str(k).lower(): v for k, v in (data or {}).items()}
+
+
+
+def get_effective(own: permissions.Permissions, roles: list[tuple[str, permissions.Permissions]]) -> dict:
+  """
+  For each row of the table of a user or role (General, its workflows and their stages, also those which only come
+  from roles): the permissions it has from somewhere else, and where from.
+
+  Returns:
+      {'general': {action: [source]}, 'workflows': {workflow: {'general': {...}, 'stages': {stage: {...}}}}}
+  """
+
+  def add(target: dict, actions, source: str):
+    for action in _values(actions):
+      target.setdefault(action, [])
+      if source not in target[action]:
+        target[action].append(source)
+
+  result = {'general': {}, 'workflows': {}}
+  for role, perm in roles:
+    add(result['general'], perm.general, f"role {role}")
+
+  # Rows: own workflows and stages, and those of the roles
+  rows = {}
+  for workflows in [own.workflows] + [perm.workflows for _, perm in roles]:
+    for wf, wf_perm in (workflows or {}).items():
+      stages = rows.setdefault(wf.lower(), {'name': wf, 'stages': {}})['stages']
+      for stage in (wf_perm or {}).get('stages', {}) or {}:
+        stages.setdefault(stage.lower(), stage)
+
+  for key, row in rows.items():
+    wf_result = result['workflows'].setdefault(row['name'], {'general': {}, 'stages': {}})
+    add(wf_result['general'], own.general, 'General')
+    own_wf = _lower_keys(own.workflows).get(key) or {}
+
+    for role, perm in roles:
+      add(wf_result['general'], perm.general, f"role {role}")
+      add(wf_result['general'], (_lower_keys(perm.workflows).get(key) or {}).get('general', []), f"role {role}")
+
+    for stage_key, stage in row['stages'].items():
+      stage_result = wf_result['stages'].setdefault(stage, {})
+      add(stage_result, own.general, 'General')
+      add(stage_result, own_wf.get('general', []), f"workflow {row['name']}")
+      for role, perm in roles:
+        role_wf = _lower_keys(perm.workflows).get(key) or {}
+        add(stage_result, perm.general, f"role {role}")
+        add(stage_result, role_wf.get('general', []), f"role {role}")
+        add(stage_result, _lower_keys(role_wf.get('stages', {})).get(stage_key, []), f"role {role}")
+
+  return result
+
+
+
+def _as_data(perm: permissions.Permissions) -> dict:
+  return {
+    'general': _values(perm.general),
+    'workflows': {wf: {'general': _values((wf_perm or {}).get('general', [])),
+                       'stages': {stage: _values(actions) for stage, actions in ((wf_perm or {}).get('stages', {}) or {}).items()}}
+                  for wf, wf_perm in (perm.workflows or {}).items()},
+  }
+
+
+
+def get_state() -> dict:
+  """Everything the permissions page shows, with the version it has to send with a change"""
+
+  PermissionKonfig.check_reload()
+  users = PermissionKonfig.user_permissions
+  roles = PermissionKonfig.role_permissions
+
+  from modules import workflow
+  workflows = [{'name': wf['name'], 'stages': [stage['name'] for stage in wf.get('stages', [])]} for wf in workflow.Workflow.get_all_workflows_json()]
+
+  return {
+    'version': get_version(),
+    'levels': LEVEL_ACTIONS,
+    'not_checked': NOT_CHECKED,
+    'workflows': workflows,
+    'users': {name: {
+                'roles': list(user.roles),
+                'permissions': _as_data(user.permissions),
+                'detailed_infos': {'description': user.detailed_infos.description or '', 'mail': user.detailed_infos.mail or ''},
+                'effective': get_effective(user.permissions, [(r, roles[r].permissions) for r in user.roles if r in roles]),
+              } for name, user in sorted(users.items())},
+    'roles': {name: {
+                'permissions': _as_data(role.permissions),
+                'users': sorted(u for u, user in users.items() if name in user.roles),
+                'effective': get_effective(role.permissions, []),
+              } for name, role in sorted(roles.items())},
+  }

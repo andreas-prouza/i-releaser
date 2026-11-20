@@ -4,30 +4,13 @@
 //
 // A script file instead of JavaScript in the template: the Content-Security-Policy of the web app
 // blocks inline scripts and onclick attributes (docs/features/web-ui-security-headers.md).
-// It only uses what every page of the web app has: Swal (SweetAlert2) and fetch.
+// It uses the helpers of the web app (docs/scripts.md#scripts-of-custom-templates):
+//   post_json       POST with JSON; throws the message of the server if it answers with an error
+//   confirm_action  one dialog, which waits for the server and shows its error
 //
 // The workflow is started with POST. With a login session (cookie) the web app rejects actions with GET (405).
-
-
-async function start_rollback(project, version) {
-
-    const response = await fetch('/api/start_workflow/rollback_deployment', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        // Custom data of the new deployment
-        body: JSON.stringify({project: project, version: version}),
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-        throw new Error(data.message || `The server answered with status ${response.status}`);
-    }
-
-    return data;
-}
-
+import { post_json } from '../assets/js/app/api.js';
+import { confirm_action } from '../assets/js/app/dialogs.js';
 
 
 document.addEventListener('click', async (event) => {
@@ -37,29 +20,21 @@ document.addEventListener('click', async (event) => {
         return;
     }
 
-    const project = button.dataset.project;
-    const version = button.dataset.version;
+    const {project, version} = button.dataset;
 
-    const result = await Swal.fire({
-        icon: 'warning',
+    const data = await confirm_action({
         title: 'Roll back this deployment?',
         // text, not html: the values are shown as text
         text: `Starts the workflow rollback_deployment for ${project}, version ${version}.`,
-        showCancelButton: true,
-        confirmButtonText: 'Roll back',
-        cancelButtonText: 'Keep it',
-        reverseButtons: true,
-        showLoaderOnConfirm: true,
-        allowOutsideClick: () => !Swal.isLoading(),
-        // The dialog stays open until the server has answered, and shows its error
-        preConfirm: () => start_rollback(project, version).catch((error) => {
-            Swal.showValidationMessage(error.message);
-            return false;
-        }),
+        confirm: 'Roll back',
+        cancel: 'Keep it',
+        danger: true,
+        // Custom data of the new deployment
+        action: () => post_json('/api/start_workflow/rollback_deployment', {project, version}),
     });
 
-    if (result.isConfirmed) {
+    if (data) {
         // The new deployment of the rollback workflow
-        location.href = `/show_details/${encodeURIComponent(result.value.meta_file.general.id)}`;
+        location.href = `/show_details/${encodeURIComponent(data.meta_file.general.id)}`;
     }
 });

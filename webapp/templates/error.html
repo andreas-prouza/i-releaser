@@ -1,16 +1,24 @@
 {% extends 'base.html' %}
 
-{% block title %}
-Error
-{% endblock %}
+{#- Context: error (message), status_code, status_text, error_id (only for unexpected errors) -#}
+
+{% block title %}{{ status_text or 'Error' }}{% endblock %}
 
 {% block content %}
 
-<div class="alert alert-danger" role="alert">
-    <h5><i class="bi bi-slash-circle"></i> Error</h5>
-    {{ error }}
-</div>
+<div class="ir-error">
+    <p class="ir-error-code">Error {{ status_code or '' }}</p>
+    <h1>{{ status_text or 'Error' }}</h1>
 
-<a class="btn btn-secondary" href="/">Back to overview</a>
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-octagon" aria-hidden="true"></i> {{ error }}
+    </div>
+
+    {% if error_id %}
+    <p class="text-body-secondary">The details are in the log of the web app, under the error id <code>{{ error_id }}</code>.</p>
+    {% endif %}
+
+    <a class="btn btn-outline-secondary" href="/"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to the deployments</a>
+</div>
 
 {% endblock %}

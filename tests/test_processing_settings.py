@@ -51,19 +51,17 @@ def test_settings_page_shows_the_mode_and_its_source(server):
 
     boss = server.client('boss')
 
-    status, _, text = boss.get('/settings', headers={'Accept': 'text/html'})
+    status, _, text = boss.get('/settings/processing', headers={'Accept': 'text/html'})
     assert status == 200
     assert '<option value="thread" selected>' in text
     assert 'from default' in text
 
-    # The active tab (General) is the one shown
-    assert '<button type="button" class="tablinks active" onclick="openTab(event, \'General\')">' in text
-    assert '<div id="General" class="tab-content" style="display: block;">' in text
-    assert '<div id="Permission" class="tab-content" style="display: none;">' in text
+    # A page of its own (docs/features/web-ui-admin-pages.md#settings)
+    assert '<a class="nav-link active" href="/settings/processing" aria-current="page">Processing</a>' in text
 
     boss.post_json('/api/set_processing_mode/service')
 
-    _, _, text = boss.get('/settings', headers={'Accept': 'text/html'})
+    _, _, text = boss.get('/settings/processing', headers={'Accept': 'text/html'})
     assert '<option value="service" selected>' in text
     assert 'from web app' in text
 
@@ -73,7 +71,7 @@ def test_mode_from_the_settings_file():
 
     server = Web_Server(settings="C_PROCESSING_MODE = 'service'\n").start()
     try:
-        _, _, text = server.client('boss').get('/settings', headers={'Accept': 'text/html'})
+        _, _, text = server.client('boss').get('/settings/processing', headers={'Accept': 'text/html'})
         assert '<option value="service" selected>' in text
         assert 'from etc/settings.py' in text
     finally:
@@ -159,7 +157,7 @@ def test_settings_page_without_settings_file():
     os.remove(os.path.join(server.directory, 'etc', 'settings.py'))
     server.start()
     try:
-        status, _, text = server.client('boss').get('/settings', headers={'Accept': 'text/html'})
+        status, _, text = server.client('boss').get('/settings/processing', headers={'Accept': 'text/html'})
         assert status == 200, text
         assert 'from default' in text
     finally:

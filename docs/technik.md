@@ -12,7 +12,7 @@
 ```
 
 * Tests are in `tests/` and don't need an IBM i. Tests which do are marked with `@pytest.mark.ibmi` and not run by default.
-* Browser tests (`@pytest.mark.browser`, `tests/test_web_browser.py`) open the web app in Chromium with Playwright. They run with every `pytest` where Playwright and its browser are installed (`.venv/bin/python -m playwright install chromium`, once, about 150 MB outside the repository) and are skipped otherwise, e.g. on IBM i. Only them: `.venv/bin/pytest -m browser`.
+* Browser tests (`@pytest.mark.browser`, `tests/test_web_browser.py`, `tests/test_web_browser_deployment.py`; fixtures in `tests/conftest.py`) open the web app in Chromium with Playwright. They run with every `pytest` where Playwright and its browser are installed (`.venv/bin/python -m playwright install chromium`, once, about 150 MB outside the repository) and are skipped otherwise, e.g. on IBM i. Only them: `.venv/bin/pytest -m browser`.
   A browser test fails on a script error, an error in the console, a failed request and a request to another server (`Page_Watch` in `tests/browser_tools.py`).
 * The screenshots of `README.md` are made from test data: `.venv/bin/python tests/screenshots.py` writes `docs/img/*.png` (`--out <dir>` to compare first). It runs the web app with own workflows, deployments and the [rollback example](scripts.md#scripts-of-custom-templates), and replaces the directory of the test copy. A browser test checks that it makes every picture of `README.md`.
 * `tests/web_server.py` runs the real web app for a test: a copy of the repository in a temporary directory, with its own configuration and database.
@@ -79,6 +79,24 @@ Route handlers are plain functions (FastAPI runs them in threads), so blocking w
 For requests with a session cookie, `WebMiddleware.check_session_request` requires `POST` for actions and an `Origin` or `Referer` of the own host. API tokens aren't sent automatically by browsers, so requests with a token don't need this.
 No CSRF token: the header check needs no changes in the pages, and all current browsers send `Origin` with `POST`.
 
+### Content-Security-Policy
+
+Every HTML page is sent with
+
+```
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';
+    connect-src 'self'; media-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
+
+and every response with `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `X-Frame-Options: DENY` (`webmiddleware.CacheControlMiddleware`).
+
+* The browser runs only script files of the web app: no inline scripts, no `on...=` attributes, no `eval`. A value which gets into a page as HTML can't run as a script. The [rules](features/web-ui-scripts.md#rules) for templates and scripts are checked by `tests/test_web_scripts.py`, without exceptions.
+* `style-src 'unsafe-inline'`: SweetAlert2 and bootstrap-table set `style` attributes. Styles can't run code.
+* `/docs` starts Swagger UI with a script file (`swagger-init.js`), not with the inline script of FastAPI: no nonce is needed.
+* `C_CSP_REPORT_ONLY = True` in `etc/settings.py` sends the policy as `Content-Security-Policy-Report-Only`: violations are reported in the console of the browser, not blocked. For the time an installation moves its custom templates.
+* `Strict-Transport-Security` is set by the [reverse proxy](installation.md#reverse-proxy).
+* The browser tests run with the policy: a violation is an error in the console and fails the test. Playwright's `wait_for_function` uses `eval` and is blocked; the tests use `browser_tools.wait_until`.
+
 ### Files of the web pages
 
 No page loads anything from another server (`tests/test_web_pages.py`). Libraries are files in `webapp/static/assets/`.
@@ -88,7 +106,18 @@ To update Swagger UI: `npm pack swagger-ui-dist@<version>`, copy `swagger-ui-bun
 ### Values in web pages
 
 Values are never written into inline JavaScript (`onclick="f('{{ value }}')"`): the browser decodes `&#39;` before it runs the handler.
-Handlers read `data-*` attributes, scripts use `escape_html` (`web.deploy.js`) for HTML they build, Python uses `html.escape`. No `|safe` for data.
+Handlers read `data-*` attributes; scripts build HTML with the DOM (`textContent`), `escape_html` (`app/dom.js`) only where a library needs HTML text (bootstrap-table formatters). Python uses `html.escape`. No `|safe` for data.
+
+### Deployment page
+
+`web_modules/deployment_view.py` prepares all data of the page: actions with their permission (disabled with the reason), the attention bar, the selected stage, the steps of a stage grouped (parallel groups, folded runs of finished steps). `web_modules/stage_flow.py` computes the layout of the flow (columns, rows, connections as SVG paths). The templates (`overview/deployment/macros.html`) decide nothing.
+The steps of a stage are a part of the page (`GET /show_details/{id}/stage/{stage_id}`), loaded by `pages/deployment.js` when a stage is selected and when its state changes (auto refresh).
+
+### Scripts of the web pages
+
+Scripts are files: ES modules in `webapp/static/assets/js/` (`app/` the helpers, `pages/` one file per page), without a build step. Templates contain only `<script src>` and data blocks (`<script type="application/json">`), no `on...=` attributes ([rules](features/web-ui-scripts.md#rules)).
+`tests/test_web_scripts.py` checks the rules; templates which are not moved yet are listed in `LEGACY_TEMPLATES` and moved with their step of the [modernization](features/web-ui-modernization.md).
+`app/api.js` is the one `fetch` of the pages: errors of the server become exceptions with the server's message, `401` shows `Your session has ended`. It sends `X-Requested-With: fetch`, so the web app answers errors as JSON also for parts of pages (`WebMiddleware.wants_html`). `app/theme.js` is the only script in `<head>`: it sets the theme before the page is drawn.
 
 ### Placeholders
 

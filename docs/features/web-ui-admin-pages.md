@@ -1,6 +1,6 @@
 # Admin pages: settings, logs, workflows, user
 
-- **Status:** draft
+- **Status:** finished (2026-11-20; tested with `tests/test_admin_pages.py`, `tests/test_web_browser_admin.py` and in headless Chrome, not on IBM i)
 - **Type:** improvement
 - **Priority:** P3
 - **Source:** [Modernization of the web front end](web-ui-modernization.md), step 8
@@ -67,14 +67,24 @@
 
 ## Acceptance criteria
 
-- [ ] Test: `/settings`, `/settings/processing` and `/log/{file}` need `admin` (`403` otherwise), each has its title and active entry.
-- [ ] Test: the settings don't contain `????`; the jobs show the name of the stage and a duration.
-- [ ] Test: the log page with 1,000 lines has `1,000` selected; a level filter value in the URL is kept.
-- [ ] Test: the workflows page shows only readable workflows, `Start` only with `start workflow`, the invalid files only with `admin` (existing tests still pass).
-- [ ] Test: the user page lists the roles and the effective permissions.
-- [ ] Test: no page loads anything from another server.
-- [ ] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)): change the processing mode and start the service without a reload of the page; filter a log by level and text; generate a token, copy it, and use it for a request; delete it.
-- [ ] Docs: [processing-service.md](../processing-service.md), [permissions.md](../permissions.md#api-tokens), screenshots of [README.md](../../README.md).
+- [x] Test: `/settings`, `/settings/processing` and `/log/{file}` need `admin` (`403` otherwise), each has its title and active entry.
+- [x] Test: the settings don't contain `????`; the jobs show the name of the stage and a duration.
+- [x] Test: the log page with 1,000 lines has `1,000` selected; a level filter value in the URL is kept.
+- [x] Test: the workflows page shows only readable workflows, `Start` only with `start workflow`, the invalid files only with `admin` (existing tests still pass).
+- [x] Test: the user page lists the roles and the effective permissions.
+- [x] Test: no page loads anything from another server.
+- [x] Browser tests (or manual checks, see [browser tests](web-ui-browser-tests.md)): change the processing mode and start the service without a reload of the page; filter a log by level and text; generate a token, copy it, and use it for a request; delete it.
+- [x] Docs: [processing-service.md](../processing-service.md), [permissions.md](../permissions.md#api-tokens), screenshots of [README.md](../../README.md) (renewed at the end of the [modernization](web-ui-modernization.md)).
+
+
+## Implementation (2026-11-20)
+
+* `web_modules/admin_view.py` prepares the data of the pages; templates `admin/settings.html`, `admin/processing.html`, `admin/log.html`, `admin/workflows.html`, `admin/user.html`, the tabs `admin/settings-tabs.html` (General, Processing, Permissions). Scripts `pages/processing.js`, `pages/log.js`, `pages/user.js`, `pages/start-workflow.js`.
+* No template is in `LEGACY_TEMPLATES` any more: all pages follow the [rules](web-ui-scripts.md#rules). `web.deploy.js` isn't loaded by any page; it stays for custom templates until [step 9](web-ui-security-headers.md).
+* Processing: after an action the part `data-part="processing"` is loaded again. The jobs (the newest 50) with the name of the stage, the deployment (`erp 6`) and the duration, from one query.
+* Logs: a line without level (e.g. of a traceback) gets the level of the line before it. `Download` sends the whole file (`/log/{file}/download`), read at once, as the log grows while it's sent. Unknown values of `number_of_lines` and `level` in the URL fall back to 100 and `all`.
+* Workflows: the flow of `stage_flow.py` without status (`static`), marks for parallel steps and stages, parallel deployments, editable and create fields, hooks; the steps of the stages and the JSON on request. `Start` only for workflows the user may start.
+* `My account`: the roles, the permissions as chips (grey: from a role or a higher level, see [permissions page](web-ui-permissions-page.md)), the API token with `Copy` in the dialog of a new token.
 
 
 ## Non-goals
@@ -85,7 +95,12 @@
 * Deleting the tokens of other users
 
 
+## Decisions (2026-11-19)
+
+1. Workflows: the stages as flow in each card (the layout of the [deployment page](web-ui-deployment-page.md#stage-flow), without status).
+2. Logs: the filter in the browser is enough (at most 10,000 loaded lines).
+
+
 ## Open questions
 
-1. Workflows: the stages as flow in each card (**recommended**), or only name, project and JSON as today?
-2. Logs: is the filter in the browser enough (at most 10,000 loaded lines), or should the server search the whole file?
+None.

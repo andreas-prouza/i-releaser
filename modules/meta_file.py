@@ -1090,21 +1090,35 @@ class Meta_File:
       * ``page``: state of the deployment, its stages, its deployed objects, the deployment history
         and its jobs of the processing service
       * ``stages``: state of each stage including its processing steps (actions), by stage id
+      * ``parts``: one hash per part of the deployment page, so it updates only what has changed
+        (docs/features/web-ui-live-updates.md): ``header``, ``flow``, ``objects``, ``activity``
       """
+
+      jobs = [[job.id, job.status.value] for job in self.processing_jobs]
+      objects = self.deploy_objects.get_objects_as_list_of_dict()
+      run_history = [h['id'] for h in self.run_history.get_list()]
 
       page_state = {
         'status': self.status.value,
         'stages': [[stage.id, stage.status.value] for stage in self.stages],
-        'jobs': [[job.id, job.status.value] for job in self.processing_jobs],
-        'objects': [[obj['id'], obj['deploy_status']] for obj in self.deploy_objects.get_objects_as_list_of_dict()],
-        'run_history': [h['id'] for h in self.run_history.get_list()],
+        'jobs': jobs,
+        'objects': [[obj['id'], obj['deploy_status']] for obj in objects],
+        'run_history': run_history,
+      }
+
+      parts = {
+        'header': [self.status.value, str(self.update_time), jobs, self.custom_data],
+        'flow': [[[stage.id, stage.status.value] for stage in self.stages], jobs],
+        'objects': [[obj['id'], obj['deploy_status'], bool(obj['ready'])] for obj in objects],
+        'activity': [run_history, processing_user_data.get_last_entry(self.id)],
       }
 
       stage_states = {}
       for stage in self.stages:
         stage_states[stage.id] = Meta_File._state_hash([stage.status.value, Meta_File._get_action_state(stage.actions.get_actions_as_dict())])
 
-      return {'page': Meta_File._state_hash(page_state), 'stages': stage_states}
+      return {'page': Meta_File._state_hash(page_state), 'stages': stage_states,
+              'parts': {name: Meta_File._state_hash(value) for name, value in parts.items()}}
 
 
 

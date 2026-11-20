@@ -74,6 +74,9 @@ async def lifespan(app: FastAPI):
 
         logging.warning("I_RELEASER_LOCAL_DEBUGGING is set: the password check of the login is turned off!")
 
+    if constants.C_CSP_REPORT_ONLY:
+        logging.warning("C_CSP_REPORT_ONLY is set: the Content-Security-Policy is only reported, not enforced. Move your custom templates to script files and remove it.")
+
     # Initialize databases and tables
     app_sqlite.create_tables()
     app_sqlite.check_updates()
@@ -129,6 +132,8 @@ app.add_api_route('/', routes.index, methods=['GET', 'POST'])
 app.add_api_route('/list-objects', routes.list_objects, methods=['GET', 'POST'])
 
 app.add_api_route('/api/deploy_object_lifecycle/{project}/{prod_lib}/{name}/{type}/{attribute}', routes.deploy_object_lifecycle, methods=['GET'])
+app.add_api_route('/api/deploy_objects', routes.get_deploy_objects, methods=['GET'])
+app.add_api_route('/list-objects/history', routes.object_history, methods=['GET'])
 
 app.add_api_route('/api/list_deployments/{project}', routes.list_deployments, methods=['GET', 'POST'])
 
@@ -137,6 +142,7 @@ app.add_api_route('/project/{project}', routes.select_project, methods=['GET', '
 
 
 app.add_api_route('/log/{log}', routes.show_log, methods=['GET'])
+app.add_api_route('/log/{log}/download', routes.download_log, methods=['GET'])
 app.add_api_route('/log/{log}/{number_of_lines}', routes.show_log, methods=['GET', 'POST'])
 
 
@@ -162,10 +168,13 @@ app.add_api_route('/logout', routes.logout, methods=['GET', 'POST'])
 app.add_api_route('/workflows', routes.show_workflows, methods=['GET', 'POST'])
 
 app.add_api_route('/settings', routes.show_settings, methods=['GET', 'POST'])
+app.add_api_route('/settings/permissions', routes.show_permissions, methods=['GET'])
+app.add_api_route('/settings/processing', routes.show_processing, methods=['GET'])
 
 
 app.add_api_route('/show_details/{meta_file_id}', routes.show_details_by_id, methods=['GET', 'POST'])
 app.add_api_route('/show_details/{project}/{version}', routes.show_details, methods=['GET', 'POST'])
+app.add_api_route('/show_details/{meta_file_id}/stage/{stage_id}', routes.show_stage_steps, methods=['GET'])
 
 
 app.add_api_route('/api/run_stage/{meta_file_id}/{stage_id}/{option}', routes.run_stage, methods=['GET', 'POST'])
@@ -207,6 +216,7 @@ app.add_api_route('/api/set_objects_ready/{meta_file_id}', routes.set_objects_re
 
 
 app.add_api_route('/api/get_stage_steps_html/{meta_file_id}/{stage_id}', routes.get_stage_steps_html, methods=['GET'])
+app.add_api_route('/api/deployment_objects/{meta_file_id}', routes.get_deployment_objects, methods=['GET'])
 app.add_api_route('/api/watch_state/{meta_file_id}', routes.watch_state, methods=['GET'])
 
 
@@ -220,6 +230,7 @@ app.add_api_route('/api/get_projects', routes.get_projects, methods=['GET'])
 
 app.add_api_route('/api/add_permission', routes.add_permission, methods=['POST'])
 app.add_api_route('/api/save_permissions', routes.save_permissions, methods=['POST'])
+app.add_api_route('/api/permissions', routes.get_permissions, methods=['GET'])
 
 
 
