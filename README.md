@@ -96,6 +96,7 @@ The details (requirements, all configuration files, reverse proxy, backup) are i
 | [Permissions](docs/permissions.md) | Users, roles and what each permission allows |
 | [Web API](docs/webapi.md) | All endpoints, authentication with API tokens |
 | [Technical notes](docs/technik.md) | Tests, database updates, package review, decisions |
+| [Glossary](docs/glossar.md) | Abbreviations and technical terms |
 | [Processing service](docs/processing-service.md) | Run stages independent of the web server |
 | [Jira integration](docs/jira.md) | Show deployments in Jira Cloud or Data Center |
 | [DB deployment](docs/db-deployment.md) | Deploy changes of large tables with minimal downtime |
