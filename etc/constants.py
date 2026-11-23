@@ -77,6 +77,10 @@ C_SERVICE_MAX_PARALLEL_JOBS = 4
 # Without one for C_SERVICE_HEARTBEAT_TIMEOUT seconds, its run is set to failed.
 C_SERVICE_HEARTBEAT_INTERVAL = 10
 C_SERVICE_HEARTBEAT_TIMEOUT = 60
+
+# A scheduled run of a stage which the service takes more than this after its time is not run
+# (e.g. the service wasn't running), so a night deployment doesn't start during the day. 0: no limit
+C_SCHEDULE_MAX_DELAY_MINUTES = 60
 #---------------------------------------------------------
 
 #---------------------------------------------------------

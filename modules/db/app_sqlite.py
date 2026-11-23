@@ -13,7 +13,7 @@ from modules.db import app_info_data
 DB_FILE = os.path.abspath(constants.C_APP_DB_FILE)
 
 # Number of database updates (see get_updates). Stored in the database as `PRAGMA user_version`.
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 # Seconds to wait for a write lock of another process
 DB_TIMEOUT = 30
@@ -307,6 +307,7 @@ def create_tables(db_path=DB_FILE):
                 end_time TEXT,
                 pid INTEGER,
                 heartbeat REAL, -- Epoch seconds
+                run_at TEXT, -- Scheduled run: not before this time (UTC, '2026-11-24T21:00:00+00:00')
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id),
                 FOREIGN KEY (stage_id) REFERENCES stages (id)
             )
@@ -339,7 +340,7 @@ def create_tables(db_path=DB_FILE):
 def get_updates() -> list[tuple]:
     """All updates of the database as (schema version after the update, function), in the order they have to be run"""
 
-    from modules.db.updates import v_2_0_1, v_2_0_2, v_2_0_3, v_3_1_0
+    from modules.db.updates import v_2_0_1, v_2_0_2, v_2_0_3, v_3_1_0, v_4_1_0
 
     return [
         (1, v_2_0_1.add_compression),
@@ -349,6 +350,7 @@ def get_updates() -> list[tuple]:
         (5, v_3_1_0.remove_tokens_from_custom_data),
         (6, v_3_1_0.add_action_options),
         (7, v_3_1_0.add_parallel_options),
+        (8, v_4_1_0.add_job_run_at),
     ]
 
 

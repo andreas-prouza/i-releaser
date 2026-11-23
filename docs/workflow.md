@@ -357,6 +357,7 @@ E.g. to inform other systems like Jira (see [jira.md](jira.md)).
   | `stage_started` | A stage starts to run (also when it's run again) |
   | `stage_finished` | All steps of a stage have been finished |
   | `stage_failed` | A step of a stage failed |
+  | `scheduled_run_failed` | A [scheduled run](processing-service.md#scheduled-runs) didn't start: missed its time or the stage couldn't be run. The stage hasn't run. The reason is the `error` of the stage's last job (`processing_job_data.get_last_jobs(meta_file.id)[stage_obj.id].error`). Runs in the process of the job. |
   | `custom_data_changed` | A user edited the custom data |
 
 * Errors of a hook are logged only. They never stop or fail the deployment.

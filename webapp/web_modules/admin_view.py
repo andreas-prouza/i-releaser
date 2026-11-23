@@ -5,7 +5,7 @@ The templates decide nothing. Nothing here is HTML.
 import datetime, json, os, re
 
 from etc import constants
-from modules import permission_config, permissions, processing_service, processing_settings, version, workflow
+from modules import permission_config, permissions, processing_job, processing_service, processing_settings, version, workflow
 from modules.db import app_sqlite, processing_job_data
 
 from web_modules import stage_flow
@@ -71,8 +71,10 @@ def get_processing() -> dict:
             'stage': stage.get('name') or str(job.stage_id),
             'user': job.user or '–',
             'status': job.status.value,
-            'status_view': get_status_view(job.status.value).__dict__,
+            'status_view': get_status_view('scheduled' if job.is_waiting_for_its_time() else job.status.value).__dict__,
             'queued': format_datetime(job.create_time),
+            # A scheduled run (UTC): the page shows it in the time zone of the browser
+            'scheduled': processing_job.format_utc(job.run_at) if job.run_at else '',
             'started': format_datetime(job.start_time),
             'ended': format_datetime(job.end_time),
             'duration': format_duration((end - job.start_time).total_seconds()) if job.start_time and end else '–',

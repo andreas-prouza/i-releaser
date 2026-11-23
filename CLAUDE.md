@@ -14,7 +14,7 @@ Guide for working on **Profito** – local accounting/time-tracking app.
 - A feature is done when all acceptance criteria are met and covered by tests. Then set its status to `finished`.
 - If something is listed under "Non-goals" or isn't described in any feature, ask whether it should be implemented.
 - Add decisions made during the implementation (technology, data model) to the docs.
-- [docs/glossar.md](docs/glossar.md) describes the abbreviations
+- [docs/glossar.md](docs/glossar.md) describes the abbreviations and technical terms. Each implementation adds the ones it introduces.
 - [docs/architektur.md](docs/architektur.md) contains the guidelines for the implementation
 - Suggestions for improvement are explicitly welcome!!
 - Hints about possible bugs are explicitly welcome!!
@@ -28,7 +28,6 @@ When the behavior changes, update the affected documentation file too.
 Use `mermaid` to show processes.
 
 - Technology, package review, security concept, API: [docs/technik.md](docs/technik.md)
-- Data model: [docs/datenmodell.md](docs/datenmodell.md)
 
 
 ## Development

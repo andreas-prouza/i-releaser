@@ -1132,6 +1132,15 @@ html .ir-code pre[class*=language-] {
     color: var(--ir-muted);
 }
 
+/* A scheduled run of the stage, or the one which didn't start */
+.ir-steps-schedule {
+    margin: var(--ir-space-2) 0 0;
+}
+
+.ir-steps-schedule.k-danger {
+    color: var(--ir-danger);
+}
+
 /* Up to 100 and more steps: the panel scrolls inside, the page doesn't get longer */
 .ir-steps-body {
     max-height: 70vh;

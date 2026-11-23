@@ -2,11 +2,11 @@
   Parts of the deployment page (docs/features/web-ui-deployment-page.md). The data comes from web_modules/deployment_view.py,
   the behaviour from static/assets/js/pages/deployment.js. Values are escaped by Jinja; no script code here.
 -#}
-{% from 'components/ui.html' import status_pill, kv_list, code_block, action_button %}
+{% from 'components/ui.html' import status_pill, kv_list, code_block, action_button, local_time %}
 
 
 {#- Icons of the circles of the flow by state of the stage; other states show the number of the stage -#}
-{% set FLOW_ICONS = {'finished': 'check-lg', 'failed': 'x-lg', 'running': 'arrow-repeat', 'ready': 'play-fill', 'queued': 'clock'} %}
+{% set FLOW_ICONS = {'finished': 'check-lg', 'failed': 'x-lg', 'running': 'arrow-repeat', 'ready': 'play-fill', 'queued': 'clock', 'scheduled': 'calendar-event'} %}
 
 {#- Style of the buttons by action -#}
 {% set BUTTON_STYLE = {
@@ -18,6 +18,8 @@
     'edit-custom-data': ('outline-secondary', 'pencil'),
     'show-log': ('outline-secondary', 'file-earmark-text'),
     'remove-from-queue': ('outline-secondary', 'x-circle'),
+    'schedule-stage': ('outline-primary', 'calendar-event'),
+    'cancel-schedule': ('outline-secondary', 'calendar-x'),
 } %}
 
 
@@ -74,7 +76,7 @@
 {% macro attention_bar(a) -%}
 <section class="ir-attention k-{{ a.kind }}" aria-label="What the deployment waits for" data-stage-id="{{ a.stage_id }}">
   <span class="ir-attention-icon" aria-hidden="true"><i class="bi bi-{{ a.icon }}{% if a.kind == 'running' %} ir-spin{% endif %}"></i></span>
-  <p class="ir-attention-text">{% for text, strong in a.text %}{% if strong %}<strong>{{ text }}</strong>{% else %}{{ text }}{% endif %}{% endfor %}</p>
+  <p class="ir-attention-text">{% for text, strong in a.text %}{% if strong == 'time' %}{{ local_time(text) }}{% elif strong %}<strong>{{ text }}</strong>{% else %}{{ text }}{% endif %}{% endfor %}</p>
   {%- if a.buttons %}
   <div class="ir-attention-actions">{% for b in a.buttons %}{{ button(b) }}{% endfor %}</div>
   {%- endif %}
@@ -189,6 +191,11 @@
   </div>
   {%- if v.stage.description or v.stage.waiting_for %}
   <p class="ir-steps-description">{{ v.stage.description or '' }}{% if v.stage.waiting_for %}{% if v.stage.description %} · {% endif %}Waits for {{ v.stage.waiting_for | join(', ') }}{% endif %}</p>
+  {%- endif %}
+  {%- if v.schedule %}
+  <p class="ir-steps-schedule"><i class="bi bi-calendar-event" aria-hidden="true"></i> Runs at {{ local_time(v.schedule.run_at) }} ({{ 'continue' if v.schedule.continue_run else 'all steps' }}), scheduled by {{ v.schedule.user | or_dash }}</p>
+  {%- elif v.failed_schedule %}
+  <p class="ir-steps-schedule k-danger"><i class="bi bi-calendar-x" aria-hidden="true"></i> The scheduled run at {{ local_time(v.failed_schedule.run_at) }} did not start. {{ v.failed_schedule.error or '' }}</p>
   {%- endif %}
 
   <div class="ir-steps-body" id="stage-steps-body" hidden>

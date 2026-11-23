@@ -4,6 +4,9 @@ from enum import Enum
 class Action_type(Enum):
 
   RUN_STAGE = 'run_stage'
+  SCHEDULE_STAGE = 'schedule_stage'
+  CANCEL_SCHEDULE = 'cancel_schedule'
+  SCHEDULED_RUN_FAILED = 'scheduled_run_failed'
   SET_CHECK_ERROR = 'set_check_error'
   RESET_STAGE_STATUS = 'reset_stage_status'
   RESET_DEPLOYMENT_STATUS = 'reset_deployment_status'

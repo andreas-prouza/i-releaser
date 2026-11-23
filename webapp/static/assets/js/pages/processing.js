@@ -7,6 +7,7 @@
 import { get_html, post_json } from '../app/api.js';
 import { confirm_action, show_error, toast } from '../app/dialogs.js';
 import { escape_html, element, on_action, on_change, read_json } from '../app/dom.js';
+import { local_time_text } from '../app/time.js';
 
 
 function pill(view) {
@@ -36,6 +37,8 @@ function init_jobs() {
             {field: 'user', title: 'User', sortable: true, filterControl: 'select'},
             {field: 'status', title: 'Status', sortable: true, filterControl: 'select', formatter: (value, row) => pill(row.status_view)},
             {field: 'queued', title: 'Queued', sortable: true},
+            {field: 'scheduled', title: 'Scheduled for', sortable: true,
+             formatter: (value) => value ? `<time datetime="${escape_html(value)}" title="${escape_html(value)}">${escape_html(local_time_text(value) || value)}</time>` : ''},
             {field: 'started', title: 'Started', sortable: true},
             {field: 'ended', title: 'Ended', sortable: true},
             {field: 'duration', title: 'Duration'},

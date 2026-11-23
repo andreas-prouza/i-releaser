@@ -2,7 +2,9 @@
  * Behaviour of the components of templates/components/ui.html, loaded by base.html on every page.
  *
  * code_block: the copy button copies the text of its block. A button with data-copy-text copies that text.
+ * local_time: the time in the time zone of the browser (app/time.js), also in parts of a page which are loaded later.
  */
+import { localize_times } from './time.js';
 
 const COPIED_MS = 1500;
 
@@ -57,3 +59,17 @@ document.addEventListener('click', async (event) => {
         show_result(button, 'bi-exclamation-triangle', error.message);
     }
 });
+
+
+localize_times();
+
+// Parts of a page which are replaced (live updates, the steps panel)
+new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                localize_times(node);
+            }
+        });
+    }
+}).observe(document.body, {childList: true, subtree: true});

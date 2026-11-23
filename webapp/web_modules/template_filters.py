@@ -4,8 +4,9 @@ Filters of the templates (docs/features/web-ui-layout.md#components):
     {{ deployment.create_time | datetime }}   2026-11-16 18:56:47
     {{ seconds | duration }}                  1.2 s, 42 s, 3 min 10 s, 2 h 5 min
     {{ stage.remote_dir | or_dash }}          – instead of None
+    {{ job.run_at | utc }}                    2026-11-24 21:00 UTC (a time with time zone, e.g. of a scheduled run)
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 
 DASH = '–'
@@ -76,8 +77,28 @@ def format_duration(value) -> str:
 
 
 
+def format_utc(value) -> str:
+    """A time with time zone in UTC, to the minute. The browser shows it in its own time zone (macro local_time)."""
+
+    if is_empty(value):
+        return DASH
+
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.strip())
+        except ValueError:
+            return value
+
+    if isinstance(value, datetime) and value.tzinfo is not None:
+        return value.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+
+    return format_datetime(value)
+
+
+
 FILTERS = {
     'datetime': format_datetime,
     'duration': format_duration,
     'or_dash': or_dash,
+    'utc': format_utc,
 }
