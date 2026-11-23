@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse, Response, StreamingResponse
 import etc.global_cfg as global_cfg
 from etc import constants
 
-from modules import action_type, current_user, errors, files, permissions, version
+from modules import action_type, current_user, errors, files, permissions, processing_job, version
 from modules import deploy_version, meta_file
 from modules import workflow, processing_service, processing_settings, json_path
 from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data, processing_job_data, deployment_list_data
@@ -432,9 +432,13 @@ def show_stage_steps(request: Request, meta_file_id: int, stage_id: int):
 
 
 
-def run_stage(request: Request, meta_file_id: int, stage_id: int, option: str):
+def run_stage(request: Request, meta_file_id: int, stage_id: int, option: str, data: dict|None = Body(None)):
+    """
+    Runs a stage in the background.
+    Body (optional): {"run_at": "2026-11-24T22:00:00+01:00"}: scheduled run by the processing service (docs/features/scheduled-stage-run.md)
+    """
 
-    logging.debug(f"Run stage-id {stage_id} of meta_file_id {meta_file_id} with option {option=}")
+    logging.debug(f"Run stage-id {stage_id} of meta_file_id {meta_file_id} with option {option=}, {data=}")
 
     if option not in ['continue', 'run_all']:
         raise errors.Invalid_Input_Error(f"Option '{option}' is invalid. Valid options are: 'continue', 'run_all'")
@@ -442,8 +446,12 @@ def run_stage(request: Request, meta_file_id: int, stage_id: int, option: str):
     mf: meta_file.Meta_File = get_deployment(meta_file_id)
     permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=get_stage(mf, stage_id).name)
 
+    run_at = None
+    if data and data.get('run_at') is not None:
+        run_at = processing_job.parse_run_at(data.get('run_at'))
+
     result = {'status': 'success'}
-    result.update(mf.start_stage(stage_id, continue_run=option != 'run_all'))
+    result.update(mf.start_stage(stage_id, continue_run=option != 'run_all', run_at=run_at))
 
     return http_functions.get_json_response(result)
 
@@ -531,6 +539,10 @@ def cancel_job(request: Request, job_id: int):
 
     if not processing_job_data.cancel_job(job_id):
         raise errors.Conflict_Error(f"Processing job {job_id} is not in the queue anymore.")
+
+    if job.is_scheduled():
+        processing_user_data.create_action_log(action=action_type.Action_type.CANCEL_SCHEDULE, meta_file=mf, stage=get_stage(mf, job.stage_id),
+                                               details=f"Canceled the run scheduled for {processing_job.format_utc_text(job.run_at)} (job {job.id})")
 
     return http_functions.get_json_response({'status': 'success'})
 

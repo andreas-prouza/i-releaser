@@ -47,7 +47,7 @@ Administrators maintain users, roles and permissions in the web app (`Permission
 | `admin` | `Settings`: maintain users, roles and permissions; state of the processing service; logs of the web app (menu `Logs`); errors of workflow files | general |
 | `read` | See the deployments and objects of the workflow, its definition, logs and activity history | workflow |
 | `start workflow` | Create deployments of the workflow (web app and Web API) | workflow |
-| `run` | Run a stage, remove it from the queue of the processing service, reset the status of a stage, reset the last finished stage, reset the status of the deployment, include or exclude objects | stage (reset of the deployment status and objects: workflow) |
+| `run` | Run a stage, [schedule](processing-service.md#scheduled-runs) its run or cancel a scheduled run (also one of another user), remove it from the queue of the processing service, reset the status of a stage, reset the last finished stage, reset the status of the deployment, include or exclude objects | stage (reset of the deployment status and objects: workflow) |
 | `change check error` | Turn the error check of a step on or off | stage |
 | `cancel workflow` | Cancel a deployment | workflow |
 | `edit-custom-data` | Edit the [editable fields](workflow.md#editable-custom-fields) of the custom data | workflow |

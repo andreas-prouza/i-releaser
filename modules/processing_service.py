@@ -16,6 +16,7 @@ See docs/processing-service.md
 """
 from __future__ import annotations
 
+import datetime
 import errno
 import fcntl
 import logging
@@ -29,11 +30,11 @@ import time
 from etc import constants
 # Before meta_file (circular import)
 from modules import deploy_version
-from modules import current_user, files, hooks, stage_status
-from modules.db import meta_file_data, processing_job_data
+from modules import action_type, current_user, files, hooks, stage_status
+from modules.db import meta_file_data, processing_job_data, processing_user_data
 from modules.job_status import Status as Job_Status
 from modules.meta_file_status import Meta_file_status
-from modules.processing_job import Processing_Job
+from modules.processing_job import Processing_Job, format_utc_text, utc_now
 
 
 
@@ -160,13 +161,27 @@ def run_job(job_id: int) -> Job_Status:
 
   status = Job_Status.FINISHED
   error = None
+  mf = None
+  # A scheduled run which didn't start: reported after the job got its error
+  scheduled_run_failed = False
 
   try:
     mf = meta_file_data.get_meta_file_by_id(job.meta_file_id)
     if mf is None:
       raise Exception(f"Meta file for ID {job.meta_file_id} not found")
 
-    mf.run_current_stage(job.stage_id, job.processing_step, job.continue_run)
+    claimed = False
+
+    if job.is_scheduled():
+      error = start_scheduled_run(job, mf)
+      scheduled_run_failed = error is not None
+      error = error[:MAX_ERROR_LENGTH] if error else None
+      claimed = not scheduled_run_failed
+
+    if scheduled_run_failed:
+      status = Job_Status.FAILED
+    else:
+      mf.run_current_stage(job.stage_id, job.processing_step, job.continue_run, claimed=claimed)
 
   except BaseException as e:
     logging.exception(e, stack_info=True)
@@ -181,7 +196,54 @@ def run_job(job_id: int) -> Job_Status:
     heartbeat.join()
     processing_job_data.finish_job(job.id, status, error)
 
+  if scheduled_run_failed:
+    report_failed_scheduled_run(job, mf, error)
+
   return status
+
+
+
+def start_scheduled_run(job: Processing_Job, mf) -> str|None:
+  """
+  Checks a scheduled run when its time has come (docs/features/scheduled-stage-run.md) and claims its stage.
+
+  Returns:
+      str|None: Why it can't be run (the stage is not touched). None: the stage is claimed (`in process`) and can be run.
+  """
+
+  delay = utc_now() - job.run_at
+  limit = constants.C_SCHEDULE_MAX_DELAY_MINUTES
+
+  # 0: no limit. The time itself is not part of the text: it's shown by the web app in the time zone of the browser.
+  if limit and delay > datetime.timedelta(minutes=limit):
+    return (f"Missed the scheduled time by {int(delay.total_seconds() // 60)} minutes (limit C_SCHEDULE_MAX_DELAY_MINUTES = {limit}), "
+            f"e.g. because the processing service wasn't running. The stage has not been run.")
+
+  try:
+    mf.check_deployment_ready_2_run(stage_id=job.stage_id, processing_step=job.processing_step)
+    mf.claim_stage(job.stage_id)
+
+  except Exception as e:
+    return f"The stage could not be run: {e}"
+
+  mf.run_details[job.stage_id] = f"Scheduled run for {format_utc_text(job.run_at)} (job {job.id})"
+  return None
+
+
+
+def report_failed_scheduled_run(job: Processing_Job, mf, error: str) -> None:
+  """History entry and hook `scheduled_run_failed`. The hook finds the reason in the error of the job."""
+
+  logging.warning(f"Scheduled run of job {job.id} didn't start: {error}")
+
+  try:
+    stage = mf.get_stage_by_id(job.stage_id)
+    processing_user_data.create_action_log(action_type.Action_type.SCHEDULED_RUN_FAILED, details=f"Scheduled for {format_utc_text(job.run_at)} (job {job.id}): {error}",
+                                           meta_file=mf, stage=stage)
+    hooks.emit(hooks.Event.SCHEDULED_RUN_FAILED, mf, stage)
+
+  except Exception as e:
+    logging.exception(e, stack_info=True)
 
 
 

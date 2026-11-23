@@ -17,19 +17,22 @@ def _convert_row_to_object(row: sqlite3.Row) -> processing_job.Processing_Job:
 
 
 
-def create_job(meta_file_id: int, stage_id: int, processing_step: str|None=None, continue_run: bool=True, user: str|None=None, exclusive: bool=False) -> processing_job.Processing_Job:
+def create_job(meta_file_id: int, stage_id: int, processing_step: str|None=None, continue_run: bool=True, user: str|None=None, exclusive: bool=False,
+               run_at: datetime.datetime|None=None) -> processing_job.Processing_Job:
     """
     Creates a new Processing_Job instance and adds it to the queue of the processing service.
     Checking the queue and adding the job is atomic, so a stage can't be queued twice.
 
     Args:
         exclusive (bool): No job of the same deployment may be active, instead of only of the same stage
+        run_at (datetime, optional): Scheduled run: not before this time (with time zone)
 
     Raises:
         errors.Conflict_Error: If there's an active job already
     """
 
-    job = processing_job.Processing_Job(meta_file_id=meta_file_id, stage_id=stage_id, processing_step=processing_step, continue_run=continue_run, user=user)
+    job = processing_job.Processing_Job(meta_file_id=meta_file_id, stage_id=stage_id, processing_step=processing_step, continue_run=continue_run, user=user,
+                                        run_at=run_at.astimezone(datetime.timezone.utc).replace(microsecond=0) if run_at else None)
 
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
@@ -47,16 +50,17 @@ def create_job(meta_file_id: int, stage_id: int, processing_step: str|None=None,
             raise errors.Conflict_Error(f"Stage can't be queued: job {row['id']} is already active")
 
         c.execute('''
-            INSERT INTO processing_jobs (meta_file_id, stage_id, processing_step, continue_run, user, status, create_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO processing_jobs (meta_file_id, stage_id, processing_step, continue_run, user, status, create_time, run_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             job.meta_file_id, job.stage_id, job.processing_step, job.continue_run, job.user,
-            job.status.value, job.create_time.isoformat()
+            job.status.value, job.create_time.isoformat(), processing_job.format_utc(job.run_at) if job.run_at else None
         ))
         job.id = c.lastrowid
 
         conn.commit()
-    logging.info(f"Processing job {job.id} for stage ID {stage_id} of meta file ID {meta_file_id} added to queue.")
+    scheduled = f" (scheduled for {processing_job.format_utc_text(job.run_at)})" if job.run_at else ''
+    logging.info(f"Processing job {job.id} for stage ID {stage_id} of meta file ID {meta_file_id} added to queue{scheduled}.")
 
     return job
 
@@ -118,15 +122,18 @@ def claim_next_job() -> processing_job.Processing_Job|None:
     """
     Takes the oldest job from the queue and sets it to status `running`.
     A job is only handed out once, even if multiple processes ask for it.
+    A scheduled job (`run_at`) is only taken when its time has come.
     """
 
     now = datetime.datetime.now().isoformat()
+    # run_at is stored in the same format: it can be compared as text
+    utc_now = processing_job.format_utc(processing_job.utc_now())
 
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
 
         while True:
-            c.execute("SELECT id FROM processing_jobs WHERE status = ? ORDER BY id LIMIT 1", (Job_Status.QUEUED.value,))
+            c.execute("SELECT id FROM processing_jobs WHERE status = ? AND (run_at IS NULL OR run_at <= ?) ORDER BY id LIMIT 1", (Job_Status.QUEUED.value, utc_now))
             row = c.fetchone()
 
             if not row:
@@ -142,6 +149,17 @@ def claim_next_job() -> processing_job.Processing_Job|None:
 
     logging.info(f"Processing job {row['id']} claimed.")
     return get_job(row['id'])
+
+
+
+def get_last_jobs(meta_file_id: int) -> dict[int, processing_job.Processing_Job]:
+    """The newest job of each stage of a deployment: stage id -> job"""
+
+    with app_sqlite.get_db_connection() as conn:
+        rows = conn.execute("""SELECT * FROM processing_jobs WHERE id IN
+                               (SELECT max(id) FROM processing_jobs WHERE meta_file_id = ? GROUP BY stage_id)""", (meta_file_id,)).fetchall()
+
+    return {row['stage_id']: _convert_row_to_object(row) for row in rows}
 
 
 

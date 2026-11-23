@@ -9,6 +9,9 @@
 
 #C_SERVICE_MAX_PARALLEL_JOBS = 4
 
+# A scheduled run of a stage which starts more than this many minutes late is not run
+#C_SCHEDULE_MAX_DELAY_MINUTES = 60
+
 # Git branches
 #C_GIT_BRANCH_PRODUCTION = 'main'
 #C_GIT_BRANCH_RELEASE = '{project}-{deploy_version}'

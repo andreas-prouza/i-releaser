@@ -39,6 +39,8 @@ class Event(str, Enum):
   STAGE_STARTED = 'stage_started'
   STAGE_FINISHED = 'stage_finished'
   STAGE_FAILED = 'stage_failed'
+  # A scheduled run of a stage didn't start (missed time or the stage couldn't be run): the stage hasn't run
+  SCHEDULED_RUN_FAILED = 'scheduled_run_failed'
   CUSTOM_DATA_CHANGED = 'custom_data_changed'
 
 

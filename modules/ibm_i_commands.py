@@ -55,7 +55,8 @@ class IBM_i_commands:
 
     logging.debug(f"Run Commands for {stage.name=} ({stage.id}), {processing_step=}")
 
-    processing_user_data.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage)
+    details = getattr(self.meta_file, 'run_details', {}).pop(stage.id, None)
+    processing_user_data.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage, details=details)
     stage.set_status('in process')
 
     # Imported here, as `from scripts import *` may shadow module level names

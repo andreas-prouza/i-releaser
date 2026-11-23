@@ -37,6 +37,8 @@ STATUS = {view.value: view for view in [
     _view('in preperation', 'running', 'hourglass-split', 'in preparation'),
     _view('prepare', 'running', 'hourglass-split', 'preparing'),
     _view('queued', 'queued', 'clock'),
+    # A stage whose run is scheduled for later (docs/features/scheduled-stage-run.md)
+    _view('scheduled', 'queued', 'calendar-event'),
     _view('finished', 'success', 'check-lg'),
     _view('failed', 'danger', 'x-lg'),
     _view('canceled', 'canceled', 'slash-circle'),

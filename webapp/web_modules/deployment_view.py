@@ -7,8 +7,8 @@ Nothing here is HTML.
 """
 from datetime import datetime, timedelta
 
-from modules import current_user, meta_file, permissions, permission_config, stage_status
-from modules.db import processing_user_data
+from modules import current_user, meta_file, permissions, permission_config, processing_job, stage_status
+from modules.db import processing_job_data, processing_user_data
 from modules.job_status import Status as Job_Status
 from modules.meta_file_status import Meta_file_status
 
@@ -54,16 +54,45 @@ def action(name: str, label: str, allowed: dict, **data) -> dict:
 #-----------------------------------------------------------------------------------------------
 
 def get_queued_jobs(mf: meta_file.Meta_File) -> dict:
-    """Stage id -> job which waits for the processing service"""
+    """Stage id -> job which waits for the processing service (or for its time: a scheduled run)"""
     return {job.stage_id: job for job in mf.processing_jobs if job.status == Job_Status.QUEUED}
 
 
 
+def is_service_mode() -> bool:
+    """A run can be scheduled only with the processing service (docs/features/scheduled-stage-run.md)"""
+
+    from modules import processing_settings
+    return processing_settings.get_processing_mode() == 'service'
+
+
+
+def get_failed_schedule(mf: meta_file.Meta_File, stage) -> processing_job.Processing_Job|None:
+    """
+    The scheduled run of the stage which didn't start (missed time, the stage couldn't be run),
+    as long as the stage hasn't been run since then and nothing else is queued for it.
+    """
+
+    if stage.status not in [Stage_Status.READY, Stage_Status.FAILED]:
+        return None
+
+    job = processing_job_data.get_last_jobs(mf.id).get(stage.id)
+    if job is None or not job.is_scheduled() or job.status != Job_Status.FAILED or job.end_time is None:
+        return None
+
+    # The stage didn't change when its scheduled run failed to start
+    if stage.update_time is not None and stage.update_time > job.end_time:
+        return None
+
+    return job
+
+
+
 def get_stage_state(stage, queued: dict) -> str:
-    """failed, running, queued, ready, finished, new"""
+    """failed, running, queued, scheduled, ready, finished, new"""
 
     if stage.id in queued:
-        return 'queued'
+        return 'scheduled' if queued[stage.id].is_waiting_for_its_time() else 'queued'
     if stage.status in meta_file.STAGE_IN_PROCESS_STATUS:
         return 'running'
     return stage.status.value
@@ -84,6 +113,12 @@ def can_run(mf: meta_file.Meta_File, stage, queued: dict) -> bool:
         return False
 
     return stage.status in [Stage_Status.FAILED, Stage_Status.READY]
+
+
+
+def can_schedule(mf: meta_file.Meta_File, stage, queued: dict, service: bool) -> bool:
+    """Run at…: where Run is possible, with the processing service"""
+    return service and can_run(mf, stage, queued)
 
 
 
@@ -118,7 +153,7 @@ def get_flow(mf: meta_file.Meta_File, queued: dict) -> stage_flow.Layout:
     stages = []
     for stage in mf.stages:
         state = get_stage_state(stage, queued)
-        view = get_status_view('queued' if state == 'queued' else stage.status)
+        view = get_status_view(state if state in ('queued', 'scheduled') else stage.status)
         stages.append({
             'id': stage.id,
             'name': stage.name,
@@ -140,7 +175,7 @@ def get_selected_stage(mf: meta_file.Meta_File, flow: stage_flow.Layout) -> int|
     for node in flow.nodes:
         by_state.setdefault(node['state'], []).append(node['id'])
 
-    for state in ['failed', 'running', 'queued', 'ready']:
+    for state in ['failed', 'running', 'queued', 'scheduled', 'ready']:
         if state in by_state:
             return by_state[state][0]
 
@@ -303,6 +338,19 @@ def get_steps_view(mf: meta_file.Meta_File, stage) -> dict:
     buttons = []
     if can_run(mf, stage, queued):
         buttons.append(action('run-stage', 'Run stage', run, stage_id=stage.id, stage_name=stage.name))
+    if can_schedule(mf, stage, queued, is_service_mode()):
+        buttons.append(action('schedule-stage', 'Run at…', run, stage_id=stage.id, stage_name=stage.name))
+
+    schedule = None
+    job = queued.get(stage.id)
+    if job is not None and job.is_scheduled():
+        schedule = {'run_at': processing_job.format_utc(job.run_at), 'user': job.user, 'job_id': job.id, 'continue_run': job.continue_run}
+        buttons.append(action('cancel-schedule', 'Cancel schedule', run, job_id=job.id, stage_name=stage.name))
+
+    failed_schedule = get_failed_schedule(mf, stage)
+    if failed_schedule is not None:
+        failed_schedule = {'run_at': processing_job.format_utc(failed_schedule.run_at), 'error': failed_schedule.error}
+
     reset = get_reset(mf, stage)
     if reset is not None:
         buttons.append(action(reset, 'Reset', run, stage_id=stage.id, stage_name=stage.name))
@@ -321,7 +369,9 @@ def get_steps_view(mf: meta_file.Meta_File, stage) -> dict:
     return {
         'meta_file_id': mf.id,
         'stage': {'id': stage.id, 'name': stage.name, 'description': stage.description, 'status': stage.status.value,
-                  'view': get_status_view('queued' if stage.id in queued else stage.status), 'waiting_for': mf.get_waiting_for(stage)},
+                  'view': get_status_view(get_stage_state(stage, queued) if stage.id in queued else stage.status), 'waiting_for': mf.get_waiting_for(stage)},
+        'schedule': schedule,
+        'failed_schedule': failed_schedule,
         'details': details,
         'history': history,
         'buttons': buttons,
@@ -345,15 +395,19 @@ def names(items: list[str]) -> str:
 
 
 def get_attention(mf: meta_file.Meta_File, flow: stage_flow.Layout, queued: dict) -> dict|None:
-    """What the deployment waits for: the first case which applies (failed, running, queued, ready)"""
+    """
+    What the deployment waits for: the first case which applies (failed, running, queued, scheduled, ready).
+    Text: (text, strong); (ISO time, 'time') is a time shown in the time zone of the browser.
+    """
 
     if mf.status in [Meta_file_status.FINISHED, Meta_file_status.CANCELED]:
         return None
 
     stages = {stage.id: stage for stage in mf.stages}
     workflow = mf.workflow.name
+    service = is_service_mode()
 
-    for state in ['failed', 'running', 'queued', 'ready']:
+    for state in ['failed', 'running', 'queued', 'scheduled', 'ready']:
         for node in flow.nodes:
             if node['state'] != state:
                 continue
@@ -411,9 +465,28 @@ def get_attention(mf: meta_file.Meta_File, flow: stage_flow.Layout, queued: dict
                 buttons = [action('remove-from-queue', 'Remove from queue', run, job_id=queued[stage.id].id, stage_name=stage.name)]
                 return {'kind': 'queued', 'icon': 'clock', 'text': text, 'buttons': buttons, 'stage_id': stage.id}
 
+            if state == 'scheduled':
+                job = queued[stage.id]
+                text = [('Stage ', False), (stage.name, True), (' runs at ', False), (processing_job.format_utc(job.run_at), 'time'),
+                        (f", scheduled by {job.user}." if job.user else '.', False)]
+                from modules import processing_service
+                if not processing_service.notify():
+                    text.append((' The processing service is not running.', False))
+                buttons = [action('cancel-schedule', 'Cancel schedule', run, job_id=job.id, stage_name=stage.name)]
+                return {'kind': 'queued', 'icon': 'calendar-event', 'text': text, 'buttons': buttons, 'stage_id': stage.id}
+
             if state == 'ready':
-                text = [('Stage ', False), (stage.name, True), (' is ready to run.', False)]
                 buttons = [action('run-stage', 'Run stage', run, stage_id=stage.id, stage_name=stage.name, option='continue')] if can_run(mf, stage, queued) else []
+                if can_schedule(mf, stage, queued, service):
+                    buttons.append(action('schedule-stage', 'Run at…', run, stage_id=stage.id, stage_name=stage.name))
+
+                failed_schedule = get_failed_schedule(mf, stage)
+                if failed_schedule is not None:
+                    text = [('The scheduled run of ', False), (stage.name, True), (' at ', False), (processing_job.format_utc(failed_schedule.run_at), 'time'),
+                            (f" did not start. {failed_schedule.error or ''}", False)]
+                    return {'kind': 'danger', 'icon': 'calendar-x', 'text': text, 'buttons': buttons, 'stage_id': stage.id}
+
+                text = [('Stage ', False), (stage.name, True), (' is ready to run.', False)]
                 return {'kind': 'ready', 'icon': 'play-fill', 'text': text, 'buttons': buttons, 'stage_id': stage.id}
 
     return None

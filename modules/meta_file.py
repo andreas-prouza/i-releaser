@@ -88,6 +88,8 @@ class Meta_File:
       self.processing_users: list = processing_users or []
       # Queued and running jobs of the processing service
       self.processing_jobs: list[processing_job.Processing_Job] = []
+      # Stage id -> details of its next entry `run_stage` in the processing history (e.g. a scheduled run)
+      self.run_details: dict[int, str] = {}
       self.custom_data: dict|None = custom_data or {}
         
       self.update_time: datetime.datetime = update_time or datetime.datetime.now()
@@ -565,9 +567,12 @@ class Meta_File:
 
 
     #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
-    def run_current_stage_as_job(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> processing_job.Processing_Job:
+    def run_current_stage_as_job(self, stage_id: int, processing_step: str|None=None, continue_run=True, run_at: datetime.datetime|None=None) -> processing_job.Processing_Job:
       """Adds the run of the given stage to the queue of the processing service.
       It's run there in the name of the current user.
+
+      Args:
+          run_at (datetime, optional): Scheduled run: the service doesn't take it before this time (with time zone)
       """
 
       self.check_no_active_job(stage_id)
@@ -576,22 +581,38 @@ class Meta_File:
       self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
       logging.debug(f"Deployment check successfully passed")
 
-      return processing_job_data.create_job(meta_file_id=self.id, stage_id=stage_id, processing_step=processing_step, continue_run=continue_run, user=current_user.get_user(),
-                                            exclusive=not self.parallel_deployment_execution_allowed)
+      job = processing_job_data.create_job(meta_file_id=self.id, stage_id=stage_id, processing_step=processing_step, continue_run=continue_run, user=current_user.get_user(),
+                                           exclusive=not self.parallel_deployment_execution_allowed, run_at=run_at)
+
+      if job.run_at is not None:
+        processing_user_data.create_action_log(action_type.Action_type.SCHEDULE_STAGE, meta_file=self, stage=self.get_stage_by_id(stage_id),
+                                               details=f"Scheduled for {processing_job.format_utc_text(job.run_at)} (job {job.id}, {'continue' if continue_run else 'run all steps'})")
+
+      return job
 
 
 
     #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
-    def start_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> dict:
+    def start_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True, run_at: datetime.datetime|None=None) -> dict:
       """Runs the given stage in the background.
       Depending on the processing mode (see processing_settings) by the processing service or in a thread of the current process.
 
+      Args:
+          run_at (datetime, optional): Scheduled run (docs/features/scheduled-stage-run.md): the processing service runs it at this time.
+              Only in mode `service`.
+
       Returns:
-          dict: `mode` and for the processing service also `job_id` and `service_running`
+          dict: `mode` and for the processing service also `job_id`, `service_running` and `run_at`
+
+      Raises:
+          errors.Conflict_Error: A scheduled run in mode `thread`
       """
 
       # Read for each start: the mode can be changed in the web app
       from modules import processing_settings
+
+      if run_at is not None and processing_settings.get_processing_mode() != 'service':
+        raise errors.Conflict_Error("A run can only be scheduled with the processing service (mode 'service'). The processing mode is 'thread'.")
 
       if processing_settings.get_processing_mode() == 'thread':
         # Stages which have been queued before the mode was changed
@@ -602,13 +623,13 @@ class Meta_File:
       # Imported here, as it imports this module
       from modules import processing_service
 
-      job = self.run_current_stage_as_job(stage_id, processing_step, continue_run)
+      job = self.run_current_stage_as_job(stage_id, processing_step, continue_run, run_at=run_at)
 
       service_running = processing_service.notify()
       if not service_running:
         logging.warning(f"Processing service is not running. Job {job.id} stays in the queue until it's started.")
 
-      return {'mode': 'service', 'job_id': job.id, 'service_running': service_running}
+      return {'mode': 'service', 'job_id': job.id, 'service_running': service_running, 'run_at': processing_job.format_utc(job.run_at) if job.run_at else None}
 
 
 

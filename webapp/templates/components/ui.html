@@ -15,6 +15,15 @@
 
 
 {#-
+  A time with time zone (ISO 8601, e.g. a scheduled run). Shown in UTC by the server;
+  static/assets/js/app/components.js shows it in the time zone of the browser.
+-#}
+{% macro local_time(iso) -%}
+<time datetime="{{ iso }}" data-local-time>{{ iso | utc }}</time>
+{%- endmacro %}
+
+
+{#-
   Breadcrumb, the one <h1> of the page, an optional status and a meta line. Actions go into the call block:
 
     {% call page_header('Deployments') %}<button ...>Start</button>{% endcall %}

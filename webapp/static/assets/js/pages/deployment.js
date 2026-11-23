@@ -4,7 +4,7 @@
  * - Stage flow: a click selects a stage, its steps are loaded into the panel below (#stage=<id> in the URL).
  * - Steps panel: closed by default, opened by itself only for a problem (scrolled to the latest error);
  *   filter, "only failed and running", one step opens its details.
- * - Actions: run, reset, cancel, remove from queue, custom data, check error. One dialog, then a toast.
+ * - Actions: run, run at a time (scheduled run), reset, cancel, remove from queue, custom data, check error. One dialog, then a toast.
  * - Logs: one dialog over the page; the steps stay as they are behind it.
  * - Live updates (docs/features/web-ui-live-updates.md): the parts of the page which changed are replaced in place,
  *   the page is never loaded again. Filters, the page of the objects table, open steps and dialogs stay.
@@ -12,6 +12,7 @@
 import { get_html, get_json, post_json } from '../app/api.js';
 import { choose, confirm_action, show_error, toast } from '../app/dialogs.js';
 import { on_action, on_change, read_json } from '../app/dom.js';
+import { local_input_to_iso, local_time_text, to_local_input, zone_name } from '../app/time.js';
 import { init_objects } from './deployment-objects.js';
 
 
@@ -297,8 +298,81 @@ on_action('run-stage', async (button) => {
 });
 
 
-async function confirm_and_refresh({title, text, confirm, danger = false, url, done}) {
-    const result = await confirm_action({title, text, confirm, danger, action: () => post_json(url)});
+/** The form of "Run at…": date and time in the time zone of the browser, continue or all steps */
+function schedule_form() {
+
+    const form = document.createElement('div');
+    form.className = 'text-start';
+
+    const label = Object.assign(document.createElement('label'), {className: 'form-label fw-semibold', htmlFor: 'schedule-run-at', textContent: 'Date and time'});
+    const input = Object.assign(document.createElement('input'), {type: 'datetime-local', id: 'schedule-run-at', className: 'form-control', required: true});
+    // Earliest: the next minute. Proposed: the next full hour.
+    const now = new Date();
+    input.min = to_local_input(new Date(now.getTime() + 60000));
+    const next_hour = new Date(now);
+    next_hour.setHours(now.getHours() + 1, 0, 0, 0);
+    input.value = to_local_input(next_hour);
+
+    const zone = Object.assign(document.createElement('div'), {className: 'form-text', textContent: `Time zone of your browser: ${zone_name()}`});
+
+    const options = document.createElement('div');
+    options.className = 'mt-3';
+    for (const [value, text, checked] of [['continue', 'Continue with the steps which are not finished', true], ['run_all', 'Run all steps from the beginning', false]]) {
+        const check = Object.assign(document.createElement('div'), {className: 'form-check'});
+        const radio = Object.assign(document.createElement('input'), {type: 'radio', name: 'schedule-option', id: `schedule-${value}`, value, checked, className: 'form-check-input'});
+        const radio_label = Object.assign(document.createElement('label'), {className: 'form-check-label', htmlFor: `schedule-${value}`, textContent: text});
+        check.append(radio, radio_label);
+        options.append(check);
+    }
+
+    const note = Object.assign(document.createElement('p'), {className: 'form-text mt-3 mb-0',
+        textContent: 'The processing service runs the stage at this time. Until then, no other stage of this deployment can be started. You can cancel the schedule until the run has started.'});
+
+    form.append(label, input, zone, options, note);
+    return {form, input, option: () => form.querySelector('input[name="schedule-option"]:checked').value};
+}
+
+
+on_action('schedule-stage', async (button) => {
+
+    const {stageId, stageName} = button.dataset;
+    const {form, input, option} = schedule_form();
+
+    const result = await confirm_action({
+        title: `Run ${stageName} at …`,
+        confirm: 'Schedule',
+        icon: null,
+        html: form,
+        action: () => {
+            const run_at = local_input_to_iso(input.value);
+            if (run_at === null) {
+                throw new Error('Enter a date and time');
+            }
+            return post_json(`/api/run_stage/${meta_file_id}/${stageId}/${option()}`, {run_at});
+        },
+    });
+
+    if (result) {
+        const when = local_time_text(result.run_at) || result.run_at;
+        if (result.service_running === false) {
+            toast(`${stageName} is scheduled for ${when}. The processing service is not running: start it before then.`, 'warning');
+        } else {
+            toast(`${stageName} is scheduled for ${when}`);
+        }
+        refresh_all();
+    }
+});
+
+
+on_action('cancel-schedule', (button) => confirm_and_refresh({
+    title: `Cancel the scheduled run of ${button.dataset.stageName}?`,
+    text: "The stage doesn't run at the scheduled time. It stays ready: run it or schedule it again.",
+    confirm: 'Cancel schedule', cancel: 'Keep it', url: `/api/cancel_job/${button.dataset.jobId}`, done: `Scheduled run of ${button.dataset.stageName} canceled`,
+}));
+
+
+async function confirm_and_refresh({title, text, confirm, cancel = undefined, danger = false, url, done}) {
+    const result = await confirm_action({title, text, confirm, cancel, danger, action: () => post_json(url)});
     if (result) {
         toast(done);
         refresh_all();

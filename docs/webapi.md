@@ -114,8 +114,8 @@ Actions which change data are shown with `POST`. With an API token they also wor
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
-| `POST` | `/api/run_stage/{meta_file_id}/{stage_id}/{option}` | `run` | Run a stage in the background. [Details](#run_stage) |
-| `POST` | `/api/cancel_job/{job_id}` | `run` | Remove a stage from the queue of the [processing service](processing-service.md), as long as it hasn't started |
+| `POST` | `/api/run_stage/{meta_file_id}/{stage_id}/{option}` | `run` | Run a stage in the background, now or at a [scheduled time](processing-service.md#scheduled-runs). [Details](#run_stage) |
+| `POST` | `/api/cancel_job/{job_id}` | `run` | Remove a stage from the queue of the [processing service](processing-service.md), as long as it hasn't started. Also cancels a scheduled run. |
 | `POST` | `/api/reset_stage_status/{meta_file_id}/{stage_id}` | `run` | Set a stage which hangs in `in process` back to `ready`. Possible one minute after its last change, and not while it's in the processing service. |
 | `POST` | `/api/reset_last_finished_stage/{meta_file_id}/{stage_id}` | `run` | Set the last finished stage back to `ready` (see [workflow](workflow.md#reset-the-last-finished-stage)). `stage_id` has to be the last finished stage. |
 | `GET` | `/show_details/{meta_file_id}/stage/{stage_id}` | `read` | HTML of the steps of a stage, a part of the deployment page (used by the web app) |
@@ -212,6 +212,19 @@ With an API token also as `GET /api/start_workflow/{wf_name}?ticket=ABC-1`: the 
 | `continue` | If the last run of this stage failed, continue with the step which isn't finished |
 | `run_all` | Run all steps of the stage again |
 
+Body (optional), to run the stage later ([scheduled run](processing-service.md#scheduled-runs), only in mode `service`):
+
+```json
+{"run_at": "2026-11-24T22:00:00+01:00"}
+```
+
+`run_at` is ISO 8601 with time zone offset (or `Z` for UTC). Without offset, not a time, or not in the future: status 422. In mode `thread`: status 409.
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+     -d '{"run_at": "2026-11-24T22:00:00+01:00"}' "$URL/api/run_stage/123/456/continue"
+```
+
 The stage is run in the background. The response tells how:
 
 ```json
@@ -219,12 +232,16 @@ The stage is run in the background. The response tells how:
   "status": "success",
   "mode": "thread|service",
   "job_id": 4711,
-  "service_running": true
+  "service_running": true,
+  "run_at": "2026-11-24T21:00:00+00:00"
 }
 ```
 
-`job_id` and `service_running` are only returned in mode `service` (see [processing service](processing-service.md)).
+`job_id`, `service_running` and `run_at` are only returned in mode `service` (see [processing service](processing-service.md)).
+`run_at` is the scheduled time in UTC, `null` for a run as soon as possible.
 If `service_running` is `false`, the stage stays in the queue until the service has been started.
+To cancel a scheduled run before its time: `POST /api/cancel_job/{job_id}` (status 409 once it has started).
+The queued and running jobs of a deployment, with their `run_at`, are in `processing_jobs` of `get_meta_file_json`.
 
 Only stages with status `ready` or `failed` can be run, otherwise the request fails with status 409 and nothing changes.
 Without `parallel_deployment_execution_allowed`, that's also the case while another stage of the deployment is running.

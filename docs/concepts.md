@@ -60,6 +60,7 @@ The steps of a stage run one after the other, in the order of `processing_steps`
   * `Continue` starts with the first step which isn't finished. A failed step without error check counts as done.
   * `Run all` runs all steps again.
 * **Where it runs**: in a thread of the web app, or in its own process if the [processing service](processing-service.md) is used.
+* **Later**: with the processing service a stage can be [scheduled](processing-service.md#scheduled-runs) for a date and time (`Run at…`).
 * **Who**: each run is recorded with the user who started it, and the steps' commands run under the user profile of i-Releaser.
 
 Each run of a stage gets its own log (deployment page → history), and each step stores its stdout and stderr.

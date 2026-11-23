@@ -98,6 +98,42 @@ The current state is shown in the web app: `Settings` &rarr; `Processing` (`/set
 There you also find the last jobs with their status and error.
 
 
+## Scheduled runs
+
+A stage can be run at a later date and time, e.g. `PROD` at 22:00, without anybody online then.
+Only in mode `service` (see [feature](features/scheduled-stage-run.md)).
+
+* **Schedule:** `Run at…` beside `Run stage` on the deployment page (permission `run` for the stage), or the [Web API](webapi.md#run_stage) with `run_at`.
+  The user enters the time in the time zone of the browser. Possible where `Run stage` is possible: a `ready` stage, or a `failed` one to run it again.
+* **Queue:** the run is a job in the queue with `run_at`. The service doesn't take it before then. Other jobs aren't held up by it.
+  `run_at` is stored in UTC, so neither the time zone of the server nor daylight saving time can move it.
+* **Until then:** the stage shows `scheduled` with its time (in the time zone of each viewer's browser) and who scheduled it.
+  The deployment is blocked like with a queued job: no other stage can be started (unless `parallel_deployment_execution_allowed`), and the mode can't be switched to `thread`.
+* **Cancel:** `Cancel schedule` on the stage (or `POST /api/cancel_job/{job_id}`), by every user with `run` for the stage, as long as the run hasn't started. To change the time: cancel and schedule again.
+* **At its time:** the run is checked like a run started by hand, and runs in the name of the user who scheduled it.
+* **Didn't start:** if it's more than `C_SCHEDULE_MAX_DELAY_MINUTES` late (e.g. the service wasn't running) or the stage can't be run (e.g. an older deployment of the project is still open),
+  the job is `failed` with the reason, the stage stays as it was, and the hook [`scheduled_run_failed`](workflow.md#hooks) is called. The deployment page shows it until the stage is run or scheduled again.
+* **History:** `schedule stage`, `cancel schedule`, `scheduled run failed`, and `run stage` with `Scheduled run for <time>`.
+
+```mermaid
+flowchart TD
+    A[User: Run at 22:00] --> B{Mode service,<br>stage can be run,<br>permission run,<br>time in the future?}
+    B -- no --> X[Error, nothing queued]
+    B -- yes --> C[Job queued with run_at]
+    C --> D{Service: run_at reached<br>and slot free?}
+    D -- no --> D
+    D -- yes --> M{Later than<br>C_SCHEDULE_MAX_DELAY_MINUTES?}
+    M -- yes --> F[Job failed: missed time,<br>stage unchanged,<br>hook scheduled_run_failed]
+    M -- no --> E{Checks of a<br>normal run OK?}
+    E -- no --> F2[Job failed with the reason,<br>stage unchanged,<br>hook scheduled_run_failed]
+    E -- yes --> G[Stage runs as usual]
+    C -. Cancel schedule /<br>deployment canceled .-> H[Job canceled,<br>stage unchanged]
+    G -. Cancel schedule .-> R[Rejected with 409,<br>run continues]
+```
+
+Table `processing_jobs`, column `run_at` (text, UTC, e.g. `2026-11-24T21:00:00+00:00`, always this format so it's compared as text): empty for a run as soon as possible.
+
+
 ## Settings
 
 The defaults are in `etc/constants.py`. Put your values into `etc/settings.py`.
@@ -115,6 +151,7 @@ The defaults are in `etc/constants.py`. Put your values into `etc/settings.py`.
 | `C_SERVICE_PID_FILE` | `var/processing-service.pid` | Process id of the service. If you change it, also change it in `serviceapp/service`. |
 | `C_SERVICE_STOPPED_FILE` | `var/processing-service.stopped` | Exists after a stop: `Start automatically` is paused. If you change it, also change it in `serviceapp/service`. |
 | `C_SERVICE_LOCK_FILE` | `var/processing-service.lock` | Locked by the running service, so only one service runs. |
+| `C_SCHEDULE_MAX_DELAY_MINUTES` | `60` | A [scheduled run](#scheduled-runs) which the service takes more than this many minutes after its time is not run (job `failed`). `0`: no limit, it's run however late. |
 
 The service doesn't start if the database is older than the code: start the web app first after an update, it updates the database.
 
@@ -133,6 +170,8 @@ The service doesn't start if the database is older than the code: start the web 
 | A stage is started twice | The second start is rejected as long as the first one is queued or running. |
 | A deployment is canceled | Its stages are removed from the queue. A stage which is already running is not stopped (same behaviour as without the service). |
 | More stages are started than `C_SERVICE_MAX_PARALLEL_JOBS` | They wait in the queue (button `queued`) and start one after another. |
+| The service isn't running at the time of a scheduled run | The run starts when the service is started, if that's within `C_SCHEDULE_MAX_DELAY_MINUTES`. Later it's not run: the job is `failed`, hook `scheduled_run_failed`. |
+| A scheduled run can't start at its time (e.g. an older deployment is still open) | The job is `failed` with the reason, the stage is not touched, hook `scheduled_run_failed`. Run it by hand or schedule it again. |
 
 
 ## Good to know
