@@ -1,10 +1,10 @@
 """Running deployments through the web app, tested against the running application"""
-import json, os, re, threading, time
+import json, os, re, time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from web_server import Web_Server
+from web_server import wait_until, Web_Server
 
 
 @pytest.fixture(scope='module')
@@ -40,7 +40,8 @@ def run_parallel_stages(client, deployment: int) -> None:
     stages = client.get_stages(deployment)
 
     assert client.post_json(f"/api/run_stage/{deployment}/{stages['A']['id']}/continue")[0] == 200
-    time.sleep(0.5)
+    # B starts while A runs
+    client.wait_for_stage(deployment, 'A', status=('in process',))
     assert client.post_json(f"/api/run_stage/{deployment}/{stages['B']['id']}/continue")[0] == 200
 
     client.wait_for_stage(deployment, 'A')
@@ -54,7 +55,8 @@ def test_parallel_stages_keep_their_progress(server, boss, run):
     deployment = boss.create_deployment('par_wf')
     run_parallel_stages(boss, deployment)
 
-    time.sleep(0.5)
+    # END is activated right after the second of the parallel stages
+    wait_until(lambda: boss.get_stages(deployment)['END']['status'] == 'ready', what='END ready')
     stages = boss.get_stages(deployment)
 
     for name in ['A', 'B']:
@@ -66,8 +68,7 @@ def test_parallel_stages_keep_their_progress(server, boss, run):
 
     assert boss.run_stage(deployment, 'END')[0] == 200
     boss.wait_for_stage(deployment, 'END')
-    time.sleep(0.3)
-    assert boss.get_deployment(deployment)['general']['status'] == 'finished'
+    wait_until(lambda: boss.get_deployment(deployment)['general']['status'] == 'finished', what='deployment finished')
 
 
 
@@ -81,6 +82,7 @@ def test_deployment_stays_in_process_while_another_stage_runs(boss):
 
     # A takes 2 seconds, B 2 seconds: start them shifted, so one ends first
     boss.post_json(f"/api/run_stage/{deployment}/{stages['B']['id']}/continue")
+    # A time has to pass: A starts one second after B
     time.sleep(1)
     boss.post_json(f"/api/run_stage/{deployment}/{stages['A']['id']}/continue")
 
@@ -99,7 +101,7 @@ def test_custom_data_edited_while_a_stage_runs_is_kept(boss):
     boss.wait_for_stage(deployment, 'START')
 
     assert boss.run_stage(deployment, 'A')[0] == 200
-    time.sleep(0.3)
+    boss.wait_for_stage(deployment, 'A', status=('in process',))
 
     assert boss.post_json(f"/api/edit_custom_data/{deployment}", {'fields': {'$.ticket': 'NEW'}})[0] == 200
 
@@ -117,7 +119,7 @@ def test_error_check_changed_while_a_stage_runs_is_kept(boss):
 
     stages = boss.get_stages(deployment)
     assert boss.run_stage(deployment, 'A')[0] == 200
-    time.sleep(0.2)
+    boss.wait_for_stage(deployment, 'A', status=('in process',))
 
     # The second step of the stage hasn't been run yet
     action = stages['A']['actions'][1]
@@ -136,10 +138,11 @@ def test_deployment_canceled_while_a_stage_runs_stays_canceled(boss):
     boss.wait_for_stage(deployment, 'START')
 
     boss.run_stage(deployment, 'A')
-    time.sleep(0.2)
+    boss.wait_for_stage(deployment, 'A', status=('in process',))
     assert boss.post(f"/api/cancel_deployment/{deployment}")[0] == 200
 
     boss.wait_for_stage(deployment, 'A')
+    # A time has to pass: the end of the run must not change the status afterwards
     time.sleep(0.3)
 
     assert boss.get_deployment(deployment)['general']['status'] == 'canceled'
@@ -162,6 +165,7 @@ def test_finished_stage_can_not_be_run_again(boss):
 
     assert status == 409
     assert data['status'] == 'error'
+    # A time has to pass: nothing runs afterwards
     time.sleep(0.2)
     assert boss.get_deployment(deployment)['general']['status'] == 'ready'
 
@@ -176,6 +180,7 @@ def test_finished_deployment_stays_finished_and_blocks_nothing(boss):
     assert boss.get_deployment(deployment)['general']['status'] == 'finished'
 
     assert boss.run_stage(deployment, 'PROD')[0] == 409
+    # A time has to pass: nothing runs afterwards
     time.sleep(0.2)
     assert boss.get_deployment(deployment)['general']['status'] == 'finished'
 
@@ -513,7 +518,7 @@ def test_status_codes_and_error_format(server, boss):
 
     intern = server.client('intern')
 
-    assert intern.post(f"/api/save_permissions")[0] == 403
+    assert intern.post("/api/save_permissions")[0] == 403
     assert boss.post('/api/get_meta_file_json/999999')[0] == 404
     assert boss.post('/api/edit_custom_data/1', {'fields': 'x'})[0] in [404, 422]
     assert server.client().get('/api/get_projects', headers={'Accept': '*/*'})[0] == 401
@@ -642,7 +647,8 @@ def test_parallel_stages_with_the_processing_service(service_server, run):
     deployment = client.create_deployment('par_wf')
     run_parallel_stages(client, deployment)
 
-    time.sleep(0.5)
+    # END is activated right after the second of the parallel stages
+    wait_until(lambda: client.get_stages(deployment)['END']['status'] == 'ready', what='END ready')
     stages = client.get_stages(deployment)
 
     for name in ['A', 'B']:

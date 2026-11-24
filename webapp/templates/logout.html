@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{#- Without navigation (sidebar=None). A link to /logout shows this page: only the button logs out (POST), not a link of another site -#}
+
+{% block title %}Log out{% endblock %}
+
+{% block content %}
+
+<div class="ir-login ir-card">
+
+    <div class="ir-login-brand">
+        <img src="{{ url_for('static', path='assets/img/logo2-icon.png') }}" alt="">
+        <h1>i-Releaser</h1>
+    </div>
+
+    <form method="post" action="/logout">
+        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out</button>
+    </form>
+
+    <p class="mt-3 mb-0 text-center"><a href="/">Back to i-Releaser</a></p>
+
+</div>
+
+{% endblock %}

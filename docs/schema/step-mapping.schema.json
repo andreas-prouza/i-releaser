@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "i-Releaser step actions (etc/default_step_action.json)",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "processing_step",
+      "environment",
+      "execute"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "processing_step": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Name used in `processing_steps` of a stage"
+      },
+      "environment": {
+        "enum": [
+          "QSYS",
+          "PASE",
+          "SCRIPT"
+        ],
+        "description": "QSYS: IBM i command, PASE: shell command, SCRIPT: Python function 'file.function' of scripts/"
+      },
+      "execute": {
+        "type": "string",
+        "minLength": 1,
+        "description": "The command (QSYS, PASE) or 'file.function' (SCRIPT). Placeholders: {meta_file[...]}"
+      },
+      "check_error": {
+        "type": "boolean",
+        "default": true,
+        "description": "true: the stage stops if the step fails"
+      },
+      "execute_remote": {
+        "type": "boolean",
+        "description": "Overwrites execute_remote of the stage (QSYS only)"
+      },
+      "fail_on_stderr": {
+        "type": "boolean",
+        "default": true,
+        "description": "false: only the exit code decides"
+      },
+      "timeout_seconds": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "The command is ended after this time. 0: no timeout"
+      },
+      "parallel_group": {
+        "type": "string",
+        "description": "Group of steps which run at the same time"
+      },
+      "parallel": {
+        "type": "boolean",
+        "default": false,
+        "description": "true: runs at the same time as the steps of its group"
+      }
+    }
+  }
+}

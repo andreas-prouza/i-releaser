@@ -1,11 +1,11 @@
 import datetime
 import sqlite3
 import json
+from modules import state
 from modules.db import app_sqlite
 from modules import workflow as wf
 from modules import stages as s
 from modules.stage_status import Status as Stage_Status
-from modules import deploy_action as da
 from modules.db import actions_data
 
 
@@ -52,18 +52,22 @@ def _add_stage(meta_file_id: int, stage: s.Stage):
 
 
 
-def get_stages(meta_file_id: int) -> s.Stage_List_list:
+def get_stages(meta_file_id: int, cursor: sqlite3.Cursor|None=None, steps: 'actions_data.Deployment_Steps|None'=None) -> s.Stage_List_list:
+    """
+    Args:
+        cursor, steps: Loading a whole deployment: on its connection, with its steps loaded at once (meta_file_data)
+    """
 
-    with app_sqlite.get_db_connection() as conn:
-
-        c = conn.cursor()
-        c.execute("SELECT * FROM stages WHERE meta_file_id = ?", (meta_file_id,))
-        stage_rows = c.fetchall()
+    if cursor is not None:
+        stage_rows = cursor.execute("SELECT * FROM stages WHERE meta_file_id = ? ORDER BY id", (meta_file_id,)).fetchall()
+    else:
+        with app_sqlite.get_db_connection() as conn:
+            stage_rows = conn.execute("SELECT * FROM stages WHERE meta_file_id = ? ORDER BY id", (meta_file_id,)).fetchall()
 
     stages = s.Stage_List_list()
 
     for row in stage_rows:
-        stages.append(_convert_row_to_stage(row))
+        stages.append(_convert_row_to_stage(row, steps))
 
     return stages
 
@@ -83,7 +87,7 @@ def get_stage(stage_id: int) -> s.Stage | None:
 
 
 
-def _convert_row_to_stage(row: sqlite3.Row) -> s.Stage:
+def _convert_row_to_stage(row: sqlite3.Row, steps: 'actions_data.Deployment_Steps|None'=None) -> s.Stage:
 
     stage_dict = dict(row)
     stage_dict['next_stages'] = json.loads(stage_dict['next_stages']) if stage_dict['next_stages'] else []
@@ -93,7 +97,7 @@ def _convert_row_to_stage(row: sqlite3.Row) -> s.Stage:
     stage_dict['lib_mapping'] = json.loads(stage_dict['lib_mapping']) if stage_dict['lib_mapping'] else {}
     stage_dict['status'] = Stage_Status(stage_dict['status'])
     stage_dict['run_immediate'] = stage_dict['run_immediate'] if 'run_immediate' in stage_dict else False
-    stage_dict['actions'] = actions_data.get_actions(stage_id=row['id'])
+    stage_dict['actions'] = steps.of_stage(row['id']) if steps is not None else actions_data.get_actions(stage_id=row['id'])
 
     stage_obj = s.Stage(dict=stage_dict)
     stage_obj.saved_values = _get_values(stage_obj)
@@ -104,15 +108,13 @@ def _convert_row_to_stage(row: sqlite3.Row) -> s.Stage:
 
 
 def _get_values(stage: s.Stage) -> dict:
-    """Columns which can change after the stage has been created"""
+    """Columns which can change after the stage has been created. Not the status (and its time): only a transition changes it."""
 
     return {
-        'status': stage.status.value,
         'next_stages': json.dumps(stage.next_stages),
         'next_stage_ids': json.dumps(stage.next_stage_ids),
         'after_stages_finished': json.dumps(stage.after_stages_finished),
         'lib_mapping': json.dumps(stage.lib_mapping),
-        'update_time': stage.update_time,
     }
 
 
@@ -136,6 +138,31 @@ def refresh_stages(stages: s.Stage_List_list, meta_file_id: int) -> None:
         stage.next_stage_ids = json.loads(row['next_stage_ids']) if row['next_stage_ids'] else []
         stage.update_time = datetime.datetime.fromisoformat(row['update_time'])
         stage.saved_values = _get_values(stage)
+
+
+
+
+def transition(stage_id: int, to: Stage_Status) -> tuple[bool, Stage_Status|None]:
+    """
+    Changes the status of a stage, if the change is allowed from its current status in the database (modules/state.py).
+
+    Returns:
+        (changed, status): the status in the database afterwards (None if the stage doesn't exist)
+    """
+
+    allowed = state.allowed_from(state.STAGE, to)
+
+    with app_sqlite.get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute(f"UPDATE stages SET status = ?, update_time = ? WHERE id = ? AND status IN ({', '.join('?' * len(allowed))})",
+                  (to.value, datetime.datetime.now(), stage_id, *allowed))
+        conn.commit()
+
+        if c.rowcount == 1:
+            return True, to
+
+        row = c.execute("SELECT status FROM stages WHERE id = ?", (stage_id,)).fetchone()
+        return False, Stage_Status(row['status']) if row else None
 
 
 
@@ -202,7 +229,7 @@ def activate_stage(stage_id: int, wait_for: list[str]|None=None) -> bool:
 
 
 def save_stages(stages: s.Stage_List_list, cursor: sqlite3.Cursor=None, meta_dir: str|None=None):
-    
+
     for stage in stages:
         save_stage(stage, cursor, meta_dir)
 
@@ -216,7 +243,7 @@ def save_stage(stage: s.Stage, cursor: sqlite3.Cursor=None, meta_dir: str|None=N
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
         _save_stage(stage, c, meta_dir)
-        
+
         conn.commit()
 
 

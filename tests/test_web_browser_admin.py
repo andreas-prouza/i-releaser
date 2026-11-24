@@ -84,6 +84,63 @@ def test_filter_a_log_by_level_and_text(server, browser_context):
 
 
 
+def test_admin_revokes_the_token_of_a_user_on_the_security_tab(server, browser_context):
+    """The actions of the security tab run with pages/security.js (docs/features/web-ui-admin-pages.md#decisions-2026-11-24)"""
+
+    status, created = server.client('runner').post_json('/api/v2/tokens', {'name': 'Revoke test', 'scope': 'read'})
+    assert status == 201, created
+    bearer = {'Authorization': f"Bearer {created['token']}"}
+    assert Client(server).get('/api/v2/workflows', headers=bearer)[0] == 200
+
+    page, watch = open_page(browser_context, server, '/settings/security')
+    page.locator('[data-action="revoke-token"][data-name="Revoke test"]').click()
+    assert page.locator('.swal2-title').inner_text() == 'Revoke the API token Revoke test of runner?'
+    with page.expect_navigation():
+        page.locator('.swal2-confirm').click()
+    page.wait_for_selector('.swal2-toast')
+
+    assert 'Token Revoke test of runner revoked' in page.locator('.swal2-toast').inner_text()
+    assert page.locator('[data-action="revoke-token"][data-name="Revoke test"]').count() == 0
+    assert Client(server).get('/api/v2/workflows', headers=bearer)[0] == 401
+    watch.assert_clean()
+
+
+
+def test_change_and_reset_a_setting_in_the_form(server, browser_context):
+    """docs/features/settings-in-web-app.md: pages/configuration.js sends the value with its type"""
+
+    page, watch = open_page(browser_context, server, '/settings/configuration')
+    row = page.locator('tr[data-setting="C_RETENTION_DAYS"]')
+
+    row.locator('[data-setting-input]').fill('45')
+    with page.expect_navigation():
+        row.locator('[data-action="save-setting"]').click()
+    page.wait_for_selector('.swal2-toast')
+    assert 'C_RETENTION_DAYS saved' in page.locator('.swal2-toast').inner_text()
+    row = page.locator('tr[data-setting="C_RETENTION_DAYS"]')
+    assert row.locator('[data-setting-input]').input_value() == '45'
+    assert 'web app' in row.inner_text()
+
+    # A switch: True or False, not a text
+    archive = page.locator('tr[data-setting="C_RETENTION_ARCHIVE"]')
+    archive.locator('[data-setting-input]').check()
+    with page.expect_navigation():
+        archive.locator('[data-action="save-setting"]').click()
+    page.wait_for_selector('.swal2-toast')
+    assert page.locator('tr[data-setting="C_RETENTION_ARCHIVE"] [data-setting-input]').is_checked()
+
+    for name in ['C_RETENTION_DAYS', 'C_RETENTION_ARCHIVE']:
+        page.locator(f'tr[data-setting="{name}"] [data-action="reset-setting"]').click()
+        with page.expect_navigation():
+            page.locator('.swal2-confirm').click()
+        page.wait_for_selector('.swal2-toast')
+
+    assert page.locator('tr[data-setting="C_RETENTION_DAYS"] [data-setting-input]').input_value() == '0'
+    assert page.locator('[data-action="reset-setting"]').count() == 0
+    watch.assert_clean()
+
+
+
 def test_token_generate_copy_use_and_delete(server, browser):
 
     context = browser.new_context()
@@ -91,9 +148,11 @@ def test_token_generate_copy_use_and_delete(server, browser):
     try:
         page, watch = open_page(context, server, '/user')
 
-        page.locator('[data-action="renew-token"]').click()
+        page.locator('[data-action="new-token"]').click()
+        page.locator('#token-name').fill('Copy test')
+        page.locator('#token-scope').select_option('read')
         page.locator('.swal2-confirm').click()
-        wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Token generated'")
+        wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Token Copy test created'")
         assert "can't be shown again" in page.locator('.swal2-html-container').inner_text()
 
         page.locator('.swal2-html-container [data-copy]').click()
@@ -101,13 +160,15 @@ def test_token_generate_copy_use_and_delete(server, browser):
         token = page.evaluate("navigator.clipboard.readText()")
         assert token == page.locator('.swal2-html-container code').inner_text() and len(token) > 20
 
-        # The token works for the Web API
+        # The token works for the Web API, only to read (scope read)
         api = Client(server)
-        assert api.get('/api/get_workflows', headers={'Authorization': f"Bearer {token}"})[0] == 200
+        assert api.get('/api/v2/workflows', headers={'Authorization': f"Bearer {token}"})[0] == 200
+        assert api.request('POST', '/api/v2/deployments', body={'workflow': 'seq_wf'}, headers={'Authorization': f"Bearer {token}"})[0] == 403
 
         with page.expect_navigation():
             page.locator('.swal2-confirm').click()
-        page.locator('[data-action="delete-token"]').click()
+        assert 'Copy test' in page.locator('.ir-tokens').inner_text()
+        page.locator('[data-action="delete-token"][data-name="Copy test"]').click()
         with page.expect_navigation():
             page.locator('.swal2-confirm').click()
         page.wait_for_selector('.swal2-toast')

@@ -82,6 +82,24 @@ Example with a build, a test and a production stage:
 ```
 
 
+### Check the files in the editor
+
+`docs/schema/` contains JSON schemas of the configuration files. With them VS Code (and other editors) show unknown attributes, wrong values and descriptions while you type.
+In the settings of VS Code (`.vscode/settings.json` of your workspace):
+
+```json
+"json.schemas": [
+  {"fileMatch": ["etc/workflows/*.json"], "url": "./docs/schema/workflow.schema.json"},
+  {"fileMatch": ["etc/default_step_action.json"], "url": "./docs/schema/step-mapping.schema.json"},
+  {"fileMatch": ["etc/object_commands.json"], "url": "./docs/schema/object-commands.schema.json"},
+  {"fileMatch": ["etc/user_permissions.json"], "url": "./docs/schema/user-permissions.schema.json"},
+  {"fileMatch": ["etc/notifications.json"], "url": "./docs/schema/notifications.schema.json"}
+]
+```
+
+Or in a workflow file itself: `"$schema": "../../docs/schema/workflow.schema.json"` (the path relative to the file; i-Releaser ignores this attribute).
+
+
 ## Workflow attributes
 
 | Attribute | Required | Description |
@@ -107,6 +125,7 @@ Other attributes are rejected.
 | `next_stages` | Names of the stages which become `ready` when this one is finished. More than one starts [parallel branches](#parallel-branches). |
 | `after_stages_finished` | Names of stages which have to be finished before this stage can be run |
 | `run_immediate` | `true`: run this stage automatically as soon as it becomes ready |
+| `four_eyes_check` | `true`: the stage only runs after a second person has approved it, see [four-eyes check](permissions.md#four-eyes-check) |
 | `processing_steps` | Processing steps in the order they are run. Each one needs a [step action](#step-actions). A stage without steps (e.g. `END`) finishes automatically as soon as it's reached and doesn't wait for other stages. |
 | `host` | Target system: used by `ssh` for remote `QSYS` commands, by the transfer script, and to find the DB connection of the DB deployment |
 | `execute_remote` | `true`: `QSYS` commands run on `host` via SSH. A step action can overwrite it. `PASE` commands always run locally. |
@@ -359,11 +378,13 @@ E.g. to inform other systems like Jira (see [jira.md](jira.md)).
   | `stage_failed` | A step of a stage failed |
   | `scheduled_run_failed` | A [scheduled run](processing-service.md#scheduled-runs) didn't start: missed its time or the stage couldn't be run. The stage hasn't run. The reason is the `error` of the stage's last job (`processing_job_data.get_last_jobs(meta_file.id)[stage_obj.id].error`). Runs in the process of the job. |
   | `custom_data_changed` | A user edited the custom data |
+  | `approval_requested` | A stage with the [four-eyes check](features/four-eyes-check.md) waits for an approval: it became `ready` without a valid approval, or its approval became invalid by a change |
 
 * Errors of a hook are logged only. They never stop or fail the deployment.
 * Hooks run in the same thread as the stage (or the web request), so the stage waits for them. Keep them short and use timeouts for network calls.
   With the [processing service](processing-service.md) the hooks which are triggered by the run of a stage run in the process of the job.
 * The workflow definition is stored with each deployment. Deployments created before `hooks` was added to the workflow don't run them.
+* For e-mails, Teams or Slack you don't need a hook: the [notifications](features/notifications.md) (`etc/notifications.json`) send them for the same events, for all workflows.
 
 
 ## Reset the last finished stage

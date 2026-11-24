@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "i-Releaser permissions (etc/user_permissions.json)",
+  "type": "object",
+  "properties": {
+    "users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissions": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "general": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "admin",
+                    "read",
+                    "start workflow",
+                    "run",
+                    "change check error",
+                    "cancel workflow",
+                    "edit-custom-data",
+                    "deploy",
+                    "4-eyes check"
+                  ]
+                }
+              },
+              "workflows": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "general": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "admin",
+                          "read",
+                          "start workflow",
+                          "run",
+                          "change check error",
+                          "cancel workflow",
+                          "edit-custom-data",
+                          "deploy",
+                          "4-eyes check"
+                        ]
+                      }
+                    },
+                    "stages": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "enum": [
+                            "admin",
+                            "read",
+                            "start workflow",
+                            "run",
+                            "change check error",
+                            "cancel workflow",
+                            "edit-custom-data",
+                            "deploy",
+                            "4-eyes check"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "detailed_infos": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "general": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "admin",
+                    "read",
+                    "start workflow",
+                    "run",
+                    "change check error",
+                    "cancel workflow",
+                    "edit-custom-data",
+                    "deploy",
+                    "4-eyes check"
+                  ]
+                }
+              },
+              "workflows": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "general": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "admin",
+                          "read",
+                          "start workflow",
+                          "run",
+                          "change check error",
+                          "cancel workflow",
+                          "edit-custom-data",
+                          "deploy",
+                          "4-eyes check"
+                        ]
+                      }
+                    },
+                    "stages": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "enum": [
+                            "admin",
+                            "read",
+                            "start workflow",
+                            "run",
+                            "change check error",
+                            "cancel workflow",
+                            "edit-custom-data",
+                            "deploy",
+                            "4-eyes check"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,7 +2,8 @@ from io import StringIO
 import os
 import logging
 from modules.db import app_sqlite
-from modules.db.meta_file_data import get_meta_dir
+# The module, not the name: it may not be loaded completely yet (circular import)
+from modules.db import meta_file_data
 from modules import meta_file_history as mfh
 from modules import files
 
@@ -10,21 +11,21 @@ from modules import files
 
 
 
-def create_new_meta_file_history(log: StringIO|str|None=None, create_time=None, meta_file_id: int=None, dict: dict={}) -> mfh.Meta_File_History:
+def create_new_meta_file_history(log: StringIO|str|None=None, create_time=None, meta_file_id: int=None, dict: dict|None=None) -> mfh.Meta_File_History:
     """Creates a new Meta_File_History instance and saves it to the database.
     Its log is stored in a file, the history log contains the file path (file://...)."""
-    
+
     mfh_obj = mfh.Meta_File_History(
         log=log,
         create_time=create_time,
         meta_file_id=meta_file_id,
-        dict=dict
+        dict=dict if dict is not None else {}
     )
 
     add_meta_file_history(mfh_obj)
 
     return mfh_obj
-    
+
 
 
 
@@ -33,14 +34,14 @@ def get_run_history_by_id(id: int) -> mfh.Meta_File_History|None:
     run_history: mfh.Meta_File_History|None = None
 
     with app_sqlite.get_db_connection() as conn:
-        
+
         c = conn.cursor()
         c.execute("SELECT * FROM run_history WHERE id = ?", (id,))
         run_history_rows = c.fetchall()
-        
+
         if len(run_history_rows) == 0:
             return None
-        
+
         run_history = mfh.Meta_File_History(id=run_history_rows[0]['id'], meta_file_id=run_history_rows[0]['meta_file_id'], create_time=run_history_rows[0]['create_time'], log=run_history_rows[0]['log'])
 
         if run_history.log and isinstance(run_history.log, str) and run_history.log.startswith("file://"):
@@ -62,7 +63,7 @@ def add_meta_file_history(meta_file_history: mfh.Meta_File_History):
     if meta_file_history.meta_file_id is None:
         raise ValueError("meta_file_id must be set before saving Meta_File_History.")
 
-    
+
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
 
@@ -70,10 +71,10 @@ def add_meta_file_history(meta_file_history: mfh.Meta_File_History):
         if isinstance(log, StringIO):
             log = log.getvalue()
 
-        meta_dir:str|None = get_meta_dir(cursor=c, meta_file_id=meta_file_history.meta_file_id)
+        meta_dir:str|None = meta_file_data.get_meta_dir(cursor=c, meta_file_id=meta_file_history.meta_file_id)
         if meta_dir is None:
             raise Exception(f"Meta directory not found for meta file ID {meta_file_history.meta_file_id}. Cannot save run history logs.")
-        
+
         c.execute('''
             INSERT INTO run_history (meta_file_id, create_time)
             VALUES (?, ?)

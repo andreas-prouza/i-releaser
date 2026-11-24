@@ -4,12 +4,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
 from modules import files, ibm_i_commands, meta_file, placeholders, workflow
 from modules import deploy_action as da
 from modules.cmd_status import Status as Cmd_Status
-from modules.db import app_sqlite, meta_file_data
+from modules.db import meta_file_data
 from modules.ibm_i_commands import IBM_i_commands
 from modules.meta_file_status import Meta_file_status
 
@@ -166,15 +166,9 @@ class Database_Test(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
-
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
+        db_tools.use_temp_db(self)
 
         self.patches = [
-            patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(workflow.Workflow, 'get_workflow_by_name', return_value=workflow.Workflow(dict=WORKFLOW)),
             patch.object(workflow.Workflow, 'get_default_step_mapping', return_value=[]),
         ]
@@ -190,8 +184,6 @@ class Database_Test(unittest.TestCase):
         for p in reversed(self.patches):
             p.stop()
 
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
-        shutil.rmtree(self.tmp_dir)
 
 
     def run_step(self, environment=da.Command_Type.PASE, **kwargs) -> da.Deploy_Action:
@@ -383,7 +375,7 @@ class TestStepResult(Database_Test):
 def noisy_script(name: str):
 
     def script(meta_file, stage_obj, action):
-        for i in range(1000):
+        for _ in range(1000):
             print(f"{name} print")
             logging.info(f"{name} log")
 
@@ -401,7 +393,7 @@ class TestScriptOutput(Database_Test):
         self.root_logger = logging.getLogger()
         self.root_level = self.root_logger.level
         self.root_logger.setLevel(logging.INFO)
-        self.modules = patch.dict(ibm_i_commands.__dict__, {'noisy': SimpleNamespace(a=noisy_script('AAA'), b=noisy_script('BBB'))})
+        self.modules = patch.dict(sys.modules, {'scripts.noisy': SimpleNamespace(a=noisy_script('AAA'), b=noisy_script('BBB'))})
         self.modules.start()
 
 
@@ -447,6 +439,49 @@ class TestScriptOutput(Database_Test):
         self.assertEqual(self.root_logger.level, level)
         self.assertEqual(len(self.root_logger.handlers), handlers)
         print('still works')
+
+
+    def test_script_step_which_runs_a_script_sub_step(self):
+        """docs/bugfixes/nested-script-output-capture.md: both steps get their own output"""
+
+        mf = self.mf
+        stage = mf.get_stages_by_name('START')[0]
+        sub_results = []
+
+        def outer(meta_file, stage, action):
+            print('OUTER before')
+            sub = da.Deploy_Action(cmd='noisy.inner', environment=da.Command_Type.SCRIPT, processing_step='step', stage='START')
+            sub.id = 2
+            sub_results.append(IBM_i_commands.run_script_cmd(IBM_i_commands(meta_file), stage, 'noisy.inner', sub))
+            print('OUTER after')
+
+        def inner(meta_file, stage, action):
+            print('INNER')
+
+        with patch.dict(sys.modules, {'scripts.noisy': SimpleNamespace(outer=outer, inner=inner)}):
+            action = da.Deploy_Action(cmd='noisy.outer', environment=da.Command_Type.SCRIPT, processing_step='step', stage='START')
+            action.id = 1
+            result = IBM_i_commands.run_script_cmd(IBM_i_commands(mf), stage, 'noisy.outer', action)
+
+        self.assertEqual(result.status, Cmd_Status.FINISHED)
+        self.assertIn('OUTER before', result.stdout)
+        self.assertIn('OUTER after', result.stdout)
+        self.assertNotIn('INNER', result.stdout)
+        self.assertIn('INNER', sub_results[0].stdout)
+
+
+    def test_script_step_reaches_only_scripts(self):
+        """docs/features/core-redesign.md, step 4: names like os.system aren't scripts"""
+
+        stage = self.mf.get_stages_by_name('START')[0]
+
+        for cmd in ['os.system', 'subprocess.run', 'noisy.missing', 'missing_file.run']:
+            action = da.Deploy_Action(cmd=cmd, environment=da.Command_Type.SCRIPT, processing_step='step', stage='START')
+            action.id = 1
+            result = IBM_i_commands.run_script_cmd(IBM_i_commands(self.mf), stage, cmd, action)
+            self.assertEqual(result.status, Cmd_Status.FAILED, cmd)
+            self.assertIn('not found', result.stderr, cmd)
+
 
 
     def test_other_threads_are_not_captured(self):

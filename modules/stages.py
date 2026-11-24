@@ -13,235 +13,248 @@ class Stage:
 
 
 
-  def __init__(self, dict: dict|None=None):
-    self.id :int|None = None
-    self.workflow: wf.Workflow|None = None
-    self.name :str|None = None
-    self.description :str|None = None
-    self.host :str|None = None
-    self.base_dir :str|None = None
-    self.remote_dir :str|None = None
-    self.build_dir :str|None = None
-    self.next_stages :Stage_List_list = Stage_List_list()
-    self.next_stage_ids :list[int] = []
-    self.after_stages_finished :list[str] = []
-    self.from_stage_id :list[int]= []
-    self.clear_files = None
-    self.lib_replacement_necessary = None
-    self.lib_mapping = {}
-    self.processing_steps = []
-    self.actions = da.Deploy_Action_List_list()
-    self.execute_remote = None
-    self.status: Stage_Status = Stage_Status.NEW
-    self.create_time: datetime.datetime = datetime.datetime.now()
-    self.update_time: datetime.datetime = datetime.datetime.now()
-    self.processing_users :list[str] = []
-    self.run_immediate :bool|None = None
-    # Values in the database, see app_sqlite.update_changes
-    self.saved_values: dict|None = None
+    def __init__(self, dict: dict|None=None):
+        self.id :int|None = None
+        self.workflow: wf.Workflow|None = None
+        self.name :str|None = None
+        self.description :str|None = None
+        self.host :str|None = None
+        self.base_dir :str|None = None
+        self.remote_dir :str|None = None
+        self.build_dir :str|None = None
+        self.next_stages :Stage_List_list = Stage_List_list()
+        self.next_stage_ids :list[int] = []
+        self.after_stages_finished :list[str] = []
+        self.from_stage_id :list[int]= []
+        self.clear_files = None
+        self.lib_replacement_necessary = None
+        self.lib_mapping = {}
+        self.processing_steps = []
+        self.actions = da.Deploy_Action_List_list()
+        self.execute_remote = None
+        self.status: Stage_Status = Stage_Status.NEW
+        self.create_time: datetime.datetime = datetime.datetime.now()
+        self.update_time: datetime.datetime = datetime.datetime.now()
+        self.processing_users :list[str] = []
+        self.run_immediate :bool|None = None
+        # The stage only runs after a second person has approved it (docs/features/four-eyes-check.md). From the workflow, not stored with the stage
+        self.four_eyes_check :bool = False
+        # Values in the database, see app_sqlite.update_changes
+        self.saved_values: dict|None = None
 
 
 
 
-    if dict is not None and len(dict) > 0:
-      # Temporarily disabled
-      # e = Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
-      # logging.exception(e, stack_info=True)
-      # raise e
-      pass
+        if dict is not None and len(dict) > 0:
+            # Temporarily disabled
+            # e = Exception(f"Attributes of {type(self)} ({self.__dict__}) does not match attributes from {dict=}")
+            # logging.exception(e, stack_info=True)
+            # raise e
+            pass
 
-    if dict is not None and len(dict) > 0:
-      
-      for k, v in dict.items():
-        if hasattr(self, k):
-          setattr(self, k, v)
+        if dict is not None and len(dict) > 0:
 
-    if isinstance(self.create_time, str):
-      self.create_time = datetime.datetime.fromisoformat(self.create_time)
+            for k, v in dict.items():
+                if hasattr(self, k):
+                    setattr(self, k, v)
 
-    if isinstance(self.update_time, str):
-      self.update_time = datetime.datetime.fromisoformat(self.update_time)
+        if isinstance(self.create_time, str):
+            self.create_time = datetime.datetime.fromisoformat(self.create_time)
 
-    if self.name is None:
-      e = Exception(f"Stage name has to be defined: {dict=}")
-      logging.exception(e, stack_info=True)
-      raise e
-    
+        if isinstance(self.update_time, str):
+            self.update_time = datetime.datetime.fromisoformat(self.update_time)
 
-  def set_status(self, status, update_time=True):
-
-    if (type(status) == str):
-      status = Stage_Status(status)
-    self.status = status
-    if update_time:
-      self.update_time = datetime.datetime.now()
-    
-    from modules.db import stage_data
-    stage_data.save_stage(stage=self)
-#    self.update_time = '2023-03-04 14:31:30.404775'
+        if self.name is None:
+            e = Exception(f"Stage name has to be defined: {dict=}")
+            logging.exception(e, stack_info=True)
+            raise e
 
 
+    def set_status(self, status, update_time=True) -> bool:
+        """
+        Changes the status in the database, if the change is allowed from the status there (modules/state.py).
+        A stage which isn't stored yet only changes in memory.
 
-  def set_processing_steps(self, workflow: wf.Workflow):
-    """Set all actions which are allowed for this stage
+        Returns:
+            bool: False if the change isn't allowed: the stage has the status of the database then
+        """
 
-    Args:
-        stage (str): Name of stage
-    """
+        if (type(status) == str):
+            status = Stage_Status(status)
 
-    #get all processing steps for given stage
-    do_steps = self.processing_steps
+        if self.id is None:
+            self.status = status
+            return True
 
-    wf_steps = wf.Workflow.get_workflow_steps_mapping(workflow_dict=workflow.get_dict())
-    
-    all_steps = {x['processing_step']:x for x in wf_steps}.values()
+        from modules.db import stage_data
+        changed, current = stage_data.transition(self.id, status)
 
-    for step in do_steps:
+        if not changed:
+            logging.warning(f"Stage {self.name} ({self.id}) can't change from '{current.value if current else None}' to '{status.value}'")
+            if current is not None:
+                self.status = current
+            return False
 
-      for all_step in all_steps:
-        if step == all_step['processing_step']:
-          self.actions.add_action_cmd(
-                cmd=all_step['execute'], 
-                environment=da.Command_Type(all_step.get('environment')), 
-                processing_step=all_step.get('processing_step', []), 
-                stage=self.name, 
-                check_error=all_step.get('check_error', True), 
-                execute_remote=all_step.get('execute_remote', None),
-                fail_on_stderr=all_step.get('fail_on_stderr', None),
-                timeout_seconds=all_step.get('timeout_seconds', None),
-                parallel_group=all_step.get('parallel_group', None),
-                parallel=all_step.get('parallel', False)
-          )
-          break
-
-
-  @staticmethod
-  def get_stage_from_workflow(workflow:workflow.Workflow, stage_name: str) -> 'Stage':
-    """Retrieves stage from workflow
-        This is also a check if the wanted stage exist in the workflow config
-
-    Args:
-        workflow (str): Name of workflow
-        name (str): Name of stage
-
-    Raises:
-        Exception: If given stage does not exist in workflow cofig
-
-    Returns:
-        Stage: Stage object
-    """
-    
-    stage = workflow.get_stage(stage_name)
-    
-    if stage is not None:
-      
-      stage = Stage.get_stage_from_dict(workflow, stage)
-      stage.set_processing_steps(workflow)
-      
-      if len(stage.actions) < len(stage.processing_steps):
-        raise Exception(f"{stage_name}: {len(stage.actions)=} is less than {len(stage.processing_steps)=}")
-
-      return stage
-
-    e = Exception(f"No stage found with '{workflow.name=}' & '{stage_name=}'")
-    logging.exception(e, stack_info=True)
-    raise e
+        self.status = status
+        if update_time:
+            self.update_time = datetime.datetime.now()
+        return True
 
 
 
-  @staticmethod
-  def get_stage_from_dict(wf:workflow.Workflow, dict: dict = {}) -> 'Stage':
+    def set_processing_steps(self, workflow: wf.Workflow):
+        """Set all actions which are allowed for this stage
 
-    Stage.validate(dict)
+        Args:
+            stage (str): Name of stage
+        """
 
-    stage = Stage(dict=dict)
+        #get all processing steps for given stage
+        do_steps = self.processing_steps
 
-    stage.set_status(stage.status, False)
-    stage.actions = da.Deploy_Action_List_list(stage.actions)
+        wf_steps = wf.Workflow.get_workflow_steps_mapping(workflow_dict=workflow.get_dict())
 
-    return stage
+        all_steps = {x['processing_step']:x for x in wf_steps}.values()
 
+        for step in do_steps:
 
-
-  def get_dict(self) -> dict:
-    return {
-      'id' : self.id,
-      'name' : self.name,
-      'description' : self.description,
-      'host' : self.host,
-      'remote_dir' : self.remote_dir,
-      'build_dir' : self.build_dir,
-      'next_stages' : self.next_stages,
-      'next_stage_ids': self.next_stage_ids,
-      'after_stages_finished': self.after_stages_finished,
-      'clear_files' : self.clear_files,
-      'processing_steps' : self.processing_steps,
-      'execute_remote' : self.execute_remote,
-      'lib_replacement_necessary' : self.lib_replacement_necessary,
-      'lib_mapping' : self.lib_mapping,
-      'status' : self.status.value,
-      'create_time' : self.create_time,
-      'update_time' : self.update_time,
-      'processing_users' : self.processing_users,
-      'run_immediate' : self.run_immediate,
-      'actions' : self.actions.get_actions_as_dict(),
-    }
+            for all_step in all_steps:
+                if step == all_step['processing_step']:
+                    self.actions.add_action_cmd(
+                          cmd=all_step['execute'], 
+                          environment=da.Command_Type(all_step.get('environment')), 
+                          processing_step=all_step.get('processing_step', []), 
+                          stage=self.name, 
+                          check_error=all_step.get('check_error', True), 
+                          execute_remote=all_step.get('execute_remote', None),
+                          fail_on_stderr=all_step.get('fail_on_stderr', None),
+                          timeout_seconds=all_step.get('timeout_seconds', None),
+                          parallel_group=all_step.get('parallel_group', None),
+                          parallel=all_step.get('parallel', False)
+                    )
+                    break
 
 
+    @staticmethod
+    def get_stage_from_workflow(workflow:workflow.Workflow, stage_name: str) -> 'Stage':
+        """Retrieves stage from workflow
+            This is also a check if the wanted stage exist in the workflow config
 
-  def get_next_stages(self) -> 'Stage_List_list':
+        Args:
+            workflow (str): Name of workflow
+            name (str): Name of stage
 
-    new_next_stages = Stage_List_list()
-    
-    for next_stage in self.next_stages:
-      new_next_stages.append(next_stage)
+        Raises:
+            Exception: If given stage does not exist in workflow cofig
 
-    return new_next_stages
+        Returns:
+            Stage: Stage object
+        """
+
+        stage = workflow.get_stage(stage_name)
+
+        if stage is not None:
+
+            stage = Stage.get_stage_from_dict(workflow, stage)
+            stage.set_processing_steps(workflow)
+
+            if len(stage.actions) < len(stage.processing_steps):
+                raise Exception(f"{stage_name}: {len(stage.actions)=} is less than {len(stage.processing_steps)=}")
+
+            return stage
+
+        e = Exception(f"No stage found with '{workflow.name=}' & '{stage_name=}'")
+        logging.exception(e, stack_info=True)
+        raise e
+
+
+
+    @staticmethod
+    def get_stage_from_dict(wf:workflow.Workflow, dict: dict|None = None) -> 'Stage':
+
+        dict = dict if dict is not None else {}
+        Stage.validate(dict)
+
+        stage = Stage(dict=dict)
+
+        stage.set_status(stage.status, False)
+        stage.actions = da.Deploy_Action_List_list(stage.actions)
+
+        return stage
+
+
+
+    def get_dict(self) -> dict:
+        return {
+          'id' : self.id,
+          'name' : self.name,
+          'description' : self.description,
+          'host' : self.host,
+          'remote_dir' : self.remote_dir,
+          'build_dir' : self.build_dir,
+          'next_stages' : self.next_stages,
+          'next_stage_ids': self.next_stage_ids,
+          'after_stages_finished': self.after_stages_finished,
+          'clear_files' : self.clear_files,
+          'processing_steps' : self.processing_steps,
+          'execute_remote' : self.execute_remote,
+          'lib_replacement_necessary' : self.lib_replacement_necessary,
+          'lib_mapping' : self.lib_mapping,
+          'status' : self.status.value,
+          'create_time' : self.create_time,
+          'update_time' : self.update_time,
+          'processing_users' : self.processing_users,
+          'run_immediate' : self.run_immediate,
+          'actions' : self.actions.get_actions_as_dict(),
+        }
 
 
 
 
-  def validate(stage_dict: dict) -> None:
 
-    if 'name' not in stage_dict.keys():
-      raise Exception(f"Stage name has to be defined: {stage_dict=}")
 
-    for key in stage_dict.keys():
-      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'remote_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'execute_remote', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions', 'base_dir', 'run_immediate']:
-        raise Exception(f"Attribute {key} is invalid for stage {stage_dict['name']}!")
-    
-    
-    if 'next_stages' in stage_dict.keys() and stage_dict['next_stages'] is not None:
-      if type(stage_dict['next_stages']) != list:
-        raise Exception(f"Key 'next_stages' has to be a list[] in stage {stage_dict=}")
-    
-    if 'processing_steps' in stage_dict.keys() and stage_dict['processing_steps'] is not None:
-      if type(stage_dict['processing_steps']) != list:
-        raise Exception(f"Key 'processing_steps' has to be a list[] in stage {stage_dict=}")
-    
-    if 'clear_files' in stage_dict.keys() and stage_dict['clear_files'] is not None:
-      if type(stage_dict['clear_files']) != bool:
-        raise Exception(f"Key 'clear_files' has to be a bool in stage {stage_dict=}")
 
-    stage = Stage(dict=stage_dict)
+    def validate(stage_dict: dict) -> None:
 
-    if len(list(set(stage_dict.keys()) - set(stage.__dict__.keys()))) > 0:
-      raise Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
+        if 'name' not in stage_dict.keys():
+            raise Exception(f"Stage name has to be defined: {stage_dict=}")
+
+        for key in stage_dict.keys():
+            if key not in ['id', 'name', 'description', 'host', 'build_dir', 'remote_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'execute_remote', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions', 'base_dir', 'run_immediate', 'four_eyes_check']:
+                raise Exception(f"Attribute {key} is invalid for stage {stage_dict['name']}!")
+
+
+        if 'next_stages' in stage_dict.keys() and stage_dict['next_stages'] is not None:
+            if type(stage_dict['next_stages']) != list:
+                raise Exception(f"Key 'next_stages' has to be a list[] in stage {stage_dict=}")
+
+        if 'processing_steps' in stage_dict.keys() and stage_dict['processing_steps'] is not None:
+            if type(stage_dict['processing_steps']) != list:
+                raise Exception(f"Key 'processing_steps' has to be a list[] in stage {stage_dict=}")
+
+        if 'clear_files' in stage_dict.keys() and stage_dict['clear_files'] is not None:
+            if type(stage_dict['clear_files']) != bool:
+                raise Exception(f"Key 'clear_files' has to be a bool in stage {stage_dict=}")
+
+        stage = Stage(dict=stage_dict)
+
+        if len(list(set(stage_dict.keys()) - set(stage.__dict__.keys()))) > 0:
+            raise Exception(f"Attributes from parameter {stage_dict} does not match with class attributes. \
         Unknown attribute(s) are: {list(set(stage_dict.keys()) - set(stage.__dict__.keys()))}")
 
 
 
-  def __eq__(self, other):
-    #logging.debug('equals 2 stages')
- #   other.next_stages !!! ist das Problem
-    if (self.id, self.description, self.host, self.remote_dir, self.build_dir, self.next_stages, self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions, self.after_stages_finished, self.execute_remote) == \
-       (other.id, other.description, other.host, other.remote_dir, other.build_dir, other.next_stages, other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions, other.after_stages_finished, other.execute_remote):
-      return True
+    def __eq__(self, other):
+        #logging.debug('equals 2 stages')
+        #   other.next_stages !!! ist das Problem
+        if (self.id, self.description, self.host, self.remote_dir, self.build_dir, self.next_stages, self.clear_files, self.processing_steps, self.processing_users, self.lib_replacement_necessary, self.lib_mapping, self.status, self.create_time, self.update_time, self.actions, self.after_stages_finished, self.execute_remote) == \
+           (other.id, other.description, other.host, other.remote_dir, other.build_dir, other.next_stages, other.clear_files, other.processing_steps, other.processing_users, other.lib_replacement_necessary, other.lib_mapping, other.status, other.create_time, other.update_time, other.actions, other.after_stages_finished, other.execute_remote):
+            return True
 
-    logging.warning(f"{self.id} - {self.description} - {self.host} - {self.remote_dir} - {self.build_dir} - {self.next_stages} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=} - {self.execute_remote=}")
-    logging.warning(f"{other.id} - {other.description} - {other.host} - {other.remote_dir} - {other.build_dir} - {other.next_stages} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=} - {other.execute_remote=}")
+        logging.warning(f"{self.id} - {self.description} - {self.host} - {self.remote_dir} - {self.build_dir} - {self.next_stages} - {self.clear_files} - {self.processing_steps} - {self.processing_users} - {self.lib_replacement_necessary} - {self.lib_mapping} - {self.status} - {self.create_time} - {self.update_time} - {self.actions} - {self.after_stages_finished=} - {self.execute_remote=}")
+        logging.warning(f"{other.id} - {other.description} - {other.host} - {other.remote_dir} - {other.build_dir} - {other.next_stages} - {other.clear_files} - {other.processing_steps} - {other.processing_users} - {other.lib_replacement_necessary} - {other.lib_mapping} - {other.status} - {other.create_time} - {other.update_time} - {other.actions} - {other.after_stages_finished=} - {other.execute_remote=}")
 
-    return False
+        return False
 
 
 
@@ -250,53 +263,53 @@ class Stage:
 class Stage_List_list(list):
 
     def __init__(self, workflow:workflow.Workflow=None, iterable=None):
-      """Generates a list of stages for a workflow
+        """Generates a list of stages for a workflow
 
-      Args:
-          workflow (workflow.Workflow, optional): If given, get stages based on workflow stages dict
-          iterable (list, optional): List can contains 2 types:
+        Args:
+            workflow (workflow.Workflow, optional): If given, get stages based on workflow stages dict
+            iterable (list, optional): List can contains 2 types:
 
-              * str
-                Stage object will be retrieved from workflow based on stage name
+                * str
+                  Stage object will be retrieved from workflow based on stage name
 
-              * dict
-                Stage object will be generated based on existing dict
-      """
+                * dict
+                  Stage object will be generated based on existing dict
+        """
 
-      # This is only not to change the original parameter
-      iterable2 = []
-      stage_list = []
+        # This is only not to change the original parameter
+        iterable2 = []
+        stage_list = []
 
-      #if (iterable is not None and workflow is None) or (iterable is None and workflow is not None):
-      #  raise Exception(f'Missing parameter to get the list data: {iterable=}, {workflow=}')
+        #if (iterable is not None and workflow is None) or (iterable is None and workflow is not None):
+        #  raise Exception(f'Missing parameter to get the list data: {iterable=}, {workflow=}')
 
-      if iterable is not None and len(iterable) > 0 and workflow is not None:
-        for i, s in enumerate(iterable):
-          iterable2.append(s)
-          if type(s) == str:
-             iterable2[i] = Stage.get_stage_from_workflow(workflow, s)
-          if type(s) == dict:
-             iterable2[i] = Stage.get_stage_from_dict(workflow, s)
-          stage_list.append(iterable2[i].name)
-             
+        if iterable is not None and len(iterable) > 0 and workflow is not None:
+            for i, s in enumerate(iterable):
+                iterable2.append(s)
+                if type(s) == str:
+                    iterable2[i] = Stage.get_stage_from_workflow(workflow, s)
+                if type(s) == dict:
+                    iterable2[i] = Stage.get_stage_from_dict(workflow, s)
+                stage_list.append(iterable2[i].name)
 
-      if workflow is not None and iterable is None:
 
-        for stage in  workflow.stages:
-          
-          if stage['name'] in stage_list:
-            continue
+        if workflow is not None and iterable is None:
 
-          #logging.debug(f"Got stage from workflow: {stage=}")
-          additional_stage = Stage.get_stage_from_workflow(workflow, stage['name'])
-          iterable2.append(additional_stage)
-          stage_list.append(additional_stage.name)
+            for stage in  workflow.stages:
 
-      if len(iterable2) > 0:
-        super().__init__(iterable2)
-        return
+                if stage['name'] in stage_list:
+                    continue
 
-      super().__init__()
+                #logging.debug(f"Got stage from workflow: {stage=}")
+                additional_stage = Stage.get_stage_from_workflow(workflow, stage['name'])
+                iterable2.append(additional_stage)
+                stage_list.append(additional_stage.name)
+
+        if len(iterable2) > 0:
+            super().__init__(iterable2)
+            return
+
+        super().__init__()
 
 
 
@@ -312,8 +325,8 @@ class Stage_List_list(list):
 
         # if stage already exist, just reopen it
         for stage in self:
-          if item.id == stage.id:
-            raise Exception(f"Stage {item.name} (id {item.id}) already exist")
+            if item.id == stage.id:
+                raise Exception(f"Stage {item.name} (id {item.id}) already exist")
 
         super().append(self._validate_item(item))
 
@@ -333,95 +346,80 @@ class Stage_List_list(list):
 
     def validate_items(dict: list) -> None:
 
-      for item in dict:
-        Stage.validate(item)
+        for item in dict:
+            Stage.validate(item)
 
-        
+
 
     def summary(self) -> list:
-      list = []
+        list = []
 
-      for s in self:
-        list.append(f"{s.name} ({s.id}) {s.status}")
+        for s in self:
+            list.append(f"{s.name} ({s.id}) {s.status}")
 
-      return list
-        
+        return list
+
 
     def get_all_names(self) -> list[str]:
-      list = []
+        list = []
 
-      for s in self:
-        list.append(s.name)
+        for s in self:
+            list.append(s.name)
 
-      return list
+        return list
 
 
     def get_all_ids(self) -> list[int]:
-      list = []
+        list = []
 
-      for s in self:
-        list.append(s.id)
+        for s in self:
+            list.append(s.id)
 
-      return list
+        return list
 
 
 
     def get_dict(self) -> list[dict]:
-      list = []
+        list = []
 
-      for s in self:
-        list.append(s.get_dict())
+        for s in self:
+            list.append(s.get_dict())
 
-      return list
+        return list
 
 
 
     def get_stage(self, id: int) -> Stage:
 
-      if type(id) == str:
-        id = int(id)
+        if type(id) == str:
+            id = int(id)
 
-      if type(id) != int:
-        raise Exception(f"Parameter is not a number: {id}")
+        if type(id) != int:
+            raise Exception(f"Parameter is not a number: {id}")
 
-      for s in self:
-        if s.id == id:
-          return s
+        for s in self:
+            if s.id == id:
+                return s
 
-      raise Exception(f"Stage id {id} not found in list {self.get_all_ids()}")
-      return None
+        raise Exception(f"Stage id {id} not found in list {self.get_all_ids()}")
+        return None
 
 
 
     def get_stages_by_name(self, stage_name: str) -> 'Stage_List_list':
 
-      stages = Stage_List_list()
+        stages = Stage_List_list()
 
-      for s in self:
-        if s.name == stage_name:
-          stages.append(s)
+        for s in self:
+            if s.name == stage_name:
+                stages.append(s)
 
-      return stages
-
-
-
-    def get_stage_list_by_status(self, status: Stage_Status) -> list['Stage_List_list']:
-
-      stages = Stage_List_list()
-
-      for s in self:
-        if s.status == status:
-          stages.append(s)
-
-      return stages
+        return stages
 
 
 
 
-    def remove_stage(self, id: int) -> None:
 
-      for i, o in enumerate(self):
-        if o.id == id:
-          del self[i]
-          return
+
+
 

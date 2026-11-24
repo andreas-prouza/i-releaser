@@ -1,11 +1,9 @@
 """How stages follow each other: claims of parallel runs, stages without steps"""
-import os, shutil, tempfile, threading, unittest
-from types import SimpleNamespace
+import threading, unittest
 from unittest.mock import patch
 
-from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
 from modules import hooks, meta_file, workflow
 from modules.db import app_sqlite, meta_file_data, stage_data
 from modules.meta_file_status import Meta_file_status
@@ -60,6 +58,12 @@ RESET_WORKFLOW = {
 
 
 
+def finish(stage) -> None:
+    """A run of the stage, as transitions allow it (modules/state.py)"""
+    assert stage.set_status(Stage_Status.IN_PROCESS) and stage.set_status(Stage_Status.FINISHED)
+
+
+
 class Stage_Flow_Setup:
     """A deployment of `workflow_dict` in a temporary database"""
 
@@ -68,12 +72,7 @@ class Stage_Flow_Setup:
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
-
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
+        db_tools.use_temp_db(self)
 
         self.events = []
 
@@ -81,7 +80,6 @@ class Stage_Flow_Setup:
             return lambda event, meta_file, stage: self.events.append((event, stage.name if stage else None))
 
         self.patches = [
-            patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(workflow.Workflow, 'get_workflow_by_name', return_value=workflow.Workflow(dict=self.workflow_dict)),
             patch.object(workflow.Workflow, 'get_default_step_mapping', return_value=[]),
             patch.object(hooks, 'resolve', side_effect=resolve),
@@ -98,8 +96,6 @@ class Stage_Flow_Setup:
         for p in reversed(self.patches):
             p.stop()
 
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
-        shutil.rmtree(self.tmp_dir)
 
 
     def reload(self) -> meta_file.Meta_File:
@@ -197,7 +193,7 @@ class TestStageFlow(Stage_Flow_Setup, unittest.TestCase):
         self.assertTrue(stage_data.activate_stage(merge_id))
 
         mf = self.reload()
-        mf.get_stages_by_name('MERGE')[0].set_status(Stage_Status.FINISHED)
+        finish(mf.get_stages_by_name('MERGE')[0])
 
         self.assertFalse(stage_data.activate_stage(merge_id))
         self.assertEqual(self.stage('MERGE').status, Stage_Status.FINISHED)
@@ -236,11 +232,13 @@ class TestStageFlow(Stage_Flow_Setup, unittest.TestCase):
 
         first.get_stages_by_name('A')[0].set_status(Stage_Status.IN_PROCESS)
 
-        second.get_stages_by_name('B')[0].status = Stage_Status.IN_PROCESS
+        # The status is only changed by a transition, a save never writes it (docs/features/core-redesign.md, step 1)
+        second.get_stages_by_name('B')[0].lib_mapping = {'devlib': 'prodlib'}
+        second.get_stages_by_name('A')[0].status = Stage_Status.READY
         second.save()
 
         self.assertEqual(self.stage('A').status, Stage_Status.IN_PROCESS)
-        self.assertEqual(self.stage('B').status, Stage_Status.IN_PROCESS)
+        self.assertEqual(self.stage('B').lib_mapping, {'devlib': 'prodlib'})
 
 
 
@@ -305,11 +303,11 @@ class TestWaitingStages(Stage_Flow_Setup, unittest.TestCase):
 
         self.assertFalse(stage_data.activate_stage(join, wait_for=['A', 'B']))
 
-        self.reload().get_stages_by_name('A')[0].set_status(Stage_Status.FINISHED)
+        finish(self.reload().get_stages_by_name('A')[0])
         self.assertFalse(stage_data.activate_stage(join, wait_for=['A', 'B']))
         self.assertEqual(self.stage('JOIN').status, Stage_Status.NEW)
 
-        self.reload().get_stages_by_name('B')[0].set_status(Stage_Status.FINISHED)
+        finish(self.reload().get_stages_by_name('B')[0])
         self.assertTrue(stage_data.activate_stage(join, wait_for=['A', 'B']))
         self.assertEqual(self.stage('JOIN').status, Stage_Status.READY)
 
@@ -320,8 +318,8 @@ class TestWaitingStages(Stage_Flow_Setup, unittest.TestCase):
         join = self.stage('JOIN').id
 
         mf = self.reload()
-        mf.get_stages_by_name('A')[0].set_status(Stage_Status.FINISHED)
-        mf.get_stages_by_name('B')[0].set_status(Stage_Status.FINISHED)
+        finish(mf.get_stages_by_name('A')[0])
+        finish(mf.get_stages_by_name('B')[0])
 
         results = []
         threads = [threading.Thread(target=lambda: results.append(stage_data.activate_stage(join, wait_for=['A', 'B']))) for _ in range(10)]
@@ -358,3 +356,200 @@ class TestResetOfAWaitedStage(Stage_Flow_Setup, unittest.TestCase):
         # Run again: MERGE becomes ready again
         self.run_stage('B')
         self.assertEqual(self.stage('MERGE').status, Stage_Status.READY)
+
+
+
+class TestTransitions(Stage_Flow_Setup, unittest.TestCase):
+    """docs/features/core-redesign.md, step 1: a status is only changed by an allowed transition"""
+
+
+    def test_change_which_is_not_allowed_is_refused(self):
+
+        stage = self.reload().get_stages_by_name('START')[0]
+
+        # ready -> finished without a run
+        self.assertFalse(stage.set_status(Stage_Status.FINISHED))
+        self.assertEqual(stage.status, Stage_Status.READY)
+        self.assertEqual(self.stage('START').status, Stage_Status.READY)
+
+
+    def test_aborted_run_does_not_finish_the_stage(self):
+        """docs/bugfixes/job-abort-leaves-process-running.md: the service has set the stage to failed meanwhile"""
+
+        mf = self.reload()
+        start = mf.get_stages_by_name('START')[0]
+        mf.claim_stage(start.id)
+
+        # The processing service aborts the run
+        self.reload().get_stages_by_name('START')[0].set_status(Stage_Status.FAILED)
+
+        # The process of the run goes on with its outdated copy
+        mf.check_stage_finish(start)
+
+        self.assertEqual(self.stage('START').status, Stage_Status.FAILED)
+        self.assertEqual(self.stage('A').status, Stage_Status.NEW)
+        self.assertNotIn(('stage_finished', 'START'), self.events)
+
+
+    def test_save_of_an_old_copy_does_not_change_the_status(self):
+
+        old = self.reload()
+        self.run_stage('START')
+
+        old.custom_data = {'ticket': 'ABC-1'}
+        old.save()
+
+        self.assertEqual(self.stage('START').status, Stage_Status.FINISHED)
+        self.assertEqual(self.reload().status, Meta_file_status.READY)
+
+
+    def test_finished_deployment_does_not_change(self):
+
+        self.assertTrue(meta_file_data.claim_finished(self.mf.id))
+
+        changed, current = meta_file_data.transition(self.mf.id, Meta_file_status.IN_PROCESS)
+
+        self.assertFalse(changed)
+        self.assertEqual(current, Meta_file_status.FINISHED)
+
+
+    def test_edit_of_custom_data_keeps_a_newer_status(self):
+        """docs/bugfixes/lost-updates-on-save.md, item 1"""
+
+        with patch.object(workflow.Workflow, 'get_workflow_by_name', return_value=workflow.Workflow(dict={**self.workflow_dict, 'editable_fields': ['$.ticket']})):
+            request_copy = self.reload()
+
+        # A stage starts meanwhile
+        self.reload().set_status(Meta_file_status.IN_PROCESS)
+
+        request_copy.workflow.editable_fields = ['$.ticket']
+        request_copy.update_custom_data({'$.ticket': 'ABC-1'})
+
+        loaded = self.reload()
+        self.assertEqual(loaded.status, Meta_file_status.IN_PROCESS)
+        self.assertEqual(loaded.custom_data, {'ticket': 'ABC-1'})
+
+
+    def test_failed_commit_is_written_completely_by_the_next_save(self):
+        """docs/bugfixes/lost-updates-on-save.md, item 2"""
+
+        mf = self.reload()
+        mf.get_stages_by_name('A')[0].lib_mapping = {'devlib': 'prodlib'}
+
+        with patch.object(meta_file_data, '_save_run_history', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                mf.save()
+
+        self.assertEqual(self.stage('A').lib_mapping, {})
+
+        mf.save()
+        self.assertEqual(self.stage('A').lib_mapping, {'devlib': 'prodlib'})
+
+
+    def test_row_without_id_is_not_updated(self):
+
+        from modules.db import app_sqlite as db
+        with db.get_db_connection() as conn:
+            with self.assertRaises(ValueError):
+                db.update_changes(conn.cursor(), 'stages', None, {'lib_mapping': '{}'}, None)
+
+
+
+class TestLoading(Stage_Flow_Setup, unittest.TestCase):
+    """docs/features/core-redesign.md, step 2: a deployment is loaded with a fixed number of queries"""
+
+
+    def add_objects(self, count: int) -> None:
+
+        from modules import deploy_action as da, deploy_object as do
+        from modules.db import actions_data, deploy_object_data
+
+        objects = [do.Deploy_Object(level=1, lib='devlib', prod_lib='prodlib', name=f"obj{i}", type='pgm', attribute='rpgle') for i in range(count)]
+        deploy_object_data.replace_deploy_objects(self.mf.id, objects)
+
+        for obj in objects:
+            for step in ['save', 'restore']:
+                action = da.Deploy_Action(cmd=f"echo {step}", processing_step=step, stage='START', environment=da.Command_Type.PASE)
+                actions_data.add_action(action, deploy_object_id=obj.id)
+                sub = da.Deploy_Action(cmd='echo sub', processing_step=step, stage='START', environment=da.Command_Type.PASE)
+                actions_data.add_action(sub, action_id=action.id)
+
+
+    def count_queries(self, load) -> tuple[int, int]:
+        """Connections and statements (without PRAGMA) of `load`"""
+
+        connections, statements = [], []
+        original = app_sqlite.get_db_connection
+
+        def counting(*args, **kwargs):
+            conn = original(*args, **kwargs)
+            connections.append(conn)
+            conn.set_trace_callback(lambda sql: None if sql.lstrip().upper().startswith('PRAGMA') else statements.append(sql))
+            return conn
+
+        with patch.object(app_sqlite, 'get_db_connection', side_effect=counting):
+            load()
+
+        return len(connections), len(statements)
+
+
+    def test_load_with_200_objects(self):
+
+        self.add_objects(200)
+        self.run_stage('START')
+
+        connections, statements = self.count_queries(self.reload)
+        loaded = self.reload()
+
+        self.assertEqual(len(loaded.deploy_objects), 200)
+        self.assertEqual({len(o.actions) for o in loaded.deploy_objects}, {2})
+        self.assertEqual({len(a.sub_actions) for o in loaded.deploy_objects for a in o.actions}, {1})
+        self.assertEqual(len(loaded.get_stages_by_name('START')[0].actions[0].run_history), 1)
+
+        self.assertLessEqual(statements, 10)
+        self.assertLessEqual(connections, 2)
+
+
+    def test_same_result_as_the_step_by_step_loading(self):
+
+        from modules.db import actions_data
+
+        self.add_objects(3)
+        self.run_stage('START')
+
+        loaded = self.reload()
+        for stage in loaded.stages:
+            self.assertEqual([a.get_dict() for a in stage.actions], [a.get_dict() for a in actions_data.get_actions(stage_id=stage.id)])
+        for obj in loaded.deploy_objects:
+            self.assertEqual([a.get_dict() for a in obj.actions], [a.get_dict() for a in actions_data.get_actions(deploy_object_id=obj.id)])
+
+
+
+IMMEDIATE_WORKFLOW = {
+    'name': 'immediate_wf',
+    'default_project': 'immediate',
+    'step_action': [{'processing_step': 'ok', 'environment': 'PASE', 'execute': 'echo ok', 'check_error': True},
+                    {'processing_step': 'fail', 'environment': 'PASE', 'execute': 'exit 1', 'check_error': True}],
+    'stages': [
+        {'name': 'START', 'processing_steps': ['ok'], 'next_stages': ['NEXT']},
+        {'name': 'NEXT', 'processing_steps': ['fail'], 'next_stages': ['END'], 'run_immediate': True},
+        {'name': 'END'},
+    ],
+}
+
+
+
+class TestRunImmediate(Stage_Flow_Setup, unittest.TestCase):
+    """docs/features/core-redesign.md, step 3: stages with run_immediate run after the run, not inside it"""
+
+    workflow_dict = IMMEDIATE_WORKFLOW
+
+
+    def test_failing_next_stage_does_not_fail_the_run(self):
+
+        # Doesn't raise: the error belongs to NEXT
+        self.run_stage('START')
+
+        self.assertEqual(self.stage('START').status, Stage_Status.FINISHED)
+        self.assertEqual(self.stage('NEXT').status, Stage_Status.FAILED)
+        self.assertEqual(self.reload().status, Meta_file_status.FAILED)

@@ -96,6 +96,11 @@ Roles            [+]   |                    read  start  run  check  cancel  edi
 3. `description` and `mail` can be edited.
 
 
+## Decisions (2026-11-24)
+
+1. The entry `Permissions` in the navigation is removed: the page is the tab `Permissions` of `Administration` (the former `Settings`), the navigation marks `Administration` (see [admin pages](web-ui-admin-pages.md#decisions-2026-11-24)). The address `/settings/permissions` stays.
+
+
 ## Open questions
 
 None.

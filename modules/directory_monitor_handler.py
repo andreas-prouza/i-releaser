@@ -9,7 +9,7 @@ class DirectoryMonitorHandler(FileSystemEventHandler):
     """
     A custom event handler that listens for specific file system events.
     """
-    
+
     def on_created(self, event):
         if event.is_directory:
             logging.info(f"📁 Directory Created: {event.src_path}")

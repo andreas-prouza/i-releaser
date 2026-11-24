@@ -24,6 +24,39 @@ def _workflow_filter(column: str, workflows: list[str]|None) -> tuple[str, list]
 
 
 
+def get_page(workflows: list[str]|None, project: str|None=None, status: str|None=None, before_id: int|None=None, limit: int=50) -> list[dict]:
+    """
+    Deployments newest first (Web API v2, docs/features/api-v2.md), one page.
+
+    Args:
+        workflows: Only deployments of these workflows (None: all)
+        before_id: Only deployments with a smaller id (the cursor of the page before)
+    """
+
+    where, params = _workflow_filter('mf.id', workflows)
+
+    for column, value in [('dv.project', project), ('mf.status', status)]:
+        if value is not None:
+            where += f" AND {column} = ?"
+            params.append(value)
+
+    if before_id is not None:
+        where += " AND mf.id < ?"
+        params.append(before_id)
+
+    with app_sqlite.get_db_connection() as conn:
+        rows = conn.execute(f"""SELECT mf.id, dv.project, dv.version, wd.name AS workflow, mf.status, mf.commit_hash AS "commit",
+                                       mf.create_time, mf.update_time
+                                  FROM meta_files mf
+                                  JOIN deploy_versions dv ON dv.id = mf.deploy_version_id
+                                  LEFT JOIN workflow_definitions wd ON wd.meta_file_id = mf.id
+                                 WHERE 1 = 1 {where}
+                                 ORDER BY mf.id DESC LIMIT ?""", (*params, limit)).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+
 def get_open_counts(workflows: list[str]|None=None) -> dict:
     """Project -> number of its deployments which are not finished or canceled"""
 

@@ -7,7 +7,7 @@ Nothing here is HTML.
 """
 from datetime import datetime, timedelta
 
-from modules import current_user, meta_file, permissions, permission_config, processing_job, stage_status
+from modules import current_user, four_eyes, meta_file, permissions, permission_config, processing_job, stage_status
 from modules.db import processing_job_data, processing_user_data
 from modules.job_status import Status as Job_Status
 from modules.meta_file_status import Meta_file_status
@@ -46,6 +46,45 @@ def permission(action: permissions.PermissionAction, workflow: str, stage: str|N
 def action(name: str, label: str, allowed: dict, **data) -> dict:
     """A button of the page: `name` is its data-action, `data` its data-* attributes"""
     return {'name': name, 'label': label, 'allowed': allowed['allowed'], 'reason': allowed['reason'], 'data': data}
+
+
+
+def get_run_permission(mf: meta_file.Meta_File, stage) -> tuple[dict, dict|None]:
+    """The permission `run`, and the four-eyes check of the stage (docs/features/four-eyes-check.md): (permission, state of the check or None)"""
+
+    run = permission(PERMISSION.RUN_WORKFLOW, mf.workflow.name, stage.name)
+    eyes = four_eyes.get_state(mf, stage, current_user.get_user())
+
+    if run['allowed'] and eyes is not None and eyes['problem']:
+        run = {'allowed': False, 'reason': eyes['problem']}
+
+    return run, eyes
+
+
+
+def get_approve_action(mf: meta_file.Meta_File, stage, eyes: dict|None) -> dict|None:
+    """The button `Approve`, if the stage needs an approval now"""
+
+    if eyes is None or eyes['valid'] or stage.status.value not in ['new', 'ready', 'failed']:
+        return None
+
+    allowed = permission(PERMISSION.FOUR_EYES_CHECK, mf.workflow.name, stage.name)
+    if allowed['allowed'] and four_eyes.get_creator(mf) == (current_user.get_user() or '').lower():
+        allowed = {'allowed': False, 'reason': 'You have created this deployment: another person has to approve it'}
+
+    return action('approve-stage', 'Approve', allowed, stage_id=stage.id, stage_name=stage.name)
+
+
+
+def get_approval_text(eyes: dict|None) -> str|None:
+
+    if eyes is None:
+        return None
+    if eyes['approval'] is None:
+        return 'Needed (four-eyes check)'
+    if not eyes['valid']:
+        return f"Approved by {eyes['approval']['user']}, no longer valid: the deployment has changed"
+    return f"Approved by {eyes['approval']['user']} at {eyes['approval']['time'].replace('T', ' ')} UTC"
 
 
 
@@ -334,8 +373,11 @@ def get_steps_view(mf: meta_file.Meta_File, stage) -> dict:
     all_steps = flatten_steps(items)
     failed = [s for s in all_steps if s['status'] == 'failed']
 
-    run = permission(PERMISSION.RUN_WORKFLOW, workflow, stage.name)
+    run, eyes = get_run_permission(mf, stage)
     buttons = []
+    approve = get_approve_action(mf, stage, eyes)
+    if approve is not None:
+        buttons.append(approve)
     if can_run(mf, stage, queued):
         buttons.append(action('run-stage', 'Run stage', run, stage_id=stage.id, stage_name=stage.name))
     if can_schedule(mf, stage, queued, is_service_mode()):
@@ -359,6 +401,8 @@ def get_steps_view(mf: meta_file.Meta_File, stage) -> dict:
     history.sort(key=lambda row: str(row.get('timestamp') or ''), reverse=True)
 
     details = [('Host', stage.host), ('Runs', 'remote' if stage.execute_remote else 'local')]
+    if eyes is not None:
+        details.insert(0, ('Approval', get_approval_text(eyes)))
     if stage.remote_dir:
         details.append(('Remote dir', stage.remote_dir))
     if stage.build_dir:
@@ -404,7 +448,6 @@ def get_attention(mf: meta_file.Meta_File, flow: stage_flow.Layout, queued: dict
         return None
 
     stages = {stage.id: stage for stage in mf.stages}
-    workflow = mf.workflow.name
     service = is_service_mode()
 
     for state in ['failed', 'running', 'queued', 'scheduled', 'ready']:
@@ -413,7 +456,7 @@ def get_attention(mf: meta_file.Meta_File, flow: stage_flow.Layout, queued: dict
                 continue
 
             stage = stages[node['id']]
-            run = permission(PERMISSION.RUN_WORKFLOW, workflow, stage.name)
+            run, eyes = get_run_permission(mf, stage)
             steps = flatten(stage.actions.get_actions_as_dict())
 
             if state == 'failed':
@@ -486,7 +529,15 @@ def get_attention(mf: meta_file.Meta_File, flow: stage_flow.Layout, queued: dict
                             (f" did not start. {failed_schedule.error or ''}", False)]
                     return {'kind': 'danger', 'icon': 'calendar-x', 'text': text, 'buttons': buttons, 'stage_id': stage.id}
 
+                approve = get_approve_action(mf, stage, eyes)
+                if approve is not None:
+                    reason = ' needs a new approval: the deployment has changed (four-eyes check).' if eyes['approval'] else ' needs the approval of a second person (four-eyes check).'
+                    text = [('Stage ', False), (stage.name, True), (reason, False)]
+                    return {'kind': 'ready', 'icon': 'people', 'text': text, 'buttons': [approve] + buttons, 'stage_id': stage.id}
+
                 text = [('Stage ', False), (stage.name, True), (' is ready to run.', False)]
+                if eyes is not None and eyes['valid']:
+                    text.append((f" Approved by {eyes['approval']['user']}.", False))
                 return {'kind': 'ready', 'icon': 'play-fill', 'text': text, 'buttons': buttons, 'stage_id': stage.id}
 
     return None

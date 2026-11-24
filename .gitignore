@@ -12,6 +12,8 @@ etc/**
 !etc/examples/
 !etc/examples/**
 !etc/constants.py
+# The two exceptions above take the compiled files of the examples in again
+*.pyc
 webapp/etc/*.json
 webapp/etc/*.py
 !webapp/log/.gitkeep

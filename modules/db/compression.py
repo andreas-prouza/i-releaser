@@ -4,11 +4,11 @@ import zlib
 def decompress_field(data):
     if not data:
         return data  # Returns None or empty string as-is
-    
+
     # If SQLite already returned a string (e.g., uncompressed data), return it
     if isinstance(data, str):
         return data
-        
+
     # Keep decompressing in a loop as long as the data is compressed bytes
     while isinstance(data, bytes):
         try:
@@ -26,8 +26,8 @@ def decompress_field(data):
 def compress_field(data):
     if not data:
         return data  # Returns None or empty string as-is
-    
+
     if isinstance(data, str):
         data = data.encode('utf-8')  # Convert string to bytes
-    
+
     return zlib.compress(data)

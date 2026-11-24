@@ -27,9 +27,14 @@
             <label class="form-label" for="login-user">User</label>
             <input class="form-control" type="text" id="login-user" name="user" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
         </div>
-        <div class="mb-4">
+        <div class="mb-3">
             <label class="form-label" for="login-password">Password</label>
             <input class="form-control" type="password" id="login-password" name="password" autocomplete="current-password" required>
+        </div>
+        {#- Checked before the password goes to the IBM i (docs/features/two-factor-authentication.md) #}
+        <div class="mb-4">
+            <label class="form-label" for="login-code">Code <span class="text-body-secondary">(if you have set up two-factor authentication)</span></label>
+            <input class="form-control" type="text" id="login-code" name="code" autocomplete="one-time-code" inputmode="numeric" autocapitalize="none" spellcheck="false" maxlength="20">
         </div>
         <button type="submit" class="btn btn-primary w-100">Log in</button>
     </form>

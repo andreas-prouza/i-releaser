@@ -1,43 +1,88 @@
 {% extends 'base.html' %}
 
-{#- Settings, general part (docs/features/web-ui-admin-pages.md#settings). Context: general (admin_view.get_general) -#}
+{#- Administration, part System (docs/features/web-ui-admin-pages.md#settings). Context: general (admin_view.get_general) -#}
 
 {% from 'components/ui.html' import page_header, kv_list, empty_state %}
-{% from 'admin/settings-tabs.html' import settings_tabs %}
+{% from 'admin/settings-tabs.html' import settings_tabs, ADMINISTRATION %}
 
-{% block title %}Settings{% endblock %}
+{% block title %}System · Administration{% endblock %}
 {% block nav_active %}settings{% endblock %}
 
-{% block page_header %}{{ page_header('Settings', meta='The installation, the processing of stages and the permissions') }}{% endblock %}
+{% block page_header %}{{ page_header('Administration', meta=ADMINISTRATION) }}{% endblock %}
 
 {% block content %}
 
 {{ settings_tabs('general') }}
 
 <div class="ir-settings">
+    {%- if general.custom_route_errors %}
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-octagon" aria-hidden="true"></i> Custom routes which couldn't be loaded (<code>webapp/custom/routes/</code>):
+        <ul class="mb-0">{% for name, error in general.custom_route_errors %}<li><code>{{ name }}.py</code>: {{ error }}</li>{% endfor %}</ul>
+    </div>
+    {%- endif %}
     <section class="ir-card ir-section" aria-labelledby="installation-title">
         <div class="ir-section-head"><h2 id="installation-title">Installation</h2></div>
         {{ kv_list(general.details, mono=['Installation', 'Workflows', 'Permissions', 'Deployments']) }}
     </section>
 
-    <section class="ir-card ir-section" aria-labelledby="tokens-title">
-        <div class="ir-section-head"><h2 id="tokens-title">API tokens</h2></div>
-        {%- if general.tokens %}
+    <section class="ir-card ir-section" aria-labelledby="retention-title">
+        <div class="ir-section-head">
+            <h2 id="retention-title">Data retention</h2>
+            {%- if general.retention.active %}
+            <div class="ir-section-actions">
+                <button type="button" class="btn btn-sm btn-outline-danger" data-action="run-retention"><i class="bi bi-trash" aria-hidden="true"></i> Remove now</button>
+            </div>
+            {%- endif %}
+        </div>
+        {{ kv_list(general.retention.details) }}
+        <p class="ir-reason mb-0">Old deployments are removed once a day with their directory in <code>meta/</code> (<code>C_RETENTION_DAYS</code>, <code>C_RETENTION_ARCHIVE</code> in <code>etc/settings.py</code>). The newest finished deployment of a project stays.</p>
+    </section>
+
+    <section class="ir-card ir-section" aria-labelledby="notifications-title">
+        <div class="ir-section-head"><h2 id="notifications-title">Notifications</h2></div>
+        {%- if notifications.error %}
+        <div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i> Notifications are off: <code>{{ notifications.file }}</code> is invalid: {{ notifications.error }}</div>
+        {%- endif %}
+        {%- if notifications.readable_by_others %}
+        <div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <code>{{ notifications.file }}</code> can be read by other users of the system, but it has passwords or webhook URLs: <code>chmod 600</code> it.</div>
+        {%- endif %}
+        {%- if notifications.channels %}
         <div class="table-responsive">
             <table class="table table-sm">
-                <thead><tr><th>User</th><th>Created</th><th>Last used</th><th>Token</th></tr></thead>
+                <thead><tr><th>Channel</th><th>Type</th><th>Sends to</th><th>Rules</th><th><span class="visually-hidden">Action</span></th></tr></thead>
                 <tbody>
-                {%- for token in general.tokens %}
-                    <tr><td>{{ token.user }}</td><td class="text-nowrap">{{ token.created }}</td><td class="text-nowrap">{{ token.last_used }}</td><td class="ir-mono">{{ token.token }}</td></tr>
+                {%- for channel in notifications.channels %}
+                    <tr>
+                        <td>{{ channel.name }}</td><td>{{ channel.type }}</td><td>{{ channel.destination }}</td><td>{{ channel.rules }}</td>
+                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="test-notification" data-channel="{{ channel.name }}" data-type="{{ channel.type }}" data-mail="{{ notifications.own_mail }}"><i class="bi bi-send" aria-hidden="true"></i> Send test</button></td>
+                    </tr>
                 {%- endfor %}
                 </tbody>
             </table>
         </div>
-        {%- else %}
-        {{ empty_state('No user has an API token', icon='key') }}
+        {%- elif not notifications.exists %}
+        {{ empty_state('No notifications: there is no ' ~ notifications.file, icon='bell-slash') }}
         {%- endif %}
-        <p class="ir-reason mb-0">Each user creates and deletes their own token on their page (<a href="/user">your account</a>).</p>
+        {{ kv_list(notifications.details) }}
+        {%- if notifications.outbox and notifications.outbox.last_failed %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Failed</th><th>Event</th><th>Channel</th><th>Attempts</th><th>Error</th></tr></thead>
+                <tbody>
+                {%- for failed in notifications.outbox.last_failed %}
+                    <tr><td class="text-nowrap">{{ failed.created_at | utc }}</td><td>{{ failed.event }}</td><td>{{ failed.channel }}</td><td>{{ failed.attempts }}</td><td>{{ failed.last_error }}</td></tr>
+                {%- endfor %}
+                </tbody>
+            </table>
+        </div>
+        {%- endif %}
+        <p class="ir-reason mb-0">Channels and rules are in <code>etc/notifications.json</code> (template in <code>etc/examples/</code>). E-mail addresses of users are their <em>Mail</em> on the permissions page.</p>
     </section>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='assets/js/pages/settings.js') }}"></script>
 {% endblock %}

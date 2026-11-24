@@ -1,16 +1,17 @@
-import unittest, sys, os, logging, signal, subprocess, tempfile, shutil, time
+import unittest, sys, os, logging, signal, subprocess, threading, time
 from unittest.mock import patch
 
 # The repository root, so `etc` and `modules` are found
 sys.path.insert(0, os.path.realpath(f"{os.path.dirname(__file__)}/.."))
 
 from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
-from modules import current_user, meta_file, workflow, processing_service, stage_status
+from modules import current_user, errors, meta_file, workflow, processing_job, processing_service, stage_status
 from modules.db import app_sqlite, meta_file_data, processing_job_data, processing_user_data
 from modules.job_status import Status as Job_Status
 from modules.meta_file_status import Meta_file_status
+import permission_tools
 
 
 
@@ -60,16 +61,9 @@ class TestProcessingService(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
-
-        # All modules use the default parameter of get_db_connection
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
+        db_tools.use_temp_db(self)
 
         self.patches = [
-            patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(constants, 'C_SERVICE_SOCKET', os.path.join(self.tmp_dir, 'processing-service.sock')),
             patch.object(constants, 'C_SERVICE_PID_FILE', os.path.join(self.tmp_dir, 'processing-service.pid')),
             patch.object(constants, 'C_SERVICE_LOCK_FILE', os.path.join(self.tmp_dir, 'processing-service.lock')),
@@ -80,6 +74,8 @@ class TestProcessingService(unittest.TestCase):
             p.start()
 
         current_user.set_user('ALICE')
+        # A job checks the permission of its user when it starts (docs/bugfixes/scheduled-run-without-permission-check.md)
+        self.permissions = permission_tools.use_permissions(self.tmp_dir, {'alice': ['read', 'run'], 'bob': ['read', 'run']})
 
         self.root_logger = logging.getLogger()
         self.root_level = self.root_logger.level
@@ -102,12 +98,11 @@ class TestProcessingService(unittest.TestCase):
         self.root_logger.setLevel(self.root_level)
 
         current_user.set_user(None)
+        permission_tools.stop_permissions(self.permissions)
 
         for p in reversed(self.patches):
             p.stop()
 
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
 
     def create_meta_file(self, wf: dict=WORKFLOW) -> meta_file.Meta_File:
@@ -231,7 +226,7 @@ class TestProcessingService(unittest.TestCase):
 
         self.assertEqual(processing_service.run_job(job.id), Job_Status.FAILED)
         self.assertIn('4711', processing_job_data.get_job(job.id).error)
-        self.assertRaises(Exception, processing_service.run_job, 4712)
+        self.assertRaises(errors.Not_Found_Error, processing_service.run_job, 4712)
 
 
 
@@ -241,15 +236,15 @@ class TestProcessingService(unittest.TestCase):
         start = self.get_stage(mf)
         job = mf.run_current_stage_as_job(start.id)
 
-        with self.assertRaises(Exception) as e:
+        with self.assertRaises(errors.Conflict_Error) as e:
             mf.run_current_stage_as_job(start.id)
         self.assertIn(f"job {job.id}", str(e.exception))
 
         # Like a deployment which is in process
-        self.assertRaises(Exception, mf.run_current_stage_as_job, self.get_stage(mf, 'BROKEN').id)
+        self.assertRaises(errors.Conflict_Error, mf.run_current_stage_as_job, self.get_stage(mf, 'BROKEN').id)
 
         mf.parallel_deployment_execution_allowed = True
-        self.assertRaises(Exception, mf.run_current_stage_as_job, start.id)
+        self.assertRaises(errors.Conflict_Error, mf.run_current_stage_as_job, start.id)
         mf.check_no_active_job(self.get_stage(mf, 'BROKEN').id)
         mf.parallel_deployment_execution_allowed = False
 
@@ -346,6 +341,7 @@ class TestProcessingService(unittest.TestCase):
         job = mf.run_current_stage_as_job(self.get_stage(mf).id)
         claimed = processing_job_data.claim_next_job()
 
+        # A time has to pass: the heartbeat is a time
         time.sleep(0.01)
         processing_job_data.touch_heartbeat(job.id)
 
@@ -419,7 +415,7 @@ class TestProcessingService(unittest.TestCase):
         self.assertEqual(processing_job_data.get_jobs(), [])
 
         with patch.object(constants, 'C_PROCESSING_MODE', 'unknown'):
-            self.assertRaises(Exception, mf.start_stage, start.id)
+            self.assertRaisesRegex(errors.App_Error, "C_PROCESSING_MODE 'unknown' is invalid", mf.start_stage, start.id)
 
 
 
@@ -574,3 +570,99 @@ class TestProcessingService(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+
+class TestHangingJobProcess(unittest.TestCase):
+    """docs/bugfixes/job-abort-leaves-process-running.md"""
+
+    # The setup of TestProcessingService, without its tests
+    setUp = TestProcessingService.setUp
+    tearDown = TestProcessingService.tearDown
+    create_meta_file = TestProcessingService.create_meta_file
+    get_stage = TestProcessingService.get_stage
+
+    LOCK_HOLDER = """
+import fcntl, sys, time
+f = open(sys.argv[1], 'a')
+if sys.argv[2] == 'lock':
+    fcntl.lockf(f, fcntl.LOCK_EX)
+print('ready', flush=True)
+time.sleep(60)
+"""
+
+    def start_process(self, job_id: int, hold_lock: bool) -> subprocess.Popen:
+        lock_file = processing_service.get_job_lock_file(job_id)
+        os.makedirs(os.path.dirname(lock_file), exist_ok=True)
+        process = subprocess.Popen([sys.executable, '-c', self.LOCK_HOLDER, lock_file, 'lock' if hold_lock else 'no'],
+                                   stdout=subprocess.PIPE, text=True, start_new_session=True)
+        process.stdout.readline()
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        return process
+
+    def hanging_job(self, hold_lock: bool) -> tuple:
+        mf = self.create_meta_file()
+        job = mf.run_current_stage_as_job(self.get_stage(mf).id)
+        processing_job_data.claim_next_job()
+        # As in a run: the stage is in process
+        mf.claim_stage(self.get_stage(mf).id)
+        process = self.start_process(job.id, hold_lock)
+        processing_job_data.set_job_pid(job.id, process.pid)
+        with app_sqlite.get_db_connection() as conn:
+            conn.execute("UPDATE processing_jobs SET heartbeat = ? WHERE id = ?", (time.time() - constants.C_SERVICE_HEARTBEAT_TIMEOUT - 10, job.id))
+            conn.commit()
+        return job, process
+
+    def test_process_of_the_job_is_ended(self):
+
+        job, process = self.hanging_job(hold_lock=True)
+
+        self.assertEqual([j.id for j in processing_service.recover_orphans()], [job.id])
+
+        self.assertIsNotNone(process.wait(timeout=15))
+        job = processing_job_data.get_job(job.id)
+        self.assertEqual(job.status, Job_Status.FAILED)
+        self.assertIn('The process has been ended', job.error)
+
+        # It can't overwrite the status of its job afterwards
+        processing_job_data.finish_job(job.id, Job_Status.FINISHED)
+        self.assertEqual(processing_job_data.get_job(job.id).status, Job_Status.FAILED)
+
+    def test_other_process_with_the_pid_is_not_ended(self):
+
+        job, process = self.hanging_job(hold_lock=False)
+
+        processing_service.recover_orphans()
+
+        self.assertIsNone(process.poll())
+        self.assertEqual(processing_job_data.get_job(job.id).status, Job_Status.FAILED)
+
+    def test_slow_hook_does_not_delay_the_service(self):
+
+        job, process = self.hanging_job(hold_lock=False)
+        slow = threading.Event()
+
+        def hook(*args, **kwargs):
+            time.sleep(5)
+            slow.set()
+
+        with patch.object(processing_service.hooks, 'emit', side_effect=hook):
+            start = time.time()
+            processing_service.recover_orphans()
+            self.assertLess(time.time() - start, 3)
+
+        self.assertTrue(slow.wait(10))
+
+    def test_run_stops_when_its_job_has_ended(self):
+
+        mf = self.create_meta_file()
+        job = mf.run_current_stage_as_job(self.get_stage(mf).id)
+        processing_job_data.claim_next_job()
+        processing_job_data.finish_job(job.id, Job_Status.FAILED, 'aborted')
+
+        token = processing_job.current_job_id.set(job.id)
+        try:
+            with self.assertRaises(processing_job.Job_Ended_Exception):
+                processing_job.check_job_running()
+        finally:
+            processing_job.current_job_id.reset(token)

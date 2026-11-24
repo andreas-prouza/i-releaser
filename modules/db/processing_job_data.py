@@ -77,7 +77,7 @@ def get_job(job_id: int) -> processing_job.Processing_Job|None:
 
 
 
-def get_jobs(status: list[Job_Status]|None=None, meta_file_id: int|None=None, limit: int|None=None) -> list[processing_job.Processing_Job]:
+def get_jobs(status: list[Job_Status]|None=None, meta_file_id: int|None=None, limit: int|None=None, cursor: sqlite3.Cursor|None=None) -> list[processing_job.Processing_Job]:
     """
     Args:
         limit (int, optional): Only the newest jobs
@@ -102,19 +102,20 @@ def get_jobs(status: list[Job_Status]|None=None, meta_file_id: int|None=None, li
         sql += " LIMIT ?"
         param.append(limit)
 
-    with app_sqlite.get_db_connection() as conn:
-        c = conn.cursor()
-        c.execute(sql, param)
-        rows = c.fetchall()
+    if cursor is not None:
+        rows = cursor.execute(sql, param).fetchall()
+    else:
+        with app_sqlite.get_db_connection() as conn:
+            rows = conn.execute(sql, param).fetchall()
 
     return [_convert_row_to_object(row) for row in reversed(rows)]
 
 
 
-def get_active_jobs(meta_file_id: int|None=None) -> list[processing_job.Processing_Job]:
+def get_active_jobs(meta_file_id: int|None=None, cursor: sqlite3.Cursor|None=None) -> list[processing_job.Processing_Job]:
     """Jobs which are waiting for the processing service or are processed right now"""
 
-    return get_jobs(status=ACTIVE_STATUS, meta_file_id=meta_file_id)
+    return get_jobs(status=ACTIVE_STATUS, meta_file_id=meta_file_id, cursor=cursor)
 
 
 
@@ -171,9 +172,14 @@ def set_job_pid(job_id: int, pid: int) -> None:
 
 
 
+# A heartbeat doesn't wait long for a locked database: it's tried again at the next interval
+HEARTBEAT_DB_TIMEOUT = 5
+
+
+
 def touch_heartbeat(job_id: int) -> None:
 
-    with app_sqlite.get_db_connection() as conn:
+    with app_sqlite.get_db_connection(timeout=HEARTBEAT_DB_TIMEOUT) as conn:
         conn.execute("UPDATE processing_jobs SET heartbeat = ? WHERE id = ?", (time.time(), job_id))
         conn.commit()
 
@@ -182,10 +188,16 @@ def touch_heartbeat(job_id: int) -> None:
 def finish_job(job_id: int, status: Job_Status, error: str|None=None) -> None:
     """Sets the final status of a job"""
 
+    # Only a job which hasn't ended: a job which has been aborted keeps its status and its reason (docs/bugfixes/job-abort-leaves-process-running.md)
     with app_sqlite.get_db_connection() as conn:
-        conn.execute("UPDATE processing_jobs SET status = ?, error = ?, end_time = ? WHERE id = ?",
-                     (status.value, error, datetime.datetime.now().isoformat(), job_id))
+        c = conn.execute("UPDATE processing_jobs SET status = ?, error = ?, end_time = ? WHERE id = ? AND status IN (?, ?)",
+                         (status.value, error, datetime.datetime.now().isoformat(), job_id, Job_Status.QUEUED.value, Job_Status.RUNNING.value))
         conn.commit()
+
+    if c.rowcount == 0:
+        logging.warning(f"Processing job {job_id} has been ended before, its status stays")
+        return
+
     logging.info(f"Processing job {job_id} ended with status '{status.value}'.")
 
 

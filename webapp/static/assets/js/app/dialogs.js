@@ -35,6 +35,9 @@ function error_message(error) {
  */
 export async function confirm_action({title, text = '', html = undefined, icon = undefined, confirm, cancel = 'Cancel', danger = false, action = null}) {
 
+    // The action needs a recent code of the authenticator app (app/api.js): the dialog closes, the code is asked, the action runs again
+    const STEP_UP = {};
+
     const result = await dialog.fire({
         title,
         text,
@@ -54,11 +57,28 @@ export async function confirm_action({title, text = '', html = undefined, icon =
                 if (error?.status === 401) {
                     return false;
                 }
+                if (error?.data?.step_up) {
+                    return STEP_UP;
+                }
                 Swal.showValidationMessage(error_message(error));
                 return false;
             }
         },
     });
+
+    if (result.isConfirmed && result.value === STEP_UP) {
+        // Loaded here: api.js imports this module
+        const { verify_code } = await import('./api.js');
+        if (!await ask_code({verify: verify_code})) {
+            return null;
+        }
+        try {
+            return (await action()) ?? true;
+        } catch (error) {
+            show_error(error);
+            return null;
+        }
+    }
 
     return result.isConfirmed ? (result.value ?? true) : null;
 }
@@ -167,4 +187,36 @@ try {
     }
 } catch {
     // sessionStorage switched off
+}
+
+
+/**
+ * Asks for the code of the authenticator app (docs/features/two-factor-authentication.md).
+ * `verify(code)` (async) checks it; its error is shown in the dialog, so the user can try again.
+ * Returns true if a code has been verified, false if canceled.
+ */
+export async function ask_code({title = 'Confirm with your authenticator app', text = 'Enter the current code of your authenticator app, or a recovery code.', confirm = 'Confirm', verify}) {
+
+    const result = await dialog.fire({
+        title,
+        text,
+        input: 'text',
+        inputAttributes: {autocomplete: 'one-time-code', inputmode: 'numeric', autocapitalize: 'none', spellcheck: 'false', maxlength: '20', 'aria-label': 'Code'},
+        showCancelButton: true,
+        confirmButtonText: confirm,
+        cancelButtonText: 'Cancel',
+        showLoaderOnConfirm: true,
+        allowOutsideClick: () => !Swal.isLoading(),
+        preConfirm: async (code) => {
+            try {
+                await verify((code || '').trim());
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage(error_message(error));
+                return false;
+            }
+        },
+    });
+
+    return result.isConfirmed;
 }

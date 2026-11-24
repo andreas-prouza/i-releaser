@@ -30,7 +30,7 @@
 |   Objects          | -------------------------------------------------------- |
 |   Workflows        |                                                          |
 |   --------------   |  content                                                 |
-|   Settings         |                                                          |
+|   Administration   |                                                          |
 |   Logs           v |                                                          |
 |   --------------   |                                                          |
 |   BOSS             |                                                          |
@@ -47,7 +47,7 @@
 
 ### Navigation
 
-* Entries: `Deployments`, `Objects`, `Workflows`; for users with `admin`: `Settings`, `Logs` (opens a menu with the log files, also when collapsed); the user (opens the user page), `Log out`; at the bottom the switch to collapse, the theme switch and the version.
+* Entries: `Deployments`, `Objects`, `Workflows`; for users with `admin`: `Administration` (called `Settings` until 2026-11-24, with its own entry `Permissions` until then, see [admin pages](web-ui-admin-pages.md#decisions-2026-11-24)), `Logs` (opens a menu with the log files, also when collapsed); the user (opens the user page), `Log out`; at the bottom the switch to collapse, the theme switch and the version.
 * The projects are not in the navigation any more: the deployment list has them (until [lists](web-ui-lists.md) as the buttons above the list of today).
 * Collapsed: icons only, the text as tooltip. Every entry stays a link and can be clicked. The state is remembered in the browser (`localStorage`).
 * Below 992 px the navigation is hidden and opens over the page with a menu button.

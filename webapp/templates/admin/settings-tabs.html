@@ -1,10 +1,29 @@
-{#- The parts of the settings, each with its own URL (docs/features/web-ui-admin-pages.md#settings) -#}
+{#- The parts of the administration, each with its own URL (docs/features/web-ui-admin-pages.md#settings) -#}
+
+{#- The line below the title of the administration -#}
+{% set ADMINISTRATION = 'The installation and its settings, the processing of stages, the permissions, the security and the audit log' %}
+
 {% macro settings_tabs(active) -%}
-<nav aria-label="Settings">
+<nav aria-label="Administration">
     <ul class="nav nav-tabs ir-settings-tabs">
-        {%- for name, url, text in [('general', '/settings', 'General'), ('processing', '/settings/processing', 'Processing'), ('permissions', '/settings/permissions', 'Permissions')] %}
+        {%- for name, url, text in [('general', '/settings', 'System'), ('configuration', '/settings/configuration', 'Settings'), ('processing', '/settings/processing', 'Processing'), ('permissions', '/settings/permissions', 'Permissions'), ('security', '/settings/security', 'Security'), ('audit', '/settings/audit', 'Audit')] %}
         <li class="nav-item"><a class="nav-link{% if name == active %} active{% endif %}" href="{{ url }}"{% if name == active %} aria-current="page"{% endif %}>{{ text }}</a></li>
         {%- endfor %}
     </ul>
 </nav>
+{%- endmacro %}
+
+
+{#- Settings which are only changed in etc/settings.py (docs/features/settings-in-web-app.md). rows: admin_view.get_setting_row -#}
+{% macro settings_table(rows) -%}
+<div class="table-responsive">
+    <table class="table table-sm ir-settings-table">
+        <thead><tr><th>Setting</th><th>Value</th><th>From</th><th>Default</th></tr></thead>
+        <tbody>
+        {%- for row in rows %}
+            <tr data-setting="{{ row.name }}"><td class="ir-mono">{{ row.name }}</td><td class="ir-mono">{{ row.value }}</td><td class="text-nowrap">{{ row.source }}</td><td class="ir-mono">{{ row.default }}</td></tr>
+        {%- endfor %}
+        </tbody>
+    </table>
+</div>
 {%- endmacro %}

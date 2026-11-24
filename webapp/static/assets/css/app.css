@@ -31,6 +31,8 @@
     --ir-primary-text: #ffffff;
     --ir-focus: #86b7fe;
     --ir-code-bg: #f1f3f5;
+    /* A QR code needs dark modules on a light background in both themes */
+    --ir-qr-bg: #ffffff;
 
     /* The navigation is dark in both themes */
     --ir-nav-bg: #15191e;
@@ -71,6 +73,7 @@
     --ir-primary-text: #0d1117;
     --ir-focus: #1f6feb;
     --ir-code-bg: #1c222b;
+    --ir-qr-bg: #ffffff;
 
     --ir-nav-bg: #090c10;
     --ir-nav-active: #1f2a37;
@@ -768,6 +771,15 @@ html .ir-code pre[class*=language-] {
 }
 
 /* Login and error page */
+/* QR code of the two-factor authentication (pages/user.js) */
+.ir-qr-code {
+    display: block;
+    margin: 0 auto var(--ir-space-3);
+    padding: var(--ir-space-2);
+    border-radius: var(--ir-radius);
+    background: var(--ir-qr-bg);
+}
+
 .ir-login {
     width: 100%;
     max-width: 380px;

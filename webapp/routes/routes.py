@@ -1,7 +1,6 @@
 import asyncio
-import copy, logging, os, json
+import copy, logging, os, json, time
 from typing import List
-from pathlib import Path
 
 from fastapi import Body, Request
 from fastapi.concurrency import run_in_threadpool
@@ -11,14 +10,15 @@ from fastapi.responses import RedirectResponse, Response, StreamingResponse
 import etc.global_cfg as global_cfg
 from etc import constants
 
-from modules import action_type, current_user, errors, files, permissions, processing_job, version
+from modules import current_user, errors, files, permissions, version
 from modules import deploy_version, meta_file
 from modules import workflow, processing_service, processing_settings, json_path
-from modules.db import meta_file_data, meta_file_history_data, processing_user_data, run_history_data, deploy_object_data, processing_job_data, deployment_list_data
-from modules.deploy_object import Deploy_Object
+from modules.db import api_token_data, meta_file_data, meta_file_history_data, run_history_data, deploy_object_data, deployment_list_data, login_failure_data, user_mfa_data
+from modules import notifications, retention, totp, web_settings
+from modules.application import deployments
 
-from web_modules import http_functions
-from web_modules import admin_view, app_login, deployment_view, template_filters
+from web_modules import http_functions, server_sessions
+from web_modules import admin_view, app_login, audit, deployment_view, health, template_filters, two_factor
 from web_modules.status_view import get_status_view
 from modules import permission_config
 from modules.object_status import Status as Obj_Status
@@ -30,34 +30,18 @@ from modules.object_status import Status as Obj_Status
 
 
 def get_deployment(meta_file_id: int) -> meta_file.Meta_File:
-
-    mf: meta_file.Meta_File|None = meta_file_data.get_meta_file_by_id(meta_file_id)
-
-    if mf is None:
-        raise errors.Not_Found_Error(f"Deployment {meta_file_id} not found")
-
-    return mf
+    return deployments.load(meta_file_id)
 
 
 
 def get_stage(mf: meta_file.Meta_File, stage_id: int):
-
-    stage = mf.get_stage_by_id(stage_id)
-
-    if stage is None:
-        raise errors.Not_Found_Error(f"Stage {stage_id} not found in deployment {mf.id}")
-
-    return stage
+    return deployments.get_stage(mf, stage_id)
 
 
 
 def check_read_permission(meta_file_id: int|None) -> None:
     """For data of a deployment which is requested without loading the deployment"""
-
-    if meta_file_id is None:
-        raise errors.Not_Found_Error("Not found")
-
-    permission_config.check_user_permission(permissions.PermissionAction.READ, meta_file_data.get_workflow_name(meta_file_id))
+    deployments.check_read_permission(meta_file_id)
 
 
 
@@ -202,7 +186,7 @@ def get_deploy_objects(request: Request, search: str='', filter: str='', sort: s
     try:
         filters = json.loads(filter) if filter else {}
     except ValueError:
-        raise errors.Invalid_Input_Error("'filter' has to be JSON")
+        raise errors.Invalid_Input_Error("'filter' has to be JSON") from None
     if not isinstance(filters, dict):
         raise errors.Invalid_Input_Error("'filter' has to be a JSON object")
 
@@ -257,6 +241,7 @@ def select_project(request: Request, project: str):
 def show_log(request: Request, log: str, number_of_lines: int=100, level: str='all', q: str=''):
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    audit.record(request, 'log_viewed', object=log)
 
     logging.debug(f"Read log file {log=}")
 
@@ -281,6 +266,7 @@ def download_log(request: Request, log: str):
     """The whole log file"""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    audit.record(request, 'log_viewed', object=log, details={'download': True})
 
     if log not in os.listdir('log/'):
         raise errors.Not_Found_Error(f"Log {log} not found")
@@ -317,45 +303,254 @@ async def login(request: Request):
         # 303: the browser opens the page with GET, a reload doesn't send the form again
         return RedirectResponse(next_url, status_code=303)
 
-    return http_functions.get_html_response(request, 'login.html', sidebar=None, error_text=session.get('error_text', None), next_url=next_url)
+    # Set by the login of this request (app_login.login), not stored in the session
+    error_text = getattr(request.state, 'login_error', None)
+
+    return http_functions.get_html_response(request, 'login.html', sidebar=None, error_text=error_text, next_url=next_url)
 
 
 
 def show_user(request: Request):
 
     session = request.state.session
-    user_keys = app_login.get_user_keys()
-    user_key = user_keys.get(session['current_user'], None)
 
-    return http_functions.get_html_response(request, 'admin/user.html', sidebar=get_sidebar_data(request), user_key=user_key,
-                                            account=admin_view.get_account(session.get('current_user')))
+    return http_functions.get_html_response(request, 'admin/user.html', sidebar=get_sidebar_data(request),
+                                            tokens=[admin_view.get_token_info(token) for token in api_token_data.get_of_user(session['current_user'])],
+                                            max_token_days=constants.C_TOKEN_MAX_DAYS,
+                                            account=admin_view.get_account(session.get('current_user')),
+                                            two_factor=admin_view.get_two_factor(session.get('current_user'), session.get(two_factor.SESSION_SETUP_REQUIRED, False)))
 
 
 
 def generate_user_key(request: Request):
+    # Only in the web app, not with a token (a stolen token can't replace itself), with a recent code (docs/bugfixes/api-token-outlives-user.md)
+    two_factor.require_recent_code(request)
     session = request.state.session
     logging.debug(f"Set new key for user {session['current_user']}")
 
-    return http_functions.get_json_response({"token": app_login.generate_new_user_key(request)})
+    token = app_login.generate_new_user_key(request)
+    audit.record(request, 'token_created')
+    return http_functions.get_json_response({"token": token})
 
 
 
 def drop_user_key(request: Request):
+    two_factor.require_session(request)
     session = request.state.session
     logging.debug(f"Drop key for user {session['current_user']}")
 
     app_login.drop_user_key(request)
+    audit.record(request, 'token_deleted')
     return http_functions.get_json_response({})
 
 
 
+#-----------------------------------------------------------------------------------------------
+# Two-factor authentication (docs/features/two-factor-authentication.md)
+#-----------------------------------------------------------------------------------------------
+
+def mfa_setup(request: Request):
+    """A new secret for the authenticator app. Active after it has been confirmed with a code (mfa_enable)."""
+
+    two_factor.require_session(request)
+    user = current_user.get_user()
+
+    if two_factor.get_policy() == 'off':
+        raise errors.Conflict_Error("Two-factor authentication is turned off (C_2FA_POLICY)")
+
+    if user_mfa_data.is_enabled(user):
+        raise errors.Conflict_Error("Two-factor authentication is already set up. Turn it off first.")
+
+    secret = totp.generate_secret()
+    user_mfa_data.start_setup(user, secret)
+    uri = totp.get_uri(user, secret)
+
+    return http_functions.get_json_response({'secret': secret, 'uri': uri, 'qr_code': totp.get_qr_code(uri)})
+
+
+
+def mfa_enable(request: Request, data: dict = Body(...)):
+    """Confirms the setup with a code of the app. Returns the recovery codes, once."""
+
+    two_factor.require_session(request)
+    user = current_user.get_user()
+    mfa = user_mfa_data.get(user)
+
+    if mfa is None or mfa['enabled']:
+        raise errors.Conflict_Error("Start the setup first")
+
+    step = totp.verify(mfa['secret'], data.get('code') if isinstance(data.get('code'), str) else None)
+    if step is None:
+        raise errors.Invalid_Input_Error("The code is not valid. Check that the time of your phone is correct.")
+
+    codes = totp.generate_recovery_codes()
+    if not user_mfa_data.enable(user, step, [totp.hash_recovery_code(code) for code in codes]):
+        raise errors.Conflict_Error("Start the setup again")
+
+    request.state.session[two_factor.SESSION_CODE_TIME] = time.time()
+    request.state.session.pop(two_factor.SESSION_SETUP_REQUIRED, None)
+    logging.warning(f"Two-factor authentication set up by user {user}")
+    audit.record(request, '2fa_enabled')
+
+    return http_functions.get_json_response({'status': 'success', 'recovery_codes': codes})
+
+
+
+def mfa_disable(request: Request, data: dict = Body(...)):
+
+    two_factor.require_session(request)
+    user = current_user.get_user()
+
+    if two_factor.is_required(user):
+        raise errors.Conflict_Error("Two-factor authentication is required for you (C_2FA_POLICY)")
+
+    if not two_factor.verify_code(user, data.get('code') if isinstance(data.get('code'), str) else None):
+        raise errors.Invalid_Input_Error("The code is not valid")
+
+    user_mfa_data.remove(user)
+    request.state.session.pop(two_factor.SESSION_CODE_TIME, None)
+    logging.warning(f"Two-factor authentication turned off by user {user}")
+    audit.record(request, '2fa_disabled')
+
+    return http_functions.get_json_response({'status': 'success'})
+
+
+
+def mfa_recovery_codes(request: Request):
+    """New recovery codes; the old ones are no longer valid"""
+
+    two_factor.require_recent_code(request)
+    user = current_user.get_user()
+
+    if not user_mfa_data.is_enabled(user):
+        raise errors.Conflict_Error("Two-factor authentication is not set up")
+
+    codes = totp.generate_recovery_codes()
+    user_mfa_data.set_recovery_codes(user, [totp.hash_recovery_code(code) for code in codes])
+    logging.warning(f"New recovery codes of user {user}")
+    audit.record(request, '2fa_recovery_codes')
+
+    return http_functions.get_json_response({'status': 'success', 'recovery_codes': codes})
+
+
+
+def mfa_verify(request: Request, data: dict = Body(...)):
+    """A code for actions which need a recent one (step-up)"""
+
+    two_factor.require_session(request)
+    user = current_user.get_user()
+
+    if not two_factor.verify_code(user, data.get('code') if isinstance(data.get('code'), str) else None):
+        raise errors.Invalid_Input_Error("The code is not valid")
+
+    request.state.session[two_factor.SESSION_CODE_TIME] = time.time()
+    return http_functions.get_json_response({'status': 'success'})
+
+
+
+def mfa_reset(request: Request, user: str):
+    """An admin removes the two-factor authentication of a user (e.g. a lost phone): the user sets it up again"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
+
+    if not user_mfa_data.remove(user):
+        raise errors.Not_Found_Error(f"User {user} has no two-factor authentication")
+
+    logging.warning(f"Two-factor authentication of user {user.lower()} reset by {current_user.get_user()}")
+    audit.record(request, '2fa_reset', object=user.lower())
+    return http_functions.get_json_response({'status': 'success'})
+
+
+
+def revoke_token(request: Request, user: str):
+    """An admin deletes the API token of a user (docs/bugfixes/api-token-outlives-user.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
+
+    if not app_login.drop_token_of(user):
+        raise errors.Not_Found_Error(f"User {user} has no token")
+
+    logging.warning(f"API token of user {user.lower()} revoked by {current_user.get_user()}")
+    audit.record(request, 'token_revoked', object=user.lower())
+    return http_functions.get_json_response({'status': 'success'})
+
+
+
+def healthz(request: Request):
+    """Health check without login (docs/features/health-check.md). With a login or token: version and details."""
+
+    status, answer = health.get_health(details=current_user.get_user() is not None)
+    return http_functions.get_json_response(answer, status=status)
+
+
+
+def run_retention(request: Request):
+    """Removes the old deployments now (docs/features/data-retention.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
+
+    if not constants.C_RETENTION_DAYS:
+        raise errors.Conflict_Error("No deployment is removed: C_RETENTION_DAYS is 0")
+
+    result = retention.run()
+    audit.record(request, 'data_removed', details={'deployments': result['removed'], 'archived': len(result['archived']), 'errors': result['errors']})
+
+    return http_functions.get_json_response({'status': 'success', **result})
+
+
+
+def send_test_notification(request: Request, channel: str, data: dict|None = Body(None)):
+    """Sends a test message with a channel of etc/notifications.json now (docs/features/notifications.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    recipient = (data or {}).get('recipient')
+    if recipient is not None and not isinstance(recipient, str):
+        raise errors.Invalid_Input_Error("'recipient' has to be an e-mail address")
+
+    try:
+        sent_to = notifications.send_test(channel, recipient, current_user.get_user())
+    except notifications.Notification_Config_Error as e:
+        raise errors.Conflict_Error(str(e)) from e
+    except notifications.Notification_Error as e:
+        raise errors.Bad_Gateway_Error(str(e)) from e
+
+    logging.info(f"Test notification of channel {channel} sent to {sent_to} by {current_user.get_user()}")
+    return http_functions.get_json_response({'status': 'success', 'sent_to': sent_to})
+
+
+
+def unblock_login(request: Request, user: str):
+    """Ends the block of a user after too many failed logins (docs/bugfixes/login-can-disable-ibm-i-profiles.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
+
+    if not login_failure_data.unblock_user(user):
+        raise errors.Not_Found_Error(f"The login of user {user} is not blocked")
+
+    logging.warning(f"Login of user {user.lower()} unblocked by {current_user.get_user()}")
+    audit.record(request, 'login_unblocked', object=user.lower())
+    return http_functions.get_json_response({'status': 'success'})
+
+
+
 def logout(request: Request):
+    """POST ends the session. GET only shows the button: a link of another site must not log out."""
+
+    if request.method != 'POST':
+        return http_functions.get_html_response(request, 'logout.html', sidebar=None)
 
     if hasattr(request.state, 'session'):
-        logging.debug(f"Logout user {request.state.session.get('current_user', None)}")
+        logging.info(f"Logout of user {request.state.session.get('current_user', None)}")
+        audit.record(request, 'logout', user=request.state.session.get('current_user', None))
         request.state.session.destroy()
 
-    return RedirectResponse("/login", status_code=302)
+    return RedirectResponse("/login", status_code=303)
+
 
 
 
@@ -374,12 +569,89 @@ def show_workflows(request: Request):
 
 
 def show_settings(request: Request):
-    """Settings, general part (docs/features/web-ui-admin-pages.md#settings)"""
+    """Administration, part System (docs/features/web-ui-admin-pages.md#settings)"""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
 
     return http_functions.get_html_response(request, 'admin/settings.html', sidebar=get_sidebar_data(request),
-                                            general=admin_view.get_general(global_cfg.C_DEFAULT_PROJECT, app_login.get_user_keys()))
+                                            general=admin_view.get_general(global_cfg.C_DEFAULT_PROJECT),
+                                            notifications=admin_view.get_notifications(current_user.get_user()))
+
+
+
+def show_configuration(request: Request):
+    """Administration, part Settings: the settings which are changed in the web app (docs/features/settings-in-web-app.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    return http_functions.get_html_response(request, 'admin/configuration.html', sidebar=get_sidebar_data(request),
+                                            settings=admin_view.get_settings())
+
+
+
+def change_setting(request: Request, name: str, data: dict = Body(...)):
+    """Stores a setting of the web app in etc/app.json (docs/features/settings-in-web-app.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
+
+    if 'value' not in data:
+        raise errors.Invalid_Input_Error("'value' is missing")
+
+    old = web_settings.change(name, data['value'], current_user.get_user())
+    audit.record(request, 'setting_changed', object=name, details={'old': old, 'new': getattr(constants, name)})
+
+    return http_functions.get_json_response({'status': 'success', 'name': name, 'value': getattr(constants, name)})
+
+
+
+def reset_setting(request: Request, name: str):
+    """The value of etc/settings.py or the default counts again (docs/features/settings-in-web-app.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
+
+    old = web_settings.reset(name, current_user.get_user())
+    audit.record(request, 'setting_changed', object=name, details={'old': old, 'new': getattr(constants, name), 'reset': True})
+
+    return http_functions.get_json_response({'status': 'success', 'name': name, 'value': getattr(constants, name)})
+
+
+
+def show_security(request: Request):
+    """Administration, part Security: API tokens, two-factor authentication, blocked logins (docs/features/web-ui-admin-pages.md#settings)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    return http_functions.get_html_response(request, 'admin/security.html', sidebar=get_sidebar_data(request),
+                                            security=admin_view.get_security(api_token_data.get_all()))
+
+
+
+def show_audit(request: Request):
+    """Settings, audit: security events and actions on deployments (docs/features/audit-log.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    return http_functions.get_html_response(request, 'admin/audit.html', sidebar=get_sidebar_data(request), audit=admin_view.get_audit())
+
+
+
+def download_audit(request: Request):
+    """The entries of the audit page as CSV"""
+
+    import csv, io
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['time (UTC)', 'user', 'client', 'event', 'object', 'result', 'details'])
+    for row in admin_view.get_audit()['rows']:
+        writer.writerow([row['time'], row['user'], row['client'], row['event'], row['object'], row['result'], row['details']])
+
+    audit.record(request, 'log_viewed', object='audit', details={'download': True})
+    return Response(content=output.getvalue(), media_type='text/csv; charset=utf-8', headers={'Content-Disposition': 'attachment; filename="i-releaser-audit.csv"'})
 
 
 
@@ -438,33 +710,17 @@ def run_stage(request: Request, meta_file_id: int, stage_id: int, option: str, d
     Body (optional): {"run_at": "2026-11-24T22:00:00+01:00"}: scheduled run by the processing service (docs/features/scheduled-stage-run.md)
     """
 
-    logging.debug(f"Run stage-id {stage_id} of meta_file_id {meta_file_id} with option {option=}, {data=}")
-
     if option not in ['continue', 'run_all']:
         raise errors.Invalid_Input_Error(f"Option '{option}' is invalid. Valid options are: 'continue', 'run_all'")
 
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=get_stage(mf, stage_id).name)
+    result = deployments.run_stage(meta_file_id, stage_id, mode='all' if option == 'run_all' else 'continue', run_at=(data or {}).get('run_at'))
 
-    run_at = None
-    if data and data.get('run_at') is not None:
-        run_at = processing_job.parse_run_at(data.get('run_at'))
-
-    result = {'status': 'success'}
-    result.update(mf.start_stage(stage_id, continue_run=option != 'run_all', run_at=run_at))
-
-    return http_functions.get_json_response(result)
-
+    return http_functions.get_json_response({'status': 'success', **result})
 
 
 
 def get_meta_file_json(request: Request, meta_file_id: int):
-    logging.debug(f"Get meta file from: {meta_file_id=}")
-
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
-
-    return http_functions.get_json_response(mf.get_all_data_as_dict())
+    return http_functions.get_json_response(deployments.get_deployment(meta_file_id).get_all_data_as_dict())
 
 
 
@@ -499,51 +755,19 @@ def get_action_log(request: Request, id: int):
 
 
 def show_processing_history(request: Request, meta_file_id: int):
-    logging.debug(f"Get processing history from: {meta_file_id=}")
-
-    check_read_permission(meta_file_id)
-
-    pud: list = processing_user_data.get_processing_user_by_meta_id(meta_file_id)
-
-    return http_functions.get_json_response(pud)
+    return http_functions.get_json_response(deployments.get_history(meta_file_id))
 
 
 
 def cancel_deployment(request: Request, meta_file_id: int):
-
-    logging.debug(f"Cancel Deployment: {meta_file_id=}")
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-
-    permission_config.check_user_permission(permissions.PermissionAction.CANCEL_WORKFLOW, mf.workflow.name)
-    processing_user_data.create_action_log(action=action_type.Action_type.CANCEL_WF, meta_file=mf)
-
-    mf.cancel_deployment()
-    # A stage which is already running is not stopped. Like without the processing service.
-    processing_job_data.cancel_queued_jobs(mf.id)
-
+    deployments.cancel_deployment(meta_file_id)
     return http_functions.get_json_response({'status': 'success'})
 
 
 
 def cancel_job(request: Request, job_id: int):
     """Removes a stage run from the queue of the processing service, as long as it has not been started."""
-
-    logging.debug(f"Cancel processing job: {job_id=}")
-
-    job = processing_job_data.get_job(job_id)
-    if job is None:
-        raise errors.Not_Found_Error(f"Processing job {job_id} not found")
-
-    mf: meta_file.Meta_File = get_deployment(job.meta_file_id)
-    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=get_stage(mf, job.stage_id).name)
-
-    if not processing_job_data.cancel_job(job_id):
-        raise errors.Conflict_Error(f"Processing job {job_id} is not in the queue anymore.")
-
-    if job.is_scheduled():
-        processing_user_data.create_action_log(action=action_type.Action_type.CANCEL_SCHEDULE, meta_file=mf, stage=get_stage(mf, job.stage_id),
-                                               details=f"Canceled the run scheduled for {processing_job.format_utc_text(job.run_at)} (job {job.id})")
-
+    deployments.cancel_job(job_id)
     return http_functions.get_json_response({'status': 'success'})
 
 
@@ -552,8 +776,11 @@ def set_processing_mode(request: Request, mode: str):
     """Changes the processing mode for the next stages, without a restart (stored in etc/app.json)"""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
 
+    old_mode = processing_settings.get_processing_mode()
     processing_settings.set_processing_mode(mode, current_user.get_user())
+    audit.record(request, 'setting_changed', object='C_PROCESSING_MODE', details={'old': old_mode, 'new': mode})
 
     return http_functions.get_json_response({'status': 'success', 'mode': mode, 'service_running': processing_service.notify()})
 
@@ -563,8 +790,10 @@ def control_processing_service(request: Request, action: str):
     """Starts, stops or restarts the processing service. Running jobs are not affected."""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
 
     output = processing_settings.control_service(action, current_user.get_user())
+    audit.record(request, 'setting_changed', object='processing service', details={'action': action})
 
     return http_functions.get_json_response({'status': 'success', 'output': output, 'service_running': processing_service.notify()})
 
@@ -574,8 +803,10 @@ def set_service_auto_start(request: Request, enabled: bool):
     """Turns the auto start of the processing service on or off (stored in etc/app.json)"""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
 
     processing_settings.set_service_auto_start(enabled, current_user.get_user())
+    audit.record(request, 'setting_changed', object='C_SERVICE_AUTO_START', details={'new': enabled})
 
     return http_functions.get_json_response({'status': 'success', 'auto_start': enabled,
                                              'auto_start_paused': processing_settings.is_service_auto_start_paused()})
@@ -589,33 +820,21 @@ def edit_custom_data(request: Request, meta_file_id: int, data: dict = Body(...)
     Only fields defined in `editable_fields` of the workflow can be changed.
     """
 
-    fields = data.get('fields')
-    if not isinstance(fields, dict) or len(fields) == 0:
-        raise errors.Invalid_Input_Error("No fields to change provided!")
-
-    logging.debug(f"Edit custom data: {meta_file_id=}, {fields=}")
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-
-    permission_config.check_user_permission(permissions.PermissionAction.EDIT_CUSTOM_DATA, mf.workflow.name)
-
-    changed = mf.update_custom_data(fields)
-    processing_user_data.create_action_log(action=action_type.Action_type.EDIT_CUSTOM_DATA, details=f"Changed custom data: {', '.join(changed)}", meta_file=mf)
-
+    deployments.edit_custom_data(meta_file_id, data.get('fields'))
     return http_functions.get_json_response({'status': 'success'})
 
 
 
+def approve_stage(request: Request, meta_file_id: int, stage_id: int):
+    """Four-eyes check: a second person approves a stage before it can run (docs/features/four-eyes-check.md)"""
+
+    approval = deployments.approve_stage(meta_file_id, stage_id, confirm=lambda: two_factor.require_recent_code(request))
+    return http_functions.get_json_response({'status': 'success', 'approved_by': approval['user'], 'time': approval['time']})
+
+
+
 def reset_stage_status(request: Request, meta_file_id: int, stage_id: int):
-
-    logging.debug(f"Reset Stage Status: {meta_file_id=}, {stage_id=}")
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-    stage = get_stage(mf, stage_id)
-
-    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=stage.name)
-
-    mf.reset_stage(stage)
-    processing_user_data.create_action_log(action=action_type.Action_type.RESET_STAGE_STATUS, meta_file=mf)
-
+    deployments.reset_stage(meta_file_id, stage_id, 'hanging')
     return http_functions.get_json_response({'status': 'success'})
 
 
@@ -624,30 +843,13 @@ def reset_last_finished_stage(request: Request, meta_file_id: int, stage_id: int
     """Sets the stage which has been finished last back to 'ready', so it can be run again.
     Only possible as long as the deployment is not finished and no stage is in process.
     """
-
-    logging.debug(f"Reset last finished stage: {meta_file_id=}, {stage_id=}")
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-
-    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage=get_stage(mf, stage_id).name)
-
-    stage = mf.reset_last_finished_stage(stage_id)
-    processing_user_data.create_action_log(action=action_type.Action_type.RESET_LAST_FINISHED_STAGE, details=f"Reset finished stage to '{stage.status.value}'", meta_file=mf, stage=stage)
-
+    deployments.reset_stage(meta_file_id, stage_id, 'last-finished')
     return http_functions.get_json_response({'status': 'success'})
 
 
 
 def reset_deployment_status(request: Request, meta_file_id: int):
-
-    logging.debug(f"Reset Deployment Status: {meta_file_id=}")
-
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-
-    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name)
-
-    mf.reset_status()
-    processing_user_data.create_action_log(action=action_type.Action_type.RESET_DEPLOYMENT_STATUS, meta_file=mf)
-
+    deployments.reset_deployment(meta_file_id)
     return http_functions.get_json_response({'status': 'success'})
 
 
@@ -655,55 +857,18 @@ def reset_deployment_status(request: Request, meta_file_id: int):
 def create_deployment(request: Request, wf_name: str, commit: str|None=None, obj_list: str|None=None):
     """
     Creates a new deployment for a given workflow, commit, and the name of the list of objects.
-    This function checks if a deployment already exists for the specified commit and workflow.
-    If a deployment exists and its status is not 'CANCELED', it returns an error response.
-    Otherwise, it creates a new meta file for the deployment, sets its status to 'READY', and returns the deployment metadata.
-    Args:
-        wf_name (str): The name of the workflow for which the deployment is to be created.
-        commit (str): The commit hash or identifier associated with the deployment.
-        obj_list (str): Path of a file with the objects to be included in the deployment (see docs/workflow.md#object-list).
-
-    Returns:
-        A JSON response containing the status of the operation and relevant data or error message.
+    A commit can only be used by one deployment of a project which isn't canceled.
+    obj_list: Path of a file with the objects to be included in the deployment (see docs/workflow.md#object-list).
     """
 
-    logging.debug(f"Create Deployment: {wf_name=}, {commit=}, {obj_list=}")
-
-    permission_config.check_user_permission(permissions.PermissionAction.START_WORKFLOW, wf_name)
-
-    wf = workflow.Workflow(wf_name)
-    logging.debug(f"Workflow: {wf}")
-    existing_version = deploy_version.Deploy_Version.get_deployment_by_commit(project=wf.default_project, commit=commit)
-
-    logging.debug(f"{existing_version=}, {meta_file.Meta_file_status.CANCELED=}")
-
-    if existing_version is not None and meta_file.Meta_file_status(existing_version['status']) != meta_file.Meta_file_status.CANCELED:
-        raise errors.Conflict_Error(f"Given commit is already used in deployment version {existing_version['version']} with status '{existing_version['status']}'")
-
-    mf: meta_file.Meta_File = meta_file_data.create_new_meta_file(workflow_name=wf_name, object_list=obj_list)
-    #mf = meta_file.Meta_File(workflow_name=wf_name, object_list=obj_list)
-    processing_user_data.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
-
-    mf.commit = commit
-    mf.set_status(meta_file.Meta_file_status.READY)
-
+    mf = deployments.create_deployment(wf_name, commit=commit, object_list=obj_list)
     return http_functions.get_json_response({'status': 'success', 'meta_file': mf.get_all_data_as_dict()})
-
-
 
 
 
 def create_deployment_with_custom_data(wf_name: str, custom_data: dict, compiles: list|None=None):
 
-    logging.info(f"Starting workflow {wf_name} with {len(custom_data)} custom data fields{'' if compiles is None else ' and a compile list'}")
-
-    permission_config.check_user_permission(permissions.PermissionAction.START_WORKFLOW, wf_name)
-
-    mf = meta_file_data.create_new_meta_file(workflow_name=wf_name, custom_data=custom_data, compiles=compiles)
-    processing_user_data.create_action_log(action=action_type.Action_type.CREATE_WF, details=wf_name, meta_file=mf)
-
-    mf.set_status(meta_file.Meta_file_status.READY)
-
+    mf = deployments.create_deployment(wf_name, custom_data=custom_data, compiles=compiles)
     return http_functions.get_json_response({'status': 'success', 'meta_file': mf.get_all_data_as_dict()})
 
 
@@ -731,43 +896,21 @@ def start_workflow_post(request: Request, wf_name: str, custom_data: dict = Body
 
 
 def set_check_error(request: Request, meta_file_id: int, stage_id: int, action_id: int, checked: bool):
-    logging.debug(f"Set check error action_id: {action_id}, checked: {checked}")
-    session = request.state.session
-
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-    if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
-        raise errors.Conflict_Error(f"Can't change step check because deployment is already {mf.status.value}.")
-
-    mf.set_action_check(stage_id, action_id, checked, session['current_user'])
-
+    deployments.set_check_error(meta_file_id, stage_id, action_id, checked)
     return http_functions.get_json_response({})
 
 
 
-
 def set_source_ready_4_deployment(request: Request, meta_file_id: int, data: dict = Body(...)):
-    logging.debug(f"Set source ready for deployment lib: {data['lib']}, name: {data['name']}, type: {data['type']}, checked: {data['checked']}, {meta_file_id=}")
+    """Includes or excludes one object of a deployment. Body: {"lib": ..., "name": ..., "type": ..., "checked": true|false}"""
 
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
+    if not all(isinstance(data.get(key), str) for key in ['lib', 'name', 'type']):
+        raise errors.Invalid_Input_Error("The object needs 'lib', 'name' and 'type'")
 
-    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name)
+    if not isinstance(data.get('checked'), bool):
+        raise errors.Invalid_Input_Error("'checked' has to be true or false")
 
-    if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
-        raise errors.Conflict_Error(f"Can't change object status because deployment is already in status '{mf.status.value}'.")
-
-    obj: Deploy_Object = mf.deploy_objects.get_deploy_object(lib=data['lib'], name=data['name'], type=data['type'])
-
-    if obj is None:
-        raise errors.Not_Found_Error(f"Object {data['lib']}/{data['name']}({data['type']}) not found")
-
-    if obj.deploy_status == Obj_Status.FINISHED:
-        raise errors.Conflict_Error(f"Can't change object status because object is already in status '{obj.deploy_status.value}'.")
-
-    processing_user_data.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set object {data['lib']}/{data['name']}({data['type']}) ready={data['checked']}", meta_file=mf)
-
-    obj.ready = data['checked']
-    mf.save()
-
+    deployments.set_object_ready(meta_file_id, data['lib'], data['name'], data['type'], data['checked'])
     return http_functions.get_json_response({})
 
 
@@ -779,48 +922,8 @@ def set_objects_ready(request: Request, meta_file_id: int, data: dict = Body(...
     Finished objects are left unchanged and listed in the response. If an object doesn't exist, nothing is changed.
     """
 
-    objects = data.get('objects')
-    ready = data.get('ready')
-
-    if not isinstance(ready, bool):
-        raise errors.Invalid_Input_Error("'ready' has to be true or false")
-
-    if not isinstance(objects, list) or len(objects) == 0:
-        raise errors.Invalid_Input_Error("'objects' has to be a list of objects")
-
-    for o in objects:
-        if not isinstance(o, dict) or not all(isinstance(o.get(key), str) for key in ['lib', 'name', 'type']):
-            raise errors.Invalid_Input_Error("Each object needs 'lib', 'name' and 'type'")
-
-    mf: meta_file.Meta_File = get_deployment(meta_file_id)
-
-    permission_config.check_user_permission(permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name)
-
-    if mf.status in [meta_file.Meta_file_status.CANCELED, meta_file.Meta_file_status.FINISHED]:
-        raise errors.Conflict_Error(f"Can't change object status because deployment is already in status '{mf.status.value}'.")
-
-    found = [(o, mf.deploy_objects.get_deploy_object(lib=o['lib'], name=o['name'], type=o['type'])) for o in objects]
-
-    not_found = [f"{o['lib']}/{o['name']}({o['type']})" for o, obj in found if obj is None]
-    if not_found:
-        raise errors.Not_Found_Error(f"{len(not_found)} objects not found: {', '.join(not_found[:5])}{' ...' if len(not_found) > 5 else ''}")
-
-    changed = 0
-    finished = []
-
-    for o, obj in found:
-        if obj.deploy_status == Obj_Status.FINISHED:
-            finished.append({'lib': obj.lib, 'name': obj.name, 'type': obj.type})
-            continue
-        if obj.ready != ready:
-            obj.ready = ready
-            changed += 1
-
-    if changed > 0:
-        processing_user_data.create_action_log(action=action_type.Action_type.CHANGE_OBJ_READY_STATUS, details=f"Set {changed} objects ready={ready}", meta_file=mf)
-        mf.save()
-
-    return http_functions.get_json_response({'status': 'success', 'changed': changed, 'finished': finished})
+    result = deployments.set_objects_ready(meta_file_id, data.get('objects'), data.get('ready'))
+    return http_functions.get_json_response({'status': 'success', **result})
 
 
 
@@ -886,8 +989,29 @@ def get_state_signature(meta_file_id: int) -> dict|None:
 
 def check_watch_permission(meta_file_id: int) -> None:
 
-    mf = get_deployment(meta_file_id)
-    permission_config.check_user_permission(permissions.PermissionAction.READ, mf.workflow.name)
+    # Only the name of the workflow, not the whole deployment (the check is repeated while the stream is open)
+    workflow_name = meta_file_data.get_workflow_name(meta_file_id)
+    if workflow_name is None:
+        raise errors.Not_Found_Error(f"Deployment {meta_file_id} not found")
+
+    permission_config.check_user_permission(permissions.PermissionAction.READ, workflow_name)
+
+
+
+def is_watch_allowed(user: str|None, session_id: str|None, meta_file_id: int) -> bool:
+    """The stream of the live updates is still allowed: the session hasn't ended (logout, timeout) and the user may read the deployment"""
+
+    if session_id is not None:
+        session = server_sessions.load_session_file(session_id)
+        if session is None or not session.get('session-data', {}).get('is_logged_in'):
+            return False
+
+    current_user.set_user(user)
+    try:
+        check_watch_permission(meta_file_id)
+        return True
+    except errors.App_Error:
+        return False
 
 
 
@@ -900,16 +1024,28 @@ async def watch_state(request: Request, meta_file_id: int):
 
     await run_in_threadpool(check_watch_permission, meta_file_id)
 
+    # Checked again while the stream is open (docs/bugfixes/minor-web-defects-2026-11.md, item 8). A request with a token has no session file.
+    user = current_user.get_user()
+    session = request.state.session
+    session_id = None if session.transient else session.session_id
+
 
     async def event_stream():
 
         previous_marker = None
         previous_signature = None
+        last_check = time.time()
 
         try:
             while True:
                 if await request.is_disconnected():
                     break
+
+                if time.time() - last_check >= constants.C_WATCH_SESSION_CHECK_SECONDS:
+                    last_check = time.time()
+                    if not await run_in_threadpool(is_watch_allowed, user, session_id, meta_file_id):
+                        # The page connects again and gets 401: "Your session has ended"
+                        break
 
                 marker = await run_in_threadpool(meta_file_data.get_state_marker, meta_file_id)
 
@@ -945,7 +1081,8 @@ def get_workflows(request: Request):
 
 
 
-def get_projects(request: Request):
+def get_project_counts() -> dict:
+    """Projects the user may read -> {status: number of deployments}"""
 
     result = {}
 
@@ -956,7 +1093,12 @@ def get_projects(request: Request):
                 result[project][depl['status']] = 0
             result[project][depl['status']] = result[project][depl['status']] + 1
 
-    return http_functions.get_json_response(result)
+    return result
+
+
+
+def get_projects(request: Request):
+    return http_functions.get_json_response(get_project_counts())
 
 
 
@@ -984,6 +1126,7 @@ def add_permission(request: Request, data: dict = Body(...)):
     """Adds a user or a role. With `version`: only if the permissions haven't changed since (409 otherwise)."""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
 
     type = data.get('type')
     general = data.get('general', [])
@@ -997,11 +1140,11 @@ def add_permission(request: Request, data: dict = Body(...)):
     try:
         general_actions = [permissions.PermissionAction(action) for action in general]
     except ValueError as e:
-        raise errors.Invalid_Input_Error(str(e))
+        raise errors.Invalid_Input_Error(str(e)) from e
 
     logging.debug(f"Add permission of type {type} with name {data.get('name')} for roles {roles}, {general=}")
 
-    with permission_config.CHANGE_LOCK:
+    with permission_config.change_lock():
         permission_config.PermissionKonfig.check_reload(force=True)
         permission_config.check_version(data.get('version'))
 
@@ -1013,6 +1156,8 @@ def add_permission(request: Request, data: dict = Body(...)):
             permission_config.PermissionKonfig.add_role_permission(name=name, general=general_actions)
 
         version = permission_config.get_version()
+
+    audit.record(request, 'permissions_changed', object=f"{type} {name.lower()}", details={'new': True, 'added': sorted(f"general: {a.value}" for a in general_actions)})
 
     return http_functions.get_json_response({"status": "success", "name": name.lower(), "version": version})
 
@@ -1026,6 +1171,7 @@ def save_permissions(request: Request, data: dict = Body(...)):
     """
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
 
     # Users and roles which are missing in the request are kept: the web app reads them from its page,
     # and an error there must not delete them. They are only deleted if the request says so.
@@ -1040,7 +1186,7 @@ def save_permissions(request: Request, data: dict = Body(...)):
     if version is not None and not isinstance(version, str):
         raise errors.Invalid_Input_Error("'version' has to be a string")
 
-    with permission_config.CHANGE_LOCK:
+    with permission_config.change_lock():
         konfig = permission_config.PermissionKonfig
         konfig.check_reload(force=True)
         permission_config.check_version(version)
@@ -1048,6 +1194,7 @@ def save_permissions(request: Request, data: dict = Body(...)):
         # Changed on copies: nothing changes if a check fails
         users = copy.deepcopy(konfig.user_permissions)
         roles = copy.deepcopy(konfig.role_permissions)
+        users_before, roles_before = copy.deepcopy(users), copy.deepcopy(roles)
 
         unknown_users = user_permissions.keys() - users.keys()
         unknown_roles = role_permissions.keys() - roles.keys()
@@ -1069,7 +1216,7 @@ def save_permissions(request: Request, data: dict = Body(...)):
             konfig.convert_permissions('user', user_permissions)
             konfig.convert_permissions('role', role_permissions)
         except (ValueError, AttributeError, TypeError) as e:
-            raise errors.Invalid_Input_Error(f"Invalid permissions: {e}")
+            raise errors.Invalid_Input_Error(f"Invalid permissions: {e}") from e
 
         for user, perm in user_permissions.items():
             users[user].permissions.general = perm.permissions.general
@@ -1095,5 +1242,18 @@ def save_permissions(request: Request, data: dict = Body(...)):
         konfig.allowed_users = list(users.keys())
         konfig.save_permissions()
         new_version = permission_config.get_version()
+
+    # What has changed, for each user and role (docs/features/audit-log.md)
+    changes = {**{f"user {name}": change for name, change in audit.get_changes(users_before, users).items()},
+               **{f"role {name}": change for name, change in audit.get_changes(roles_before, roles).items()}}
+    for name, change in changes.items():
+        audit.record(request, 'permissions_changed', object=name, details=change)
+
+    # A user of the same name later must not get the token or the second factor of the removed one (docs/bugfixes/api-token-outlives-user.md)
+    for user in deleted_users:
+        if app_login.drop_token_of(user):
+            logging.warning(f"API token of the removed user {user} deleted")
+        if user_mfa_data.remove(user):
+            logging.warning(f"Two-factor authentication of the removed user {user} deleted")
 
     return http_functions.get_json_response({"status": "success", "version": new_version})

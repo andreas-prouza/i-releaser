@@ -78,7 +78,7 @@ def add_compression():
 
             if not log or isinstance(log, bytes) or log.startswith("file://"):
                 continue  # Skip if log is None, empty, already compressed or stored in a file
-            
+
             compressed_log = compression.compress_field(log)
 
             # Append a tuple formatted for our UPDATE statement: (val1, id)
@@ -107,7 +107,7 @@ def add_compression():
 
             logging.info(f"bevore Compressing action_run_history id={rowid}: stdout size={len(stdout) if stdout else 0}, stderr size={len(stderr) if stderr else 0}")
             logging.info(f"after Compressing action_run_history id={rowid}: stdout size={len(compressed_stdout) if compressed_stdout else 0}, stderr size={len(compressed_stderr) if compressed_stderr else 0}")
-            
+
             # Append a tuple formatted for our UPDATE statement: (val1, val2, id)
             update_data.append((compressed_stdout, compressed_stderr, rowid))
 

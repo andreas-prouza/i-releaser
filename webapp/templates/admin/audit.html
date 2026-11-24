@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{#- Administration, audit (docs/features/audit-log.md). Context: audit (admin_view.get_audit). Script: static/assets/js/pages/audit.js -#}
+
+{% from 'components/ui.html' import page_header, empty_state %}
+{% from 'admin/settings-tabs.html' import settings_tabs, ADMINISTRATION %}
+
+{% block title %}Audit · Administration{% endblock %}
+{% block nav_active %}settings{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
+{% endblock %}
+
+{% block page_header %}{{ page_header('Administration', meta=ADMINISTRATION) }}{% endblock %}
+
+{% block content %}
+
+{{ settings_tabs('audit') }}
+
+<div class="ir-settings">
+    {%- if not audit.chain_ok %}
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-octagon" aria-hidden="true"></i> The audit log has been changed: entry {{ audit.chain_broken_at }} doesn't fit to the one before (changed or deleted entries).
+    </div>
+    {%- endif %}
+
+    <section class="ir-card ir-section ir-table-card" aria-labelledby="audit-title">
+        <div class="ir-section-head">
+            <h2 id="audit-title">Who did what <span class="ir-count">{{ audit.rows | length }}</span></h2>
+            <div class="ir-section-actions">
+                <a class="btn btn-sm btn-outline-secondary" href="/settings/audit.csv"><i class="bi bi-download" aria-hidden="true"></i> CSV</a>
+            </div>
+        </div>
+        {%- if audit.rows %}
+        <table id="audit" class="table table-sm"></table>
+        {%- else %}
+        {{ empty_state('Nothing has been recorded yet', icon='journal-text') }}
+        {%- endif %}
+        <script type="application/json" id="audit-data">{{ audit.rows | tojson }}</script>
+        <p class="ir-reason mb-0">Logins, tokens, two-factor authentication, permissions, settings and logs, and the actions on deployments (their history). Times in the time zone of the browser. {% if audit.chain_ok %}The audit log is complete (hash chain checked).{% endif %}</p>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table.min.js') }}"></script>
+<script src="{{ url_for('static', path='assets/bootstrap/js/bootstrap-table-filter-control.min.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/app/tables.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='assets/js/pages/audit.js') }}"></script>
+{% endblock %}

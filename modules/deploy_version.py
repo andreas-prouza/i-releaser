@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import datetime
 import json
@@ -8,10 +10,8 @@ import logging
 from modules import errors, meta_file
 from modules.db import app_sqlite, meta_file_data
 from modules.meta_file_status import Meta_file_status
-import logging
 
 # from operator import itemgetter
-# from modules.permission_config import check_user_permission
 
 class DeploymentExistException(errors.Conflict_Error):
     pass
@@ -28,7 +28,7 @@ class Deploy_Version:
         Determines the next deployment version number for a project and records it in the database.
         """
         logging.debug(f"Get next deploy version for {project=}")
-        
+
         with app_sqlite.get_db_connection() as conn:
             cursor = conn.cursor()
 
@@ -39,7 +39,7 @@ class Deploy_Version:
             cursor.execute("SELECT MAX(version) FROM deploy_versions WHERE project = ?", (project,))
             result = cursor.fetchone()
             last_version = result[0] if result and result[0] is not None else 0
-            
+
             new_version = last_version + 1
 
             new_deployment = {
@@ -48,9 +48,9 @@ class Deploy_Version:
                 'timestamp': str(datetime.datetime.now()),
                 'commit': None  # Initially commit is unknown
             }
-            
+
             details_json = json.dumps(new_deployment)
-            
+
             cursor.execute(
                 "INSERT INTO deploy_versions (project, version, details) VALUES (?, ?, ?)",
                 (project, new_version, details_json)
@@ -58,7 +58,7 @@ class Deploy_Version:
             last_id = cursor.lastrowid
 
             conn.commit()
-            
+
             logging.info(f"Created next deploy version {new_version} for project {project}.")
         return {"version": new_version, "id": last_id}
 
@@ -68,14 +68,17 @@ class Deploy_Version:
     def get_deployments(project: str) -> dict:
         """
         Retrieves all deployments for a given project from the SQLite database.
+        Without the custom data: it's compressed and not needed for lists (docs/features/core-redesign.md, step 2).
         """
         logging.debug(f"Getting deployments for project: {project}")
-        
+
         with app_sqlite.get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                           SELECT 
-                                dv.version as version, mf.*, mf.id as meta_file_id,
+                           SELECT
+                                dv.version as version, mf.id as meta_file_id, mf.id, mf.project, mf.deploy_version_id, mf.commit_hash,
+                                mf.release_branch, mf.create_time, mf.update_time, mf.meta_dir, mf.status, mf.object_list,
+                                mf.main_lib, mf.remote_lib, mf.backup_lib, mf.parallel_deployment_execution_allowed,
                                 MAX(dv.version) OVER (partition by dv.project) as last_deploy_version,
                                 wd.name as workflow_name, wd.default_project
                            FROM deploy_versions dv
@@ -174,9 +177,9 @@ class Deploy_Version:
                 details['status'] = status.value
                 details['commit'] = commit
                 details['timestamp'] = str(datetime.datetime.now())
-                
+
                 details_json = json.dumps(details)
-                
+
                 cursor.execute(
                     "UPDATE deploy_versions SET details = ? WHERE project = ? AND version = ?",
                     (details_json, project, version)
@@ -195,9 +198,9 @@ class Deploy_Version:
         """
         if isinstance(version, str):
             version = int(version)
-            
+
         logging.debug(f"Get deployment {version=}, {project=}")
-        
+
         with app_sqlite.get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT m.id as meta_file_id, dv.details FROM deploy_versions dv LEFT JOIN meta_files m ON dv.id = m.deploy_version_id WHERE dv.project = ? AND dv.version = ?", (project, version))
@@ -216,11 +219,11 @@ class Deploy_Version:
         Retrieves a deployment by its commit hash from the SQLite database.
         """
         logging.debug(f"Get deployment by {commit=}, {project=}")
-        
+
         if commit is None:
             logging.info(f"Commit is None, returning None for {project=}")
             return None
-        
+
         with app_sqlite.get_db_connection() as conn:
             # Deployments which aren't canceled first: they are the ones which block the commit
             row = conn.execute("""

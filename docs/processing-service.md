@@ -35,7 +35,7 @@ shows the progress as usual  <--------  status of stage, steps and logs
 
 ## Set up
 
-In the web app (permission `admin`): `Settings` &rarr; `Processing` (`/settings/processing`).
+In the web app (permission `admin`): `Administration` &rarr; `Processing` (`/settings/processing`).
 Change the mode and start the service there. No restart is necessary.
 
 Or on the command line:
@@ -94,7 +94,8 @@ flowchart TD
 * **systemd:** if the web app runs as a systemd unit (`KillMode=control-group`, the default), systemd stops the service together with the web app.
   There run the service as its own unit and leave `Start automatically` off. Not relevant on IBM i.
 
-The current state is shown in the web app: `Settings` &rarr; `Processing` (`/settings/processing`).
+The current state is shown in the web app: `Administration` &rarr; `Processing` (`/settings/processing`), with the start time and the process id of a running service ([start times](features/start-times.md)).
+So you see whether it has been restarted after an update, or by the auto start after a crash.
 There you also find the last jobs with their status and error.
 
 
@@ -103,7 +104,7 @@ There you also find the last jobs with their status and error.
 A stage can be run at a later date and time, e.g. `PROD` at 22:00, without anybody online then.
 Only in mode `service` (see [feature](features/scheduled-stage-run.md)).
 
-* **Schedule:** `Run at…` beside `Run stage` on the deployment page (permission `run` for the stage), or the [Web API](webapi.md#run_stage) with `run_at`.
+* **Schedule:** `Run at…` beside `Run stage` on the deployment page (permission `run` for the stage), or the [Web API](webapi.md#run-a-stage) with `run_at`.
   The user enters the time in the time zone of the browser. Possible where `Run stage` is possible: a `ready` stage, or a `failed` one to run it again.
 * **Queue:** the run is a job in the queue with `run_at`. The service doesn't take it before then. Other jobs aren't held up by it.
   `run_at` is stored in UTC, so neither the time zone of the server nor daylight saving time can move it.

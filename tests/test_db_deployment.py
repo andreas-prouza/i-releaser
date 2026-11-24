@@ -25,6 +25,7 @@ def tearDownModule():
 
 
 def load_example_script(name: str):
+    """The templates, not the local scripts of an installation"""
     spec = importlib.util.spec_from_file_location(f"example_{name}", f"{I_RELEASER_DIR}/scripts/examples/{name}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -1545,17 +1546,6 @@ class TestSystemNames(unittest.TestCase):
         for name in ['PRODLIB/A) X(', 'PROD LIB/ORDERS']:
             with self.assertRaises(connection.Db_Deployment_Exception, msg=name):
                 objects.split_object_name(name)
-
-
-
-def load_example_script(name: str):
-    """The templates, not the local scripts of an installation"""
-
-    path = os.path.join(I_RELEASER_DIR, 'scripts', 'examples', f"{name}.py")
-    spec = importlib.util.spec_from_file_location(f"example_{name}", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 

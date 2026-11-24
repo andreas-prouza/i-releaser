@@ -1,3 +1,44 @@
+# 4.1.0
+
+* [Scheduled runs](docs/processing-service.md#scheduled-runs): `Run at…` runs a stage at a later date and time (also `run_at` of the Web API), only in mode `service`. A run which would start more than `C_SCHEDULE_MAX_DELAY_MINUTES` late isn't run
+* [Two-factor authentication](docs/permissions.md#two-factor-authentication) with an authenticator app (`C_2FA_POLICY`); actions like creating a token or changing permissions ask for a code
+* [Four-eyes check](docs/permissions.md#four-eyes-check): stages with `four_eyes_check` run only after a second person has approved them; the permission `deploy` is gone
+* [Web API v2](docs/webapi.md): resources under `/api/v2/` (e.g. `POST /api/v2/deployments/{id}/stages/{stage_id}/runs`), pages of deployments, the same error format everywhere, OpenAPI at `/docs`. v1 works as before, with the header `Deprecation: true`; it's removed in the next major version
+* API tokens: several per user, each with a name, a scope (`read` or `write`) and an expiry (`C_TOKEN_MAX_DAYS`); admins can revoke them, removing a user deletes them; tokens of the format before 2026-10 show a warning. The tokens of `webapp/etc/keys.json` are taken over into the database at the start
+* [Notifications](docs/features/notifications.md) by e-mail, Teams and Slack for the events of the deployments (`etc/notifications.json`, template in `etc/examples/`), with a test button in the administration. New hook event `approval_requested`
+* [Audit log](docs/permissions.md#audit-log) of security events with its page `Administration` → `Audit`
+* [Data retention](docs/features/data-retention.md): old deployments are removed (`C_RETENTION_DAYS`, off by default), log files are rotated at the start
+* [Health check](docs/features/health-check.md) `GET /healthz` for monitoring
+* [Start times](docs/features/start-times.md) of the web app and the processing service in the administration
+* [Settings in the web app](docs/features/settings-in-web-app.md): `Administration` → `Settings` changes data retention, timeouts, parallel steps and jobs and the git branch names without restart (stored in `etc/app.json`, with a code of the two-factor authentication and in the audit log); the other settings are shown, those of the security on `Security`
+* [JSON schemas](docs/workflow.md#check-the-files-in-the-editor) of the configuration files for the editor
+* `Settings` is now `Administration` with the tabs `System` (was `General`), `Settings` (new, see above), `Processing`, `Permissions`, `Security` (new: API tokens, two-factor authentication, blocked logins) and `Audit`. `Permissions` is no longer an entry of the navigation (see [admin pages](docs/features/web-ui-admin-pages.md#decisions-2026-11-24)). The addresses stay `/settings/...`
+* Fixes of the [review of 2026-11-23](docs/bugfixes/README.md#review-of-2026-11-23):
+  * Login: a user is blocked after 2 wrong passwords in a row (`C_LOGIN_MAX_FAILURES`) until an admin unblocks it, so the IBM i doesn't disable the profile. Client addresses: `C_LOGIN_CLIENT_MAX_FAILURES`
+  * Login doesn't block other requests; timeout `C_LOGIN_TIMEOUT_SECONDS`
+  * Login only on the login page (`POST /login`); a login form of another site is refused
+  * Logout only with the button (POST); a logout can't be undone by a running request; the session cookie ends with the browser
+  * A queued or scheduled run checks the permission of its user when it starts
+  * A finished deployment can't be canceled
+  * A parallel sub-step of a script could stay `in process` although it had finished ([details](docs/bugfixes/sub-step-status-lost.md))
+  * Deployment page: a step opened (or a stage selected) while the live updates refreshed the steps could be closed (or replaced) by the refresh ([details](docs/bugfixes/steps-panel-refresh-race.md))
+* Core: a status only changes by an allowed transition, a deployment is loaded with a few queries, stages with `run_immediate` run after the run, `SCRIPT` steps only call functions of `scripts/` (loaded when used), invalid settings stop the start (see [core redesign](docs/features/core-redesign.md#progress))
+* Removed: `itsdangerous`, `jsonschema` (not used), the example route `/custom_test` (now [docs/examples](docs/examples/custom-routes/test.py))
+* [Glossary](docs/glossar.md) of the abbreviations and technical terms
+* Development: the tests run in parallel (about 2 minutes), lint with `ruff` in CI, indentation 4 spaces (see [tests](docs/technik.md#tests))
+
+## Before you update to 4.1.0
+
+* `pip install -r requirements.txt`: new package `qrcode` (two-factor authentication), the versions are pinned now (except `pyodbc` of the IBM i packages)
+* Login: a user is now blocked after 2 wrong passwords in a row (before: blocked for 15 minutes after 5) until an admin unblocks it (`Administration` → `Security` → `Blocked logins`). If you set `C_LOGIN_MAX_FAILURES`, keep it below `QMAXSIGN` of the IBM i
+* Two-factor authentication is `optional` by default. Recommended: `C_2FA_POLICY = 'admins'` in `etc/settings.py`; each admin then sets it up at the next login (keep the recovery codes)
+* `webapp/etc/global_cfg.py`: `C_COOKIE_SECURE = True`, unless the web app is reached with plain HTTP from another host. Browsers treat `http://localhost` as secure, so the SSH tunnel works with it
+* `etc/logger_config.py` and `webapp/etc/logger_config.py`: copy the block with `log_rotation.rotate_at_start` from the files in `etc/examples/` and `webapp/etc/examples/`. Without it the log files aren't rotated
+* An invalid value in `etc/settings.py` stops the start with a message (an unknown name is a warning in the log)
+* Custom routes: a route with a path of the web app (e.g. `/login`) stops the start. Custom templates: logout only with `POST`, a link to `/logout` shows a page with the button
+* API tokens of `webapp/etc/keys.json` keep working (also the OBI extension) and expire `C_TOKEN_MAX_DAYS` (365) days after their first use with 4.1.0
+* Start the web app first, it updates the database (see [update](docs/installation.md#update))
+
 # 4.0.0
 
 * Store source file name in deploy-objects
@@ -36,13 +77,13 @@
 * FastAPI 0.125, `starlette` 0.50 (see [FastAPI and pydantic](docs/technik.md#fastapi-and-pydantic))
 * Web pages load no files from other servers any more; `/docs` uses a local Swagger UI, `/redoc` is turned off
 * Web pages: names of objects, stages, users and commands with special characters (`'`, `<`, `->`, spaces, `.`, `#`) are shown as text and don't break pages. The permissions page saves them correctly
-* Deployment page, objects: one row per object (the level is a column), `All ready` / `None ready` for the objects which match the filters in one request ([`set_objects_ready`](docs/webapi.md#steps-and-objects)), switches which can't be used are disabled, no sideways scrolling
+* Deployment page, objects: one row per object (the level is a column), `All ready` / `None ready` for the objects which match the filters in one request ([`set_objects_ready`](docs/webapi.md#steps-and-objects-v1)), switches which can't be used are disabled, no sideways scrolling
 * `/api/save_permissions` keeps users and roles which are not sent; delete with `deleted_users` / `deleted_roles` (see [Web API](docs/webapi.md#users-and-permissions))
 * Static files of the web app cleaned up (35 MB → 3 MB): Font Awesome, unused fonts, stylesheets and scripts removed; Bootstrap 5.3.9, bootstrap-table 1.28, SweetAlert2 11.26 (see [libraries](docs/technik.md#libraries-of-the-web-pages))
 * New layout of the web app (see [layout](docs/features/web-ui-layout.md)): navigation which can be collapsed to its icons, dark mode (follows the browser, switch in the navigation), page headers with breadcrumb and status, new login and error page. `Configuration` is now `Settings`, `Object list` is `Objects`; the projects are only above the deployment list. Settings and logs are only in the navigation of administrators. After the login the page opens which was asked for
 * New deployment page (see [deployment page](docs/features/web-ui-deployment-page.md)): a bar which says what the deployment waits for, the stages as flow with parallel branches, the steps of the selected stage on the page (closed, opened by itself at the latest error; filter, groups of parallel steps), logs in one dialog with Output and Errors, activity with actions and run logs. Buttons without permission are disabled with the reason
 * Deployment page: [live updates](docs/features/web-ui-live-updates.md) without loading the page again (filters, open steps and dialogs stay); after a lost connection it connects again and shows `Reconnecting …`. `watch_state` has `parts`
-* [Lists](docs/features/web-ui-lists.md): projects as tabs with their open deployments, `/project/{project}` can be shared, a column `Stage`, a click on a row opens the deployment. The object list finds every object (page by page from [`/api/deploy_objects`](docs/webapi.md#steps-and-objects)), not only the newest 1,000. `Start workflow` with the fields of [`create_fields`](docs/workflow.md#create-fields)
+* [Lists](docs/features/web-ui-lists.md): projects as tabs with their open deployments, `/project/{project}` can be shared, a column `Stage`, a click on a row opens the deployment. The object list finds every object (page by page from [`/api/deploy_objects`](docs/webapi.md#other-endpoints)), not only the newest 1,000. `Start workflow` with the fields of [`create_fields`](docs/workflow.md#create-fields)
 * [Permissions page](docs/features/web-ui-permissions-page.md) of its own: a table per user and role, permissions from roles and higher levels shown, roles with permissions for workflows and stages, description and mail. A change of another session isn't overwritten (`version`, `409`), the last administrator can't be removed
 * [Admin pages](docs/features/web-ui-admin-pages.md): settings as `General` and `Processing` (updated without loading the page, jobs with stage and duration), logs with filter by level and text and download, workflows with their stages as flow, `My account` with roles and permissions
 * [Content-Security-Policy](docs/technik.md#content-security-policy) and security headers: the browser runs only script files of the web app

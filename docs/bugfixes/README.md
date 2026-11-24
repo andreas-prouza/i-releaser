@@ -4,7 +4,8 @@ One file per defect, with status, requirements, acceptance criteria and open que
 Found in the review of 2026-10-23. "Reproduced" means it was shown on a copy of the web app; "code review" means it was found in the code only.
 
 > **Confidential:** files of type *security* describe how to exploit the defect.
-> Don't push them to the public repository before the fix is released.
+> They are pushed together with their fix: all installations are maintained by the maintainer of i-Releaser and updated right after the push.
+> If an installation is maintained by someone else, don't push them before the fix is released and that installation is updated.
 
 Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2** medium · **P3** low
 
@@ -52,6 +53,44 @@ Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2**
 | P3 | [A running step is not shown as running](running-step-status-not-stored.md) | bug | reproduced | finished |
 
 
+## Review of 2026-11-23
+
+Found in the code review of 2026-11-23 (see [redesign of the core](../features/core-redesign.md)). "Reproduced" means shown with a small script; "code review" means found in the code and checked there.
+
+| Priority | Defect | Type | Found by | Status |
+|---|---|---|---|---|
+| P1 | [The login can be used to disable IBM i profiles](login-can-disable-ibm-i-profiles.md) | security | code review | finished |
+| P1 | [A logout can be undone by a request which runs at the same time](logout-undone-by-concurrent-request.md) | security | code review | finished |
+| P1 | [The login blocks all requests of a worker](blocking-login-in-middleware.md) | security / performance | code review | ready (implemented, the login timeout of the IBM i driver is not checked yet) |
+| P1 | [A finished deployment can be canceled](cancel-finished-deployment.md) | bug | code review | finished |
+| P2 | [API tokens outlive their user](api-token-outlives-user.md) | security | code review | finished |
+| P2 | [A queued or scheduled run doesn't check the permission when it starts](scheduled-run-without-permission-check.md) | security | code review | finished |
+| P2 | [Saving a deployment can overwrite newer changes](lost-updates-on-save.md) | bug | code review | finished |
+| P2 | [A job without heartbeat is set to failed, but its process keeps running](job-abort-leaves-process-running.md) | bug | code review | ready (implemented, not checked on IBM i) |
+| P2 | [A SCRIPT step which runs a SCRIPT sub-step breaks the output of the process](nested-script-output-capture.md) | bug | reproduced | finished |
+| P2 | [Minor defects of the web app and the Web API (review 2026-11)](minor-web-defects-2026-11.md) | security / bug | code review | finished |
+| P3 | [Minor code defects (review 2026-11)](minor-code-defects-2026-11.md) | bug | code review, partly reproduced | ready (mostly implemented, see the doc) |
+| P2 | [A finished parallel sub-step can stay `in process`](sub-step-status-lost.md) | bug | flaky test, reproduced | finished |
+| P3 | [A refresh of the steps panel undoes what the user did meanwhile](steps-panel-refresh-race.md) | bug | flaky test, reproduced | finished |
+
+Improvements of this review (`docs/features/`):
+
+| Priority | Improvement | Status |
+|---|---|---|
+| P1 | [Two-factor authentication (TOTP)](../features/two-factor-authentication.md) | ready (implemented, not checked with phone apps and on IBM i) |
+| P2 | [Redesign of the core](../features/core-redesign.md) | ready (in progress, see its progress table) |
+| P2 | [Web API v2](../features/api-v2.md) | finished (the OBI extension changes to v2 separately) |
+| P2 | [Audit log of security events](../features/audit-log.md) | finished |
+| P2 | [Data retention: old deployments, logs and jobs](../features/data-retention.md) | finished |
+| P2 | [Code quality: linter, tests, dependencies](../features/code-quality-tooling.md) | ready (partly implemented) |
+| P2 | [Four-eyes check](../features/four-eyes-check.md) | finished |
+| P3 | [Notifications (e-mail, Teams, Slack)](../features/notifications.md) | finished |
+| P3 | [Health check](../features/health-check.md) | finished |
+| P3 | [JSON schema for workflow files](../features/workflow-json-schema.md) | ready (implemented, the check in VS Code by hand is open) |
+
+Proposed order: the P1 defects, then 2FA (with the login rework), then the steps of the core redesign, then API v2 and the rest.
+
+
 ## Defects of the web front end
 
 Found in the analysis of the web front end of 2026-11-16 (see [modernization](../features/web-ui-modernization.md)). "Reproduced" means in Chrome on a copy of the web app.
@@ -80,7 +119,7 @@ Found in the analysis of the web front end of 2026-11-16 (see [modernization](..
 | P3 | [No blocking work in async handlers](../features/performance-blocking-handlers.md) | finished |
 | P3 | [Configurable error handling for output on stderr](../features/step-stderr-handling.md) | finished |
 | P3 | [Local settings in an untracked file](../features/local-settings-file.md) | finished |
-| P3 | [Four-eyes check (and the permission `deploy`)](../features/four-eyes-check.md) | draft |
+| P3 | [Four-eyes check (and the permission `deploy`)](../features/four-eyes-check.md) | finished |
 | P3 | [Remove dead code and unused files](../features/dead-code-cleanup.md) | finished |
 
 

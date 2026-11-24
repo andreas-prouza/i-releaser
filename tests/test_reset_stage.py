@@ -1,17 +1,16 @@
-import unittest, sys, os, logging, tempfile, shutil
+import unittest, sys, os, logging
 from types import SimpleNamespace
 from unittest.mock import patch
 
 # The repository root, so `etc` and `modules` are found
 sys.path.insert(0, os.path.realpath(f"{os.path.dirname(__file__)}/.."))
 
-from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
-from modules import meta_file, workflow, ibm_i_commands
+from modules import meta_file, workflow
 from modules.stage_status import Status as Stage_Status
 from modules.meta_file_status import Meta_file_status
-from modules.db import app_sqlite, meta_file_data, processing_job_data
+from modules.db import meta_file_data, processing_job_data
 
 
 
@@ -63,21 +62,14 @@ class TestResetLastFinishedStage(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
-
-        # All modules use the default parameter of get_db_connection
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
+        db_tools.use_temp_db(self)
 
         Script.fail = False
 
         self.patches = [
-            patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(workflow.Workflow, 'get_workflow_by_name', side_effect=lambda name: workflow.Workflow(dict=WORKFLOWS[name])),
             patch.object(workflow.Workflow, 'get_default_step_mapping', return_value=[]),
-            patch.dict(ibm_i_commands.__dict__, {'reset_script': SimpleNamespace(maybe_fail=Script.maybe_fail)}),
+            patch.dict(sys.modules, {'scripts.reset_script': SimpleNamespace(maybe_fail=Script.maybe_fail)}),
         ]
         for p in self.patches:
             p.start()
@@ -93,9 +85,6 @@ class TestResetLastFinishedStage(unittest.TestCase):
 
         for p in reversed(self.patches):
             p.stop()
-
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
 
 

@@ -41,27 +41,24 @@ def add_action(action: da.Deploy_Action, stage_id: int|None=None, deploy_object_
 
 def _add_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, stage_id: int|None=None, deploy_object_id: int|None=None, action_id: int|None=None):
 
-    cursor.execute('''
-        INSERT INTO actions (stage_id, deploy_object_id, action_id, sequence, cmd, status, 
-                                processing_step, environment, run_in_new_job, 
-                                execute_remote, check_error, cwd, fail_on_stderr, timeout_seconds,
-                                parallel_group, parallel)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        stage_id, deploy_object_id, action_id, action.sequence, action.cmd, action.status.value,
-        action.processing_step, action.environment.value, action.run_in_new_job,
-        action.execute_remote, action.check_error, action.cwd, action.fail_on_stderr, action.timeout_seconds,
-        action.parallel_group, action.parallel
-    ))
+    # One snapshot: what is inserted is what the step remembers as saved. A parallel sub-step can end in its own thread
+    # while another thread saves the deployment and inserts it: the next save writes that change, as it differs from the
+    # snapshot. With a second read after the INSERT the end was taken as saved and never written (docs/bugfixes/sub-step-status-lost.md).
+    values = _get_values(action)
+
+    cursor.execute(f'''
+        INSERT INTO actions (stage_id, deploy_object_id, action_id, {', '.join(values)})
+        VALUES (?, ?, ?, {', '.join('?' * len(values))})
+    ''', (stage_id, deploy_object_id, action_id, *values.values()))
     action_db_id = cursor.lastrowid
-    
+
     if action_db_id is None:
         raise Exception(f"Failed to insert action '{action.cmd}' for stage_id {stage_id}.")
     action.id = action_db_id
     action.action_id = action_id
     action.deploy_object_id = deploy_object_id
     action.stage_id = stage_id
-    action.saved_values = _get_values(action)
+    action.saved_values = values
 
 
 
@@ -148,7 +145,7 @@ def _get_history_values(action: da.Deploy_Action, history) -> dict:
 def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, meta_dir: str|None=None):
 
     action.saved_values = app_sqlite.update_changes(cursor, 'actions', action.id, _get_values(action), action.saved_values)
-    
+
     logging.debug(f"Saved action with ID {action.id} and command '{len(action.sub_actions)}' subactions to the database.")
 
     if action.sub_actions is not None and len(action.sub_actions) > 0:
@@ -176,13 +173,13 @@ def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, meta_dir: str
             os.makedirs(os.path.dirname(stderr_file_path), exist_ok=True)
             files.writeText(history.stderr, stderr_file_path)
             history.stderr = f"file://{stderr_file_path}"
-            
+
         history.saved_values = app_sqlite.update_changes(cursor, 'action_run_history', history.id, _get_history_values(action, history), history.saved_values)
 
 
 
 def get_actions(stage_id: int|None=None, deploy_object_id: int|None=None, action_id: int|None=None) -> da.Deploy_Action_List_list:
-    
+
     sql_dict: dict[str, str] = { 
         "stage_id": "SELECT * FROM actions WHERE stage_id = ?",
         "deploy_object_id": "SELECT * FROM actions WHERE deploy_object_id = ?",
@@ -215,11 +212,11 @@ def get_actions(stage_id: int|None=None, deploy_object_id: int|None=None, action
             action_dict = dict(row)
             action_dict['status'] = da.Cmd_Status(action_dict['status'])
             action_dict['environment'] = da.Command_Type(action_dict['environment'])
-            
+
             c.execute("SELECT * FROM action_run_history WHERE action_id = ?", (row['id'],))
             history_rows = c.fetchall()
             action_dict['run_history'] = [dict(hr) for hr in history_rows]
-            
+
             action_obj = da.Deploy_Action(dict_data=action_dict)
             action_obj.sub_actions = get_actions(action_id=row['id'])
             action_obj.saved_values = _get_values(action_obj)
@@ -230,3 +227,59 @@ def get_actions(stage_id: int|None=None, deploy_object_id: int|None=None, action
             actions.append(action_obj)
 
     return actions
+
+
+# All steps of a deployment: of its stages and deploy objects, and their sub-steps (any depth)
+_STEPS_OF_DEPLOYMENT = """
+    WITH RECURSIVE tree(id) AS (
+        SELECT id FROM actions WHERE stage_id IN (SELECT id FROM stages WHERE meta_file_id = ?)
+                                  OR deploy_object_id IN (SELECT id FROM deploy_objects WHERE meta_file_id = ?)
+        UNION ALL
+        SELECT a.id FROM actions a INNER JOIN tree t ON a.action_id = t.id)
+"""
+
+
+
+class Deployment_Steps:
+    """The steps of a deployment, loaded with two queries (docs/features/core-redesign.md, step 2), by stage and by deploy object"""
+
+    def __init__(self, cursor: sqlite3.Cursor, meta_file_id: int):
+
+        params = (meta_file_id, meta_file_id)
+        rows = cursor.execute(f"{_STEPS_OF_DEPLOYMENT} SELECT * FROM actions WHERE id IN (SELECT id FROM tree) ORDER BY id", params).fetchall()
+        history_rows = cursor.execute(f"{_STEPS_OF_DEPLOYMENT} SELECT * FROM action_run_history WHERE action_id IN (SELECT id FROM tree) ORDER BY id", params).fetchall()
+
+        histories: dict[int, list[dict]] = {}
+        for history in history_rows:
+            histories.setdefault(history['action_id'], []).append(dict(history))
+
+        actions: dict[int, da.Deploy_Action] = {}
+        for row in rows:
+            action_dict = dict(row)
+            action_dict['status'] = da.Cmd_Status(action_dict['status'])
+            action_dict['environment'] = da.Command_Type(action_dict['environment'])
+            action_dict['run_history'] = histories.get(row['id'], [])
+            action = da.Deploy_Action(dict_data=action_dict)
+            action.sub_actions = da.Deploy_Action_List_list()
+            action.saved_values = _get_values(action)
+            for history in action.run_history:
+                history.saved_values = _get_history_values(action, history)
+            actions[row['id']] = action
+
+        self.by_stage: dict[int, da.Deploy_Action_List_list] = {}
+        self.by_deploy_object: dict[int, da.Deploy_Action_List_list] = {}
+
+        for row in rows:
+            action = actions[row['id']]
+            if row['action_id'] is not None and row['action_id'] in actions:
+                actions[row['action_id']].sub_actions.append(action)
+            elif row['stage_id'] is not None:
+                self.by_stage.setdefault(row['stage_id'], da.Deploy_Action_List_list()).append(action)
+            elif row['deploy_object_id'] is not None:
+                self.by_deploy_object.setdefault(row['deploy_object_id'], da.Deploy_Action_List_list()).append(action)
+
+    def of_stage(self, stage_id: int) -> da.Deploy_Action_List_list:
+        return self.by_stage.get(stage_id, da.Deploy_Action_List_list())
+
+    def of_deploy_object(self, deploy_object_id: int) -> da.Deploy_Action_List_list:
+        return self.by_deploy_object.get(deploy_object_id, da.Deploy_Action_List_list())

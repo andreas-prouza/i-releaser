@@ -13,6 +13,8 @@ eval and is blocked. Use `wait_until` (page.evaluate is not affected).
 """
 import time
 
+import os
+
 import pytest
 
 
@@ -23,9 +25,14 @@ VIEWPORT = {'width': 1440, 'height': 900}
 @pytest.fixture(scope='session')
 def browser():
 
+    # In CI the browser tests must run: a broken installation fails instead of skipping them (docs/features/code-quality-tooling.md)
+    in_ci = os.environ.get('CI', '').lower() == 'true'
+
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
+        if in_ci:
+            raise
         pytest.skip('Playwright is not installed (.venv/bin/pip install -r requirements-dev.txt)')
 
     playwright = sync_playwright().start()
@@ -34,6 +41,8 @@ def browser():
         chromium = playwright.chromium.launch()
     except Exception as e:
         playwright.stop()
+        if in_ci:
+            raise
         pytest.skip(f"Chromium of Playwright is not installed (.venv/bin/python -m playwright install chromium): {str(e).splitlines()[0]}")
 
     yield chromium

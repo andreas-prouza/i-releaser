@@ -35,7 +35,7 @@ def get_json_response_error(error_message: Union[str, dict, list], error_status:
         "status": error_status,
         "message": error_message
     }, cls=DateEncoder))
-    
+
     return JSONResponse(content=content, status_code=status)
 
 
@@ -44,7 +44,7 @@ def get_json_response_error(error_message: Union[str, dict, list], error_status:
 def get_json_response(dict: Union[dict, list], status: int=200) -> JSONResponse:
 
     content = json.loads(json.dumps(dict, cls=DateEncoder))
-    
+
     return JSONResponse(content=content, status_code=status)
 
 

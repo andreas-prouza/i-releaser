@@ -9,11 +9,11 @@
 {% from 'components/ui.html' import page_header %}
 {% from 'admin/settings-tabs.html' import settings_tabs %}
 
-{% block title %}Permissions{% endblock %}
-{% block nav_active %}permissions{% endblock %}
+{% block title %}Permissions · Administration{% endblock %}
+{% block nav_active %}settings{% endblock %}
 
 {% block page_header %}
-{% call page_header('Permissions', breadcrumb=[('Settings', '/settings'), ('Permissions', None)], meta='Users and roles, and what they may do. Each change is saved at once.') %}
+{% call page_header('Permissions', breadcrumb=[('Administration', '/settings'), ('Permissions', None)], meta='Users and roles, and what they may do. Each change is saved at once.') %}
     <span class="ir-save-state" role="status" aria-live="polite"></span>
 {% endcall %}
 {% endblock %}

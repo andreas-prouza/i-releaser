@@ -59,19 +59,20 @@ Your configuration files are not tracked by git, so updates don't touch them.
 | File | Content | Details |
 |---|---|---|
 | `etc/settings.py` | Your values for the settings of `etc/constants.py`: processing mode, processing service, git branch names, timeouts, `C_CSP_REPORT_ONLY`, ... | [processing service](processing-service.md#settings), [security headers](technik.md#content-security-policy) |
-| `etc/app.json` | Settings changed in the web app: processing mode (overrides `etc/settings.py`) and auto start of the processing service. Written by the web app. Replaces `etc/web_settings.json`. | [processing service](processing-service.md#set-up) |
+| `etc/app.json` | Settings changed in the web app (`Administration` → `Settings` and `Processing`), they override `etc/settings.py`: processing mode, auto start of the processing service, data retention, timeouts, parallel steps and jobs, git branch names. Written by the web app. Replaces `etc/web_settings.json`. | [processing service](processing-service.md#set-up) |
 | `etc/workflows/*.json` | One workflow per file | [workflow configuration](workflow.md) |
 | `etc/default_step_action.json` | Commands of the processing steps, for all workflows | [workflow configuration](workflow.md#step-actions) |
 | `etc/object_commands.json` | Additional commands for specific objects | [workflow configuration](workflow.md#object-commands) |
 | `etc/user_permissions.json` | Users, roles and their permissions. Changes are loaded automatically. | [permissions](permissions.md) |
 | `etc/logger_config.py` | Log of the processing service and the command line (`log/`) | |
 | `etc/jira.json` | Jira integration (optional) | [Jira](jira.md) |
+| `etc/notifications.json` | E-mail, Teams and Slack messages for events of the deployments (optional, template in `etc/examples/`) | [notifications](features/notifications.md) |
 | `etc/db_deployment.json` | Database connections of the DB deployment (optional) | [DB deployment](db-deployment.md) |
 | `webapp/etc/gunicorn.conf.py` | Address and port (`bind`), number of worker processes | |
 | `webapp/etc/db_config.py` | ODBC driver and host which check the login | |
 | `webapp/etc/global_cfg.py` | `C_DEFAULT_PROJECT`: project shown after the login<br>`C_COOKIE_SECURE`: send the session cookie over HTTPS only<br>`C_CORS_ALLOWED_ORIGINS`: other web sites which may call the API from a browser (default: none) | |
 | `webapp/etc/logger_config.py` | Log of the web app (`webapp/log/`), log level | |
-| `webapp/etc/web_constants.py` | `C_KEYS_FILE`: file with the API tokens (hashed), relative to `webapp/` | [Web API](webapi.md#authentication) |
+| `webapp/etc/web_constants.py` | `C_KEYS_FILE`: file of the API tokens before 2026-11 (relative to `webapp/`). Its tokens are taken over into the database at the start | [API tokens](permissions.md#api-tokens) |
 
 `etc/constants.py` contains the defaults and is part of the repository: don't change it, put your values into `etc/settings.py`.
 
@@ -96,7 +97,7 @@ andreas    63911   63909 31 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
 
 The web app runs with gunicorn (`webapp/etc/gunicorn.conf.py`). By default it listens on `127.0.0.1:8080`, so it's only reachable through a [reverse proxy](#reverse-proxy) or an SSH tunnel.
 
-Restart the web app after you have changed a file in `scripts/` or `etc/settings.py`.
+Restart the web app after you have changed a file in `scripts/` or `etc/settings.py`. The settings of `Administration` → `Settings` count without restart ([settings in the web app](features/settings-in-web-app.md)).
 Workflows and permissions are read again automatically.
 
 ### Processing service (optional)
@@ -142,17 +143,26 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
 
 ## Production checklist
 
-* **HTTPS only.** The session cookie and the API tokens are sent with every request. Set `C_COOKIE_SECURE = True` in `webapp/etc/global_cfg.py`, and `Strict-Transport-Security` in the [reverse proxy](#reverse-proxy).
+* **HTTPS only.** The session cookie and the API tokens are sent with every request. Keep `C_COOKIE_SECURE = True` in `webapp/etc/global_cfg.py` (the default; installations of older versions may have `False` there), and set `Strict-Transport-Security` in the [reverse proxy](#reverse-proxy).
+* **Two-factor authentication.** Set `C_2FA_POLICY` in `etc/settings.py` to `admins` or `required`, see [permissions](permissions.md#two-factor-authentication).
+* **External address.** If the reverse proxy doesn't keep the `Host` header, set `C_EXTERNAL_URL` (e.g. `https://ireleaser.example.com`) in `etc/settings.py`: requests of the web app are only accepted from this origin.
 * **`C_CSP_REPORT_ONLY` only for a short time.** It turns the Content-Security-Policy into a report (the web app logs a warning at its start). Move your custom templates to script files and remove it.
 * **Keep `bind = "127.0.0.1:..."`** in `webapp/etc/gunicorn.conf.py`, so the web app is only reachable through the proxy.
 * **Log level `INFO`** (the default of the templates). Debug logs contain a lot of internal data.
   Users with the permission `admin` can open the logs in the web app (menu `Logs`).
 * **Never set `I_RELEASER_LOCAL_DEBUGGING`** on a server. It turns off the password check of the login, so the web app refuses to start with gunicorn if it's set.
-* **Failed logins.** After `C_LOGIN_MAX_FAILURES` failed logins of a user or from a client address (default 5), further logins are blocked for `C_LOGIN_BLOCK_MINUTES` (default 15).
-  Keep the limit below the system value `QMAXSIGN`, otherwise failed logins can disable IBM i profiles.
+* **Data retention.** Set `C_RETENTION_DAYS` (e.g. 730) in `Administration` → `Settings` or in `etc/settings.py` to remove finished and canceled deployments with their files in `meta/` after this many days without change, `C_RETENTION_ARCHIVE = True` to keep an archive in `var/archive/`. Log files are rotated at the start above `C_LOG_MAX_MB` (for an existing installation, copy the lines with `log_rotation` from `etc/examples/logger_config.py` and `webapp/etc/examples/logger_config.py`). See [data retention](features/data-retention.md).
+* **Monitoring.** `GET /healthz` answers without login: `200 {"status": "ok", ...}` or `503` with the check which failed (database, processing service in mode `service`, free space of `var/` and `meta/` below `C_HEALTH_MIN_FREE_MB`). Use it in the monitoring tool or the health check of the load balancer.
+* **Settings** (`etc/settings.py`, and those of the web app in `etc/app.json`) are checked when the web app and the processing service start: an invalid value stops the start with a message in the log, an unknown name (e.g. a typo) is a warning.
+* **Failed logins.** Every wrong password is an invalid sign-on on the IBM i: after `QMAXSIGN` of them in a row (IBM default 3) the IBM i disables the profile (`QMAXSGNACN`).
+  * After `C_LOGIN_MAX_FAILURES` wrong passwords of a user in a row (default 2), i-Releaser doesn't send further logins of this user to the IBM i.
+    The block stays until an admin unblocks it (`Administration` → `Security` → `Blocked logins`). Unblock only when you know who has tried. Keep the limit below `QMAXSIGN`; the web app logs a warning at its start if it's 3 or more.
+  * After `C_LOGIN_CLIENT_MAX_FAILURES` failed logins from a client address (default 10), its logins are blocked for `C_LOGIN_BLOCK_MINUTES` (default 15).
+  * The sign-on on the IBM i ends after `C_LOGIN_TIMEOUT_SECONDS` (default 15). A sign-on without answer doesn't count for the user. At most `C_LOGIN_MAX_PARALLEL` logins per process wait for the IBM i at the same time (default 4).
+  * If all admins are blocked: `sqlite3 var/app.sqlite "DELETE FROM login_failures WHERE key = 'user:<name>'"`.
 * **Protect files with secrets** (`chmod 600`, owned by the user which runs i-Releaser):
-  `webapp/etc/keys.json`, `etc/jira.json`, `etc/db_deployment.json`.
-  Prefer environment variables for passwords and tokens (`password_env` of the DB deployment, `I_RELEASER_JIRA_TOKEN`, `I_RELEASER_JIRA_CLIENT_SECRET`).
+  `etc/jira.json`, `etc/db_deployment.json`, `etc/notifications.json` (the settings page warns if it can be read by others: it has the URLs of the webhooks).
+  Prefer environment variables for passwords and tokens (`password_env` of the DB deployment and of a mail channel, `I_RELEASER_JIRA_TOKEN`, `I_RELEASER_JIRA_CLIENT_SECRET`).
 * **Treat custom data as user input.** Users with the permission `start workflow` or `edit-custom-data` can set it.
   Limit the fields with `create_fields` of the [workflow](workflow.md#create-fields).
   The same applies to the [compile list](webapi.md#create-a-deployment) (`compiles`), which every user with `start workflow` can send, to any workflow.
@@ -165,7 +175,7 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
 
 | What | Where |
 |---|---|
-| Database: deployments, stages, steps, history, queue of the processing service | `var/app.sqlite` (and `var/backup/`, see below) |
+| Database: deployments, stages, steps, history, queue of the processing service, API tokens, two-factor authentication, audit log, notifications | `var/app.sqlite` (and `var/backup/`, see below) |
 | Logs and generated files of each deployment | `meta/` |
 | Configuration and your scripts | `etc/`, `webapp/etc/`, `scripts/`, `webapp/custom/`, `webapp/templates/custom_templates/`, `webapp/static/custom/` |
 
@@ -215,6 +225,6 @@ git pull
 | A changed script is not used | Restart the web app (and the processing service). |
 | A workflow is missing | Invalid workflow files are left out. Users with `admin` see them with their error on the page `Workflows`. |
 | `An unexpected error occurred. Error id: ...` | Search the id in the log of the web app. |
-| `Too many failed logins` | Wait `C_LOGIN_BLOCK_MINUTES`, or fix the password of the client which keeps failing. |
+| `Login failed` with the right password | The login of the user or the client address is blocked after failed logins (the message doesn't say so, see [production checklist](#production-checklist)): an admin unblocks the user under `Administration` → `Security` → `Blocked logins`; a client address is unblocked after `C_LOGIN_BLOCK_MINUTES`. |
 | All requests with a session get status 403 behind a proxy | Set `ProxyPreserveHost On`: the web app compares the origin of the browser with the host. |
 | `Database has version ...` when the processing service starts | Start the web app first. |

@@ -3,7 +3,7 @@ import html, json, os, re, sqlite3, time
 
 import pytest
 
-from web_server import USERS, WORKFLOWS, Web_Server
+from web_server import WORKFLOWS, Web_Server
 
 
 HTML = {'Accept': 'text/html'}

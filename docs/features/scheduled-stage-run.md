@@ -20,7 +20,7 @@ In mode `service` a run is a job in the queue (`processing_jobs`). The service t
 2. The run is a job in the queue of the processing service. The service doesn't take it before its time.
 3. Only in mode `service`. In mode `thread` the option isn't shown, and the Web API rejects `run_at` (`409`).
 4. The user enters the time in the time zone of their browser. Until it has started, the scheduled run is shown on the stage (`scheduled 2026-11-24 22:00 CET`, user)
-   and on `Settings` → `Processing` (jobs), in the time zone of the viewer's browser.
+   and on `Administration` → `Processing` (jobs), in the time zone of the viewer's browser.
 5. A scheduled run can be canceled as long as it hasn't started: button `Cancel schedule` on the stage, and in the Web API `POST /api/cancel_job/{job_id}`.
    Every user with the permission `run` for the stage may cancel it, not only the one who scheduled it.
    Once the service has taken the job, it can't be canceled anymore (`409`, as for a queued job). The stage stays `ready` after the cancel.
@@ -73,7 +73,7 @@ flowchart TD
 - [x] Test: at its time the stage isn't runnable anymore → job `failed` with the reason, stage stays `ready`, hook `scheduled_run_failed` called, `stage_failed` not called.
 - [x] Test: the run is recorded with the user who scheduled it.
 - [x] Test (browser): `Run at…` on the deployment page, the scheduled run shown on the stage in the browser's time zone, `Cancel schedule`.
-- [x] Docs: [processing-service.md](../processing-service.md#scheduled-runs), [concepts.md](../concepts.md#running-a-stage), [workflow.md](../workflow.md#hooks) (new hook), [webapi.md](../webapi.md#run_stage), [permissions.md](../permissions.md#permissions), [glossar.md](../glossar.md) (scheduled run, UTC, DST, ISO 8601).
+- [x] Docs: [processing-service.md](../processing-service.md#scheduled-runs), [concepts.md](../concepts.md#running-a-stage), [workflow.md](../workflow.md#hooks) (new hook), [webapi.md](../webapi.md#run-a-stage), [permissions.md](../permissions.md#permissions), [glossar.md](../glossar.md) (scheduled run, UTC, DST, ISO 8601).
   The data model is described in [processing-service.md](../processing-service.md#scheduled-runs) (`docs/datenmodell.md` doesn't exist).
 
 Tests: `tests/test_scheduled_stage_run.py` (queue, job process, service, database update), `tests/test_web_scheduled_run.py` (Web API, permissions, page, a real service),
@@ -130,7 +130,7 @@ Tests: `tests/test_scheduled_stage_run.py` (queue, job process, service, databas
 * **Times in the browser's time zone:** the server renders `<time datetime="...UTC..." data-local-time>` with the UTC time as text (macro `local_time`, filter `utc`).
   `static/assets/js/app/time.js` (loaded by `components.js` on every page) replaces the text, also in parts loaded later (MutationObserver).
   The dialog `Run at…` uses `<input type="datetime-local">` and sends the time with the offset of the browser at that date.
-* **Settings → Processing:** column `Scheduled for` in the jobs table, a waiting scheduled job has the pill `scheduled`.
+* **Administration → Processing:** column `Scheduled for` in the jobs table, a waiting scheduled job has the pill `scheduled`.
 
 
 ## Open questions

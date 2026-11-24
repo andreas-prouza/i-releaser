@@ -2,7 +2,6 @@ import logging
 import inspect
 from pathlib import Path
 import os
-from sys import path
 import threading
 
 #########################################
@@ -44,6 +43,14 @@ if LOG_NAME is None:
 
 # exist_ok: processes which start at the same time (gunicorn workers, processing services) create it together
 os.makedirs(LOG_DIR, exist_ok=True)
+
+# Larger than C_LOG_MAX_MB: renamed to .1, .2, ... (docs/features/data-retention.md)
+try:
+    from etc import constants
+    from modules import log_rotation
+    log_rotation.rotate_at_start(str(Path(LOG_DIR, LOG_NAME)), constants.C_LOG_MAX_MB, constants.C_LOG_BACKUPS)
+except Exception as e:
+    print(f"Log file not rotated: {e}")
 
 logging.basicConfig(format=LOG_FORMAT, filename=Path(LOG_DIR, LOG_NAME), level=LOG_LEVEL)
 #logging.getLogger().addFilter(thread_id_filter)

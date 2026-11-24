@@ -324,6 +324,7 @@ def test_service_runs_the_stage_at_its_time(service_server):
     status, result = schedule(client, deployment, run_at=run_at)
     assert status == 200 and result['service_running'] is True
 
+    # A time has to pass: the stage doesn't run before its time
     time.sleep(1)
     assert client.get_stages(deployment)['START']['status'] == 'ready'
     assert jobs(client, deployment)[0]['status'] == 'queued'

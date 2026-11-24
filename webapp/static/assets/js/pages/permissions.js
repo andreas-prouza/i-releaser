@@ -415,7 +415,7 @@ on_change('perm-toggle', async (input) => {
 
     // Removing the own admin permission asks first
     if (perm === 'admin' && !add && selected.kind === 'user' && selected.name === current_user) {
-        const sure = await confirm_action({title: 'Remove your own admin permission?', text: "You can't open the settings and this page any more afterwards, unless a role gives it to you.",
+        const sure = await confirm_action({title: 'Remove your own admin permission?', text: "You can't open the administration and this page any more afterwards, unless a role gives it to you.",
                                            confirm: 'Remove admin', danger: true});
         if (!sure) {
             input.checked = true;

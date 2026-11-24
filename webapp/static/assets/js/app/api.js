@@ -6,8 +6,9 @@
  *
  * A response with an error status throws an Api_Error with the message of the server
  * (docs/webapi.md#responses-and-errors). An ended session (401) shows "Your session has ended" once.
+ * An action which needs a recent code of the authenticator app (403 with `step_up`) asks for it and is sent again.
  */
-import { session_ended } from './dialogs.js';
+import { ask_code, session_ended } from './dialogs.js';
 
 
 export class Api_Error extends Error {
@@ -28,11 +29,15 @@ function message_of(data) {
 }
 
 
-async function request(method, url, data, html = false) {
+async function request(method, url, data, html = false, background = false, confirmed = false) {
 
     // X-Requested-With: the web app answers errors with JSON, also for parts of pages (webmiddleware.wants_html)
     const options = {method, credentials: 'same-origin', cache: 'no-store',
                      headers: {'Accept': html ? 'text/html' : 'application/json', 'X-Requested-With': 'fetch'}};
+    // Requests of the page itself (live updates), not of the user: they don't extend the session (server_sessions.py)
+    if (background) {
+        options.headers['X-Background'] = '1';
+    }
     if (data !== undefined) {
         options.headers['Content-Type'] = 'application/json';
         options.body = JSON.stringify(data);
@@ -62,6 +67,16 @@ async function request(method, url, data, html = false) {
         throw new Api_Error('Your session has ended', 401, body);
     }
 
+    // The action needs a recent code of the authenticator app (step-up): ask for it and send the request again, once.
+    // In an open dialog (confirm_action) the dialog asks: a second dialog would close it.
+    if (response.status === 403 && body?.step_up && !confirmed && !Swal.isVisible()) {
+        const verified = await ask_code({verify: verify_code});
+        if (verified) {
+            return request(method, url, data, html, background, true);
+        }
+        throw new Api_Error('Not confirmed with the code of the authenticator app', 403, body);
+    }
+
     if (!response.ok) {
         throw new Api_Error(message_of(body) || `${response.status} ${response.statusText}`, response.status, body);
     }
@@ -80,7 +95,22 @@ export function post_json(url, data = {}) {
 }
 
 
-/** A part of a page, rendered by the server (e.g. the steps of a stage). Errors like get_json. */
-export function get_html(url) {
-    return request('GET', url, undefined, true);
+/** DELETE of a resource of the Web API v2 (answer 204: null) */
+export function delete_json(url) {
+    return request('DELETE', url);
+}
+
+
+/** Confirms the code of the authenticator app for actions which need a recent one (step-up) */
+export function verify_code(code) {
+    return request('POST', '/api/mfa/verify', {code}, false, false, true);
+}
+
+
+/**
+ * A part of a page, rendered by the server (e.g. the steps of a stage). Errors like get_json.
+ * background: loaded by the page itself (live updates), not by the user
+ */
+export function get_html(url, {background = false} = {}) {
+    return request('GET', url, undefined, true, background);
 }

@@ -39,12 +39,12 @@ def test_headers_of_every_kind_of_response(server):
             'error page': boss.get('/show_details/999999', headers=HTML),
             'docs': boss.get('/docs', headers=HTML),
         }
-        for what, (status, headers, _) in responses.items():
+        for what, (_, headers, _) in responses.items():
             check_common(headers, what)
             assert headers.get('content-security-policy') == CSP, what
             assert 'content-security-policy-report-only' not in headers, what
 
-        for what, (status, headers, _) in {'JSON': boss.get('/api/get_workflows'), 'static file': boss.get('/static/assets/css/app.css'),
+        for what, (_, headers, _) in {'JSON': boss.get('/api/get_workflows'), 'static file': boss.get('/static/assets/css/app.css'),
                                            'JSON error': boss.get('/api/get_meta_file_json/999999')}.items():
             check_common(headers, what)
             assert 'content-security-policy' not in headers, what

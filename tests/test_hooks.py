@@ -5,7 +5,7 @@ from unittest.mock import patch, Mock
 # The repository root, so `etc` and `modules` are found
 sys.path.insert(0, os.path.realpath(f"{os.path.dirname(__file__)}/.."))
 
-from modules import hooks, workflow
+from modules import hooks, workflow, scripts_loader
 
 
 def get_workflow_dict(**kwargs) -> dict:
@@ -41,7 +41,7 @@ class TestHooks(unittest.TestCase):
             {'stage_finished': [1]},
         ]:
             with self.subTest(hooks=invalid):
-                self.assertRaises(Exception, workflow.Workflow.validate_workflow, get_workflow_dict(hooks=invalid), 'test.json')
+                self.assertRaises(workflow.Invalid_Workflow_Error, workflow.Workflow.validate_workflow, get_workflow_dict(hooks=invalid), 'test.json')
 
 
     def test_workflow_dict(self):
@@ -63,7 +63,7 @@ class TestHooks(unittest.TestCase):
         meta_file = SimpleNamespace(workflow=SimpleNamespace(hooks={'stage_finished': ['jira.on_event', 'other.run']}))
         stage = SimpleNamespace(name='BUILD')
 
-        with patch.object(hooks.importlib, 'import_module', side_effect=lambda name: {'scripts.jira': SimpleNamespace(on_event=handler), 'scripts.other': SimpleNamespace(run=other)}[name]):
+        with patch.object(scripts_loader.importlib, 'import_module', side_effect=lambda name: {'scripts.jira': SimpleNamespace(on_event=handler), 'scripts.other': SimpleNamespace(run=other)}[name]):
             hooks.emit(hooks.Event.STAGE_FINISHED, meta_file, stage)
             hooks.emit(hooks.Event.STAGE_STARTED, meta_file, stage)
 
@@ -82,7 +82,7 @@ class TestHooks(unittest.TestCase):
                 raise ModuleNotFoundError(name)
             return SimpleNamespace(on_event=failing, run=called)
 
-        with patch.object(hooks.importlib, 'import_module', side_effect=import_module):
+        with patch.object(scripts_loader.importlib, 'import_module', side_effect=import_module):
             with self.assertLogs(level='ERROR'):
                 hooks.emit(hooks.Event.DEPLOYMENT_CREATED, meta_file)
 

@@ -1,7 +1,6 @@
 """Layout of the pages, navigation, components and filters (docs/features/web-ui-layout.md)"""
 import importlib.util, os, re
 from datetime import datetime, timedelta
-from enum import Enum
 from html.parser import HTMLParser
 
 import pytest
@@ -85,7 +84,7 @@ def get_pages(deployment: int, log: str) -> dict:
         '/': ('Deployments · seq · i-Releaser', 'deployments'),
         '/list-objects': ('Objects · i-Releaser', 'objects'),
         '/workflows': ('Workflows · i-Releaser', 'workflows'),
-        '/settings': ('Settings · i-Releaser', 'settings'),
+        '/settings': ('System · Administration · i-Releaser', 'settings'),
         '/user': ('My account · i-Releaser', 'user'),
         f"/log/{log}": (f"{log} · Logs · i-Releaser", 'logs'),
         f"/show_details/{deployment}": ('seq 1 · ready · i-Releaser', 'deployments'),
@@ -211,7 +210,7 @@ def test_links_have_no_sidebar_parameter():
 def test_settings_and_logs_only_for_admins(server, deployment, log):
 
     _, page, _ = get_page(server.client('boss'), '/')
-    assert page.nav_entries == ['deployments', 'objects', 'workflows', 'settings', 'permissions', 'logs', 'user', 'logout']
+    assert page.nav_entries == ['deployments', 'objects', 'workflows', 'settings', 'logs', 'user', 'logout']
 
     for user in ['intern', 'runner']:
         _, page, text = get_page(server.client(user), '/')
@@ -230,8 +229,9 @@ def test_projects_are_not_in_the_navigation(server):
 
 def test_no_form_inside_a_form(server, deployment, log):
 
+    # The only form of the layout is the logout button in the navigation, outside of the content
     with open(os.path.join(TEMPLATES_DIR, 'base.html'), encoding='utf-8') as f:
-        assert '<form' not in f.read()
+        assert f.read().count('<form') == 1
 
     boss = server.client('boss')
     for path in list(get_pages(deployment, log)) + ['/show_details/999999']:
@@ -248,10 +248,10 @@ def test_login_page(server):
     status, page, text = get_page(server.client(), '/workflows')
 
     assert status == 200
-    assert page.inputs == ['user', 'password']
+    assert page.inputs == ['user', 'password', 'code']
     assert [b.get('type') for b in page.buttons] == ['submit']
     assert 'id="app-nav"' not in text
-    assert 'autocomplete="username"' in text and 'autocomplete="current-password"' in text
+    assert 'autocomplete="username"' in text and 'autocomplete="current-password"' in text and 'autocomplete="one-time-code"' in text
     assert 'action="/login?next=/workflows"' in text
     for old in ['Remember me', 'Forgot', 'Cancel', '</b></h1>']:
         assert old not in text, old
@@ -286,7 +286,8 @@ def test_error_page(server):
     assert status == 404
     assert 'Deployment 999999 not found' in text
     assert 'href="/"' in text
-    assert page.forms == 0
+    # The logout button
+    assert page.forms == 1
     for old in ['Back to overview', 'fucking', 'data-dismiss']:
         assert old not in text, old
     # The navigation for a logged-in user

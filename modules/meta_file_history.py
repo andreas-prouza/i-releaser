@@ -6,49 +6,49 @@ from io import StringIO
 
 
 class Meta_File_History:
-  """       
-  History of executed commands (runs)
+    """       
+    History of executed commands (runs)
 
-  Parameters
-  ----------
-  timestamp : datetime
-  log : StringIO
-  """
-
-
-
-  def __init__(self, id:int=None, log: StringIO|str|None=None, create_time=None, meta_file_id: int=None, dict: dict=None):
-    self.id: int = id
-    self.log: StringIO|str|None = log
-    self.create_time = create_time
-    self.meta_file_id = meta_file_id
-
-    if dict is not None and len(dict) > 0 and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
-      for k, v in dict.items():
-        setattr(self, k, v)
-
-    if self.create_time == None:
-        self.create_time = str(datetime.datetime.now())
+    Parameters
+    ----------
+    timestamp : datetime
+    log : StringIO
+    """
 
 
 
-  def get_dict(self) -> dict:
+    def __init__(self, id:int=None, log: StringIO|str|None=None, create_time=None, meta_file_id: int=None, dict: dict=None):
+        self.id: int = id
+        self.log: StringIO|str|None = log
+        self.create_time = create_time
+        self.meta_file_id = meta_file_id
 
-    dict={'create_time': self.create_time}
-    dict['log']= self.log
-    dict['id']= self.id
-    if type(self.log) == StringIO:
-      dict['log']= self.log.getvalue()
-    return dict
+        if dict is not None and len(dict) > 0 and len(list(set(dict.keys()) - set(self.__dict__.keys()))) == 0:
+            for k, v in dict.items():
+                setattr(self, k, v)
+
+        if self.create_time == None:
+            self.create_time = str(datetime.datetime.now())
 
 
 
-  def __eq__(self, o):
-    if (self.create_time, self.log) == \
-           (o.create_time, o.log):
-      return True
-    return False
-  
+    def get_dict(self) -> dict:
+
+        dict={'create_time': self.create_time}
+        dict['log']= self.log
+        dict['id']= self.id
+        if type(self.log) == StringIO:
+            dict['log']= self.log.getvalue()
+        return dict
+
+
+
+    def __eq__(self, o):
+        if (self.create_time, self.log) == \
+               (o.create_time, o.log):
+            return True
+        return False
+
 
 
 
@@ -82,27 +82,27 @@ class Meta_File_History_List_list(list):
 
 
     def add_history(self, history: Meta_File_History=None) -> None:
-      if type(history) != Meta_File_History:
-        raise Exception(f"Parameter type {type(history)} does not match Meta_File_History")
+        if type(history) != Meta_File_History:
+            raise Exception(f"Parameter type {type(history)} does not match Meta_File_History")
 
-      self.append(history)
+        self.append(history)
 
 
 
     def add_historys_from_list(self, list: list) -> None:
 
-      for a in list:
-        history = Meta_File_History(dict=a)
-        self.add_history(history)
+        for a in list:
+            history = Meta_File_History(dict=a)
+            self.add_history(history)
 
 
 
     def get_list(self) -> list:
 
-      list = []
+        list = []
 
-      for h in self:
-        list.append(h.get_dict())
+        for h in self:
+            list.append(h.get_dict())
 
-      return list
+        return list
 

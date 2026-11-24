@@ -7,7 +7,7 @@ import json, os, sqlite3
 import pytest
 
 from browser_tools import open_page, horizontal_overflow, wait_until
-from web_server import ALL, USERS, WORKFLOWS, Web_Server
+from web_server import USERS, WORKFLOWS, Web_Server
 
 
 pytestmark = pytest.mark.browser
@@ -97,7 +97,7 @@ def test_pages_have_no_errors(server, browser_context, names_deployment, user):
     log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
     paths = ['/', '/project/names', '/list-objects', '/workflows', '/user', f"/show_details/{names_deployment}"]
     if user == 'boss':
-        paths += ['/settings', '/settings/processing', '/settings/permissions', f"/log/{log}", '/docs']
+        paths += ['/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', '/settings/configuration', f"/log/{log}", '/docs']
 
     for path in paths:
         page, watch = open_page(browser_context, server, path, user=user)
@@ -231,7 +231,7 @@ def test_objects_with_special_characters_can_be_switched(server, browser_context
 @pytest.mark.parametrize('collapsed', [False, True])
 def test_no_horizontal_scrolling(server, browser_context, names_deployment, width, collapsed):
 
-    # Settings: its tables are wider until docs/features/web-ui-admin-pages.md
+    # Administration: its tables are wider until docs/features/web-ui-admin-pages.md
     log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
     if collapsed:
         browser_context.add_init_script("localStorage.setItem('ir-nav', 'collapsed')")
@@ -369,9 +369,9 @@ def test_token_dialogs(server, browser_context):
 
     page, watch = open_page(browser_context, server, '/user')
 
-    page.locator('[data-action="renew-token"]').click()
+    page.locator('[data-action="new-token"]').click()
     page.locator('.swal2-confirm').click()
-    wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Token generated'")
+    wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Token OBI extension created'")
     text = page.locator('.swal2-html-container').inner_text()
     assert 'shown only once' in text
     token = page.locator('.swal2-html-container code').inner_text()
@@ -388,7 +388,7 @@ def test_token_dialogs(server, browser_context):
     page.locator('.swal2-cancel').click()
     page.wait_for_timeout(500)
     assert not page.locator('.swal2-popup').is_visible()
-    assert watch.posts('/api/drop_key') == []
+    assert [r for r in watch.requests if r.startswith('DELETE ')] == []
 
     # Confirmed: one dialog, then one toast (after the reload)
     page.locator('[data-action="delete-token"]').click()
@@ -397,7 +397,7 @@ def test_token_dialogs(server, browser_context):
     page.wait_for_selector('.swal2-toast')
     assert page.locator('.swal2-toast .swal2-title').inner_text() == 'Token deleted'
     assert page.locator('.swal2-popup:not(.swal2-toast)').count() == 0
-    assert len(watch.posts('/api/drop_key')) == 1
+    assert len([r for r in watch.requests if r.startswith('DELETE ') and '/api/v2/tokens/' in r]) == 1
     assert page.locator('[data-action="delete-token"]').count() == 0
 
     watch.assert_clean()

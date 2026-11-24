@@ -1,22 +1,22 @@
 {% extends 'base.html' %}
 
 {#-
-  Settings, processing of stages (docs/features/web-ui-admin-pages.md#settings, docs/processing-service.md).
+  Administration, processing of stages (docs/features/web-ui-admin-pages.md#settings, docs/processing-service.md).
   Context: processing (admin_view.get_processing). Script: static/assets/js/pages/processing.js, which replaces
   the part data-part="processing" after an action instead of loading the page again.
 -#}
 
-{% from 'components/ui.html' import page_header, empty_state %}
-{% from 'admin/settings-tabs.html' import settings_tabs %}
+{% from 'components/ui.html' import page_header, empty_state, local_time %}
+{% from 'admin/settings-tabs.html' import settings_tabs, ADMINISTRATION %}
 
-{% block title %}Processing · Settings{% endblock %}
+{% block title %}Processing · Administration{% endblock %}
 {% block nav_active %}settings{% endblock %}
 
 {% block css %}
 <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
 {% endblock %}
 
-{% block page_header %}{{ page_header('Settings', meta='The installation, the processing of stages and the permissions') }}{% endblock %}
+{% block page_header %}{{ page_header('Administration', meta=ADMINISTRATION) }}{% endblock %}
 
 {% block content %}
 
@@ -48,6 +48,9 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-action="processing-service" data-command="stop"{% if not p.running %} disabled{% endif %}>Stop</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-action="processing-service" data-command="restart">Restart</button>
                 </div>
+                {%- if p.started %}
+                <p class="ir-reason mt-2 mb-0" id="service-started">Started {{ local_time(p.started.time) }}{% if p.started.note %} · {{ p.started.note }}{% endif %}</p>
+                {%- endif %}
                 {%- if p.mode == 'service' and not p.running %}
                 <p class="ir-reason mt-2 mb-0">Stages stay in the queue until the service has been started.</p>
                 {%- endif %}

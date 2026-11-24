@@ -6,7 +6,6 @@ import os
 import logging
 from etc import constants
 from modules import errors, files
-from modules.db import app_sqlite, compression
 from modules.db import app_info_data
 
 
@@ -48,10 +47,23 @@ class Connection(sqlite3.Connection):
 
 
 
-def get_db_connection(db_path=DB_FILE):
-    """Establishes a connection to the SQLite database."""
+COMPOSITE_INDEXES = [
+    ('idx_workflow_definitions_name', 'workflow_definitions', ['name']),
+    ('idx_meta_files_status', 'meta_files', ['status']),
+    ('idx_deploy_objects_object', 'deploy_objects', ['prod_lib', 'name', 'type', 'attribute']),
+]
 
-    conn = sqlite3.connect(db_path, timeout=DB_TIMEOUT, factory=Connection)
+
+
+def get_db_connection(db_path=DB_FILE, *, timeout: float|None=None):
+    """Establishes a connection to the SQLite database.
+
+    Args:
+        timeout: Seconds to wait for a lock of the database (default DB_TIMEOUT). Keyword only: tests replace
+            the default of `db_path` with `__defaults__`.
+    """
+
+    conn = sqlite3.connect(db_path, timeout=DB_TIMEOUT if timeout is None else timeout, factory=Connection)
     conn.row_factory = sqlite3.Row
 
     # In WAL mode, commits don't need to be synced to disk (only checkpoints do).
@@ -79,7 +91,13 @@ def update_changes(cursor: sqlite3.Cursor, table: str, row_id: int, values: dict
 
     Returns:
         dict: The new saved values
+
+    Raises:
+        ValueError: The row has no id (it isn't stored yet): `UPDATE … WHERE id = NULL` would change nothing
     """
+
+    if row_id is None:
+        raise ValueError(f"A row of {table} without id can't be updated")
 
     changes = {column: value for column, value in values.items() if saved_values is None or column not in saved_values or saved_values[column] != value}
 
@@ -230,7 +248,7 @@ def create_tables(db_path=DB_FILE):
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
         ''')
-        
+
         # Deploy objects table
         c.execute('''
             CREATE TABLE IF NOT EXISTS deploy_objects (
@@ -322,8 +340,95 @@ def create_tables(db_path=DB_FILE):
             )
         ''')
 
+        # Approvals of the four-eyes check (docs/features/four-eyes-check.md)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS stage_approvals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                meta_file_id INTEGER NOT NULL,
+                stage_id INTEGER NOT NULL,
+                user TEXT NOT NULL,
+                time TEXT NOT NULL, -- UTC, ISO 8601
+                content_hash TEXT NOT NULL, -- object list, custom data and compile list at the approval
+                status TEXT NOT NULL, -- valid, invalid (changed afterwards), used (the stage has run)
+                FOREIGN KEY (meta_file_id) REFERENCES meta_files (id),
+                FOREIGN KEY (stage_id) REFERENCES stages (id)
+            )
+        ''')
+        c.execute("CREATE INDEX IF NOT EXISTS idx_stage_approvals_stage_id ON stage_approvals (stage_id)")
+
+        # Security events (docs/features/audit-log.md): only added, each row has the hash of the one before (hash chain)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                time TEXT NOT NULL, -- UTC, ISO 8601
+                user TEXT,
+                client TEXT,
+                event TEXT NOT NULL,
+                object TEXT,
+                details TEXT, -- JSON
+                result TEXT NOT NULL, -- ok, failed
+                prev_hash TEXT NOT NULL,
+                hash TEXT NOT NULL
+            )
+        ''')
+        c.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_time ON audit_log (time)")
+
+        # Two-factor authentication (docs/features/two-factor-authentication.md). A new table: created here, no update needed
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS user_mfa (
+                user TEXT PRIMARY KEY, -- in lower case
+                secret TEXT NOT NULL, -- Base32
+                enabled INTEGER NOT NULL DEFAULT 0, -- 0: set up, not confirmed with a code yet
+                created_at TEXT NOT NULL,
+                last_step INTEGER, -- time step of the last accepted code (a code is accepted only once)
+                recovery_codes TEXT NOT NULL DEFAULT '[]' -- JSON list of SHA-256 hashes, each removed when used
+            )
+        ''')
+
+        # API tokens (docs/features/api-v2.md#tokens), before in webapp/etc/keys.json (taken over by app_login.migrate_keys_file)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS api_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user TEXT NOT NULL, -- in lower case
+                name TEXT NOT NULL,
+                key_hash TEXT NOT NULL UNIQUE, -- SHA-256 of the token
+                masked TEXT, -- the end of the token, to recognize it
+                scope TEXT NOT NULL, -- read (only GET) or write
+                created_at TEXT NOT NULL, -- UTC, ISO 8601
+                expires_at TEXT, -- UTC, ISO 8601; NULL: never (C_TOKEN_MAX_DAYS = 0)
+                last_used_at TEXT,
+                legacy INTEGER NOT NULL DEFAULT 0, -- format before 2026-10
+                UNIQUE (user, name)
+            )
+        ''')
+        c.execute("CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens (user)")
+
+        # Outbox of the notifications (docs/features/notifications.md). A new table: created here, no update needed
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL, -- UTC, ISO 8601
+                event TEXT NOT NULL,
+                meta_file_id INTEGER,
+                channel TEXT NOT NULL, -- name of the channel in etc/notifications.json
+                recipients TEXT NOT NULL DEFAULT '[]', -- JSON list of e-mail addresses (e-mail channels)
+                message TEXT NOT NULL, -- JSON: the values of the deployment at the event
+                status TEXT NOT NULL, -- pending, sending, sent, failed
+                attempts INTEGER NOT NULL DEFAULT 0, -- failed attempts
+                next_attempt_at TEXT NOT NULL, -- UTC, ISO 8601
+                claimed_at TEXT,
+                sent_at TEXT,
+                last_error TEXT
+            )
+        ''')
+        c.execute("CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications (status, next_attempt_at)")
+
         for table, column in INDEXED_COLUMNS:
             c.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_{column} ON {table} ({column})")
+
+        # Filters of the lists and of the permission check (docs/features/core-redesign.md, step 2)
+        for name, table, columns in COMPOSITE_INDEXES:
+            c.execute(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({', '.join(columns)})")
 
         if new_database:
             c.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")

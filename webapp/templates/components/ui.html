@@ -80,12 +80,19 @@
 {%- endmacro %}
 
 
-{#- Pairs of key and value instead of a table. items: list of (key, value); empty values are shown as – -#}
+{#-
+  Pairs of key and value instead of a table. items: list of (key, value); empty values are shown as –.
+  A value {'time': ISO 8601, 'note': text} is a time for the browser (local_time) with an optional note.
+-#}
 {% macro kv_list(items, mono=[]) -%}
 <dl class="ir-kv">
   {%- for key, value in items %}
   <dt>{{ key }}</dt>
+  {%- if value is mapping %}
+  <dd>{{ local_time(value.time) }}{% if value.note %} <span class="ir-reason">{{ value.note }}</span>{% endif %}</dd>
+  {%- else %}
   <dd{% if key in mono %} class="ir-mono"{% endif %}>{{ value | or_dash }}</dd>
+  {%- endif %}
   {%- endfor %}
 </dl>
 {%- endmacro %}

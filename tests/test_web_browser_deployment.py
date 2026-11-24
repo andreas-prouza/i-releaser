@@ -2,7 +2,7 @@
 
 Skipped if Playwright or its Chromium is not installed, see tests/browser_tools.py.
 """
-import os, time
+import os
 
 import pytest
 
@@ -190,6 +190,80 @@ def test_run_a_stage_one_dialog_one_toast(server, browser_context, boss):
         watch.assert_clean()
     finally:
         boss.post(f"/api/cancel_deployment/{deployment}")
+
+
+
+def hide_and_show_the_tab(page) -> None:
+    """The live updates refresh everything when the tab is shown again (also after a lost connection)"""
+
+    page.evaluate("""() => {
+        Object.defineProperty(document, 'hidden', {configurable: true, get: () => true});
+        document.dispatchEvent(new Event('visibilitychange'));
+        Object.defineProperty(document, 'hidden', {configurable: true, get: () => false});
+        document.dispatchEvent(new Event('visibilitychange'));
+    }""")
+
+
+
+def test_a_step_opened_during_a_refresh_of_the_steps_stays_open(server, browser_context, failed):
+    """The refresh of the live updates keeps the panel as it is when its answer arrives, not as it was at the request"""
+
+    page, watch = open_page(browser_context, server, f"/show_details/{failed}")
+    quick = page.locator('.ir-step', has_text='quick').first
+    assert not quick.locator('.ir-step-detail').is_visible()
+
+    # The refresh of the steps waits until the step has been opened
+    held = []
+    page.route('**/show_details/*/stage/*', lambda route: held.append(route))
+    page.evaluate("document.getElementById('stage-steps').dataset.old = 'yes'")
+    hide_and_show_the_tab(page)
+    for _ in range(100):
+        if held:
+            break
+        page.wait_for_timeout(50)
+    assert held, "the steps have not been refreshed"
+
+    quick.locator('[data-action="toggle-step"]').click()
+    assert quick.locator('.ir-step-detail').is_visible()
+
+    held[0].continue_()
+    page.unroute('**/show_details/*/stage/*')
+    wait_until(page, "!document.getElementById('stage-steps').dataset.old")
+
+    assert page.locator('.ir-step', has_text='quick').first.locator('.ir-step-detail').is_visible()
+    watch.assert_clean()
+
+
+
+def test_a_refresh_which_arrives_late_does_not_replace_the_selected_stage(server, browser_context, failed):
+    """Select START while the refresh of DEPLOY is loaded: the answer of DEPLOY arrives last and is dropped"""
+
+    page, watch = open_page(browser_context, server, f"/show_details/{failed}")
+    assert panel_title(page) == 'DEPLOY'
+
+    held = []
+    page.route('**/show_details/*/stage/*', lambda route: held.append(route))
+    hide_and_show_the_tab(page)
+    page.locator('.ir-flow-node', has_text='START').click()
+    for _ in range(100):
+        if len(held) == 2:
+            break
+        page.wait_for_timeout(50)
+    assert len(held) == 2, "refresh and selection not both requested"
+
+    # START first, then the refresh of DEPLOY
+    page.evaluate("document.getElementById('stage-steps').dataset.old = 'yes'")
+    held[1].continue_()
+    wait_until(page, "!document.getElementById('stage-steps').dataset.old")
+    assert panel_title(page) == 'START'
+    with page.expect_response('**/show_details/*/stage/*'):
+        held[0].continue_()
+    page.unroute('**/show_details/*/stage/*')
+    page.wait_for_timeout(200)
+
+    assert panel_title(page) == 'START'
+    assert page.locator('.ir-flow-node.selected').inner_text().strip().startswith('START')
+    watch.assert_clean()
 
 
 
