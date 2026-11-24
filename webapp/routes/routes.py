@@ -569,13 +569,23 @@ def show_workflows(request: Request):
 
 
 def show_settings(request: Request):
-    """Settings, general part (docs/features/web-ui-admin-pages.md#settings)"""
+    """Administration, part System (docs/features/web-ui-admin-pages.md#settings)"""
 
     permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
 
     return http_functions.get_html_response(request, 'admin/settings.html', sidebar=get_sidebar_data(request),
-                                            general=admin_view.get_general(global_cfg.C_DEFAULT_PROJECT, api_token_data.get_all()),
+                                            general=admin_view.get_general(global_cfg.C_DEFAULT_PROJECT),
                                             notifications=admin_view.get_notifications(current_user.get_user()))
+
+
+
+def show_security(request: Request):
+    """Administration, part Security: API tokens, two-factor authentication, blocked logins (docs/features/web-ui-admin-pages.md#settings)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    return http_functions.get_html_response(request, 'admin/security.html', sidebar=get_sidebar_data(request),
+                                            security=admin_view.get_security(api_token_data.get_all()))
 
 
 

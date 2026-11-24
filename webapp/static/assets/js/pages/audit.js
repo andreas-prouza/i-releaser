@@ -1,5 +1,5 @@
 /*
- * Settings, audit (templates/admin/audit.html, docs/features/audit-log.md)
+ * Administration, audit (templates/admin/audit.html, docs/features/audit-log.md)
  *
  * One table of the security events and the actions on deployments, with filters. Times in the time zone of the browser.
  */

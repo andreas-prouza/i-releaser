@@ -94,7 +94,7 @@
 * QR code with the package `qrcode` 8.2 (review OK, see [technik.md](../technik.md#package-prüfung)), as SVG data URI in an `<img>`.
 * One login form with the field `Code (if you have set up two-factor authentication)`, always shown.
 * Default policy: `optional` in `etc/constants.py` (existing installations keep working), `admins` in the template `etc/examples/settings.py` (new installations).
-* The policy is shown on the settings page; it's changed in `etc/settings.py` only (no switch in the web app: it's a security setting of the installation).
+* The policy is shown in the administration (`Security`); it's changed in `etc/settings.py` only (no switch in the web app: it's a security setting of the installation).
 * The code is checked before the IBM i sign-on but only used up after it, so a wrong password doesn't cost a recovery code.
 * Wrong codes have their own limit (`C_2FA_MAX_FAILURES` within `C_LOGIN_BLOCK_MINUTES`); they don't count for the IBM i counter of the user.
 * Removing a user (permissions page) also removes the two-factor authentication of the user.

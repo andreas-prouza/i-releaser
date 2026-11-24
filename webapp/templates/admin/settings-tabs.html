@@ -1,8 +1,12 @@
-{#- The parts of the settings, each with its own URL (docs/features/web-ui-admin-pages.md#settings) -#}
+{#- The parts of the administration, each with its own URL (docs/features/web-ui-admin-pages.md#settings) -#}
+
+{#- The line below the title of the administration -#}
+{% set ADMINISTRATION = 'The installation, the processing of stages, the permissions, the security and the audit log' %}
+
 {% macro settings_tabs(active) -%}
-<nav aria-label="Settings">
+<nav aria-label="Administration">
     <ul class="nav nav-tabs ir-settings-tabs">
-        {%- for name, url, text in [('general', '/settings', 'General'), ('processing', '/settings/processing', 'Processing'), ('permissions', '/settings/permissions', 'Permissions'), ('audit', '/settings/audit', 'Audit')] %}
+        {%- for name, url, text in [('general', '/settings', 'System'), ('processing', '/settings/processing', 'Processing'), ('permissions', '/settings/permissions', 'Permissions'), ('security', '/settings/security', 'Security'), ('audit', '/settings/audit', 'Audit')] %}
         <li class="nav-item"><a class="nav-link{% if name == active %} active{% endif %}" href="{{ url }}"{% if name == active %} aria-current="page"{% endif %}>{{ text }}</a></li>
         {%- endfor %}
     </ul>

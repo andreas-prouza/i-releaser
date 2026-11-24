@@ -88,7 +88,7 @@ chmod 600 etc/notifications.json
 | `custom_data` | JSONPaths of custom data which are in the message. Nothing else of the custom data is sent |
 
 Every rule which matches sends a message: two rules for the same channel send two.
-The file is checked when it changes; an invalid file turns the notifications off and is shown on the settings page (`Settings` → `Notifications`) with the reason. There each channel has a button `Send test`.
+The file is checked when it changes; an invalid file turns the notifications off and is shown in the administration (`Administration` → `System` → `Notifications`) with the reason. There each channel has a button `Send test`.
 In VS Code, `docs/schema/notifications.schema.json` checks the file while you type (see [workflow](../workflow.md#check-the-files-in-the-editor)).
 
 **A message** has: title (e.g. *Stage PROD failed*), project, version, workflow, stage and its status, status of the deployment, user, time (UTC), the reason if there is one (e.g. why a scheduled run didn't start), the custom data of the rule, and the link to the deployment if `C_EXTERNAL_URL` is set.

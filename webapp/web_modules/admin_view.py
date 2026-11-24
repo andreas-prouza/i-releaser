@@ -2,11 +2,11 @@
 Data of the admin pages (docs/features/web-ui-admin-pages.md): settings, processing, logs, workflows, the own account.
 The templates decide nothing. Nothing here is HTML.
 """
-import datetime, json, re
+import datetime, json, logging, re
 
 from etc import constants
 from modules import permission_config, permissions, processing_job, processing_service, processing_settings, version, workflow
-from modules.db import app_sqlite, audit_data, login_failure_data, processing_job_data, processing_user_data, user_mfa_data
+from modules.db import app_info_data, app_sqlite, audit_data, login_failure_data, processing_job_data, processing_user_data, user_mfa_data
 
 from web_modules import stage_flow, two_factor
 from web_modules.status_view import get_status_view
@@ -26,7 +26,7 @@ LEVEL = re.compile(r'\b(DEBUG|INFO|WARNING|ERROR|CRITICAL)\b')
 
 
 #-----------------------------------------------------------------------------------------------
-# Settings
+# Administration (the addresses are /settings/...)
 #-----------------------------------------------------------------------------------------------
 
 def get_database_version() -> int|None:
@@ -38,19 +38,33 @@ def get_database_version() -> int|None:
 
 
 
-def get_general(default_project: str, tokens: list[dict]) -> dict:
+def get_general(default_project: str) -> dict:
+    """Administration, part System: the state of the installation"""
 
     base = constants.C_LOCAL_BASE_DIR
     return {
         'details': [
             ('Default project', default_project),
             ('Version', version.APP_VERSION),
+            # docs/features/start-times.md
+            ('Web app started', get_web_start()),
+            ('Processing service started', get_service_start(processing_service.notify()) or 'Not running'),
             ('Database', f"version {get_database_version()} (needs {app_sqlite.SCHEMA_VERSION})"),
             ('Installation', base),
             ('Workflows', constants.C_WORKFLOWS_DIR),
             ('Permissions', constants.C_USER_PERMISSIONS),
             ('Deployments', constants.C_META_DIR.split('{')[0]),
         ],
+        'custom_route_errors': sorted(CUSTOM_ROUTE_ERRORS.items()),
+        'retention': get_retention(),
+    }
+
+
+
+def get_security(tokens: list[dict]) -> dict:
+    """Administration, part Security: who can log in and how"""
+
+    return {
         # docs/features/api-v2.md#tokens
         'tokens': [get_token_info(token) for token in tokens],
         # docs/bugfixes/login-can-disable-ibm-i-profiles.md
@@ -61,9 +75,32 @@ def get_general(default_project: str, tokens: list[dict]) -> dict:
         # docs/features/two-factor-authentication.md
         'two_factor_policy': TWO_FACTOR_POLICIES.get(two_factor.get_policy(), two_factor.get_policy()),
         'two_factor_users': user_mfa_data.get_enabled_users(),
-        'custom_route_errors': sorted(CUSTOM_ROUTE_ERRORS.items()),
-        'retention': get_retention(),
     }
+
+
+
+def get_web_start() -> dict|None:
+    """The start of the web app as time for the browser (kv_list), docs/features/start-times.md"""
+
+    try:
+        start = app_info_data.get_web_start()
+    except Exception as e:
+        logging.warning(f"Start of the web app not found: {e}")
+        return None
+
+    return {'time': start.isoformat()} if start else None
+
+
+
+def get_service_start(running: bool) -> dict|None:
+    """The start of the running processing service with its process id, docs/features/start-times.md"""
+
+    start = processing_service.get_start() if running else None
+    if start is None:
+        return None
+
+    time, pid = start
+    return {'time': time.isoformat(), 'note': f"process {pid}" if pid else None}
 
 
 
@@ -198,6 +235,7 @@ def get_processing() -> dict:
         # A colour of status_view: running is good here, not running is bad only when stages wait for the service
         'service_kind': 'success' if running else ('danger' if mode == 'service' else 'neutral'),
         'running': running,
+        'started': get_service_start(running),
         'auto_start': auto_start,
         'auto_start_paused': auto_start and processing_settings.is_service_auto_start_paused(),
         'jobs': rows,

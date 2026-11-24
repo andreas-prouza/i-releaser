@@ -187,7 +187,7 @@ def test_admin_unblocks_a_user(strict_server):
     admin = strict_server.client()
     admin.login('boss', 'right')
 
-    _, _, page = admin.get('/settings', headers={'Accept': 'text/html'})
+    _, _, page = admin.get('/settings/security', headers={'Accept': 'text/html'})
     assert 'data-action="unblock-login" data-user="runner"' in page
 
     stranger = strict_server.client()

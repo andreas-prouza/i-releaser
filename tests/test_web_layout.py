@@ -84,7 +84,7 @@ def get_pages(deployment: int, log: str) -> dict:
         '/': ('Deployments · seq · i-Releaser', 'deployments'),
         '/list-objects': ('Objects · i-Releaser', 'objects'),
         '/workflows': ('Workflows · i-Releaser', 'workflows'),
-        '/settings': ('Settings · i-Releaser', 'settings'),
+        '/settings': ('System · Administration · i-Releaser', 'settings'),
         '/user': ('My account · i-Releaser', 'user'),
         f"/log/{log}": (f"{log} · Logs · i-Releaser", 'logs'),
         f"/show_details/{deployment}": ('seq 1 · ready · i-Releaser', 'deployments'),
@@ -210,7 +210,7 @@ def test_links_have_no_sidebar_parameter():
 def test_settings_and_logs_only_for_admins(server, deployment, log):
 
     _, page, _ = get_page(server.client('boss'), '/')
-    assert page.nav_entries == ['deployments', 'objects', 'workflows', 'settings', 'permissions', 'logs', 'user', 'logout']
+    assert page.nav_entries == ['deployments', 'objects', 'workflows', 'settings', 'logs', 'user', 'logout']
 
     for user in ['intern', 'runner']:
         _, page, text = get_page(server.client(user), '/')

@@ -362,7 +362,7 @@ def test_admin_revokes_the_token_of_another_user(server):
     # Another user doesn't see that it exists
     assert_error(*call(server.client('intern'), 'DELETE', f"/api/v2/tokens/{created['id']}")[:2], 404)
 
-    _, _, page = server.client('boss').get('/settings', headers={'Accept': 'text/html'})
+    _, _, page = server.client('boss').get('/settings/security', headers={'Accept': 'text/html'})
     assert f'data-token-id="{created["id"]}"' in page and 'Pipeline' in page
 
     assert call(server.client('boss'), 'DELETE', f"/api/v2/tokens/{created['id']}")[0] == 204

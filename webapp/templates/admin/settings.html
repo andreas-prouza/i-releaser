@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
-{#- Settings, general part (docs/features/web-ui-admin-pages.md#settings). Context: general (admin_view.get_general) -#}
+{#- Administration, part System (docs/features/web-ui-admin-pages.md#settings). Context: general (admin_view.get_general) -#}
 
 {% from 'components/ui.html' import page_header, kv_list, empty_state %}
-{% from 'admin/settings-tabs.html' import settings_tabs %}
+{% from 'admin/settings-tabs.html' import settings_tabs, ADMINISTRATION %}
 
-{% block title %}Settings{% endblock %}
+{% block title %}System · Administration{% endblock %}
 {% block nav_active %}settings{% endblock %}
 
-{% block page_header %}{{ page_header('Settings', meta='The installation, the processing of stages and the permissions') }}{% endblock %}
+{% block page_header %}{{ page_header('Administration', meta=ADMINISTRATION) }}{% endblock %}
 
 {% block content %}
 
@@ -24,26 +24,6 @@
     <section class="ir-card ir-section" aria-labelledby="installation-title">
         <div class="ir-section-head"><h2 id="installation-title">Installation</h2></div>
         {{ kv_list(general.details, mono=['Installation', 'Workflows', 'Permissions', 'Deployments']) }}
-    </section>
-
-    <section class="ir-card ir-section" aria-labelledby="tokens-title">
-        <div class="ir-section-head"><h2 id="tokens-title">API tokens</h2></div>
-        {%- if general.tokens %}
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <thead><tr><th>User</th><th>Name</th><th>Scope</th><th>Created</th><th>Last used</th><th>Expires</th><th>Token</th><th><span class="visually-hidden">Action</span></th></tr></thead>
-                <tbody>
-                {%- for token in general.tokens %}
-                    <tr><td>{{ token.user }}</td><td>{{ token.name }}</td><td>{{ token.scope }}</td><td class="text-nowrap">{{ token.created }}</td><td class="text-nowrap">{{ token.last_used }}</td><td class="text-nowrap">{{ token.expires }}</td><td class="ir-mono">{{ token.masked }}</td>
-                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-action="revoke-token" data-token-id="{{ token.id }}" data-user="{{ token.user }}" data-name="{{ token.name }}"><i class="bi bi-x-circle" aria-hidden="true"></i> Revoke</button></td></tr>
-                {%- endfor %}
-                </tbody>
-            </table>
-        </div>
-        {%- else %}
-        {{ empty_state('No user has an API token', icon='key') }}
-        {%- endif %}
-        <p class="ir-reason mb-0">Each user creates and deletes their own tokens on their page (<a href="/user">your account</a>). Tokens expire after <code>C_TOKEN_MAX_DAYS</code> days. Revoke the token of a user who shouldn't use it anymore.</p>
     </section>
 
     <section class="ir-card ir-section" aria-labelledby="retention-title">
@@ -98,49 +78,6 @@
         </div>
         {%- endif %}
         <p class="ir-reason mb-0">Channels and rules are in <code>etc/notifications.json</code> (template in <code>etc/examples/</code>). E-mail addresses of users are their <em>Mail</em> on the permissions page.</p>
-    </section>
-
-    <section class="ir-card ir-section" aria-labelledby="two-factor-title">
-        <div class="ir-section-head"><h2 id="two-factor-title">Two-factor authentication</h2></div>
-        {{ kv_list([('Policy', general.two_factor_policy)]) }}
-        {%- if general.two_factor_users %}
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <thead><tr><th>Users with two-factor authentication</th><th><span class="visually-hidden">Action</span></th></tr></thead>
-                <tbody>
-                {%- for user in general.two_factor_users %}
-                    <tr>
-                        <td>{{ user }}</td>
-                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="reset-mfa" data-user="{{ user }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reset</button></td>
-                    </tr>
-                {%- endfor %}
-                </tbody>
-            </table>
-        </div>
-        {%- endif %}
-        <p class="ir-reason mb-0">Change the policy with <code>C_2FA_POLICY</code> in <code>etc/settings.py</code>. Reset the two-factor authentication of a user who has lost the phone and the recovery codes: the user sets it up again.</p>
-    </section>
-
-    <section class="ir-card ir-section" aria-labelledby="blocked-title">
-        <div class="ir-section-head"><h2 id="blocked-title">Blocked logins</h2></div>
-        {%- if general.blocked_logins %}
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <thead><tr><th>User</th><th>Failed sign-ons in a row</th><th>Last failure</th><th><span class="visually-hidden">Action</span></th></tr></thead>
-                <tbody>
-                {%- for blocked in general.blocked_logins %}
-                    <tr>
-                        <td>{{ blocked.user }}</td><td>{{ blocked.failures }}</td><td class="text-nowrap">{{ blocked.last_failure }}</td>
-                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="unblock-login" data-user="{{ blocked.user }}"><i class="bi bi-unlock" aria-hidden="true"></i> Unblock</button></td>
-                    </tr>
-                {%- endfor %}
-                </tbody>
-            </table>
-        </div>
-        {%- else %}
-        {{ empty_state('No login is blocked', icon='unlock') }}
-        {%- endif %}
-        <p class="ir-reason mb-0">A user is blocked after {{ general.max_login_failures }} wrong passwords in a row (<code>C_LOGIN_MAX_FAILURES</code>), before the IBM i disables the profile (<code>QMAXSIGN</code>). Unblock only after you know who has tried.</p>
     </section>
 </div>
 

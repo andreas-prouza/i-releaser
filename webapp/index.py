@@ -188,6 +188,7 @@ app.add_api_route('/workflows', routes.show_workflows, methods=['GET', 'POST'])
 app.add_api_route('/settings', routes.show_settings, methods=['GET', 'POST'])
 app.add_api_route('/settings/permissions', routes.show_permissions, methods=['GET'])
 app.add_api_route('/settings/processing', routes.show_processing, methods=['GET'])
+app.add_api_route('/settings/security', routes.show_security, methods=['GET'])
 app.add_api_route('/settings/audit', routes.show_audit, methods=['GET'])
 app.add_api_route('/settings/audit.csv', routes.download_audit, methods=['GET'])
 

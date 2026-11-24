@@ -107,7 +107,7 @@ def load_config() -> dict|None:
     The content of etc/notifications.json, validated.
 
     Returns:
-        dict|None: None if there is no file or it's invalid (the error is logged once and shown on the settings page)
+        dict|None: None if there is no file or it's invalid (the error is logged once and shown in the administration, part System)
     """
 
     path = constants.C_NOTIFICATIONS_CONFIG
@@ -769,7 +769,7 @@ if hasattr(os, 'register_at_fork'):
 
 
 #---------------------------------------------------------
-# Settings page
+# Administration, part System
 #---------------------------------------------------------
 
 def send_test(channel_name: str, recipient: str|None=None, user: str|None=None) -> str:
@@ -814,7 +814,7 @@ def send_test(channel_name: str, recipient: str|None=None, user: str|None=None) 
 
 
 def get_status() -> dict:
-    """For the settings page: the file, its problems, the channels (without secrets) and the outbox"""
+    """For the administration (part System): the file, its problems, the channels (without secrets) and the outbox"""
 
     config = load_config()
     channels = []

@@ -306,6 +306,23 @@ def is_process_running(pid: int) -> bool:
 
 
 
+def get_start() -> tuple[datetime.datetime, int|None] | None:
+    """
+    Start of the processing service in UTC and its process id, from its pid file (docs/features/start-times.md).
+    The file is written at the start. It's only valid while the service runs: a killed service leaves it behind.
+    """
+
+    try:
+        started = os.path.getmtime(constants.C_SERVICE_PID_FILE)
+        with open(constants.C_SERVICE_PID_FILE) as f:
+            content = f.read().strip()
+    except OSError:
+        return None
+
+    return datetime.datetime.fromtimestamp(started, datetime.timezone.utc).replace(microsecond=0), int(content) if content.isdigit() else None
+
+
+
 def get_job_lock_file(job_id: int) -> str:
     return os.path.join(os.path.dirname(constants.C_SERVICE_LOCK_FILE), 'jobs', f"{job_id}.lock")
 

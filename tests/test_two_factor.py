@@ -300,7 +300,7 @@ def test_admin_resets_the_two_factor_authentication(server):
     admin = server.client()
     admin.login('boss', 'right')
 
-    _, _, page = admin.get('/settings', headers={'Accept': 'text/html'})
+    _, _, page = admin.get('/settings/security', headers={'Accept': 'text/html'})
     assert 'data-action="reset-mfa" data-user="runner"' in page
 
     assert runner.post('/api/mfa/reset/runner')[0] == 403

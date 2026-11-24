@@ -74,8 +74,7 @@
             {% if sidebar['is_admin'] %}
             <div class="app-nav-sep" role="separator"></div>
             <ul class="app-nav-list">
-                {{ nav_link('settings', '/settings', 'gear', 'Settings') }}
-                {{ nav_link('permissions', '/settings/permissions', 'shield-lock', 'Permissions') }}
+                {{ nav_link('settings', '/settings', 'gear', 'Administration') }}
                 <li class="dropend">
                     <button type="button" class="app-nav-link{% if nav_active == 'logs' %} active{% endif %}" data-nav="logs" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="Logs">
                         <i class="bi bi-activity" aria-hidden="true"></i><span class="app-nav-text">Logs</span><i class="bi bi-chevron-right app-nav-more app-nav-text" aria-hidden="true"></i>

@@ -36,8 +36,11 @@
 
 ### Settings
 
-* Sub-pages with their own URL: `/settings` (general), `/settings/processing`, `/settings/permissions` (see [permissions page](web-ui-permissions-page.md)).
-* **General:** default project, version of the app and of the database, paths of the installation, as key and value list. `Web port` is removed. API tokens of the users as a table (user, created, last used, masked token).
+Called `Administration` since 2026-11-24, its tab `General` is `System`, and the tab `Security` is new (see decisions).
+
+* Tabs with their own URL: `System` (`/settings`), `Processing` (`/settings/processing`), `Permissions` (`/settings/permissions`, see [permissions page](web-ui-permissions-page.md)), `Security` (`/settings/security`), `Audit` (`/settings/audit`, see [audit log](audit-log.md)).
+* **General** (now `System`): default project, version of the app and of the database, start of the web app and of the processing service ([start times](start-times.md)), paths of the installation, as key and value list. `Web port` is removed. Data retention and notifications.
+* **Security:** API tokens of the users as a table (user, name, scope, created, last used, expires, masked token, `Revoke`), the two-factor authentication (policy, users with `Reset`), the blocked logins (`Unblock`).
 * **Processing:** the mode with `Change` and where the value comes from; the processing service with its status as pill, `Start`, `Stop`, `Restart` and the switch `Start automatically` with the notes of today; the jobs as a table with sorting, filters and paging: job, deployment (link), stage (name), user, status (pill), queued, started, ended, duration, process, error.
 * The result of an action is a toast; the output of the service script is shown in a dialog as today. The part of the page is loaded again, the page is not reloaded.
 * The functions are those of [processing settings](processing-settings-in-web-app.md) and [auto start](processing-service-auto-start.md). Nothing changes on the server.
@@ -99,6 +102,14 @@
 
 1. Workflows: the stages as flow in each card (the layout of the [deployment page](web-ui-deployment-page.md#stage-flow), without status).
 2. Logs: the filter in the browser is enough (at most 10,000 loaded lines).
+
+
+## Decisions (2026-11-24)
+
+1. `Settings` is renamed to `Administration`, its tab `General` to `System`. Most of it can't be changed there: it shows the state (version, start times, service, jobs, audit) or is an action of an admin (revoke a token, unblock a login, remove old deployments). The settings themselves are mostly in `etc/settings.py`. The name matches the permission `admin` which the pages need, and the code (`templates/admin/`, `admin_view.py`).
+2. The addresses stay `/settings/...` (bookmarks, links in the docs and of other tools), and so do the internal names (`data-nav="settings"`, the block `nav_active` of own pages).
+3. A tab `Security` (`templates/admin/security.html`, `pages/security.js`, `admin_view.get_security`) with the API tokens, the two-factor authentication and the blocked logins: who can log in and how. `System` keeps the state of the installation, data retention and notifications. The audit log stays a tab of its own: it records more than security events (actions on deployments, viewed logs, settings), and it's a large table with filters and a CSV export.
+4. `Permissions` is no longer an entry of the navigation, only a tab: two entries opened the same page, and the navigation marked `Permissions` instead of `Administration` while the tabs of the administration were shown (like `Audit`, which never had an entry). The page keeps its title `Permissions` with the breadcrumb, as its header shows when the last change has been saved.
 
 
 ## Open questions

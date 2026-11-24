@@ -51,7 +51,7 @@
 
 * Table `audit_log` in `var/app.sqlite` (`modules/db/audit_data.py`); the web app writes it with `web_modules/audit.py`. An entry which can't be written is logged, it doesn't stop the action.
 * `C_AUDIT_FILE` (empty: off) gets each event as JSON line; `C_AUDIT_RETENTION_DAYS` (730) is cleaned once an hour by the web app. After a clean up the chain starts with the oldest remaining entry.
-* The page shows the newest 1,000 entries of the audit log and of the histories of the deployments (`Settings` → `Audit`), times in the time zone of the browser, CSV export of the same list.
+* The page shows the newest 1,000 entries of the audit log and of the histories of the deployments (`Administration` → `Audit`), times in the time zone of the browser, CSV export of the same list.
 * Requirement 9 (history entries after the action) was done with [cancel-finished-deployment](../bugfixes/cancel-finished-deployment.md).
 * Viewing a deployment is not recorded (proposal accepted); viewing and downloading logs and the CSV export are (`log_viewed`).
 

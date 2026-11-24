@@ -1,5 +1,5 @@
 /*
- * Settings, processing of stages (templates/admin/processing.html, docs/processing-service.md)
+ * Administration, processing of stages (templates/admin/processing.html, docs/processing-service.md)
  *
  * Mode, processing service and auto start. The result of an action is a toast, the output of the service script a
  * dialog. Afterwards the part of the page is loaded again (GET /settings/processing), the page is not reloaded.

@@ -115,7 +115,7 @@ def get(notification_id: int) -> dict|None:
 
 
 def get_summary(days: int=30, limit: int=5) -> dict:
-    """For the settings page: the number of messages which wait, failed in the last days, and the newest failed ones"""
+    """For the administration (part System): the number of messages which wait, failed in the last days, and the newest failed ones"""
 
     since = now(-days * 24 * 3600)
 

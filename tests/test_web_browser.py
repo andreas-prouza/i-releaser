@@ -97,7 +97,7 @@ def test_pages_have_no_errors(server, browser_context, names_deployment, user):
     log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
     paths = ['/', '/project/names', '/list-objects', '/workflows', '/user', f"/show_details/{names_deployment}"]
     if user == 'boss':
-        paths += ['/settings', '/settings/processing', '/settings/permissions', f"/log/{log}", '/docs']
+        paths += ['/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', f"/log/{log}", '/docs']
 
     for path in paths:
         page, watch = open_page(browser_context, server, path, user=user)
@@ -231,7 +231,7 @@ def test_objects_with_special_characters_can_be_switched(server, browser_context
 @pytest.mark.parametrize('collapsed', [False, True])
 def test_no_horizontal_scrolling(server, browser_context, names_deployment, width, collapsed):
 
-    # Settings: its tables are wider until docs/features/web-ui-admin-pages.md
+    # Administration: its tables are wider until docs/features/web-ui-admin-pages.md
     log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
     if collapsed:
         browser_context.add_init_script("localStorage.setItem('ir-nav', 'collapsed')")

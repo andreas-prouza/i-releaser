@@ -84,6 +84,28 @@ def test_filter_a_log_by_level_and_text(server, browser_context):
 
 
 
+def test_admin_revokes_the_token_of_a_user_on_the_security_tab(server, browser_context):
+    """The actions of the security tab run with pages/security.js (docs/features/web-ui-admin-pages.md#decisions-2026-11-24)"""
+
+    status, created = server.client('runner').post_json('/api/v2/tokens', {'name': 'Revoke test', 'scope': 'read'})
+    assert status == 201, created
+    bearer = {'Authorization': f"Bearer {created['token']}"}
+    assert Client(server).get('/api/v2/workflows', headers=bearer)[0] == 200
+
+    page, watch = open_page(browser_context, server, '/settings/security')
+    page.locator('[data-action="revoke-token"][data-name="Revoke test"]').click()
+    assert page.locator('.swal2-title').inner_text() == 'Revoke the API token Revoke test of runner?'
+    with page.expect_navigation():
+        page.locator('.swal2-confirm').click()
+    page.wait_for_selector('.swal2-toast')
+
+    assert 'Token Revoke test of runner revoked' in page.locator('.swal2-toast').inner_text()
+    assert page.locator('[data-action="revoke-token"][data-name="Revoke test"]').count() == 0
+    assert Client(server).get('/api/v2/workflows', headers=bearer)[0] == 401
+    watch.assert_clean()
+
+
+
 def test_token_generate_copy_use_and_delete(server, browser):
 
     context = browser.new_context()

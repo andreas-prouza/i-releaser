@@ -1,5 +1,5 @@
 """The admin pages (docs/features/web-ui-admin-pages.md): settings, processing, logs, workflows, the own account"""
-import html, json, os, re
+import datetime, html, json, os, re
 
 import pytest
 
@@ -47,7 +47,7 @@ def title_and_entry(text: str) -> tuple[str, str]:
 def test_admin_pages_need_admin(server, log):
 
     intern = server.client('intern')
-    for path in ['/settings', '/settings/processing', '/settings/permissions', f"/log/{log}", f"/log/{log}/download"]:
+    for path in ['/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', f"/log/{log}", f"/log/{log}/download"]:
         assert page(intern, path)[0] == 403, path
 
 
@@ -55,8 +55,10 @@ def test_admin_pages_need_admin(server, log):
 def test_titles_and_active_entries(server, boss, log):
 
     expected = {
-        '/settings': ('Settings · i-Releaser', 'settings'),
-        '/settings/processing': ('Processing · Settings · i-Releaser', 'settings'),
+        '/settings': ('System · Administration · i-Releaser', 'settings'),
+        '/settings/processing': ('Processing · Administration · i-Releaser', 'settings'),
+        '/settings/security': ('Security · Administration · i-Releaser', 'settings'),
+        '/settings/permissions': ('Permissions · Administration · i-Releaser', 'settings'),
         f"/log/{log}": (f"{log} · Logs · i-Releaser", 'logs'),
         '/workflows': ('Workflows · i-Releaser', 'workflows'),
         '/user': ('My account · i-Releaser', 'user'),
@@ -73,7 +75,79 @@ def test_settings_page(server, boss):
     _, text = page(boss, '/settings')
     assert '????' not in text and 'Web port' not in text
     assert 'Version' in text and 'Database' in text
-    assert '<a class="nav-link active" href="/settings" aria-current="page">General</a>' in text
+    assert '<a class="nav-link active" href="/settings" aria-current="page">System</a>' in text
+
+
+
+def test_security_has_its_own_tab(server, boss):
+    """Tokens, two-factor authentication and blocked logins: Security, not System (docs/features/web-ui-admin-pages.md#decisions-2026-11-24)"""
+
+    sections = ['id="tokens-title"', 'id="two-factor-title"', 'id="blocked-title"']
+
+    _, system = page(boss, '/settings')
+    _, security = page(boss, '/settings/security')
+
+    assert all(section in security for section in sections)
+    assert not any(section in system for section in sections)
+    assert 'id="retention-title"' in system and 'id="retention-title"' not in security
+    assert '<a class="nav-link active" href="/settings/security" aria-current="page">Security</a>' in security
+    assert 'pages/security.js' in security and 'pages/settings.js' not in security
+
+
+
+def test_permissions_have_no_entry_of_their_own(server, boss):
+    """The permissions are a tab of the administration: the navigation marks Administration"""
+
+    _, text = page(boss, '/settings/permissions')
+    assert title_and_entry(text)[1] == 'settings'
+    assert 'data-nav="permissions"' not in text
+    assert '<a class="nav-link active" href="/settings/permissions" aria-current="page">Permissions</a>' in text
+
+
+
+def start_time(text: str, label: str) -> datetime.datetime:
+    """A start time of the general settings (docs/features/start-times.md): UTC, shown by the browser in its time zone"""
+
+    match = re.search(rf'<dt>{label}</dt>\s*<dd><time datetime="([^"]+)" data-local-time>', text)
+    assert match, f"{label} not found"
+    return datetime.datetime.fromisoformat(match.group(1))
+
+
+
+def test_settings_show_the_start_of_the_web_app(server, boss):
+
+    server.stop_service()
+    server.wait_for_service(running=False)
+
+    _, text = page(boss, '/settings')
+    now = datetime.datetime.now(datetime.timezone.utc)
+    assert now - datetime.timedelta(minutes=10) < start_time(text, 'Web app started') <= now
+    assert re.search(r'<dt>Processing service started</dt>\s*<dd>Not running</dd>', text)
+
+
+
+def test_start_of_the_running_processing_service(server, boss):
+
+    assert boss.post_json('/api/processing_service/start')[0] == 200
+    pid = server.wait_for_service()
+    try:
+        _, text = page(boss, '/settings/processing')
+        match = re.search(r'id="service-started">Started <time datetime="([^"]+)" data-local-time>[^<]+</time> · process (\d+)</p>', text)
+        assert match, "start of the service not found"
+        start = datetime.datetime.fromisoformat(match.group(1))
+        now = datetime.datetime.now(datetime.timezone.utc)
+        assert now - datetime.timedelta(minutes=2) < start <= now
+        assert int(match.group(2)) == pid
+
+        _, text = page(boss, '/settings')
+        assert start_time(text, 'Processing service started') == start
+        assert f'<span class="ir-reason">process {pid}</span>' in text
+    finally:
+        boss.post_json('/api/processing_service/stop')
+        server.wait_for_service(running=False)
+
+    _, text = page(boss, '/settings/processing')
+    assert 'id="service-started"' not in text
 
 
 

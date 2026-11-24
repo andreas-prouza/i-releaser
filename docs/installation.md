@@ -156,7 +156,7 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
 * **Settings** (`etc/settings.py`) are checked when the web app and the processing service start: an invalid value stops the start with a message in the log, an unknown name (e.g. a typo) is a warning.
 * **Failed logins.** Every wrong password is an invalid sign-on on the IBM i: after `QMAXSIGN` of them in a row (IBM default 3) the IBM i disables the profile (`QMAXSGNACN`).
   * After `C_LOGIN_MAX_FAILURES` wrong passwords of a user in a row (default 2), i-Releaser doesn't send further logins of this user to the IBM i.
-    The block stays until an admin unblocks it (`Settings` → `Blocked logins`). Unblock only when you know who has tried. Keep the limit below `QMAXSIGN`; the web app logs a warning at its start if it's 3 or more.
+    The block stays until an admin unblocks it (`Administration` → `Security` → `Blocked logins`). Unblock only when you know who has tried. Keep the limit below `QMAXSIGN`; the web app logs a warning at its start if it's 3 or more.
   * After `C_LOGIN_CLIENT_MAX_FAILURES` failed logins from a client address (default 10), its logins are blocked for `C_LOGIN_BLOCK_MINUTES` (default 15).
   * The sign-on on the IBM i ends after `C_LOGIN_TIMEOUT_SECONDS` (default 15). A sign-on without answer doesn't count for the user. At most `C_LOGIN_MAX_PARALLEL` logins per process wait for the IBM i at the same time (default 4).
   * If all admins are blocked: `sqlite3 var/app.sqlite "DELETE FROM login_failures WHERE key = 'user:<name>'"`.
@@ -225,6 +225,6 @@ git pull
 | A changed script is not used | Restart the web app (and the processing service). |
 | A workflow is missing | Invalid workflow files are left out. Users with `admin` see them with their error on the page `Workflows`. |
 | `An unexpected error occurred. Error id: ...` | Search the id in the log of the web app. |
-| `Login failed` with the right password | The login of the user or the client address is blocked after failed logins (the message doesn't say so, see [production checklist](#production-checklist)): an admin unblocks the user under `Settings` → `Blocked logins`; a client address is unblocked after `C_LOGIN_BLOCK_MINUTES`. |
+| `Login failed` with the right password | The login of the user or the client address is blocked after failed logins (the message doesn't say so, see [production checklist](#production-checklist)): an admin unblocks the user under `Administration` → `Security` → `Blocked logins`; a client address is unblocked after `C_LOGIN_BLOCK_MINUTES`. |
 | All requests with a session get status 403 behind a proxy | Set `ProxyPreserveHost On`: the web app compares the origin of the browser with the host. |
 | `Database has version ...` when the processing service starts | Start the web app first. |

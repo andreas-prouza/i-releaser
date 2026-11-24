@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
 
-{#- Settings, audit (docs/features/audit-log.md). Context: audit (admin_view.get_audit). Script: static/assets/js/pages/audit.js -#}
+{#- Administration, audit (docs/features/audit-log.md). Context: audit (admin_view.get_audit). Script: static/assets/js/pages/audit.js -#}
 
 {% from 'components/ui.html' import page_header, empty_state %}
-{% from 'admin/settings-tabs.html' import settings_tabs %}
+{% from 'admin/settings-tabs.html' import settings_tabs, ADMINISTRATION %}
 
-{% block title %}Audit · Settings{% endblock %}
+{% block title %}Audit · Administration{% endblock %}
 {% block nav_active %}settings{% endblock %}
 
 {% block css %}
 <link rel="stylesheet" href="{{ url_for('static', path='assets/bootstrap/css/bootstrap-table.min.css') }}">
 {% endblock %}
 
-{% block page_header %}{{ page_header('Settings', meta='The installation, the processing of stages and the permissions') }}{% endblock %}
+{% block page_header %}{{ page_header('Administration', meta=ADMINISTRATION) }}{% endblock %}
 
 {% block content %}
 

@@ -13,7 +13,7 @@ Users log in with their IBM i user profile and password. The web app checks them
 
 In addition, the user has to be listed in `etc/user_permissions.json`. Users which are not listed can't log in, and i-Releaser doesn't even try: a failed connection counts for the IBM i profile.
 
-After too many failed logins further logins are blocked: those of a user until an admin unblocks them (`Settings` → `Blocked logins`), those of a client address for some time (see [installation](installation.md#production-checklist)).
+After too many failed logins further logins are blocked: those of a user until an admin unblocks them (`Administration` → `Security` → `Blocked logins`), those of a client address for some time (see [installation](installation.md#production-checklist)).
 
 A session ends one hour after the last request, and after 12 hours in any case. Log out with the button in the navigation.
 
@@ -26,7 +26,7 @@ The login can also need a code of an authenticator app (Microsoft Authenticator,
 * **Log in:** user, password and the current code of the app (or a recovery code) in the field `Code`. The code is checked before the password goes to the IBM i: a wrong code doesn't count for `QMAXSIGN`.
 * **Policy** `C_2FA_POLICY` in `etc/settings.py`: `off`, `optional` (each user decides, the default of existing installations), `admins` (required for users with `admin`, the default of new installations), `required` (all users). A user who needs it and hasn't set it up can only set it up after the login.
 * **Confirm with a code:** creating an API token, changing permissions or settings, unblocking a login and resetting the two-factor authentication of a user need a code entered in the last `C_2FA_STEP_UP_MINUTES` (10). The page asks for it.
-* **Lost phone and recovery codes:** an admin resets the two-factor authentication of the user (`Settings` → `Two-factor authentication` → `Reset`). The user can log in with the password and sets it up again.
+* **Lost phone and recovery codes:** an admin resets the two-factor authentication of the user (`Administration` → `Security` → `Two-factor authentication` → `Reset`). The user can log in with the password and sets it up again.
 * After `C_2FA_MAX_FAILURES` (5) wrong codes within `C_LOGIN_BLOCK_MINUTES` no code of the user is accepted for this time.
 
 
@@ -44,7 +44,7 @@ Each permission can be given on three levels:
 
 Permissions don't include each other. E.g. a user who may run stages also needs `read` to open the deployment page.
 
-Administrators maintain users, roles and permissions in the web app (`Permissions`, below `Settings`): one table per user or role, with a row for `General`, each workflow and its stages. Changes of the file are loaded automatically.
+Administrators maintain users, roles and permissions in the web app (`Administration` → `Permissions`): one table per user or role, with a row for `General`, each workflow and its stages. Changes of the file are loaded automatically.
 
 * Each change is saved at once. If the permissions have been changed meanwhile (another administrator, an edit of the file), nothing is saved and the page offers to load the current state.
 * A change after which no user would have `admin` (own, or from a role) is refused.
@@ -56,7 +56,7 @@ Administrators maintain users, roles and permissions in the web app (`Permission
 
 | Permission | Allows | Checked per |
 |---|---|---|
-| `admin` | `Settings`: maintain users, roles and permissions; state of the processing service; logs of the web app (menu `Logs`); errors of workflow files | general |
+| `admin` | `Administration`: maintain users, roles and permissions; state of the processing service; logs of the web app (menu `Logs`); errors of workflow files | general |
 | `read` | See the deployments and objects of the workflow, its definition, logs and activity history | workflow |
 | `start workflow` | Create deployments of the workflow (web app and Web API) | workflow |
 | `run` | Run a stage, [schedule](processing-service.md#scheduled-runs) its run or cancel a scheduled run (also one of another user), remove it from the queue of the processing service, reset the status of a stage, reset the last finished stage, reset the status of the deployment, include or exclude objects | stage (reset of the deployment status and objects: workflow) |
@@ -138,7 +138,7 @@ The permission `deploy` of older versions has no effect and isn't offered anymor
 
 ## Audit log
 
-`Settings` → `Audit` (permission `admin`) shows who did what: logins (also failed and blocked ones), logouts, API tokens, two-factor authentication, permission changes (what has been added and removed), settings, viewed logs, and the actions on deployments. Export as CSV.
+`Administration` → `Audit` (permission `admin`) shows who did what: logins (also failed and blocked ones), logouts, API tokens, two-factor authentication, permission changes (what has been added and removed), settings, viewed logs, and the actions on deployments. Export as CSV.
 The entries can't be changed without notice: each contains a hash of the one before, the page shows a warning if an entry has been changed or deleted.
 `C_AUDIT_RETENTION_DAYS` (730) keeps them; `C_AUDIT_FILE` writes each event as a JSON line into a file too, e.g. for a SIEM. See [feature](features/audit-log.md).
 
@@ -155,6 +155,6 @@ A request with a token acts with the permissions of that user. See [Web API](web
 * Tokens are only created in the web app (not with a token), with a recent code of the [two-factor authentication](#two-factor-authentication).
 * A token is shown only once, with a button to copy it. i-Releaser only stores its hash (table `api_tokens` of `var/app.sqlite`). New tokens start with `irt_`, so you recognize them in logs and secret scanners.
 * The user page shows when each token was created, used last and when it expires. Tokens of older versions expire `C_TOKEN_MAX_DAYS` after their first use with this version; tokens of the format before 2026-10 show a warning and won't be accepted by the next major version.
-* Delete a token on the user page when it's not needed anymore. Admins can revoke the tokens of any user (`Settings` → `API tokens`).
+* Delete a token on the user page when it's not needed anymore. Admins can revoke the tokens of any user (`Administration` → `Security` → `API tokens`).
 * Removing a user deletes the tokens and the two-factor authentication of the user.
 * Tokens of versions before 2026-11 (`webapp/etc/keys.json`, one per user) are taken over into the database at the start of the web app, with the name `API token` and the scope `write`; the file is renamed to `keys.json.migrated`.

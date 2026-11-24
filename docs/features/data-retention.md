@@ -29,7 +29,7 @@ On IBM i, a full IFS or a large database makes the web app slow or stop. Lists (
 2. Never removed: the newest finished deployment per project (it shows the current state of production), deployments which are not finished/canceled.
 3. Before the removal, a deployment can be archived (`C_RETENTION_ARCHIVE = True`): a JSON file with the deployment (incl. history and step results) and its `meta/` directory as `.tar.gz` in `var/archive/{project}/`.
 4. The removal runs once a day in the processing service (or in the web app in mode `thread`), at most `N` deployments per run, and writes a summary to the log and the [audit log](audit-log.md).
-5. Settings page: shows the size of the database and of `meta/`, the number of deployments which would be removed, a button "Remove now" (admin).
+5. Administration page: shows the size of the database and of `meta/`, the number of deployments which would be removed, a button "Remove now" (admin).
 6. Application logs rotate (`logging.handlers.RotatingFileHandler`, `C_LOG_MAX_MB`, `C_LOG_BACKUPS`), in the examples of `logger_config.py`.
 7. After a removal: `PRAGMA wal_checkpoint(TRUNCATE)`; `VACUUM` only on request (it locks the database).
 8. The job history (`processing_jobs`) of removed deployments goes with them; finished jobs of other deployments older than `C_RETENTION_DAYS` too.
@@ -51,7 +51,7 @@ On IBM i, a full IFS or a large database makes the web app slow or stop. Lists (
 
 ## Decisions (2026-11-24)
 
-* `modules/retention.py`; the web app runs it once a day (hourly check, a lock and `var/retention.last`, so several workers don't run it together). `Settings` → `Data retention` shows the setting, the size of the database, the number of deployments to remove, and a button `Remove now` (admin, recorded in the [audit log](audit-log.md) as `data_removed`).
+* `modules/retention.py`; the web app runs it once a day (hourly check, a lock and `var/retention.last`, so several workers don't run it together). `Administration` → `System` → `Data retention` shows the setting, the size of the database, the number of deployments to remove, and a button `Remove now` (admin, recorded in the [audit log](audit-log.md) as `data_removed`).
 * The size of `meta/` is not shown: walking a large IFS directory takes too long for a page.
 * A directory is only removed if it's below the base directory of `C_META_DIR`.
 * Log files: not `RotatingFileHandler`, because several processes write the same file (gunicorn workers, job processes). They are rotated when the web app or the processing service starts (`modules/log_rotation.py`, `C_LOG_MAX_MB`, `C_LOG_BACKUPS`), by the templates of `logger_config.py`. Existing installations add the lines of the template to their `logger_config.py`.

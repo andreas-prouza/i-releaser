@@ -5,11 +5,13 @@
 * [Four-eyes check](docs/permissions.md#four-eyes-check): stages with `four_eyes_check` run only after a second person has approved them; the permission `deploy` is gone
 * [Web API v2](docs/webapi.md): resources under `/api/v2/` (e.g. `POST /api/v2/deployments/{id}/stages/{stage_id}/runs`), pages of deployments, the same error format everywhere, OpenAPI at `/docs`. v1 works as before, with the header `Deprecation: true`; it's removed in the next major version
 * API tokens: several per user, each with a name, a scope (`read` or `write`) and an expiry (`C_TOKEN_MAX_DAYS`); admins can revoke them, removing a user deletes them; tokens of the format before 2026-10 show a warning. The tokens of `webapp/etc/keys.json` are taken over into the database at the start
-* [Notifications](docs/features/notifications.md) by e-mail, Teams and Slack for the events of the deployments (`etc/notifications.json`, template in `etc/examples/`), with a test button on the settings page. New hook event `approval_requested`
-* [Audit log](docs/permissions.md#audit-log) of security events with its page `Settings` → `Audit`
+* [Notifications](docs/features/notifications.md) by e-mail, Teams and Slack for the events of the deployments (`etc/notifications.json`, template in `etc/examples/`), with a test button in the administration. New hook event `approval_requested`
+* [Audit log](docs/permissions.md#audit-log) of security events with its page `Administration` → `Audit`
 * [Data retention](docs/features/data-retention.md): old deployments are removed (`C_RETENTION_DAYS`, off by default), log files are rotated at the start
 * [Health check](docs/features/health-check.md) `GET /healthz` for monitoring
+* [Start times](docs/features/start-times.md) of the web app and the processing service in the administration
 * [JSON schemas](docs/workflow.md#check-the-files-in-the-editor) of the configuration files for the editor
+* `Settings` is now `Administration` with the tabs `System` (was `General`), `Processing`, `Permissions`, `Security` (new: API tokens, two-factor authentication, blocked logins) and `Audit`. `Permissions` is no longer an entry of the navigation (see [admin pages](docs/features/web-ui-admin-pages.md#decisions-2026-11-24)). The addresses stay `/settings/...`
 * Fixes of the [review of 2026-11-23](docs/bugfixes/README.md#review-of-2026-11-23):
   * Login: a user is blocked after 2 wrong passwords in a row (`C_LOGIN_MAX_FAILURES`) until an admin unblocks it, so the IBM i doesn't disable the profile. Client addresses: `C_LOGIN_CLIENT_MAX_FAILURES`
   * Login doesn't block other requests; timeout `C_LOGIN_TIMEOUT_SECONDS`
@@ -26,7 +28,7 @@
 ## Before you update to 4.1.0
 
 * `pip install -r requirements.txt`: new package `qrcode` (two-factor authentication), the versions are pinned now (except `pyodbc` of the IBM i packages)
-* Login: a user is now blocked after 2 wrong passwords in a row (before: blocked for 15 minutes after 5) until an admin unblocks it (`Settings` → `Blocked logins`). If you set `C_LOGIN_MAX_FAILURES`, keep it below `QMAXSIGN` of the IBM i
+* Login: a user is now blocked after 2 wrong passwords in a row (before: blocked for 15 minutes after 5) until an admin unblocks it (`Administration` → `Security` → `Blocked logins`). If you set `C_LOGIN_MAX_FAILURES`, keep it below `QMAXSIGN` of the IBM i
 * Two-factor authentication is `optional` by default. Recommended: `C_2FA_POLICY = 'admins'` in `etc/settings.py`; each admin then sets it up at the next login (keep the recovery codes)
 * `webapp/etc/global_cfg.py`: `C_COOKIE_SECURE = True`, unless the web app is reached with plain HTTP from another host. Browsers treat `http://localhost` as secure, so the SSH tunnel works with it
 * `etc/logger_config.py` and `webapp/etc/logger_config.py`: copy the block with `log_rotation.rotate_at_start` from the files in `etc/examples/` and `webapp/etc/examples/`. Without it the log files aren't rotated
