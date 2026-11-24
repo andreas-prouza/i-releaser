@@ -37,6 +37,8 @@ class Stage:
     self.update_time: datetime.datetime = datetime.datetime.now()
     self.processing_users :list[str] = []
     self.run_immediate :bool|None = None
+    # The stage only runs after a second person has approved it (docs/features/four-eyes-check.md). From the workflow, not stored with the stage
+    self.four_eyes_check :bool = False
     # Values in the database, see app_sqlite.update_changes
     self.saved_values: dict|None = None
 
@@ -68,17 +70,35 @@ class Stage:
       raise e
     
 
-  def set_status(self, status, update_time=True):
+  def set_status(self, status, update_time=True) -> bool:
+    """
+    Changes the status in the database, if the change is allowed from the status there (modules/state.py).
+    A stage which isn't stored yet only changes in memory.
+
+    Returns:
+        bool: False if the change isn't allowed: the stage has the status of the database then
+    """
 
     if (type(status) == str):
       status = Stage_Status(status)
+
+    if self.id is None:
+      self.status = status
+      return True
+
+    from modules.db import stage_data
+    changed, current = stage_data.transition(self.id, status)
+
+    if not changed:
+      logging.warning(f"Stage {self.name} ({self.id}) can't change from '{current.value if current else None}' to '{status.value}'")
+      if current is not None:
+        self.status = current
+      return False
+
     self.status = status
     if update_time:
       self.update_time = datetime.datetime.now()
-    
-    from modules.db import stage_data
-    stage_data.save_stage(stage=self)
-#    self.update_time = '2023-03-04 14:31:30.404775'
+    return True
 
 
 
@@ -150,8 +170,9 @@ class Stage:
 
 
   @staticmethod
-  def get_stage_from_dict(wf:workflow.Workflow, dict: dict = {}) -> 'Stage':
+  def get_stage_from_dict(wf:workflow.Workflow, dict: dict|None = None) -> 'Stage':
 
+    dict = dict if dict is not None else {}
     Stage.validate(dict)
 
     stage = Stage(dict=dict)
@@ -189,14 +210,6 @@ class Stage:
 
 
 
-  def get_next_stages(self) -> 'Stage_List_list':
-
-    new_next_stages = Stage_List_list()
-    
-    for next_stage in self.next_stages:
-      new_next_stages.append(next_stage)
-
-    return new_next_stages
 
 
 
@@ -207,7 +220,7 @@ class Stage:
       raise Exception(f"Stage name has to be defined: {stage_dict=}")
 
     for key in stage_dict.keys():
-      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'remote_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'execute_remote', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions', 'base_dir', 'run_immediate']:
+      if key not in ['id', 'name', 'description', 'host', 'build_dir', 'remote_dir', 'next_stages', 'next_stage_ids', 'after_stages_finished', 'from_stage_id', 'clear_files', 'processing_steps', 'execute_remote', 'lib_replacement_necessary', 'processing_users', 'lib_mapping', 'status', 'create_time', 'update_time', 'actions', 'base_dir', 'run_immediate', 'four_eyes_check']:
         raise Exception(f"Attribute {key} is invalid for stage {stage_dict['name']}!")
     
     
@@ -405,23 +418,8 @@ class Stage_List_list(list):
 
 
 
-    def get_stage_list_by_status(self, status: Stage_Status) -> list['Stage_List_list']:
-
-      stages = Stage_List_list()
-
-      for s in self:
-        if s.status == status:
-          stages.append(s)
-
-      return stages
 
 
 
 
-    def remove_stage(self, id: int) -> None:
-
-      for i, o in enumerate(self):
-        if o.id == id:
-          del self[i]
-          return
 

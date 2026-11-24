@@ -59,9 +59,9 @@
 ### User
 
 * Title `My account`: the user, the roles, and the permissions the user has in the end (read only).
-* **API token:** masked token, created, last used.
-  * `Generate new token`: asks, and says that the old token stops working. The new token is shown once, with `Copy` and the note that it can't be shown again.
-  * `Delete token`: asks. `Deleted` is shown after the server has confirmed it.
+* **API tokens** (since 2026-11 several, [API v2](api-v2.md#decisions-2026-11-24)): name, scope, masked token, created, last used, expires.
+  * `New token`: a dialog with name, scope and days until it expires. The new token is shown once, with `Copy` and the note that it can't be shown again.
+  * `Delete` of a token: asks. `Deleted` is shown after the server has confirmed it.
 * The token is not written to the console.
 
 

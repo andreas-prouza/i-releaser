@@ -2,7 +2,7 @@
 
 Skipped if Playwright or its Chromium is not installed, see tests/browser_tools.py.
 """
-import os, time
+import os
 
 import pytest
 

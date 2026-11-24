@@ -216,7 +216,7 @@ class Connection:
       else:
         cursor.execute(sql)
       columns = [c[0].lower() for c in cursor.description]
-      return [dict(zip(columns, row)) for row in cursor.fetchall()]
+      return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
     finally:
       cursor.close()
 

@@ -1,15 +1,15 @@
 """Workflow files, local settings, templates and object lists"""
-import glob, json, os, re, shutil, subprocess, sys, tempfile, unittest
+import glob, json, os, shutil, subprocess, sys, tempfile, unittest
 from unittest.mock import patch
 
 from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
-from modules import errors, hooks, ibm_i_commands, meta_file, workflow
-from modules.db import app_sqlite, meta_file_data
+from modules import errors, hooks, workflow
+from modules.db import meta_file_data
 from modules.meta_file_status import Meta_file_status
 
-from web_server import ROOT_DIR, USERS, WORKFLOWS, Web_Server, copy_repository
+from web_server import ROOT_DIR, WORKFLOWS, Web_Server, copy_repository
 
 
 VALID_WORKFLOW = {
@@ -173,21 +173,16 @@ class Temp_Database(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
+        db_tools.use_temp_db(self)
         self.build_dir = os.path.join(self.tmp_dir, 'build')
         os.makedirs(self.build_dir)
 
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
 
         commands_file = os.path.join(self.tmp_dir, 'object_commands.json')
         with open(commands_file, 'w') as f:
             json.dump(self.OBJECT_COMMANDS, f)
 
         self.patches = [
-            patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(constants, 'C_OBJECT_COMMANDS', commands_file),
             patch.object(workflow.Workflow, 'get_workflow_by_name', return_value=workflow.Workflow(dict=self.WORKFLOW)),
             patch.object(workflow.Workflow, 'get_default_step_mapping', return_value=[]),
@@ -201,8 +196,6 @@ class Temp_Database(unittest.TestCase):
         for p in reversed(self.patches):
             p.stop()
 
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
-        shutil.rmtree(self.tmp_dir)
 
 
     def write_object_list(self, content: str, name: str='objects.txt') -> str:
@@ -258,6 +251,48 @@ class TestObjectList(Temp_Database):
             mf.import_objects_from_config_file()
 
         self.assertEqual(str(e.exception), 'Object list: line 3 is invalid')
+
+
+    def test_invalid_list_keeps_the_objects_of_the_last_import(self):
+        """docs/bugfixes/minor-code-defects-2026-11.md, item 2"""
+
+        path = self.write_object_list('1|prodlib|devlib|orders|file|pf\n')
+        mf = meta_file_data.create_new_meta_file('valid_wf', object_list=path)
+        mf.import_objects_from_config_file()
+
+        self.write_object_list('1|prodlib|devlib|customers|file|pf\nnot a line\n')
+        with self.assertRaises(errors.Invalid_Input_Error):
+            mf.import_objects_from_config_file()
+
+        loaded = meta_file_data.get_meta_file_by_id(mf.id)
+        self.assertEqual([o.name for o in loaded.deploy_objects], ['orders'])
+
+
+    def test_empty_lines_are_skipped(self):
+
+        path = self.write_object_list('\n1|prodlib|devlib|orders|file|pf\n\n2|prodlib|devlib|date|srvpgm|rpgle\n\n')
+        mf = meta_file_data.create_new_meta_file('valid_wf', object_list=path)
+        mf.import_objects_from_config_file()
+
+        self.assertEqual([o.name for o in mf.deploy_objects], ['orders', 'date'])
+
+
+    def test_new_deployment_is_complete_when_the_hook_runs(self):
+        """docs/bugfixes/minor-code-defects-2026-11.md, item 9: commit and status are set before DEPLOYMENT_CREATED"""
+
+        seen = []
+        with patch.object(meta_file_data.hooks, 'emit', side_effect=lambda event, mf, *args: seen.append((event, mf.commit, mf.status.value))):
+            meta_file_data.create_new_meta_file('valid_wf', commit='abc123')
+
+        self.assertIn((meta_file_data.hooks.Event.DEPLOYMENT_CREATED, 'abc123', 'ready'), seen)
+
+
+    def test_commit_can_be_used_only_once_per_project(self):
+
+        meta_file_data.create_new_meta_file('valid_wf', commit='abc123')
+
+        with self.assertRaises(errors.Conflict_Error):
+            meta_file_data.create_new_meta_file('valid_wf', commit='abc123')
 
 
     def test_import_twice_does_not_duplicate_the_objects(self):
@@ -319,7 +354,7 @@ class TestObjectCommands(Temp_Database):
             self.loads += 1
             meta_file.import_objects_from_config_file()
 
-        self.script = patch.dict(ibm_i_commands.__dict__, {'object_script': SimpleNamespace(load=load)})
+        self.script = patch.dict(sys.modules, {'scripts.object_script': SimpleNamespace(load=load)})
         self.script.start()
 
 
@@ -431,7 +466,7 @@ class TestCustomData(unittest.TestCase):
         with patch.object(workflow.Workflow, 'get_default_step_mapping', return_value=[]):
             workflow.Workflow.validate_workflow({**VALID_WORKFLOW, 'create_fields': ['$.ticket']}, 'a.json')
 
-            with self.assertRaises(Exception):
+            with self.assertRaises(workflow.Invalid_Workflow_Error):
                 workflow.Workflow.validate_workflow({**VALID_WORKFLOW, 'create_fields': 'ticket'}, 'a.json')
 
 
@@ -709,7 +744,13 @@ class TestWebAppIsNotBlocked(unittest.TestCase):
 
             slow = threading.Thread(target=lambda: server.client('boss').create_deployment('hook_wf'))
             slow.start()
-            time.sleep(0.5)
+            # The deployment exists before its hook runs: the request is in the slow hook
+            import sqlite3
+            from web_server import wait_until
+            def created() -> bool:
+                with sqlite3.connect(server.path('var', 'app.sqlite')) as conn:
+                    return conn.execute("SELECT count(*) FROM meta_files").fetchone()[0] > 0
+            wait_until(created, what='the deployment has been created')
 
             start = time.time()
             self.assertEqual(boss.get('/api/get_workflows')[0], 200)

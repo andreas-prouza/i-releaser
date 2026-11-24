@@ -91,9 +91,11 @@ def test_token_generate_copy_use_and_delete(server, browser):
     try:
         page, watch = open_page(context, server, '/user')
 
-        page.locator('[data-action="renew-token"]').click()
+        page.locator('[data-action="new-token"]').click()
+        page.locator('#token-name').fill('Copy test')
+        page.locator('#token-scope').select_option('read')
         page.locator('.swal2-confirm').click()
-        wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Token generated'")
+        wait_until(page, "Swal.getTitle() && Swal.getTitle().textContent === 'Token Copy test created'")
         assert "can't be shown again" in page.locator('.swal2-html-container').inner_text()
 
         page.locator('.swal2-html-container [data-copy]').click()
@@ -101,13 +103,15 @@ def test_token_generate_copy_use_and_delete(server, browser):
         token = page.evaluate("navigator.clipboard.readText()")
         assert token == page.locator('.swal2-html-container code').inner_text() and len(token) > 20
 
-        # The token works for the Web API
+        # The token works for the Web API, only to read (scope read)
         api = Client(server)
-        assert api.get('/api/get_workflows', headers={'Authorization': f"Bearer {token}"})[0] == 200
+        assert api.get('/api/v2/workflows', headers={'Authorization': f"Bearer {token}"})[0] == 200
+        assert api.request('POST', '/api/v2/deployments', body={'workflow': 'seq_wf'}, headers={'Authorization': f"Bearer {token}"})[0] == 403
 
         with page.expect_navigation():
             page.locator('.swal2-confirm').click()
-        page.locator('[data-action="delete-token"]').click()
+        assert 'Copy test' in page.locator('.ir-tokens').inner_text()
+        page.locator('[data-action="delete-token"][data-name="Copy test"]').click()
         with page.expect_navigation():
             page.locator('.swal2-confirm').click()
         page.wait_for_selector('.swal2-toast')

@@ -85,7 +85,9 @@ def getJson(file, retry=False, use_cache=False):
   if use_cache and file in file_cache:
     return get_cached_file(file)
 
-  for attempt in range(5):
+  attempts = 5 if retry else 1
+
+  for attempt in range(1, attempts + 1):
     try:
       with open(file, 'r') as f:
         text = f.read()
@@ -94,13 +96,12 @@ def getJson(file, retry=False, use_cache=False):
           add_file_to_cache(file, d)
         return d
     except Exception as e:
-      if attempt > 4 or not retry:
-        logging.error(f"Failed to read JSON file {file} after {attempt+1} attempts")
-        logging.exception(e, stack_info=True)
-        raise e
+      # The file may be written at this moment (e.g. by another process): try again. After the last attempt the error is raised.
+      if attempt == attempts:
+        logging.error(f"Failed to read JSON file {file} after {attempt} attempts: {e}")
+        raise
       time.sleep(0.1)
-  
-  return None
+
 
 
 def writeJson(content, file):

@@ -73,7 +73,7 @@ def template_violations(text: str) -> list[str]:
             violations.append(f"1: <script> with code: {content.strip()[:60]!r}")
 
     violations += [f"2: handler attribute {m.group(0)[-40:]!r}" for m in HANDLER.finditer(text)]
-    violations += [f"2: javascript: URL" for _ in JS_URL.finditer(text)]
+    violations += ["2: javascript: URL" for _ in JS_URL.finditer(text)]
     violations += [f"6: {m.group(0)!r}" for m in CONSOLE.finditer(text)]
 
     return violations

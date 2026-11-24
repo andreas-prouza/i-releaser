@@ -111,6 +111,20 @@ def copy_repository(target: str) -> None:
 
 
 
+def wait_until(condition, timeout: float=15, interval: float=0.05, what: str='the condition'):
+    """Instead of a fixed sleep: the first true result of condition(), AssertionError after `timeout` seconds"""
+
+    end = time.time() + timeout
+    while True:
+        result = condition()
+        if result:
+            return result
+        if time.time() >= end:
+            raise AssertionError(f"Not reached within {timeout} seconds: {what}")
+        time.sleep(interval)
+
+
+
 def is_running(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -367,8 +381,18 @@ class Client:
         return status, json.loads(text)
 
 
-    def login(self, user: str, password: str='x') -> int:
-        status, _, _ = self.request('POST', '/', form={'user': user, 'password': password}, headers={'Accept': 'text/html'})
+    def login(self, user: str, password: str='x', code: str|None=None) -> int:
+        """Like the login page: the status of the page it opens afterwards"""
+
+        form = {'user': user, 'password': password, **({'code': code} if code is not None else {})}
+        status, headers, _ = self.request('POST', '/login', form=form, headers={'Accept': 'text/html'})
+
+        for _ in range(3):
+            if status != 303:
+                break
+            # Like a browser: without the fragment
+            status, headers, _ = self.request('GET', headers['location'].split('#')[0], headers={'Accept': 'text/html'})
+
         return status
 
 

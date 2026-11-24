@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from fastapi import Request
+from starlette.concurrency import run_in_threadpool
 
 from etc import global_cfg
 
@@ -15,6 +16,8 @@ SESSION_DIR = 'sessions'
 SESSION_LIFETIME = timedelta(hours=1)
 # ... and after this time in any case
 SESSION_MAX_LIFETIME = timedelta(hours=12)
+# A request of the user extends the session; its file is written at most this often for that
+TOUCH_INTERVAL = timedelta(minutes=1)
 COOKIE_NAME = 'session_id'
 
 _SESSION_ID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
@@ -70,8 +73,23 @@ def load_session_file(session_id: str) -> dict|None:
         return None
 
 
-def save_session(session_id: str, data: dict, create_time: str|None=None):
-    """Saves the session data to a JSON file."""
+def save_session(session_id: str, data: dict, create_time: str|None=None, create: bool=False) -> bool:
+    """
+    Saves the session data to a JSON file.
+
+    Args:
+        create: A new session. Otherwise only a session which exists is written:
+            a session which has been ended (logout, expired) is never created again by a request which was running at that time.
+
+    Returns:
+        bool: False if the session doesn't exist (anymore) or can't be written
+    """
+
+    session_file = get_session_filepath(session_id)
+
+    if not create and not os.path.exists(session_file):
+        return False
+
     now = datetime.now().isoformat()
     session_data = {
         "create-time": create_time or now,
@@ -79,9 +97,11 @@ def save_session(session_id: str, data: dict, create_time: str|None=None):
         "session-data": data
     }
     try:
-        files.writeJson(session_data, get_session_filepath(session_id))
+        files.writeJson(session_data, session_file)
+        return True
     except OSError as e:
         logging.error(f"Could not write a session file: {e}")
+        return False
 
 
 def delete_session(session_id: str) -> None:
@@ -118,38 +138,50 @@ def delete_expired_sessions() -> int:
 
 
 class SessionManager:
-    """A helper class to attach to the request state."""
+    """
+    The session of a request (request.state.session).
+
+    The file is only written if the data has changed, or (touch) to extend the session at most every TOUCH_INTERVAL.
+    A new session gets a file only when it has data, e.g. after the login. See docs/bugfixes/logout-undone-by-concurrent-request.md.
+    """
     def __init__(self, request: Request):
         self._request = request
         self.session_id = self._request.cookies.get(COOKIE_NAME)
         self.data = {}
         self.create_time = None
+        self.last_update: str|None = None
         self._modified = False
         self._destroyed = False
+        # A new session id: its file doesn't exist yet, and the browser needs the cookie
+        self._new = False
+        self._touched = False
         # A request with an API token doesn't need a session
         self.transient = False
 
     async def load(self):
         """Loads session data or creates a new session if none exists."""
 
-        session_file = load_session_file(self.session_id) if is_valid_session_id(self.session_id) else None
+        # A file: not on the event loop
+        session_file = await run_in_threadpool(load_session_file, self.session_id) if is_valid_session_id(self.session_id) else None
 
         if session_file is not None:
             self.data = session_file.get('session-data', {})
             self.create_time = session_file.get('create-time')
+            self.last_update = session_file.get('last-update')
 
         if not self.data:
             self.session_id = str(uuid.uuid4())
             self.data = {}
             self.create_time = None
-            # Mark as modified to ensure the cookie gets set on the response
-            self._modified = True
+            self.last_update = None
+            self._new = True
 
     def regenerate(self):
         """Gives the session a new id, so an id which has been known before the login is worthless."""
         delete_session(self.session_id)
         self.session_id = str(uuid.uuid4())
         self.create_time = None
+        self._new = True
         self._modified = True
 
     def destroy(self):
@@ -158,17 +190,37 @@ class SessionManager:
         self.data = {}
         self._destroyed = True
 
-    def save(self):
-        """Saves the session data if it has been modified."""
+    def touch(self):
+        """A request of the user: the session doesn't end for the next SESSION_LIFETIME"""
+        self._touched = True
 
-        if not self._modified or self._destroyed or self.transient:
+    def needs_touch(self) -> bool:
+
+        if not self._touched or self.last_update is None:
+            return False
+
+        try:
+            return datetime.now() - datetime.fromisoformat(self.last_update) >= TOUCH_INTERVAL
+        except ValueError:
+            return True
+
+    def save(self):
+        """Saves the session data if it has been modified (or the session has to be extended)."""
+
+        if self._destroyed or self.transient:
             return
 
-        if self.data:
-            save_session(self.session_id, self.data, self.create_time)
-        else:
-            # An empty session doesn't need a file, it's replaced at the next request anyway
-            delete_session(self.session_id)
+        if not self.data:
+            # An empty session doesn't need a file
+            if self._modified and not self._new:
+                delete_session(self.session_id)
+            return
+
+        if not self._modified and not self.needs_touch():
+            return
+
+        if not save_session(self.session_id, self.data, self.create_time, create=self._new):
+            logging.info("The session has ended meanwhile, it is not saved")
 
     def __contains__(self, key):
         return key in self.data
@@ -188,22 +240,24 @@ class SessionManager:
         return self.data.get(key, default)
 
     def pop(self, key, default=None):
-        self._modified = True
+        if key in self.data:
+            self._modified = True
         return self.data.pop(key, default)
 
     def set_cookie(self, response):
-        """Sets the session cookie on the response if the session is new."""
+        """Sets the session cookie for a new session, deletes it after the logout."""
 
         if self._destroyed:
             response.delete_cookie(key=COOKIE_NAME, httponly=True, samesite='lax')
             return
 
-        if self._modified and not self.transient:
+        if self._new and self.data and not self.transient:
+            # Without max_age: the browser forgets it when it's closed. The server ends the session after
+            # SESSION_LIFETIME without a request, and after SESSION_MAX_LIFETIME in any case.
             response.set_cookie(
                 key=COOKIE_NAME,
                 value=self.session_id,
                 httponly=True,
                 samesite='lax',
-                secure=getattr(global_cfg, 'C_COOKIE_SECURE', False),
-                max_age=int(SESSION_LIFETIME.total_seconds())
+                secure=getattr(global_cfg, 'C_COOKIE_SECURE', True),
             )

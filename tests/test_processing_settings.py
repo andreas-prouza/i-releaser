@@ -126,6 +126,7 @@ def test_service_started_by_the_web_app_keeps_running(server):
     assert pid is not None and is_running(pid)
 
     server.stop()
+    # A time has to pass: the service keeps running after the web app has ended
     time.sleep(0.5)
     assert is_running(pid)
 

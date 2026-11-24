@@ -259,13 +259,6 @@ class Deploy_Object_List(list):
 
 
 
-  def add_object_action(self, lib: str, prod_lib: str, name: str, type: str, action: type[da.Deploy_Action]):
-
-    if type(action) == str:
-      action = da.Deploy_Action(cmd=action)
-
-    obj = self.get_prod_object(lib, prod_lib, name, type)
-    obj.actions.add_action(action)
 
 
 
@@ -305,28 +298,9 @@ class Deploy_Object_List(list):
 
 
 
-  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False):
-
-    if type(stage) != str:
-      raise Exception(f"Stage is not a string")
-      
-    list: list[da.Deploy_Action]=[]
-
-    for do in self:
-      list.append(do.actions.get_actions(processing_step=processing_step, stage=stage, action_id=action_id, include_subactions=include_subactions))
-
-    return list
 
 
 
-  def get_actions_as_dict(self, processing_step: str=None, stage: str=None):
-
-    list=[]
-
-    for a in self.get_actions(processing_step, stage):
-      list.append(a.get_dict())
-
-    return list
 
 
 
@@ -344,9 +318,6 @@ class Deploy_Object_List(list):
     Returns:
         A list of Deploy_Object_List, where each list is a layer.
     """
-    
-    # Create a dictionary for quick lookup of objects by their properties
-    objects_dict = {(obj.lib, obj.name, obj.type): obj for obj in self}
     
     # Initialize layers
     layers: list[Deploy_Object_List] = []

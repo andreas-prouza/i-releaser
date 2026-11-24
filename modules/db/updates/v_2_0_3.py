@@ -1,5 +1,4 @@
 import logging
-import os
 from modules.db import app_sqlite
 import sqlite3
 

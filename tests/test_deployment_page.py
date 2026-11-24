@@ -4,7 +4,7 @@ import html, importlib.util, json, os, re, time
 import pytest
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from web_server import ALL, ROOT_DIR, USERS, WORKFLOWS, Web_Server
+from web_server import ROOT_DIR, USERS, WORKFLOWS, Web_Server
 
 
 WEB_DIR = os.path.join(ROOT_DIR, 'webapp')
@@ -39,7 +39,7 @@ def positions(layout) -> dict:
 
 def segments(d: str) -> list:
     points = [tuple(map(float, p.split())) for p in d[2:].split(' L ')]
-    return list(zip(points, points[1:]))
+    return list(zip(points, points[1:], strict=False))
 
 
 def node_box(node) -> tuple:
@@ -442,7 +442,7 @@ def test_buttons_of_users_without_permission(server, boss):
             page = page_of(server.client(user), deployment)
             tags = [buttons(page, 'run-stage')[0], buttons(page, 'cancel-deployment')[0], buttons(page, 'edit-custom-data')[0]]
             assert [not is_disabled(tag) for tag in tags] == list(allowed), user
-            for tag, ok in zip(tags, allowed):
+            for tag, ok in zip(tags, allowed, strict=True):
                 if not ok:
                     assert re.search(r"title=\"Needs the permission '[^']+'", html.unescape(tag)), (user, tag)
 

@@ -133,7 +133,7 @@ NASTY_WORKFLOW = {
         {'processing_step': 'long', 'environment': 'PASE', 'execute': f"echo 'a long command with more than 30 characters'; echo '{ATTACK}'", 'check_error': True},
     ],
     'stages': [{'name': 'START', 'next_stages': [NASTY_STAGES[0]], 'host': 'localhost', 'processing_steps': ['short', 'long']}]
-            + [{'name': name, 'next_stages': [next_name], 'host': 'localhost', 'processing_steps': ['short']} for name, next_name in zip(NASTY_STAGES, NASTY_STAGES[1:] + ['END'])]
+            + [{'name': name, 'next_stages': [next_name], 'host': 'localhost', 'processing_steps': ['short']} for name, next_name in zip(NASTY_STAGES, NASTY_STAGES[1:] + ['END'], strict=True)]
             + [{'name': 'END'}],
 }
 
@@ -758,8 +758,8 @@ def test_error_page(boss):
     assert 'Deployment 999999 not found' in text
     assert 'fucking' not in text.lower()
     assert 'data-dismiss' not in text
-    # The message and a link back, no form (minor defects 9 and 10)
-    assert '<form' not in text
+    # The message and a link back, no form (minor defects 9 and 10). The only form is the logout button of the navigation.
+    assert text.count('<form') == 1 and 'action="/logout"' in text
 
 
 

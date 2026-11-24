@@ -80,7 +80,7 @@ def prepare_table(db: Connection, meta_file: Meta_File, table: dict, settings: d
   table_sync = sync.open_table_sync(db, shadow_lib, table, settings)
   for warning in table_sync.mapping.warnings:
     logging.warning(f"{lib}/{name}: {warning}")
-  logging.info(f"{lib}/{name}: columns {', '.join(f'{c} = {e}' for c, e in zip(table_sync.mapping.columns, table_sync.mapping.expressions))}")
+  logging.info(f"{lib}/{name}: columns {', '.join(f'{c} = {e}' for c, e in zip(table_sync.mapping.columns, table_sync.mapping.expressions, strict=True))}")
 
   table_sync.open()
   table_sync.test()

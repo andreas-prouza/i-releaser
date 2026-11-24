@@ -180,7 +180,7 @@ def test_ended_session_is_shown(server, browser_context, boss):
         session_id = [c['value'] for c in browser_context.cookies() if c['name'] == 'session_id'][0]
         other_tab = Client(server)
         other_tab.session_id = session_id
-        other_tab.get('/logout')
+        other_tab.post('/logout')
 
         # A change: the page loads its parts and gets 401
         boss.run_stage(deployment, 'START')

@@ -16,4 +16,6 @@ class Action_type(Enum):
   CANCEL_WF = 'cancel_workflow'
   CUSTOM_ACTION = 'custom_action'
   EDIT_CUSTOM_DATA = 'edit_custom_data'
+  APPROVE_STAGE = 'approve_stage'
+  APPROVAL_INVALID = 'approval_invalid'
   

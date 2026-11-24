@@ -16,7 +16,7 @@ import sys
 import time
 
 from etc import constants
-from modules import errors
+from modules import files, errors
 
 
 PROCESSING_MODES = ['thread', 'service']
@@ -81,22 +81,23 @@ def read_app_settings() -> dict:
 
 
 def write_app_settings(settings: dict) -> None:
-  """Written to a new file first, so a reader never sees a half written file"""
+  """Written to a new file with a unique name first (files.writeJson), so a reader never sees a half written file
+  and two processes don't write the same temporary file"""
 
-  tmp_file = f"{constants.C_APP_SETTINGS_FILE}.tmp"
-  with open(tmp_file, 'w') as f:
-    json.dump(settings, f, indent=2)
-  os.replace(tmp_file, constants.C_APP_SETTINGS_FILE)
+  files.writeJson(settings, constants.C_APP_SETTINGS_FILE)
 
 
 
 def change_app_setting(key: str, value) -> object:
-  """Returns the old value"""
+  """Read, change and write under a lock: the processes of the web app may change settings at the same time.
 
-  settings = read_app_settings()
-  old_value = settings.get(key)
-  settings[key] = value
-  write_app_settings(settings)
+  Returns the old value"""
+
+  with files.lock(f"{constants.C_APP_SETTINGS_FILE}.lock"):
+    settings = read_app_settings()
+    old_value = settings.get(key)
+    settings[key] = value
+    write_app_settings(settings)
 
   return old_value
 
@@ -233,8 +234,8 @@ def control_service(action: str, user: str|None) -> str:
                             timeout=SERVICE_COMMAND_TIMEOUT, start_new_session=True,
                             # The service runs with the same Python as the web app
                             env={**os.environ, 'I_RELEASER_PYTHON': sys.executable})
-  except subprocess.TimeoutExpired:
-    raise errors.App_Error(f"serviceapp/service {action} did not end within {SERVICE_COMMAND_TIMEOUT} seconds")
+  except subprocess.TimeoutExpired as e:
+    raise errors.App_Error(f"serviceapp/service {action} did not end within {SERVICE_COMMAND_TIMEOUT} seconds") from e
 
   output = ANSI_ESCAPE.sub('', result.stdout + result.stderr).strip()
   logging.info(f"Processing service: {action}: {output}")

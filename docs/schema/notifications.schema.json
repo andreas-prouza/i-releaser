@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "i-Releaser notifications (etc/notifications.json)",
+  "description": "Channels and rules of the notifications, see docs/features/notifications.md",
+  "type": "object",
+  "required": ["channels"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"type": "string"},
+    "description": {"type": "string"},
+    "channels": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "oneOf": [
+          {"$ref": "#/$defs/email"},
+          {"$ref": "#/$defs/webhook"}
+        ]
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/rule"}
+    }
+  },
+  "$defs": {
+    "email": {
+      "type": "object",
+      "required": ["type", "host", "sender"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "email"},
+        "description": {"type": "string"},
+        "host": {"type": "string", "minLength": 1, "description": "The mail server (SMTP)"},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535, "description": "Default: 587 (starttls), 465 (ssl), 25 (none)"},
+        "tls": {"enum": ["starttls", "ssl", "none"], "default": "starttls"},
+        "sender": {"type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$"},
+        "user": {"type": "string"},
+        "password": {"type": "string", "description": "Only with 'user', never with tls 'none'"},
+        "password_env": {"type": "string", "description": "Name of an environment variable with the password (instead of 'password')"},
+        "timeout_seconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "webhook": {
+      "type": "object",
+      "required": ["type", "url", "format"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "webhook"},
+        "description": {"type": "string"},
+        "url": {"type": "string", "pattern": "^https?://[^/\\s]+", "description": "Secret: whoever has it can post to the channel"},
+        "format": {"enum": ["teams", "slack", "json"]},
+        "timeout_seconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": ["events", "channel"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {"type": "string"},
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": ["deployment_created", "deployment_finished", "deployment_canceled", "stage_started", "stage_finished", "stage_failed",
+                     "scheduled_run_failed", "custom_data_changed", "approval_requested"]
+          }
+        },
+        "workflows": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "stages": {"type": "array", "items": {"type": "string", "minLength": 1}, "description": "Only the events of these stages"},
+        "channel": {"type": "string", "description": "Name of a channel"},
+        "recipients": {
+          "type": "array",
+          "description": "Only for e-mail channels: addresses, @creator, @runner, @role:<name>",
+          "items": {"type": "string", "pattern": "^(@creator|@runner|@role:.+|[^@\\s]+@[^@\\s]+)$"}
+        },
+        "custom_data": {"type": "array", "items": {"type": "string"}, "description": "JSONPaths of the custom data which are in the message"}
+      }
+    }
+  }
+}

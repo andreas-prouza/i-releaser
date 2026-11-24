@@ -1,0 +1,34 @@
+# Settings of the development tools (docs/features/code-quality-tooling.md). i-Releaser itself is not a package.
+
+[tool.ruff]
+target-version = "py313"
+extend-exclude = ["scripts", "docs/db-deployment-spike.py", "webapp/static", ".venv"]
+
+[tool.ruff.lint]
+# Errors which are (nearly) always defects: undefined and unused names, syntax, bugbear (mutable defaults, blind
+# assertRaises, zip without strict, ...). The style rules (E, W, UP, I) follow after the indentation has been unified
+# (decisions of docs/features/code-quality-tooling.md)
+select = ["F", "E9", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# The parameters of FastAPI are declared with these calls in the defaults
+extend-immutable-calls = ["fastapi.Body", "fastapi.Query", "fastapi.Depends", "fastapi.params.Body"]
+
+[tool.ruff.lint.per-file-ignores]
+# The configuration templates import the settings of the user with *
+"etc/*" = ["F401", "F403", "F405"]
+
+[tool.coverage.run]
+# Also the web app, which the tests start in another process from a copy of the repository (tests/web_server.py)
+parallel = true
+branch = true
+source = ["modules", "webapp"]
+omit = ["webapp/static/*", "webapp/etc/*", "*/tests/*"]
+
+[tool.coverage.paths]
+source = ["modules/", "*/ir-*/modules/"]
+webapp = ["webapp/", "*/ir-*/webapp/"]
+
+[tool.coverage.report]
+show_missing = false
+skip_empty = true

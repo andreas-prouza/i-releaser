@@ -103,7 +103,7 @@ There you also find the last jobs with their status and error.
 A stage can be run at a later date and time, e.g. `PROD` at 22:00, without anybody online then.
 Only in mode `service` (see [feature](features/scheduled-stage-run.md)).
 
-* **Schedule:** `Run at…` beside `Run stage` on the deployment page (permission `run` for the stage), or the [Web API](webapi.md#run_stage) with `run_at`.
+* **Schedule:** `Run at…` beside `Run stage` on the deployment page (permission `run` for the stage), or the [Web API](webapi.md#run-a-stage) with `run_at`.
   The user enters the time in the time zone of the browser. Possible where `Run stage` is possible: a `ready` stage, or a `failed` one to run it again.
 * **Queue:** the run is a job in the queue with `run_at`. The service doesn't take it before then. Other jobs aren't held up by it.
   `run_at` is stored in UTC, so neither the time zone of the server nor daylight saving time can move it.

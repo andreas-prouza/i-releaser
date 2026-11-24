@@ -1,0 +1,40 @@
+{
+  "description": "Notifications of i-Releaser (docs/features/notifications.md). It has passwords and webhook URLs: chmod 600 etc/notifications.json",
+  "channels": {
+    "mail": {
+      "type": "email",
+      "host": "smtp.example.com",
+      "port": 587,
+      "tls": "starttls",
+      "sender": "i-releaser@example.com",
+      "user": "i-releaser",
+      "password": ""
+    },
+    "teams": {
+      "type": "webhook",
+      "format": "teams",
+      "url": "https://prod-00.westeurope.logic.azure.com/workflows/your-workflow/triggers/manual/paths/invoke"
+    }
+  },
+  "rules": [
+    {
+      "description": "Production failed: to the creator, the user who ran it and the operators",
+      "events": ["stage_failed", "scheduled_run_failed"],
+      "stages": ["PROD"],
+      "channel": "mail",
+      "recipients": ["@creator", "@runner", "@role:operators"],
+      "custom_data": ["$.jira.ticket"]
+    },
+    {
+      "description": "A stage waits for the four-eyes check",
+      "events": ["approval_requested"],
+      "channel": "mail",
+      "recipients": ["@role:approvers"]
+    },
+    {
+      "description": "The team channel",
+      "events": ["deployment_finished", "stage_failed"],
+      "channel": "teams"
+    }
+  ]
+}

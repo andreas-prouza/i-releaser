@@ -27,6 +27,9 @@ C_JIRA_CONFIG = f'{C_LOCAL_BASE_DIR}/etc/jira.json'
 
 C_DB_DEPLOYMENT_CONFIG = f'{C_LOCAL_BASE_DIR}/etc/db_deployment.json'
 
+# Notifications by e-mail and webhooks (docs/features/notifications.md). Without the file there are none.
+C_NOTIFICATIONS_CONFIG = f'{C_LOCAL_BASE_DIR}/etc/notifications.json'
+
 # Backups of the database (var/backup) which are kept. A backup is made before the database gets updated.
 C_DB_BACKUP_COUNT = 5
 
@@ -42,10 +45,55 @@ C_COMMAND_TIMEOUT_SECONDS = 0
 # Steps of a parallel group which run at the same time. Further steps of the group wait for a free slot.
 C_MAX_PARALLEL_STEPS = 4
 
-# Failed logins per user and per client address, until further logins are blocked.
-# Keep it below the system value QMAXSIGN, so the IBM i profiles don't get disabled.
-C_LOGIN_MAX_FAILURES = 5
+# Failed logins until further logins are blocked (docs/bugfixes/login-can-disable-ibm-i-profiles.md):
+# * of a user: failed IBM i sign-ons in a row. Blocked until an admin unblocks it (settings page) or the user had a successful login before.
+#   Keep it below the system value QMAXSIGN (IBM default 3), so the IBM i profiles don't get disabled.
+# * from a client address: C_LOGIN_CLIENT_MAX_FAILURES failed logins within C_LOGIN_BLOCK_MINUTES. Ends by itself.
+C_LOGIN_MAX_FAILURES = 2
+C_LOGIN_CLIENT_MAX_FAILURES = 10
 C_LOGIN_BLOCK_MINUTES = 15
+# The sign-on on the IBM i fails if it takes longer (seconds)
+C_LOGIN_TIMEOUT_SECONDS = 15
+# Logins which wait for the IBM i at the same time, per process of the web app. More get 503.
+C_LOGIN_MAX_PARALLEL = 4
+
+# Address of the web app for the users, e.g. 'https://ireleaser.example.com' (scheme and host). Requests with this origin are
+# accepted behind a reverse proxy which doesn't keep the Host header, and links (e.g. in notifications) use it. Empty: the Host header.
+C_EXTERNAL_URL = ''
+
+# Days until an API token expires (docs/bugfixes/api-token-outlives-user.md). 0: never.
+# Tokens of older versions expire this many days after their first use with this version.
+C_TOKEN_MAX_DAYS = 365
+
+# Data retention (docs/features/data-retention.md): deployments which are finished or canceled and haven't changed for this many days
+# are removed with their directory in meta/, once a day (0: keep everything). The newest finished deployment of a project stays.
+C_RETENTION_DAYS = 0
+# Archive them before (var/archive/{project}/{version}-{id}.tar.gz)
+C_RETENTION_ARCHIVE = False
+# Deployments removed by one run at most
+C_RETENTION_MAX_PER_RUN = 100
+# Log files are rotated at the start of the web app and the processing service if they are larger (MB); this many old ones are kept
+C_LOG_MAX_MB = 50
+C_LOG_BACKUPS = 5
+
+# Audit log of security events (docs/features/audit-log.md): days they are kept (0: always),
+# and an optional file which gets each event as a JSON line (e.g. for a SIEM)
+C_AUDIT_RETENTION_DAYS = 730
+C_AUDIT_FILE = ''
+
+# The health check (/healthz) reports an error if less space is free in var/ or meta/ (MB)
+C_HEALTH_MIN_FREE_MB = 500
+
+# The live updates of a page check every this many seconds whether the session and the permission are still valid
+C_WATCH_SESSION_CHECK_SECONDS = 60
+
+# Two-factor authentication with an authenticator app (docs/features/two-factor-authentication.md):
+# 'off', 'optional' (each user decides), 'admins' (required for users with the permission admin), 'required' (all users)
+C_2FA_POLICY = 'optional'
+# Some actions (create an API token, change permissions or settings) need a code entered within this time
+C_2FA_STEP_UP_MINUTES = 10
+# Wrong codes of a user within C_LOGIN_BLOCK_MINUTES, until no more codes are accepted
+C_2FA_MAX_FAILURES = 5
 
 #---------------------------------------------------------
 # Processing of stages

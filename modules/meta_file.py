@@ -11,7 +11,7 @@ import threading
 # from pydantic import validate_arguments
 
 from etc import constants
-from modules import action_type, current_user, deploy_action as da, errors, files, hooks, json_path, permissions, stage_status
+from modules import action_type, current_user, deploy_action as da, errors, files, four_eyes, hooks, json_path, permissions, stage_status, state
 from modules import deploy_object as do
 from modules import stages as s
 from modules import workflow as wf
@@ -22,7 +22,6 @@ from modules.db import meta_file_history_data as mfhd, processing_user_data
 from modules.db import deploy_object_data, processing_job_data, stage_data
 from modules import processing_job
 from modules.permission_config import check_user_permission
-from modules import stage_status
 
 from modules.meta_file_status import Meta_file_status
 
@@ -36,10 +35,10 @@ class StageNotRunnableException(errors.Conflict_Error):
 
 
 # A stage in one of these status is running
-STAGE_IN_PROCESS_STATUS = [stage_status.Status.IN_PROCESS, stage_status.Status.IN_PREPERATION, stage_status.Status.PREPARE]
+STAGE_IN_PROCESS_STATUS = state.STAGE_RUNNING
 
 # Only a stage in one of these status can be run
-STAGE_RUNNABLE_STATUS = [stage_status.Status.READY, stage_status.Status.FAILED]
+STAGE_RUNNABLE_STATUS = state.STAGE_RUNNABLE
 
 # A stage which has changed less than this time ago may still be running, so it can't be reset
 STAGE_RESET_WAIT_SECONDS = 60
@@ -90,6 +89,8 @@ class Meta_File:
       self.processing_jobs: list[processing_job.Processing_Job] = []
       # Stage id -> details of its next entry `run_stage` in the processing history (e.g. a scheduled run)
       self.run_details: dict[int, str] = {}
+      # Stages which run after the current run (see run_current_stage). None: no run is active
+      self._immediate_stages: list[int]|None = None
       self.custom_data: dict|None = custom_data or {}
         
       self.update_time: datetime.datetime = update_time or datetime.datetime.now()
@@ -104,23 +105,20 @@ class Meta_File:
       if isinstance(self.create_time, str):
         self.create_time = datetime.datetime.fromisoformat(self.create_time)
 
-      if self.create_time == None:
-        self.create_time = datetime.datetime.now()
-        self.update_time = self.create_time
+      self.workflow = wf.Workflow(name=workflow_name, dict=workflow)
+
+      # Before the directory and the branch are named after it
+      if self.project is None:
+        self.project = self.workflow.default_project
 
       self.meta_dir: str|None = meta_dir
       if self.meta_dir is None:
-        self.meta_dir = constants.C_META_DIR.format(project=project, create_date=str(self.create_time.date()), deploy_version=deploy_version)
+        self.meta_dir = constants.C_META_DIR.format(project=self.project, create_date=str(self.create_time.date()), deploy_version=deploy_version)
 
+      # Scripts write their files into it (e.g. save files)
       if os.path.exists(self.meta_dir) is False:
         os.makedirs(self.meta_dir, exist_ok=True)
-        
-      self.workflow = wf.Workflow(name=workflow_name, dict=workflow)
-      #logging.debug(f"Meta Workflow: {self.workflow.get_dict()}")
-      
-      if self.project is None:
-        self.project = self.workflow.default_project
-          
+
       self.deploy_objects = do.Deploy_Object_List()
 
       self.release_branch = constants.C_GIT_BRANCH_RELEASE.replace('{deploy_version}', str(self.deploy_version)).replace('{project}', self.project)
@@ -181,40 +179,78 @@ class Meta_File:
           meta_file_data.save_meta_file(self)
 
 
-    def set_status(self, status, update_meta_file=True):
+    def save_step(self, action: da.Deploy_Action) -> None:
+      """Saves only a step and its run history (after a command), not the whole deployment"""
+
+      from modules.db import meta_file_data
+
+      with self._save_lock:
+        try:
+          self.update_time = datetime.datetime.now()
+          meta_file_data.save_step(self, action)
+        except BaseException:
+          # The next save writes all its columns
+          action.saved_values = None
+          for history in action.run_history:
+            history.saved_values = None
+          raise
+
+
+
+    def set_status(self, status, update_meta_file=True) -> bool:
+      """
+      Changes the status of the deployment in the database, if the change is allowed from the status there (modules/state.py).
+
+      Returns:
+          bool: False if the change isn't allowed: the deployment has the status of the database then
+
+      Raises:
+          errors.Conflict_Error: The deployment has been canceled
+      """
 
       logging.debug(f"Set status to {status}")
 
       if type(status) == str:
         status = Meta_file_status(status)
 
-      logging.debug(f"Update meta file: {update_meta_file}")
-
       if self.status == Meta_file_status.CANCELED:
         raise errors.Conflict_Error("Deployment has been canceled already. It's not possible to change the status!")
 
       old_status = self.status
 
-      if update_meta_file and status is not Meta_file_status.NEW:
-        logging.debug(f"Update meta file: Finished 1.0")
-        dv.Deploy_Version.update_deploy_status(self.project, self.deploy_version, status, self.commit, parallel_deployment_execution_allowed=self.parallel_deployment_execution_allowed)
-        logging.debug(f"Update meta file: Finished 1")
+      if not update_meta_file or status is Meta_file_status.NEW or self.id is None:
         self.status = status
-        self.save()
+        return True
+
+      # Order of the deployments of a project, and the commit
+      dv.Deploy_Version.validate_deployment(self.project, self.deploy_version, status, self.commit, parallel_deployment_execution_allowed=self.parallel_deployment_execution_allowed)
+
+      from modules.db import meta_file_data
+      changed, current = meta_file_data.transition(self.id, status)
+
+      if not changed:
+        logging.warning(f"Deployment {self.id} can't change from '{current.value if current else None}' to '{status.value}'")
+        if current is not None:
+          self.status = current
+        if current == Meta_file_status.CANCELED:
+          raise errors.Conflict_Error("Deployment has been canceled already. It's not possible to change the status!")
+        return False
 
       self.status = status
+      # The other columns (e.g. update_time), the status is stored already
+      self.save()
       logging.debug(f"Finished meta file status set to {self.status.value}")
 
-      if update_meta_file and status != old_status:
+      if status != old_status:
         if status == Meta_file_status.FINISHED:
           hooks.emit(hooks.Event.DEPLOYMENT_FINISHED, self)
         elif status == Meta_file_status.CANCELED:
           hooks.emit(hooks.Event.DEPLOYMENT_CANCELED, self)
 
+      return True
 
 
 
-    #@check_user_permission(permissions.PermissionAction.CHANGE_CHECK_ERROR)
     def set_action_check(self, stage_id: int, action_id: int, check: bool, current_user: str) -> None:
       stage = self.get_stage_by_id(stage_id)
 
@@ -232,7 +268,6 @@ class Meta_File:
 
 
 
-    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def set_next_stage(self, from_stage: s.Stage):
       """Add next stages to open_stages list
 
@@ -396,7 +431,6 @@ class Meta_File:
 
 
 
-    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def reset_last_finished_stage(self, stage_id: int) -> s.Stage:
       """Sets the stage which has been finished last back to 'ready', so it can be run again.
       Its next stages are set back to 'new', unless another finished stage leads to them as well
@@ -427,13 +461,12 @@ class Meta_File:
 
         if next_stage.status in [stage_status.Status.READY, stage_status.Status.FAILED]:
           logging.info(f"Set next stage {next_stage.name} ({next_stage.id}) back to '{stage_status.Status.NEW.value}'")
-          next_stage.status = stage_status.Status.NEW
-          next_stage.update_time = datetime.datetime.now()
+          next_stage.set_status(stage_status.Status.NEW)
 
       # They will be set again, when the stage gets finished
       stage.next_stage_ids = []
-      stage.status = stage_status.Status.READY
-      stage.update_time = datetime.datetime.now()
+      if not stage.set_status(stage_status.Status.READY):
+        raise errors.Conflict_Error(f"Stage {stage.name} is '{stage.status.value}' now. It can't be reset!")
       logging.info(f"Reset finished stage {stage.name} ({stage.id}) to '{stage.status.value}'")
 
       # Saves the stages as well
@@ -515,20 +548,14 @@ class Meta_File:
 
 
 
-    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
-    def run_current_stages(self) -> None:
-
-      for open_stage_id in self.get_open_stages().get_all_ids():
-        self.run_current_stage(open_stage_id)
 
 
 
-    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def run_current_stage_as_thread(self, stage_id: int, processing_step: str|None=None, continue_run=True) -> threading.Thread:
 
-      logging.debug(f"Start deployment check")
+      logging.debug("Start deployment check")
       self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
-      logging.debug(f"Deployment check successfully passed")
+      logging.debug("Deployment check successfully passed")
 
       # Here and not in the thread, so a second start fails with an error for the user
       self.claim_stage(stage_id)
@@ -566,7 +593,6 @@ class Meta_File:
 
 
 
-    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def run_current_stage_as_job(self, stage_id: int, processing_step: str|None=None, continue_run=True, run_at: datetime.datetime|None=None) -> processing_job.Processing_Job:
       """Adds the run of the given stage to the queue of the processing service.
       It's run there in the name of the current user.
@@ -577,9 +603,9 @@ class Meta_File:
 
       self.check_no_active_job(stage_id)
 
-      logging.debug(f"Start deployment check")
+      logging.debug("Start deployment check")
       self.check_deployment_ready_2_run(stage_id=stage_id, processing_step=processing_step)
-      logging.debug(f"Deployment check successfully passed")
+      logging.debug("Deployment check successfully passed")
 
       job = processing_job_data.create_job(meta_file_id=self.id, stage_id=stage_id, processing_step=processing_step, continue_run=continue_run, user=current_user.get_user(),
                                            exclusive=not self.parallel_deployment_execution_allowed, run_at=run_at)
@@ -592,7 +618,6 @@ class Meta_File:
 
 
 
-    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
     def start_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True, run_at: datetime.datetime|None=None) -> dict:
       """Runs the given stage in the background.
       Depending on the processing mode (see processing_settings) by the processing service or in a thread of the current process.
@@ -674,10 +699,12 @@ class Meta_File:
 
       dv.Deploy_Version.validate_deployment(self.project, self.deploy_version, Meta_file_status.IN_PROCESS, parallel_deployment_execution_allowed=self.parallel_deployment_execution_allowed)
 
+      # Approved by a second person, for this content, and not run by the one who approved it (docs/features/four-eyes-check.md)
+      four_eyes.check_run(self, runable_stage, current_user.get_user())
 
 
 
-    #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
+
     def run_current_stage(self, stage_id: int, processing_step: str|None=None, continue_run=True, claimed=False) -> None:
       """Run given stage
 
@@ -693,12 +720,37 @@ class Meta_File:
       Raises:
           Exception: If a processing step was given, which is not in the step list of that stage
       """
-      # False if already active, e.g. for stages which are run immediately after the previous one
+      # False if already active
       activated = self.activate_history()
+      # Stages with `run_immediate` (and stages without steps) which are ready after this run (check_stage_finish)
+      self._immediate_stages: list[int] = []
 
       try:
         self._run_current_stage(stage_id, processing_step, continue_run, claimed)
+
+        # One after the other, after this run and not inside it: an error of one of them is its own result,
+        # it doesn't change the result of this run (docs/features/core-redesign.md, step 3)
+        while self._immediate_stages:
+          next_stage_id = self._immediate_stages.pop(0)
+          next_stage = self.get_stage_by_id(next_stage_id)
+          without_steps = next_stage is not None and len(next_stage.processing_steps) == 0
+
+          try:
+            self._run_current_stage(next_stage_id)
+          except (StageNotReadyException, StageNotRunnableException) as e:
+            # It waits for other stages, or a parallel branch has been faster
+            logging.info(f"Stage {next_stage.name if next_stage else next_stage_id} is not run now: {e}")
+            continue
+          except Exception as e:
+            # Its status is `failed` and its hook has run (_run_current_stage)
+            logging.error(f"Stage {next_stage.name if next_stage else next_stage_id}, which runs immediately, failed: {e}")
+            continue
+
+          if without_steps:
+            processing_user_data.create_action_log(action_type.Action_type.RUN_STAGE, details="Finished automatically: stage without steps", meta_file=self, stage=next_stage)
+
       finally:
+        self._immediate_stages = None
         if activated:
           self.deactivate_history()
 
@@ -726,7 +778,7 @@ class Meta_File:
         raise err
 
       from modules.ibm_i_commands import IBM_i_commands
-      logging.debug(f"Create IBM i commands instance")
+      logging.debug("Create IBM i commands instance")
       cmd = IBM_i_commands(self)
       
       logging.info(f"Run stage {runable_stage.name} (id {runable_stage.id}), {processing_step=}")
@@ -792,8 +844,13 @@ class Meta_File:
           self.set_status_after_stage_run()
           return
 
-      # Needed to find the last finished stage
-      stage.set_status(stage_status.Status.FINISHED)
+      # Needed to find the last finished stage. Refused if the run has been ended meanwhile (e.g. aborted by the processing service)
+      if not stage.set_status(stage_status.Status.FINISHED):
+        self.set_status_after_stage_run()
+        return
+
+      # A new run needs a new approval
+      four_eyes.mark_used(self, stage)
 
       # Must be READY before the next stages, as they may be run immediately
       self.set_status_after_stage_run()
@@ -807,6 +864,11 @@ class Meta_File:
       logging.info(f"Stage {stage.name} ({stage.id}) has been finished. Setting next stage(s) {stage.next_stages}")
       self.set_next_stage(stage)
 
+      # The next stages which wait for the second person (docs/features/four-eyes-check.md)
+      for next_stage in self.get_open_stages():
+        if next_stage.name in stage.next_stages and next_stage.status == stage_status.Status.READY and four_eyes.needs_approval(self, next_stage):
+          hooks.emit(hooks.Event.APPROVAL_REQUESTED, self, next_stage, details=f"Stage {stage.name} has finished: stage {next_stage.name} needs the approval of a second person")
+
       # Only the next stages of the finished stage, as stages which are not reached yet are open too
       for next_stage in self.get_open_stages():
 
@@ -816,6 +878,11 @@ class Meta_File:
         without_steps = len(next_stage.processing_steps) == 0
 
         if not next_stage.run_immediate and not without_steps:
+          continue
+
+        # Run by run_current_stage after this run has ended. Outside of a run (e.g. a reset): now.
+        if self._immediate_stages is not None:
+          self._immediate_stages.append(next_stage.id)
           continue
 
         try:
@@ -905,20 +972,6 @@ class Meta_File:
 
 
     
-    def get_actions(self, processing_step: str|None=None, stage_id: int|None=None, action_id: int|None=None, include_subactions: bool=True) -> list[da.Deploy_Action]:
-
-      action_list: list[da.Deploy_Action]=[]
-
-      if stage_id is None:
-        raise Exception(f"Stage id is None")
-
-      stage_obj = self.get_stage_by_id(stage_id)
-
-      action_list=stage_obj.actions.get_actions(processing_step=processing_step, action_id=action_id, include_subactions=include_subactions)
-      
-      action_list = action_list + self.deploy_objects.get_actions(processing_step=processing_step, stage=stage_obj.name, action_id=action_id, include_subactions=include_subactions)
-      
-      return action_list
 
 
 
@@ -927,11 +980,26 @@ class Meta_File:
 
 
 
-    #@check_user_permission(permissions.PermissionAction.CANCEL_WORKFLOW)
-    def cancel_deployment(self):
-      self.set_status(Meta_file_status.CANCELED)
+    def cancel_deployment(self) -> None:
+      """Cancels the deployment. A running stage isn't stopped.
+
+      Raises:
+          errors.Conflict_Error: If the deployment is finished or canceled already
+      """
+
+      from modules.db import meta_file_data
+
+      # Check and change in one statement: a cancel can't overtake the end of the last stage
+      if not meta_file_data.claim_canceled(self.id):
+        status = meta_file_data.get_status(self.id)
+        raise errors.Conflict_Error(f"Deployment is already {status.value if status else 'removed'}. It can't be canceled!")
+
+      self.status = Meta_file_status.CANCELED
+      if self.saved_values is not None:
+        self.saved_values['status'] = self.status.value
+
       logging.info('Deployment has been canceled!')
-      self.save()
+      hooks.emit(hooks.Event.DEPLOYMENT_CANCELED, self)
 
 
 
@@ -978,8 +1046,11 @@ class Meta_File:
       from modules.db import meta_file_data
 
       self.custom_data = meta_file_data.change_custom_data(self.id, change)
-      self.saved_values = None
+      # Stored by change_custom_data: the save only writes the time, not the other columns of this copy (docs/bugfixes/lost-updates-on-save.md)
+      if self.saved_values is not None:
+        self.saved_values['custom_data'] = meta_file_data.get_saved_custom_data(self)
       self.save()
+      four_eyes.invalidate_if_changed(self, f"custom data changed ({', '.join(changes)})")
       hooks.emit(hooks.Event.CUSTOM_DATA_CHANGED, self)
       return list(changes.keys())
 
@@ -1035,13 +1106,6 @@ class Meta_File:
 
 
 
-    # Load meta file based on its version number
-    @staticmethod
-    #@check_user_permission(permissions.PermissionAction.READ)
-    def load_version(project:str, version: int) -> 'Meta_File':
-
-      from modules.db import meta_file_data
-      return meta_file_data.get_meta_file(project, version)
 
 
 
@@ -1168,27 +1232,29 @@ class Meta_File:
 
       logging.debug(f"File: {self.object_list}")
 
-      # Imported again (e.g. the stage is run again): the objects would exist twice
-      deploy_object_data.delete_deploy_objects(self.id)
-      self.deploy_objects = do.Deploy_Object_List()
+      # Read and checked completely first: an invalid line must not leave a part of the list (docs/bugfixes/minor-code-defects-2026-11.md, item 2)
+      objects: list[do.Deploy_Object] = []
 
-      file = files.readFile(self.object_list).splitlines()
-      for line_number, line in enumerate(file, start=1):
-        logging.debug(f"Import object: {line}")
-        tmp = line.lower().rstrip('\r\n').rstrip('\n').split('|')
-        logging.debug(f"{tmp=}")
+      for line_number, line in enumerate(files.readFile(self.object_list).splitlines(), start=1):
+
+        if line.strip() == '':
+          continue
+
+        tmp = line.lower().rstrip('\r\n').split('|')
 
         try:
           level = int(tmp[0])
           prod_lib, dev_lib, target_obj, obj_type, obj_attr = tmp[1:6]
         except ValueError:
-          raise Exception(f"Object list: line {line_number} is invalid") from None
+          raise errors.Invalid_Input_Error(f"Object list: line {line_number} is invalid") from None
 
-        logging.debug(f"{prod_lib=}")
-        logging.debug(f"{dev_lib=}")
-        logging.debug(f"{target_obj=}")
+        objects.append(do.Deploy_Object(level=level, lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr))
 
-        obj: do.Deploy_Object = deploy_object_data.create_deploy_object(self.id, level=level, lib=dev_lib, prod_lib=prod_lib, name=target_obj, type=obj_type, attribute=obj_attr)
+      # Imported again (e.g. the stage is run again): the old objects are replaced, in one transaction
+      deploy_object_data.replace_deploy_objects(self.id, objects)
+
+      self.deploy_objects = do.Deploy_Object_List()
+      for obj in objects:
         self.add_deploy_object(obj)
 
       logging.info(f"Imported {len(self.deploy_objects)} objects from {self.object_list}")
@@ -1197,6 +1263,7 @@ class Meta_File:
       self.save()
       self.copy_object_actions_2_open_stages()
       self.save()
+      four_eyes.invalidate_if_changed(self, "object list imported again")
 
       #os.rename(self.object_list, f"{path}/{self.deploy_version}_{config_file_name}")
 
@@ -1230,9 +1297,9 @@ class Meta_File:
 
       logging.info(f"Add object ({len(self.deploy_objects)}) actions to stages: {open_stages.get_all_names()}")
 
-      for do in self.deploy_objects:
-        
-        for do_action in do.actions:
+      for deploy_object in self.deploy_objects:
+
+        for do_action in deploy_object.actions:
           
           for stage in open_stages:
 

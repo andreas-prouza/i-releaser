@@ -178,9 +178,10 @@ def test_page_and_its_state(server, boss):
     assert 'id="permissions-state"' in page and 'pages/permissions.js' in page
 
     current = state(boss)
-    assert current['levels']['stage'] == ['run', 'change check error']
+    assert current['levels']['stage'] == ['run', 'change check error', '4-eyes check']
     assert 'admin' in current['levels']['general'] and 'admin' not in current['levels']['workflow']
-    assert current['not_checked'] == ['deploy', '4-eyes check']
+    # The four-eyes check is checked (docs/features/four-eyes-check.md), 'deploy' isn't offered anymore
+    assert current['not_checked'] == []
     assert {'name': 'seq_wf', 'stages': ['START', 'PROD', 'END']} in current['workflows']
     assert current['roles']['releaser']['users'] == []
 

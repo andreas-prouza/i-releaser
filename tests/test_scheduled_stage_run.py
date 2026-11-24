@@ -6,13 +6,14 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.realpath(f"{os.path.dirname(__file__)}/.."))
 
 from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
 from modules import current_user, errors, hooks, meta_file, processing_job, processing_service, stage_status, workflow
 from modules.db import app_sqlite, meta_file_data, processing_job_data, processing_user_data
 from modules.db.updates import v_4_1_0
 from modules.job_status import Status as Job_Status
 from modules.meta_file_status import Meta_file_status
+import permission_tools
 
 
 UTC = datetime.timezone.utc
@@ -96,16 +97,9 @@ class TestScheduledRun(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
-
-        # All modules use the default parameter of get_db_connection
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
+        db_tools.use_temp_db(self)
 
         self.patches = [
-            patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(constants, 'C_SERVICE_SOCKET', os.path.join(self.tmp_dir, 'processing-service.sock')),
             patch.object(constants, 'C_SERVICE_PID_FILE', os.path.join(self.tmp_dir, 'processing-service.pid')),
             patch.object(constants, 'C_SERVICE_LOCK_FILE', os.path.join(self.tmp_dir, 'processing-service.lock')),
@@ -122,6 +116,8 @@ class TestScheduledRun(unittest.TestCase):
         self.hook_patch.start()
 
         current_user.set_user('ALICE')
+        # A job checks the permission of its user when it starts (docs/bugfixes/scheduled-run-without-permission-check.md)
+        self.permissions = permission_tools.use_permissions(self.tmp_dir, {'alice': ['read', 'run'], 'bob': ['read', 'run']})
 
         self.root_logger = logging.getLogger()
         self.null_handler = logging.NullHandler()
@@ -143,13 +139,12 @@ class TestScheduledRun(unittest.TestCase):
 
         self.root_logger.removeHandler(self.null_handler)
         current_user.set_user(None)
+        permission_tools.stop_permissions(self.permissions)
 
         self.hook_patch.stop()
         for p in reversed(self.patches):
             p.stop()
 
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
 
     def create_meta_file(self, wf: dict=WORKFLOW) -> meta_file.Meta_File:
@@ -279,6 +274,42 @@ class TestScheduledRun(unittest.TestCase):
         self.assertEqual([(r['user'], r['stage']) for r in runs], [('ALICE', 'START')])
         self.assertIn(processing_job.format_utc_text(job.run_at), runs[0]['details'])
         self.assertEqual(self.events, [])
+
+
+
+    def test_run_of_a_user_without_permission_anymore(self):
+        """docs/bugfixes/scheduled-run-without-permission-check.md"""
+
+        mf = self.create_meta_file()
+        job = self.schedule(mf, minutes=60)
+
+        # The user loses the permission `run` before the time of the run
+        permission_tools.stop_permissions(self.permissions)
+        self.permissions = permission_tools.use_permissions(self.tmp_dir, {'alice': ['read'], 'bob': ['read', 'run']})
+        self.move_run_at(job.id, 0.5)
+
+        self.assertEqual(processing_job_data.claim_next_job().id, job.id)
+        self.assertEqual(processing_service.run_job(job.id), Job_Status.FAILED)
+
+        job = processing_job_data.get_job(job.id)
+        self.assertIn("has no permission 'run'", job.error)
+        self.assertEqual(self.get_stage(mf).status, stage_status.Status.READY)
+        self.assertEqual(len(self.history(mf, 'scheduled_run_failed')), 1)
+
+
+
+    def test_queued_run_of_a_removed_user(self):
+
+        mf = self.create_meta_file()
+        job = mf.run_current_stage_as_job(self.get_stage(mf).id)
+
+        permission_tools.stop_permissions(self.permissions)
+        self.permissions = permission_tools.use_permissions(self.tmp_dir, {'bob': ['read', 'run']})
+
+        self.assertEqual(processing_job_data.claim_next_job().id, job.id)
+        self.assertEqual(processing_service.run_job(job.id), Job_Status.FAILED)
+        self.assertEqual(self.get_stage(mf).status, stage_status.Status.READY)
+        self.assertIn('Not run', self.history(mf, 'run_stage')[-1]['details'])
 
 
 

@@ -18,12 +18,12 @@ sys.path.insert(0, base_dir)
 sys.path.append(webapp_dir)
 os.chdir(webapp_dir)
 
-from etc import logger_config
+# Configures the log (an import for its side effect)
+from etc import logger_config  # noqa: F401
 import logging
 
 from modules import processing_service
-# Loads the scripts, so they don't need to be loaded by each job
-from modules import ibm_i_commands
+from modules import scripts_loader, settings_check
 from modules import errors
 from modules.db import app_sqlite
 
@@ -36,12 +36,16 @@ if __name__ == '__main__':
 
     app_sqlite.create_tables()
 
+    # Loaded once, so each job process has them already. A script with an error only fails its steps.
+    scripts_loader.preload()
+
     try:
+        settings_check.check_at_start()
         # The database is updated by the web app
         app_sqlite.check_schema_version()
         processing_service.Service().run_forever()
 
-    except (processing_service.ServiceAlreadyRunningException, errors.App_Error) as e:
+    except (processing_service.ServiceAlreadyRunningException, errors.App_Error, settings_check.Invalid_Setting_Error) as e:
         logging.error(e)
         print(e, file=sys.stderr)
         sys.exit(1)

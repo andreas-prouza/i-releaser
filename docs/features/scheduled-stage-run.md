@@ -73,7 +73,7 @@ flowchart TD
 - [x] Test: at its time the stage isn't runnable anymore → job `failed` with the reason, stage stays `ready`, hook `scheduled_run_failed` called, `stage_failed` not called.
 - [x] Test: the run is recorded with the user who scheduled it.
 - [x] Test (browser): `Run at…` on the deployment page, the scheduled run shown on the stage in the browser's time zone, `Cancel schedule`.
-- [x] Docs: [processing-service.md](../processing-service.md#scheduled-runs), [concepts.md](../concepts.md#running-a-stage), [workflow.md](../workflow.md#hooks) (new hook), [webapi.md](../webapi.md#run_stage), [permissions.md](../permissions.md#permissions), [glossar.md](../glossar.md) (scheduled run, UTC, DST, ISO 8601).
+- [x] Docs: [processing-service.md](../processing-service.md#scheduled-runs), [concepts.md](../concepts.md#running-a-stage), [workflow.md](../workflow.md#hooks) (new hook), [webapi.md](../webapi.md#run-a-stage), [permissions.md](../permissions.md#permissions), [glossar.md](../glossar.md) (scheduled run, UTC, DST, ISO 8601).
   The data model is described in [processing-service.md](../processing-service.md#scheduled-runs) (`docs/datenmodell.md` doesn't exist).
 
 Tests: `tests/test_scheduled_stage_run.py` (queue, job process, service, database update), `tests/test_web_scheduled_run.py` (Web API, permissions, page, a real service),

@@ -1,15 +1,16 @@
 """Steps which run at the same time: groups, waiting, failures, limit and what they share"""
-import logging, os, shutil, tempfile, threading, time, unittest
+import sys
+import logging, os, threading, time, unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
-from modules import current_user, files, ibm_i_commands, meta_file, stage_status, workflow
+from modules import current_user, files, meta_file, stage_status, workflow
 from modules import deploy_action as da
 from modules.cmd_status import Status as Cmd_Status
-from modules.db import app_sqlite, meta_file_data
+from modules.db import meta_file_data
 from modules.ibm_i_commands import Command_Exception, IBM_i_commands
 from modules.meta_file_status import Meta_file_status
 
@@ -40,22 +41,17 @@ class Parallel_Test(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
+        db_tools.use_temp_db(self)
         self.meet_dir = os.path.join(self.tmp_dir, 'meet')
         os.makedirs(self.meet_dir)
 
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
 
         self.scripts = SimpleNamespace()
 
         self.patches = [
-            patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(workflow.Workflow, 'get_workflow_by_name', return_value=workflow.Workflow(dict=WORKFLOW)),
             patch.object(workflow.Workflow, 'get_default_step_mapping', return_value=[]),
-            patch.dict(ibm_i_commands.__dict__, {'test_script': self.scripts}),
+            patch.dict(sys.modules, {'scripts.test_script': self.scripts}),
         ]
         for p in self.patches:
             p.start()
@@ -70,8 +66,6 @@ class Parallel_Test(unittest.TestCase):
         for p in reversed(self.patches):
             p.stop()
 
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
 
     def add_step(self, cmd: str, environment=da.Command_Type.PASE, **kwargs) -> da.Deploy_Action:

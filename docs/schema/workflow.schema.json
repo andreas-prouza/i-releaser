@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/andreas-prouza/i-releaser/docs/schema/workflow.schema.json",
+  "title": "i-Releaser workflow (etc/workflows/*.json)",
+  "description": "See docs/workflow.md",
+  "type": "object",
+  "required": [
+    "name",
+    "default_project",
+    "stages"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique name of the workflow, not case sensitive"
+    },
+    "default_project": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Project of its deployments (version numbers)"
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique in the workflow. START is the first stage"
+          },
+          "description": {
+            "type": "string"
+          },
+          "next_stages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Stages which become ready when this one is finished"
+          },
+          "after_stages_finished": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Stages which have to be finished before this one can run"
+          },
+          "run_immediate": {
+            "type": "boolean",
+            "description": "Run automatically as soon as it becomes ready"
+          },
+          "processing_steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Steps in the order they run; each needs a step action"
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Target system (ssh, transfer, DB deployment)"
+          },
+          "execute_remote": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "QSYS commands run on host via SSH"
+          },
+          "build_dir": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "remote_dir": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "base_dir": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "clear_files": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "lib_replacement_necessary": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "lib_mapping": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "processing_users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "four_eyes_check": {
+            "type": "boolean",
+            "description": "Runs only after a second person has approved it (docs/features/four-eyes-check.md)"
+          }
+        }
+      }
+    },
+    "step_action": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "processing_step",
+          "environment",
+          "execute"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "processing_step": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name used in `processing_steps` of a stage"
+          },
+          "environment": {
+            "enum": [
+              "QSYS",
+              "PASE",
+              "SCRIPT"
+            ],
+            "description": "QSYS: IBM i command, PASE: shell command, SCRIPT: Python function 'file.function' of scripts/"
+          },
+          "execute": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The command (QSYS, PASE) or 'file.function' (SCRIPT). Placeholders: {meta_file[...]}"
+          },
+          "check_error": {
+            "type": "boolean",
+            "default": true,
+            "description": "true: the stage stops if the step fails"
+          },
+          "execute_remote": {
+            "type": "boolean",
+            "description": "Overwrites execute_remote of the stage (QSYS only)"
+          },
+          "fail_on_stderr": {
+            "type": "boolean",
+            "default": true,
+            "description": "false: only the exit code decides"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The command is ended after this time. 0: no timeout"
+          },
+          "parallel_group": {
+            "type": "string",
+            "description": "Group of steps which run at the same time"
+          },
+          "parallel": {
+            "type": "boolean",
+            "default": false,
+            "description": "true: runs at the same time as the steps of its group"
+          }
+        }
+      },
+      "description": "Replaces entries of etc/default_step_action.json with the same processing_step"
+    },
+    "parallel_deployment_execution_allowed": {
+      "type": "boolean"
+    },
+    "editable_fields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^\\$"
+      },
+      "description": "JSONPaths of the custom data which users may edit"
+    },
+    "create_fields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^\\$"
+      },
+      "description": "JSONPaths of the custom data which may be set at the creation"
+    },
+    "hooks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deployment_created": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "deployment_finished": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "deployment_canceled": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "stage_started": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "stage_finished": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "stage_failed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "scheduled_run_failed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "custom_data_changed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "approval_requested": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z][A-Za-z0-9_]*$"
+          }
+        }
+      }
+    }
+  }
+}

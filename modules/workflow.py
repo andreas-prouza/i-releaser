@@ -13,6 +13,10 @@ class MissingProcessingStepMappingException(Exception):
 class WorkflowNotFoundException(errors.Not_Found_Error):
   pass
 
+class Invalid_Workflow_Error(Exception):
+  """A workflow file is invalid (validate_workflow). The message names the file and the problem."""
+
+
 class StageRecursionException(Exception):
   pass
 
@@ -90,7 +94,7 @@ class Workflow:
   def load_workflow_data(self) -> None:
 
     if not self.name:
-      raise Exception(f"No workflow name provided for loading workflow data!")
+      raise Exception("No workflow name provided for loading workflow data!")
     wf = self.get_workflow_by_name(self.name)
     self.__dict__.update(wf.__dict__)
     logging.debug(f"Workflow data loaded for workflow {self.get_dict()}!")
@@ -171,6 +175,9 @@ class Workflow:
 
     if not isinstance(json_data, dict):
       raise Exception(f"Workflow file contains a {type(json_data)} instead of dict.")
+
+    # For editors (docs/schema/workflow.schema.json), not a workflow attribute
+    json_data.pop('$schema', None)
 
     Workflow.validate_workflow(json_data, wf_file)
 
@@ -326,35 +333,38 @@ class Workflow:
   def validate_workflow(workflow_dict: dict, wf_file: str) -> None:
 
     if 'name' not in workflow_dict.keys():
-      raise Exception(f"No workflow name is defined in file {wf_file}!")
+      raise Invalid_Workflow_Error(f"No workflow name is defined in file {wf_file}!")
 
     if 'default_project' not in workflow_dict.keys():
-      raise Exception(f"No default_project name is defined in file {wf_file}!")
+      raise Invalid_Workflow_Error(f"No default_project name is defined in file {wf_file}!")
 
     if 'stages' not in workflow_dict.keys() or len(workflow_dict['stages']) == 0:
-      raise Exception(f"No stage definition for workflow {workflow_dict['name']} in file {wf_file}!")
+      raise Invalid_Workflow_Error(f"No stage definition for workflow {workflow_dict['name']} in file {wf_file}!")
 
     from modules import stages
-    stages.Stage_List_list.validate_items(workflow_dict['stages'])
+    try:
+      stages.Stage_List_list.validate_items(workflow_dict['stages'])
+    except Exception as e:
+      raise Invalid_Workflow_Error(f"Invalid stage in file {wf_file}: {e}") from e
 
     for key in workflow_dict.keys():
       if key not in ['name', 'step_action', 'stages', 'default_project', 'parallel_deployment_execution_allowed', 'editable_fields', 'create_fields', 'hooks']:
-        raise Exception(f"Workflow attribute '{key}' is invalid in file {wf_file}!")
+        raise Invalid_Workflow_Error(f"Workflow attribute '{key}' is invalid in file {wf_file}!")
 
     for attribute in ['editable_fields', 'create_fields']:
       fields = workflow_dict.get(attribute, [])
       if not isinstance(fields, list):
-        raise Exception(f"Workflow attribute '{attribute}' needs to be a list of JSONPaths in file {wf_file}!")
+        raise Invalid_Workflow_Error(f"Workflow attribute '{attribute}' needs to be a list of JSONPaths in file {wf_file}!")
       for field in fields:
         try:
           json_path.parse(field)
         except json_path.InvalidJsonPathException as e:
-          raise Exception(f"Invalid entry in '{attribute}' in file {wf_file}: {e}")
+          raise Invalid_Workflow_Error(f"Invalid entry in '{attribute}' in file {wf_file}: {e}") from e
 
     try:
       hooks.validate(workflow_dict.get('hooks', {}))
     except hooks.InvalidHookException as e:
-      raise Exception(f"Invalid 'hooks' in file {wf_file}: {e}")
+      raise Invalid_Workflow_Error(f"Invalid 'hooks' in file {wf_file}: {e}") from e
     
     #######################################
 
@@ -378,7 +388,7 @@ class Workflow:
       for mapping in script_mappings:
         for key in mapping.keys():
           if key not in ['processing_step', 'environment', 'execute', 'check_error', 'execute_remote', 'fail_on_stderr', 'timeout_seconds', 'parallel_group', 'parallel']:
-            raise Exception(f"Script-Mapping attribute '{key}' is invalid for workflow {workflow_dict['name']} in file {wf_file}!")
+            raise Invalid_Workflow_Error(f"Script-Mapping attribute '{key}' is invalid for workflow {workflow_dict['name']} in file {wf_file}!")
 
     ########################################
 

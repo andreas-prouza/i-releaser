@@ -29,11 +29,11 @@ import time
 
 from etc import constants
 # Before meta_file (circular import)
-from modules import deploy_version
-from modules import action_type, current_user, files, hooks, stage_status
+from modules import action_type, current_user, errors, files, hooks, notifications, stage_status
 from modules.db import meta_file_data, processing_job_data, processing_user_data
 from modules.job_status import Status as Job_Status
 from modules.meta_file_status import Meta_file_status
+from modules import processing_job
 from modules.processing_job import Processing_Job, format_utc_text, utc_now
 
 
@@ -148,12 +148,14 @@ def run_job(job_id: int) -> Job_Status:
 
   job = processing_job_data.get_job(job_id)
   if job is None:
-    raise Exception(f"Processing job {job_id} not found")
+    raise errors.Not_Found_Error(f"Processing job {job_id} not found")
 
   logging.info(f"Run processing job {job.id}: {job.meta_file_id=}, {job.stage_id=}, {job.processing_step=}, {job.continue_run=}, {job.user=}")
 
   processing_job_data.set_job_pid(job.id, os.getpid())
   current_user.set_user(job.user)
+  # Each step checks that the job is still running (IBM_i_commands._run_action)
+  job_token = processing_job.current_job_id.set(job.id)
 
   stop_heartbeat = threading.Event()
   heartbeat = threading.Thread(target=send_heartbeats, args=(job.id, stop_heartbeat), daemon=True)
@@ -162,8 +164,8 @@ def run_job(job_id: int) -> Job_Status:
   status = Job_Status.FINISHED
   error = None
   mf = None
-  # A scheduled run which didn't start: reported after the job got its error
-  scheduled_run_failed = False
+  # A run which didn't start (scheduled run or missing permission): reported after the job got its error
+  not_run = False
 
   try:
     mf = meta_file_data.get_meta_file_by_id(job.meta_file_id)
@@ -172,13 +174,20 @@ def run_job(job_id: int) -> Job_Status:
 
     claimed = False
 
-    if job.is_scheduled():
-      error = start_scheduled_run(job, mf)
-      scheduled_run_failed = error is not None
-      error = error[:MAX_ERROR_LENGTH] if error else None
-      claimed = not scheduled_run_failed
+    # The user may have lost the permission since the run was queued or scheduled (docs/bugfixes/scheduled-run-without-permission-check.md)
+    permission_error = get_permission_error(job, mf)
 
-    if scheduled_run_failed:
+    if permission_error is not None:
+      error = permission_error
+      not_run = True
+
+    elif job.is_scheduled():
+      error = start_scheduled_run(job, mf)
+      not_run = error is not None
+      error = error[:MAX_ERROR_LENGTH] if error else None
+      claimed = not not_run
+
+    if not_run:
       status = Job_Status.FAILED
     else:
       mf.run_current_stage(job.stage_id, job.processing_step, job.continue_run, claimed=claimed)
@@ -194,12 +203,48 @@ def run_job(job_id: int) -> Job_Status:
   finally:
     stop_heartbeat.set()
     heartbeat.join()
+    processing_job.current_job_id.reset(job_token)
     processing_job_data.finish_job(job.id, status, error)
 
-  if scheduled_run_failed:
-    report_failed_scheduled_run(job, mf, error)
+  if not_run:
+    if job.is_scheduled():
+      report_failed_scheduled_run(job, mf, error)
+    else:
+      report_not_run(job, mf, error)
 
   return status
+
+
+
+def get_permission_error(job: Processing_Job, mf) -> str|None:
+  """
+  Returns:
+      str|None: Why the user of the job may not run its stage anymore, None if it may
+  """
+
+  # Here: permission_config imports the data modules, which import this module's modules
+  from modules import permission_config, permissions
+
+  stage = mf.get_stage_by_id(job.stage_id)
+  stage_name = stage.name if stage else None
+
+  if permission_config.is_user_allowed(job.user, permissions.PermissionAction.RUN_WORKFLOW, mf.workflow.name, stage_name, job.stage_id):
+    return None
+
+  return f"User {job.user} has no permission 'run' for stage {stage_name or job.stage_id} anymore. The stage has not been run."
+
+
+
+def report_not_run(job: Processing_Job, mf, error: str) -> None:
+  """History entry for a queued run which didn't start"""
+
+  logging.warning(f"Job {job.id} didn't start: {error}")
+
+  try:
+    processing_user_data.create_action_log(action_type.Action_type.RUN_STAGE, details=f"Not run (job {job.id}): {error}",
+                                           meta_file=mf, stage=mf.get_stage_by_id(job.stage_id))
+  except Exception as e:
+    logging.exception(e, stack_info=True)
 
 
 
@@ -240,7 +285,7 @@ def report_failed_scheduled_run(job: Processing_Job, mf, error: str) -> None:
     stage = mf.get_stage_by_id(job.stage_id)
     processing_user_data.create_action_log(action_type.Action_type.SCHEDULED_RUN_FAILED, details=f"Scheduled for {format_utc_text(job.run_at)} (job {job.id}): {error}",
                                            meta_file=mf, stage=stage)
-    hooks.emit(hooks.Event.SCHEDULED_RUN_FAILED, mf, stage)
+    hooks.emit(hooks.Event.SCHEDULED_RUN_FAILED, mf, stage, details=f"Scheduled for {format_utc_text(job.run_at)}: {error}")
 
   except Exception as e:
     logging.exception(e, stack_info=True)
@@ -258,6 +303,55 @@ def is_process_running(pid: int) -> bool:
     return True
 
   return True
+
+
+
+def get_job_lock_file(job_id: int) -> str:
+  return os.path.join(os.path.dirname(constants.C_SERVICE_LOCK_FILE), 'jobs', f"{job_id}.lock")
+
+
+
+def is_job_process(job: Processing_Job) -> bool:
+  """The process of the job is still running: it holds the lock of its job (another process with the same pid doesn't)"""
+
+  lock = try_lock(get_job_lock_file(job.id))
+
+  if lock is None:
+    return True
+
+  lock.close()
+  return False
+
+
+
+def end_job_process(job: Processing_Job, wait_seconds: float=10) -> None:
+  """Ends the process of a job with its commands (own process group, see run_job_process): SIGTERM, then SIGKILL"""
+
+  for sig in [signal.SIGTERM, signal.SIGKILL]:
+    try:
+      os.killpg(job.pid, sig)
+    except (ProcessLookupError, PermissionError):
+      return
+
+    end = time.time() + wait_seconds
+    while time.time() < end:
+      if has_ended(job.pid):
+        return
+      time.sleep(0.2)
+
+
+
+def has_ended(pid: int) -> bool:
+  """Also for a child of this process which has ended but hasn't been reaped yet (it would still exist)"""
+
+  try:
+    if os.waitpid(pid, os.WNOHANG)[0] == pid:
+      return True
+  except ChildProcessError:
+    # Not a child of this process: it's reaped by its parent
+    pass
+
+  return not is_process_running(pid)
 
 
 
@@ -293,8 +387,15 @@ def abort_job(job: Processing_Job, error: str) -> None:
   if len(other_jobs) == 0 and mf.status == Meta_file_status.IN_PROCESS:
     mf.set_status(Meta_file_status.FAILED)
 
-  for stage in failed_stages:
-    hooks.emit(hooks.Event.STAGE_FAILED, mf, stage)
+  # In a thread: a slow hook (e.g. Jira) must not delay the jobs of the service
+  if failed_stages:
+    def emit_failed() -> None:
+      # The user who ran it, e.g. for the recipient @runner of the notifications
+      current_user.set_user(job.user)
+      for stage in failed_stages:
+        hooks.emit(hooks.Event.STAGE_FAILED, mf, stage, details=f"The run has been aborted (job {job.id}): {error}")
+
+    threading.Thread(target=emit_failed, daemon=True).start()
 
 
 
@@ -322,8 +423,14 @@ def recover_orphans() -> list[Processing_Job]:
       error = f"Job process {job.pid} doesn't exist anymore"
 
     elif not has_heartbeat:
-      # Most likely the pid is used by another process meanwhile
       error = f"No sign of life from job process {job.pid} for more than {constants.C_SERVICE_HEARTBEAT_TIMEOUT} seconds"
+
+      # Still its process (it hangs, or the database was locked): it must not go on after its job has been set to failed
+      # (docs/bugfixes/job-abort-leaves-process-running.md). Otherwise the pid is used by another process meanwhile.
+      if is_job_process(job):
+        logging.warning(f"Job process {job.pid} of job {job.id} is ended: no sign of life")
+        end_job_process(job)
+        error += ". The process has been ended."
 
     else:
       continue
@@ -515,11 +622,17 @@ class Service:
       if self.lock is not None:
         self.lock.close()
 
+      # Tells the service that this process is the one of the job, also if its pid is checked later (recover_orphans)
+      job_lock = try_lock(get_job_lock_file(job.id))  # noqa: F841 (open until the process ends)
+
       if run_job(job.id) == Job_Status.FINISHED:
         exit_code = 0
 
       # The service may start the next job of its queue
       notify()
+
+      # The messages of the run, before the process ends (what fails is sent again by the web app)
+      notifications.flush()
 
     except BaseException as e:
       logging.exception(e, stack_info=True)
@@ -553,6 +666,9 @@ class Service:
   def run_forever(self) -> None:
 
     self.start()
+
+    # No thread in the process which forks the jobs: the web app sends its notifications (docs/features/notifications.md)
+    notifications.disable_sender()
 
     signal.signal(signal.SIGTERM, self.request_stop)
     signal.signal(signal.SIGINT, self.request_stop)

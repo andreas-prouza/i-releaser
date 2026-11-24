@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {#-
-  The own account (docs/features/web-ui-admin-pages.md#user): roles, the permissions in the end, the API token.
+  The own account (docs/features/web-ui-admin-pages.md#user): roles, the permissions in the end, the API tokens.
   Context: user_key, account (admin_view.get_account). Script: static/assets/js/pages/user.js
 -#}
 
@@ -15,23 +15,72 @@
 {% block content %}
 <div class="ir-settings">
 
-    <section class="ir-card ir-section" aria-labelledby="token-title">
+    {%- if two_factor.policy != 'off' %}
+    <section class="ir-card ir-section" id="two-factor" aria-labelledby="two-factor-title">
         <div class="ir-section-head">
-            <h2 id="token-title">API token</h2>
+            <h2 id="two-factor-title">Two-factor authentication</h2>
             <div class="ir-section-actions">
-                <button type="button" class="btn btn-sm btn-primary" data-action="renew-token" data-has-token="{{ 'true' if user_key else 'false' }}">
-                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Generate new token</button>
-                {%- if user_key %}
-                <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-token">
-                    <i class="bi bi-trash" aria-hidden="true"></i> Delete token</button>
+                {%- if not two_factor.enabled %}
+                <button type="button" class="btn btn-sm btn-primary" data-action="mfa-setup">
+                    <i class="bi bi-shield-lock" aria-hidden="true"></i> Set up</button>
+                {%- else %}
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-action="mfa-recovery-codes">
+                    <i class="bi bi-list-ol" aria-hidden="true"></i> New recovery codes</button>
+                {%- if not two_factor.required %}
+                <button type="button" class="btn btn-sm btn-outline-danger" data-action="mfa-disable">
+                    <i class="bi bi-shield-x" aria-hidden="true"></i> Turn off</button>
+                {%- endif %}
                 {%- endif %}
             </div>
         </div>
-        {%- if user_key %}
-        {{ kv_list([('Token', user_key['orig_key_masked']), ('Created', user_key['date'] | datetime), ('Last used', user_key['last_used'] | datetime)], mono=['Token']) }}
-        {%- else %}
-        <p class="ir-reason mb-0">You have no token. Clients like the OBI extension use it for the <a href="/docs">Web API</a>.</p>
+        {%- if two_factor.setup_required %}
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Two-factor authentication is required for you. Set it up to use i-Releaser.
+        </div>
         {%- endif %}
+        {%- if two_factor.enabled %}
+        {{ kv_list([('Status', 'Active: the login needs the code of your authenticator app'), ('Recovery codes left', two_factor.recovery_codes)]) }}
+        {%- else %}
+        <p class="ir-reason mb-0">The login needs a code of an authenticator app (e.g. Microsoft Authenticator, Google Authenticator, FreeOTP) in addition to your password.
+            {%- if two_factor.required %} It is required for you.{% endif %}</p>
+        {%- endif %}
+    </section>
+    {%- endif %}
+
+    <section class="ir-card ir-section" aria-labelledby="token-title">
+        <div class="ir-section-head">
+            <h2 id="token-title">API tokens</h2>
+            <div class="ir-section-actions">
+                <button type="button" class="btn btn-sm btn-primary" data-action="new-token" data-max-days="{{ max_token_days }}">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> New token</button>
+            </div>
+        </div>
+        {%- for token in tokens if token.expired or token.expires_soon or token.legacy %}
+        {%- if token.expired %}
+        <div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i> Your token <strong>{{ token.name }}</strong> has expired. Create a new one.</div>
+        {%- elif token.expires_soon %}
+        <div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Your token <strong>{{ token.name }}</strong> expires soon. Create a new one and change it in your clients.</div>
+        {%- endif %}
+        {%- if token.legacy %}
+        <div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Your token <strong>{{ token.name }}</strong> has the old format, which the next major version doesn't accept anymore. Create a new one.</div>
+        {%- endif %}
+        {%- endfor %}
+        {%- if tokens %}
+        <div class="table-responsive">
+            <table class="table table-sm ir-tokens">
+                <thead><tr><th>Name</th><th>Scope</th><th>Token</th><th>Created</th><th>Last used</th><th>Expires</th><th><span class="visually-hidden">Action</span></th></tr></thead>
+                <tbody>
+                {%- for token in tokens %}
+                    <tr><td>{{ token.name }}</td><td>{{ token.scope }}</td><td class="ir-mono">{{ token.masked }}</td>
+                        <td class="text-nowrap">{{ token.created }}</td><td class="text-nowrap">{{ token.last_used }}</td><td class="text-nowrap">{{ token.expires }}</td>
+                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-token" data-token-id="{{ token.id }}" data-name="{{ token.name }}">
+                            <i class="bi bi-trash" aria-hidden="true"></i> Delete</button></td></tr>
+                {%- endfor %}
+                </tbody>
+            </table>
+        </div>
+        {%- endif %}
+        <p class="ir-reason mb-0">{% if not tokens %}You have no token. {% endif %}Clients like the OBI extension use a token for the <a href="/docs">Web API</a>: one per client, so you can delete one without the others. A token with the scope <code>read</code> can only read.</p>
     </section>
 
     <section class="ir-card ir-section" aria-labelledby="account-permissions-title">

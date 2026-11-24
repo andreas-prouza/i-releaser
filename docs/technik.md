@@ -12,12 +12,14 @@
 ```
 
 * Tests are in `tests/` and don't need an IBM i. Tests which do are marked with `@pytest.mark.ibmi` and not run by default.
+* They run in parallel with `pytest-xdist` (`pytest.ini`: `-n auto --dist loadfile`): one process per CPU, the tests of one file in the same process. About 2 minutes instead of 7½. `-n 0` runs them in one process (to debug a test, or with `breakpoint()`).
 * Browser tests (`@pytest.mark.browser`, `tests/test_web_browser.py`, `tests/test_web_browser_deployment.py`; fixtures in `tests/conftest.py`) open the web app in Chromium with Playwright. They run with every `pytest` where Playwright and its browser are installed (`.venv/bin/python -m playwright install chromium`, once, about 150 MB outside the repository) and are skipped otherwise, e.g. on IBM i. Only them: `.venv/bin/pytest -m browser`.
   A browser test fails on a script error, an error in the console, a failed request and a request to another server (`Page_Watch` in `tests/browser_tools.py`).
 * The screenshots of `README.md` are made from test data: `.venv/bin/python tests/screenshots.py` writes `docs/img/*.png` (`--out <dir>` to compare first). It runs the web app with own workflows, deployments and the [rollback example](scripts.md#scripts-of-custom-templates), and replaces the directory of the test copy. A browser test checks that it makes every picture of `README.md`.
 * `tests/web_server.py` runs the real web app for a test: a copy of the repository in a temporary directory, with its own configuration and database.
   `Client` behaves like a browser (session cookie, `Origin` header).
-* Other tests use a temporary database, see `setUp` in `tests/test_stage_flow.py`.
+* Other tests use a temporary database and meta directory: `db_tools.use_temp_db(self)` in `setUp` of a `unittest.TestCase`, or the fixture `temp_db` (`tests/db_tools.py`, `tests/conftest.py`). It's removed with `addCleanup`, also if `setUp` fails.
+* No fixed `sleep` to wait for something: `wait_until(condition)` of `tests/web_server.py` (or `Client.wait_for_stage`). A `sleep` only where a time has to pass (e.g. "the watchdog doesn't start it during 3 seconds"), with a comment.
 * Tests never use the real `var/`, `etc/` or `meta/` of an installation.
 * `.github/workflows/tests.yml` runs the tests and `pip-audit` for every push and pull request.
 
@@ -73,6 +75,39 @@ Other exceptions are unexpected: the caller gets a general message with an id, t
 ### Web requests
 
 Route handlers are plain functions (FastAPI runs them in threads), so blocking work doesn't stop other requests. Handlers have to be thread safe.
+
+### Login and sessions
+
+* The sign-on on the IBM i (ODBC connect) runs in its own thread pool (`app_login.check_sign_on`), with the login timeout of the driver and a limit per process (`C_LOGIN_MAX_PARALLEL`). The event loop of the worker keeps answering other requests ([blocking login](bugfixes/blocking-login-in-middleware.md)). Session files and the login failures are read in threads too.
+* A failed sign-on counts for the user only if the IBM i has checked the password (not for a timeout, SQLSTATE `HYT00`), because only these count for `QMAXSIGN` ([login can disable profiles](bugfixes/login-can-disable-ibm-i-profiles.md)). The block of a user has no time limit: the IBM i counts failures in a row until the next successful sign-on as well.
+* A session file is only written when its data changes, and to extend the session at most once a minute (`TOUCH_INTERVAL`). A file which doesn't exist anymore (logout, expired) is never written again: only a new session (login) creates one ([logout undone](bugfixes/logout-undone-by-concurrent-request.md)).
+* A failed login stores nothing: the message goes to the login page of the same request (`request.state.login_error`).
+* Requests of the page itself (live updates, header `X-Background: 1`, `/api/watch_state`) don't extend the session.
+* The session cookie has no `Max-Age`: the browser forgets it when it's closed; the server ends the session after 1 hour without a request and after 12 hours in any case.
+* Logout only with `POST` (button in the navigation); `GET /logout` shows the button.
+
+### Two-factor authentication
+
+* TOTP (RFC 6238) is implemented with the standard library (`modules/totp.py`), tested with the test vectors of the RFC. Only the QR code needs a package (`qrcode`, SVG as data URI in an `<img>`: no HTML from data).
+* The secrets are in the table `user_mfa` of `var/app.sqlite`, not encrypted: the key would be on the same system. The database file is only readable by the profile of i-Releaser.
+* The code is checked before the password goes to the IBM i, but only used up after a successful sign-on (`two_factor.check_login_code`, `use_login_code`): a wrong password doesn't cost a recovery code. A used time step is stored (`last_step`), so a code is accepted only once.
+* Step-up: `two_factor.require_recent_code` raises an error with `step_up`; `app/api.js` asks for the code (`app/dialogs.js`, `ask_code`) and sends the request again. In a dialog of `confirm_action` the dialog closes first, then the code is asked and the action runs again.
+* Not on IBM i 7.5: the integrated MFA of IBM i needs 7.6 (see the [options](features/two-factor-authentication.md#options)).
+
+### Notifications
+
+```mermaid
+flowchart LR
+  E["hooks.emit<br/>(run of a stage, web request)"] -->|notify: INSERT| O[("table notifications<br/>(outbox)")]
+  O -->|claim: conditional UPDATE| S1["sender thread<br/>of the process"]
+  O -->|"every 30 s: retries,<br/>messages of ended processes"| S2["sender thread<br/>of each web app worker"]
+  S1 --> M["mail server / webhook"]
+  S2 --> M
+```
+
+* A message is first written to the table `notifications` (outbox), then sent by a thread: the stage never waits for a mail server, and a job process which ends doesn't lose its messages. Details in the [feature](features/notifications.md#decisions-2026-11-24).
+* The main process of the processing service has no thread of the sender (`notifications.disable_sender`): it forks the job processes, and a fork of a process with threads can hang. Forked processes reset the state of the sender (`os.register_at_fork`).
+* Standard library for e-mail (`smtplib`, `email`), `requests` for webhooks. Redirects of a webhook aren't followed. Errors of a webhook never contain its URL.
 
 ### CSRF
 
@@ -159,6 +194,9 @@ Criteria: see [architektur.md](architektur.md). Checked on 2026-11-01.
 | `pytest` | Tests (`requirements-dev.txt`) | 14659 | 3583 | OK |
 | `pip-audit` | Check of the dependencies (`requirements-dev.txt`) | 1389 | 149 | OK |
 | `playwright` 1.65.2 (`microsoft/playwright-python`, Apache-2.0, checked 2026-11-19) | Browser tests (`requirements-dev.txt`) | 15115 | 1258 | OK |
+| `jsonschema` 4.17.3 (`python-jsonschema/jsonschema`, MIT; checked 2026-11-24) | Test of the JSON schemas in `docs/schema/` (`requirements-dev.txt` only) | 4998 | 730 | OK |
+| `pytest-xdist` 3.8.0 (`pytest-dev/pytest-xdist`, MIT, active; checked 2026-11-24) | Runs the tests in parallel (`requirements-dev.txt` only, `pytest.ini`); its dependency `execnet` is part of pytest-dev too | 1934 | 307 | OK |
+| `qrcode` 8.2 (`lincolnloop/python-qrcode`, BSD, pure Python, no dependencies; checked 2026-11-23) | QR code of the [two-factor authentication](features/two-factor-authentication.md) (`requirements.txt`), as SVG without Pillow | 4960 | 752 | OK |
 | `swagger-ui-dist` 5.35.0 (JavaScript, `webapp/static/assets/swagger-ui/`, checked 2026-11-17) | `/docs`, instead of the copy FastAPI loads from a CDN | 29085 | 9245 | OK |
 
 Removed: `starsessions` and `aiofiles` (not used anymore).

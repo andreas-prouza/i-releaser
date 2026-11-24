@@ -21,3 +21,11 @@
 
 # Steps of a parallel group which run at the same time
 #C_MAX_PARALLEL_STEPS = 4
+
+# Two-factor authentication with an authenticator app (docs/features/two-factor-authentication.md):
+# 'off', 'optional' (each user decides), 'admins' (required for admins), 'required' (all users)
+C_2FA_POLICY = 'admins'
+
+# Failed logins: a user is blocked after this many wrong passwords in a row, until an admin unblocks it.
+# Keep it below the system value QMAXSIGN of the IBM i (IBM default 3).
+#C_LOGIN_MAX_FAILURES = 2

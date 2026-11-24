@@ -2,7 +2,7 @@
 {% macro settings_tabs(active) -%}
 <nav aria-label="Settings">
     <ul class="nav nav-tabs ir-settings-tabs">
-        {%- for name, url, text in [('general', '/settings', 'General'), ('processing', '/settings/processing', 'Processing'), ('permissions', '/settings/permissions', 'Permissions')] %}
+        {%- for name, url, text in [('general', '/settings', 'General'), ('processing', '/settings/processing', 'Processing'), ('permissions', '/settings/permissions', 'Permissions'), ('audit', '/settings/audit', 'Audit')] %}
         <li class="nav-item"><a class="nav-link{% if name == active %} active{% endif %}" href="{{ url }}"{% if name == active %} aria-current="page"{% endif %}>{{ text }}</a></li>
         {%- endfor %}
     </ul>

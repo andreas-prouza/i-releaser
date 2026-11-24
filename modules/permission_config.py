@@ -1,12 +1,11 @@
+import contextlib
 import logging
 import threading
 import time
 from typing import Dict, List
-from fastapi import Request
 
-from etc import constants, constants
+from etc import constants
 from modules import current_user, errors, files, permissions
-from modules.db import stage_data
 
 
 
@@ -17,14 +16,34 @@ def check_user_permission(action : permissions.PermissionAction, workflow:str|No
   user = current_user.get_user()
 
   if not is_user_allowed(user, action, workflow, stage, stage_id):
-      raise errors.Permission_Denied_Error(f"User {user} does not have permission {action} (workflow: {workflow}, stage: {stage or stage_id})")
+      raise errors.Permission_Denied_Error(f"User {user} does not have permission '{permissions.PermissionAction(action).value}' (workflow: {workflow}, stage: {stage or stage_id})")
 
 
+
+
+
+def get_mail(user: str|None) -> str:
+  """The e-mail address of the user in user_permissions.json ('' if it has none), e.g. for notifications"""
+
+  if not user:
+    return ''
+
+  PermissionKonfig.check_reload()
+  found = PermissionKonfig._users_by_name.get(user.lower())
+  return (found.detailed_infos.mail or '').strip() if found is not None else ''
+
+
+
+def get_users_of_role(role: str) -> list[str]:
+  """The users (lower case) who have the role, without case"""
+
+  PermissionKonfig.check_reload()
+  return sorted(name for name, user in PermissionKonfig._users_by_name.items() if role.lower() in [r.lower() for r in user.roles])
 
 
 
 def is_user_allowed(user, action : permissions.PermissionAction, workflow:str|None =None, stage:str|None =None, stage_id:int|None =None):
-  
+
   if user is None:
     logging.warning("User is None")
     return False
@@ -34,6 +53,8 @@ def is_user_allowed(user, action : permissions.PermissionAction, workflow:str|No
     workflow = workflow.lower()
 
   if stage is None and stage_id is not None:
+    # Here: the data module imports the modules of the deployment, which import this one
+    from modules.db import stage_data
     stage_obj = stage_data.get_stage(stage_id)
     stage = stage_obj.name if stage_obj is not None else None
     
@@ -51,7 +72,7 @@ def is_user_allowed(user, action : permissions.PermissionAction, workflow:str|No
     return True
 
   for role in current_permission.roles:
-    role_permission = PermissionKonfig.role_permissions.get(role, permissions.Role())
+    role_permission = PermissionKonfig.get_role_permissions(role)
     if is_permission_allowed(role_permission.permissions, action, workflow, stage):
       logging.debug(f"User {user} has permission {action} through role {role} (workflow: {workflow}, stage: {stage})")
       return True
@@ -96,11 +117,12 @@ def is_permission_allowed(current_permission: permissions.Permissions, action : 
   if current_wf is None:
     return False
 
-  if permissions.PermissionAction(action) in current_wf['general']:
+  # A workflow entry written by hand may have only one of them
+  if permissions.PermissionAction(action) in (current_wf.get('general') or []):
     return True
 
   if stage is not None:
-    stages = {name.lower(): value for name, value in current_wf['stages'].items()}
+    stages = {name.lower(): value for name, value in (current_wf.get('stages') or {}).items()}
     if permissions.PermissionAction(action) in stages.get(stage.lower(), []):
       return True
 
@@ -123,6 +145,9 @@ class PermissionKonfig:
   allowed_users = []
   role_permissions: Dict[str, permissions.Role] = {}
   user_permissions: Dict[str, permissions.User] = {}
+  # The same, by the name in lower case: names are compared without case (IBM i profiles have no case)
+  _users_by_name: Dict[str, permissions.User] = {}
+  _roles_by_name: Dict[str, permissions.Role] = {}
 
 
   @staticmethod
@@ -137,16 +162,25 @@ class PermissionKonfig:
   def get_user_permissions(user) -> permissions.User:
 
     PermissionKonfig.check_reload()
-    return PermissionKonfig.user_permissions.get(user.lower(), permissions.User())
+    return PermissionKonfig._users_by_name.get(user.lower(), permissions.User())
+
+
+
+  @staticmethod
+  def get_role_permissions(role: str) -> permissions.Role:
+
+    PermissionKonfig.check_reload()
+    return PermissionKonfig._roles_by_name.get(role.lower(), permissions.Role())
   
 
 
   @staticmethod
-  def add_user_permission(name: str, roles: List[str]|None = None, general: List[permissions.PermissionAction]|None = None, workflows: Dict[str, permissions.PermissionWorkflow]|None = None, description='', mail='', extra={}, data: dict = {}):
+  def add_user_permission(name: str, roles: List[str]|None = None, general: List[permissions.PermissionAction]|None = None, workflows: Dict[str, permissions.PermissionWorkflow]|None = None, description='', mail='', extra: dict|None=None, data: dict|None=None):
 
+    data = data or {}
     PermissionKonfig.check_reload()
 
-    if name.lower() in PermissionKonfig.user_permissions.keys():
+    if name.lower() in PermissionKonfig._users_by_name:
       raise errors.Conflict_Error(f"User {name} already exists")
 
     perm: permissions.Permissions = permissions.Permissions(general=general or data.get('general', []), workflows=workflows or data.get('workflows', {}))
@@ -161,11 +195,12 @@ class PermissionKonfig:
 
 
   @staticmethod
-  def add_role_permission(name: str, general: List[str]|None = None, data: dict = {}):
+  def add_role_permission(name: str, general: List[str]|None = None, data: dict|None = None):
 
+    data = data or {}
     PermissionKonfig.check_reload()
 
-    if name.lower() in PermissionKonfig.role_permissions.keys():
+    if name.lower() in PermissionKonfig._roles_by_name:
       raise errors.Conflict_Error(f"Role {name} already exists")
 
     perm: permissions.Permissions = permissions.Permissions(general=general or data.get('general', []))
@@ -185,6 +220,7 @@ class PermissionKonfig:
     }
 
     files.writeJson(data, constants.C_USER_PERMISSIONS)
+    PermissionKonfig.check_reload(force=True)
 
 
 
@@ -199,13 +235,19 @@ class PermissionKonfig:
 
       file_hash = files.get_file_hash(constants.C_USER_PERMISSIONS)
 
+      # Checked again after the interval, not with each check of a permission
+      PermissionKonfig.__last_loaded = current_time
+
       if file_hash == PermissionKonfig.__file_hash:
         return
 
-      data = files.getJson(constants.C_USER_PERMISSIONS, retry=True)
-      
-      if data is None:
-        logging.warning(f"Could not load permissions from {constants.C_USER_PERMISSIONS}, file is empty or not valid json")
+      try:
+        data = files.getJson(constants.C_USER_PERMISSIONS, retry=True)
+      except Exception as e:
+        data = None
+        logging.error(f"Could not load permissions from {constants.C_USER_PERMISSIONS}: {e}. The permissions loaded before stay valid.")
+
+      if not isinstance(data, dict):
         return
   
       user_permissions = data.get('users', {})
@@ -220,10 +262,10 @@ class PermissionKonfig:
       logging.debug(f"Reloaded user permissions: {PermissionKonfig.user_permissions}")
       logging.debug(f"Reloaded role permissions: {PermissionKonfig.role_permissions}")
 
-      PermissionKonfig.allowed_users = list(PermissionKonfig.user_permissions.keys())
+      PermissionKonfig._users_by_name = {name.lower(): value for name, value in user_permissions.items()}
+      PermissionKonfig._roles_by_name = {name.lower(): value for name, value in role_permissions.items()}
+      PermissionKonfig.allowed_users = list(PermissionKonfig._users_by_name.keys())
       PermissionKonfig.__file_hash = file_hash
-
-      PermissionKonfig.__last_loaded = current_time
 
 
 
@@ -242,7 +284,7 @@ class PermissionKonfig:
 
       for wf, wf_permissions in list(perm.get('workflows', {}).items()):
 
-        for stage, stage_permissions in list(user_permissions[user]['permissions']['workflows'][wf].get('stages', {}).items()):
+        for stage in list(user_permissions[user]['permissions']['workflows'][wf].get('stages', {})):
 
           for i, sp in enumerate(user_permissions[user]['permissions']['workflows'][wf]['stages'][stage]):
              if isinstance(sp, str):
@@ -299,20 +341,33 @@ Action = permissions.PermissionAction
 
 # Which permission is checked on which level (docs/permissions.md#permissions-1): the page offers only these
 # In the order of the columns: the permissions which are not checked yet at the end
+# `deploy` isn't offered anymore: it has never been checked (docs/features/four-eyes-check.md). Old files may still contain it, it has no effect.
 ORDER = [Action.ADMIN, Action.READ, Action.START_WORKFLOW, Action.RUN_WORKFLOW, Action.CHANGE_CHECK_ERROR, Action.CANCEL_WORKFLOW,
-         Action.EDIT_CUSTOM_DATA, Action.DEPLOY, Action.FOUR_EYES_CHECK]
+         Action.EDIT_CUSTOM_DATA, Action.FOUR_EYES_CHECK]
 
 LEVEL_ACTIONS = {
   'general': [a.value for a in ORDER],
   'workflow': [a.value for a in ORDER if a != Action.ADMIN],
-  'stage': [Action.RUN_WORKFLOW.value, Action.CHANGE_CHECK_ERROR.value],
+  'stage': [Action.RUN_WORKFLOW.value, Action.CHANGE_CHECK_ERROR.value, Action.FOUR_EYES_CHECK.value],
 }
-NOT_CHECKED = [Action.DEPLOY.value, Action.FOUR_EYES_CHECK.value]
+NOT_CHECKED = []
 
 MAX_NAME_LENGTH = 64
 
 # A version check and the change it allows happen together
-CHANGE_LOCK = threading.Lock()
+_CHANGE_THREAD_LOCK = threading.Lock()
+
+
+
+@contextlib.contextmanager
+def change_lock():
+  """
+  For a change of the permissions: check the version, change, write. Between the threads and the processes of the web app
+  (gunicorn runs several), see docs/bugfixes/minor-web-defects-2026-11.md, item 5.
+  """
+
+  with _CHANGE_THREAD_LOCK, files.lock(f"{constants.C_USER_PERMISSIONS}.lock"):
+    yield
 
 
 

@@ -1,5 +1,4 @@
 import datetime
-import logging
 
 from modules.action_type import Action_type
 from modules import current_user
@@ -26,11 +25,11 @@ class Processing_User:
 
 
 
-  def get_processing_user_from_dict(dict: dict={}):
+  def get_processing_user_from_dict(dict: dict|None=None):
 
     pu = Processing_User()
 
-    for k, v in dict.items():
+    for k, v in (dict or {}).items():
       setattr(pu, k, v)
 
     return pu

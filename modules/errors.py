@@ -27,3 +27,13 @@ class Not_Found_Error(App_Error):
 class Conflict_Error(App_Error):
   """Not possible in the current status, e.g. the stage is already running"""
   status_code = 409
+
+
+class Bad_Gateway_Error(App_Error):
+  """Another server has refused or not answered, e.g. the mail server of a notification"""
+  status_code = 502
+
+
+class Service_Unavailable_Error(App_Error):
+  """Can't be done now, e.g. too many logins at the same time. Try again later."""
+  status_code = 503

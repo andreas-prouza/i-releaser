@@ -17,3 +17,10 @@ def no_local_app_settings(tmp_path, monkeypatch):
     """Tests never use the etc/app.json of the installation"""
     from etc import constants
     monkeypatch.setattr(constants, 'C_APP_SETTINGS_FILE', str(tmp_path / 'app.json'))
+
+
+@pytest.fixture()
+def temp_db(request) -> str:
+    """A new database and meta directory for the test (tests/db_tools.py). Returns the directory."""
+    import db_tools
+    return db_tools.use_temp_db(db_tools.Cleanups(request))

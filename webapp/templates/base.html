@@ -95,7 +95,9 @@
 
             <ul class="app-nav-list">
                 {{ nav_link('user', '/user', 'person-circle', sidebar['current_user'] or 'User') }}
-                {{ nav_link('logout', '/logout', 'box-arrow-right', 'Log out') }}
+                {#- POST: a link of another site can't log out (docs/bugfixes/minor-web-defects-2026-11.md, item 2). Outside of the content, so never inside another form #}
+                <li><form method="post" action="/logout" class="m-0"><button type="submit" class="app-nav-link" title="Log out" data-nav="logout">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i><span class="app-nav-text">Log out</span></button></form></li>
             </ul>
 
             <div class="app-nav-footer">

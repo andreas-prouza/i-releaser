@@ -159,5 +159,5 @@ Buttons on the deployment page (and [Web API](webapi.md) endpoints) for situatio
 | Deployments, stages, steps, objects, history, queue of the processing service | SQLite database `var/app.sqlite` |
 | Logs of the steps and stage runs, generated files (save files, SQL, ...) | `meta/{project}/{date}/{version}/` |
 | Configuration | `etc/`, `webapp/etc/` |
-| API tokens (hashed) | `webapp/etc/keys.json` |
+| API tokens (hashed) | SQLite database `var/app.sqlite` (table `api_tokens`; before 2026-11 `webapp/etc/keys.json`) |
 | Sessions of the web app | `webapp/sessions/` |

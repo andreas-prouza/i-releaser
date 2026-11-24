@@ -1,5 +1,5 @@
 """Security of the web app, tested against the running application"""
-import http.client, json, os, re, subprocess, sys, threading, time
+import http.client, json, os, re, sqlite3, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -63,12 +63,16 @@ def test_stage_is_recorded_with_the_user_who_started_it(server):
 def test_session_id_changes_at_the_login(server):
 
     client = server.client()
+    # A failed login gives no session (docs/bugfixes/logout-undone-by-concurrent-request.md)
     client.login('nobody')
-    assert client.session_id is not None
-    before = list(client.sent_session_ids)
+    assert client.session_id is None
+
+    # A session id which someone else knows (session fixation)
+    planted = '0f8c2a7e-1b2c-4d3e-8f90-123456789abc'
+    client.session_id = planted
 
     assert client.login('boss') == 200
-    assert client.session_id not in before
+    assert client.session_id not in [None, planted]
     assert client.get('/settings')[0] == 200
 
 
@@ -107,11 +111,24 @@ def test_logout_ends_the_session(server):
     client = server.client('boss')
     session_id = client.session_id
 
-    client.get('/logout')
+    client.post('/logout')
 
     other = server.client()
     other.session_id = session_id
     assert other.get('/api/get_workflows')[0] == 401
+
+
+
+def test_logout_link_does_not_log_out(server):
+    """docs/bugfixes/minor-web-defects-2026-11.md, item 2: only the button (POST) logs out"""
+
+    client = server.client('boss')
+
+    status, _, text = client.get('/logout', headers={'Accept': 'text/html'})
+
+    assert status == 200
+    assert 'action="/logout"' in text
+    assert client.get('/api/get_workflows')[0] == 200
 
 
 
@@ -172,12 +189,13 @@ def test_new_token_is_strong_and_stored_once(server):
     tokens = {get_token(boss) for _ in range(3)}
 
     assert len(tokens) == 3
-    assert all(len(token) >= 43 for token in tokens)
+    assert all(len(token) >= 43 and token.startswith('irt_') for token in tokens)
 
-    with open(os.path.join(server.web_dir, 'etc', 'keys.json')) as f:
-        keys = json.load(f)
+    # Only the hash, one row: a new token of the Web API v1 replaces the one before
+    with sqlite3.connect(os.path.join(server.directory, 'var', 'app.sqlite')) as conn:
+        rows = conn.execute("SELECT key_hash FROM api_tokens WHERE user = 'boss' AND name = 'API token'").fetchall()
 
-    assert keys['boss']['key'] not in tokens
+    assert len(rows) == 1 and rows[0][0] not in tokens
 
 
 
@@ -186,15 +204,11 @@ def test_old_tokens_stay_valid(server):
     import hashlib
 
     old_token = hashlib.sha256(b'abcdefghij').hexdigest()
+    # The store before 2026-11: taken over into the database
     path = os.path.join(server.web_dir, 'etc', 'keys.json')
 
-    with open(path) as f:
-        keys = json.load(f)
-
-    keys['intern'] = {'key': hashlib.sha256(old_token.encode()).hexdigest(), 'orig_key_masked': '', 'date': ''}
-
     with open(path, 'w') as f:
-        json.dump(keys, f)
+        json.dump({'intern': {'key': hashlib.sha256(old_token.encode()).hexdigest(), 'orig_key_masked': '', 'date': ''}}, f)
 
     assert server.client().get('/api/get_projects', headers={'Authorization': f"Bearer {old_token}"})[0] == 200
 
@@ -207,7 +221,9 @@ def test_last_use_of_a_token_is_shown(server):
 
     server.client().get('/api/get_projects', headers={'Authorization': f"Bearer {token}"})
 
-    assert re.search(r'<dt>Last used</dt>\s*<dd>\d{4}-\d\d-\d\d \d\d:\d\d:\d\d</dd>', boss.get('/user', headers={'Accept': 'text/html'})[2])
+    page = boss.get('/user', headers={'Accept': 'text/html'})[2]
+    # Created, last used, expires
+    assert len(re.findall(r'<td class="text-nowrap">\d{4}-\d\d-\d\d \d\d:\d\d UTC</td>', page)) == 3
 
 
 
@@ -326,26 +342,27 @@ def test_invalid_session_id_is_no_session(server, cookie):
 def test_cookie_flags(server):
 
     client = server.client()
-    _, headers, _ = client.request('POST', '/', form={'user': 'nobody', 'password': 'x'}, headers={'Accept': 'text/html'})
+    _, headers, _ = client.request('POST', '/login', form={'user': 'boss', 'password': 'x'}, headers={'Accept': 'text/html'})
 
     cookie = headers['set-cookie'].lower()
     assert 'httponly' in cookie
     assert 'samesite=lax' in cookie
-    assert 'secure' not in cookie
+    # The default of the template (docs/bugfixes/minor-web-defects-2026-11.md, item 11)
+    assert 'secure' in cookie
 
 
 
-def test_secure_cookie_with_the_setting():
+def test_cookie_without_secure_with_the_setting():
 
     server = Web_Server()
 
     with open(os.path.join(server.web_dir, 'etc', 'global_cfg.py'), 'a') as f:
-        f.write("\nC_COOKIE_SECURE = True\n")
+        f.write("\nC_COOKIE_SECURE = False\n")
 
     try:
         server.start()
-        _, headers, _ = server.client().request('POST', '/', form={'user': 'nobody', 'password': 'x'}, headers={'Accept': 'text/html'})
-        assert 'secure' in headers['set-cookie'].lower()
+        _, headers, _ = server.client().request('POST', '/login', form={'user': 'boss', 'password': 'x'}, headers={'Accept': 'text/html'})
+        assert 'secure' not in headers['set-cookie'].lower()
     finally:
         server.close()
 
@@ -393,7 +410,7 @@ def test_local_debugging_is_refused_under_gunicorn():
 
 def test_failed_logins_are_blocked():
 
-    server = Web_Server(settings="C_LOGIN_MAX_FAILURES = 3\n").start()
+    server = Web_Server(settings="C_LOGIN_CLIENT_MAX_FAILURES = 3\n").start()
 
     try:
         client = server.client()
@@ -401,12 +418,10 @@ def test_failed_logins_are_blocked():
         for _ in range(3):
             client.login('nobody')
 
-        status, _, text = client.request('POST', '/', form={'user': 'nobody', 'password': 'x'}, headers={'Accept': 'text/html'})
-        assert 'Too many failed logins' in text
-
-        # Also with a correct login from this client
-        status, _, text = client.request('POST', '/', form={'user': 'boss', 'password': 'x'}, headers={'Accept': 'text/html'})
-        assert 'Too many failed logins' in text
+        # A correct login from this client address is blocked too, with the text of a failed login
+        status, _, text = client.request('POST', '/login', form={'user': 'boss', 'password': 'x'}, headers={'Accept': 'text/html'})
+        assert 'Login failed. Check your user' in text
+        assert client.get('/settings')[0] == 401
 
     finally:
         server.close()
@@ -448,7 +463,7 @@ def test_large_login_form_is_not_read(server):
     client = server.client()
     form = {'user': 'boss', 'password': 'x', 'filler': 'a' * 5000}
 
-    status, _, text = client.request('POST', '/', form=form)
+    status, _, text = client.request('POST', '/login', form=form)
     assert status == 413, text
     assert client.get('/api/get_workflows')[0] == 401
 
@@ -458,7 +473,7 @@ def test_login_form_without_length_is_not_read(server):
 
     connection = http.client.HTTPConnection('127.0.0.1', server.port, timeout=30)
     try:
-        connection.putrequest('POST', '/')
+        connection.putrequest('POST', '/login')
         connection.putheader('Content-Type', 'application/x-www-form-urlencoded')
         connection.putheader('Transfer-Encoding', 'chunked')
         connection.endheaders()

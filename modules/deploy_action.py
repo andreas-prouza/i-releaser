@@ -85,7 +85,7 @@ class Deploy_Action:
 
       for key in dict_data:
         if key == 'stage_name':
-          setattr(self, 'stage', dict_data[key])
+          self.stage = dict_data[key]
         elif hasattr(self, key):
           setattr(self, key, dict_data[key])
       
@@ -139,19 +139,6 @@ class Deploy_Action:
 
 
 
-  def get_action_from_dict(dict_data: dict={}):
-
-    action = Deploy_Action()
-
-    for k, v in dict_data.items():
-      setattr(action, k, v)
-
-    if action.id == None:
-      action.id = Deploy_Action.get_next_id()
-
-    action.validate()
-
-    return action
 
 
 
@@ -306,14 +293,6 @@ class Deploy_Action_List_list(list):
 
 
 
-  def get_actions_by_processing_step(self, processing_step: str) -> 'Deploy_Action_List_list':
-
-    result = Deploy_Action_List_list()
-    for a in self:
-      if a.processing_step == processing_step:
-        result.append(a)
-
-    return result
 
 
 

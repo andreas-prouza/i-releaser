@@ -9,7 +9,7 @@ import time
 from io import StringIO
 
 from etc import constants
-from modules import meta_file, output_capture, parallel_steps, permissions, placeholders
+from modules import meta_file, output_capture, parallel_steps, placeholders, processing_job, scripts_loader
 from modules import deploy_action as da
 from modules import run_history
 from modules import stages as s
@@ -17,8 +17,6 @@ from modules import action_type
 from modules.cmd_status import Status as Cmd_Status
 
 from modules.db import actions_data, processing_user_data, run_history_data
-from modules.permission_config import check_user_permission
-from scripts import *
 
 
 class Command_Exception(Exception):
@@ -50,7 +48,6 @@ class IBM_i_commands:
 
 
 
-  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_commands(self, stage: s.Stage, processing_step: str=None, continue_run=True) -> None:
 
     logging.debug(f"Run Commands for {stage.name=} ({stage.id}), {processing_step=}")
@@ -59,28 +56,31 @@ class IBM_i_commands:
     processing_user_data.create_action_log(action=action_type.Action_type.RUN_STAGE, meta_file=self.meta_file, stage=stage, details=details)
     stage.set_status('in process')
 
-    # Imported here, as `from scripts import *` may shadow module level names
     from modules import hooks
     hooks.emit(hooks.Event.STAGE_STARTED, self.meta_file, stage)
 
-    # Execute all from stage. A step can add further steps (e.g. object commands), also in front of the running one
+    # Execute all from stage. A step can add further steps (e.g. object commands), also in front of the running one:
+    # the list is read again after each step, the first step which hasn't run yet is next
     done = set()
+    position = 0
 
     with parallel_steps.scope():
 
       while True:
-        next_action = next((a for a in stage.actions.get_actions(processing_step) if id(a) not in done), None)
+        actions = stage.actions.get_actions(processing_step)
+        # Usually the steps after the last one: only a step added in front makes it search from the beginning
+        next_action = next((a for a in actions[position:] if id(a) not in done), None) or next((a for a in actions if id(a) not in done), None)
         if next_action is None:
           break
 
         done.add(id(next_action))
+        position = next(i for i, a in enumerate(actions) if a is next_action)
         self.execute_action(stage, next_action, continue_run)
 
     #iconv -f IBM-1252 -t utf-8 './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' > './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp && mv './logs/prouzalib/date.sqlrpgle.srvpgm.error.log'_tmp './logs/prouzalib/date.sqlrpgle.srvpgm.error.log' 
 
 
 
-  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def execute_action(self, stage: s.Stage, action: da.Deploy_Action, continue_run=True):
     """
     Runs a step. A step with `parallel` is only started: it's running when this function returns.
@@ -127,6 +127,9 @@ class IBM_i_commands:
     if continue_run and (action.status == Cmd_Status.FINISHED or (action.status == Cmd_Status.FAILED and not action.check_error)):
       return
 
+    # A job of the processing service which has been ended meanwhile doesn't run further steps
+    processing_job.check_job_running()
+
     # Shown as running while it runs (docs/bugfixes/running-step-status-not-stored.md).
     # A step which stays `in process` after a crash is run again with `Continue`, like a new one.
     action.status = Cmd_Status.IN_PROCESS
@@ -159,7 +162,12 @@ class IBM_i_commands:
 
     action.status = rh.status
 
-    self.meta_file.save()
+    if action.environment == da.Command_Type.SCRIPT or action.id is None:
+      # A script may change anything of the deployment (objects, sub-steps, custom data)
+      self.meta_file.save()
+    else:
+      # A command only changes its step: only the step is written (docs/features/core-redesign.md, step 2)
+      self.meta_file.save_step(action)
 
     failed = rh.status == Cmd_Status.FAILED and action.check_error
 
@@ -175,7 +183,6 @@ class IBM_i_commands:
 
 
 
-  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_script_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
     
     #cmd='pre.pre_cmd'
@@ -198,7 +205,8 @@ class IBM_i_commands:
       with output_capture.capture(stdout_new, stderr_new):
 
         try:
-          func = getattr(globals()[obj[0]], obj[1])
+          # Only functions of scripts/ (docs/features/core-redesign.md, step 4)
+          func = scripts_loader.resolve(cmd)
           logging.info(f"Run {str(func)}")
 
           with parallel_steps.scope():
@@ -225,12 +233,25 @@ class IBM_i_commands:
 
 
 
+  @staticmethod
+  def end_process_group(process: subprocess.Popen) -> None:
+    """Ends the command with its child processes. It may have ended just before."""
+
+    try:
+      os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+      pass
+
+
+
+  @staticmethod
   def generate_ssh_cmd(stage: s.Stage, cmd: str) -> str:
     # BatchMode: fail instead of waiting for a password
     return f'ssh -o BatchMode=yes {shlex.quote(stage.host)} {shlex.quote(cmd)}'
 
 
 
+  @staticmethod
   def generate_qsys_cmd(cmd: str, action: da.Deploy_Action) -> str:
     parameter = ''
     if action.run_in_new_job:
@@ -242,12 +263,12 @@ class IBM_i_commands:
 
 
 
+  @staticmethod
   def is_execute_remote(stage: s.Stage, action: da.Deploy_Action):
     return (stage.execute_remote and action.execute_remote is None) or (action.execute_remote is not None and action.execute_remote)
 
 
 
-  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_qsys_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
     
     logging.debug(f"Run QSYS: {cmd=}")
@@ -262,25 +283,29 @@ class IBM_i_commands:
 
 
 
-  #@check_user_permission(permissions.PermissionAction.RUN_WORKFLOW)
   def run_pase_cmd(self, stage: s.Stage, cmd: str, action: da.Deploy_Action) -> run_history.Run_History:
       
       logging.debug(f"{cmd=}; {stage.build_dir=}; {action.cwd=}; {os.getcwd()=}")
 
       timeout = action.timeout_seconds if action.timeout_seconds is not None else constants.C_COMMAND_TIMEOUT_SECONDS
 
-      # In its own session, to be able to end the command together with its child processes
-      process = subprocess.Popen(cmd, stdout=subprocess.PIPE, cwd=action.cwd or stage.build_dir, stderr=subprocess.PIPE, shell=True, executable='/bin/bash', start_new_session=True)
-
       timed_out = False
 
-      try:
-        stdout, stderr = process.communicate(timeout=timeout or None)
+      # In its own session, to be able to end the command together with its child processes
+      with subprocess.Popen(cmd, stdout=subprocess.PIPE, cwd=action.cwd or stage.build_dir, stderr=subprocess.PIPE, shell=True, executable='/bin/bash', start_new_session=True) as process:
 
-      except subprocess.TimeoutExpired:
-        timed_out = True
-        os.killpg(process.pid, signal.SIGKILL)
-        stdout, stderr = process.communicate()
+        try:
+          stdout, stderr = process.communicate(timeout=timeout or None)
+
+        except subprocess.TimeoutExpired:
+          timed_out = True
+          IBM_i_commands.end_process_group(process)
+          stdout, stderr = process.communicate()
+
+        except BaseException:
+          # E.g. the run is ended: the command must not keep running
+          IBM_i_commands.end_process_group(process)
+          raise
 
       # Output of IBM i commands isn't always UTF-8. That must not fail the step or lose its output
       stdout = stdout.decode('utf-8', errors='replace')

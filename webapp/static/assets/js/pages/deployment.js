@@ -169,7 +169,8 @@ function restore_state(steps, state) {
 async function load_steps(stage_id, {open = true, keep = false} = {}) {
 
     const state = keep ? panel_state() : null;
-    const html = await get_html(`/show_details/${meta_file_id}/stage/${encodeURIComponent(stage_id)}`);
+    // keep: a refresh of the live updates
+    const html = await get_html(`/show_details/${meta_file_id}/stage/${encodeURIComponent(stage_id)}`, {background: keep});
 
     // A rendered part of the server (docs/features/web-ui-scripts.md#rules, rule 4)
     const container = document.getElementById('stage-steps-container');
@@ -697,7 +698,7 @@ async function load_parts() {
     pending.clear();
 
     try {
-        const html = await get_html(`/show_details/${meta_file_id}`);
+        const html = await get_html(`/show_details/${meta_file_id}`, {background: true});
         const loaded = new DOMParser().parseFromString(html, 'text/html');
         names.forEach((name) => replace_part(name, loaded));
         document.title = loaded.title;
@@ -844,7 +845,7 @@ function reconnect_later() {
     retry_timer = setTimeout(async () => {
         try {
             // Reachable, and still logged in? (401: "Your session has ended", see app/api.js)
-            await get_html(`/show_details/${meta_file_id}/stage/${encodeURIComponent(panel()?.dataset.stageId || page.selected_stage_id)}`);
+            await get_html(`/show_details/${meta_file_id}/stage/${encodeURIComponent(panel()?.dataset.stageId || page.selected_stage_id)}`, {background: true});
         } catch (error) {
             if (error.status === 401) {
                 stop();
@@ -886,3 +887,11 @@ document.addEventListener('visibilitychange', () => {
 });
 
 connect();
+
+
+// Four-eyes check (docs/features/four-eyes-check.md)
+on_action('approve-stage', (button) => confirm_and_refresh({
+    title: `Approve ${button.dataset.stageName}?`,
+    text: 'You confirm the objects and the custom data of this deployment as they are now. Another person runs the stage; a change afterwards needs a new approval.',
+    confirm: 'Approve', url: `/api/approve_stage/${meta_file_id}/${button.dataset.stageId}`, done: `${button.dataset.stageName} approved`,
+}));

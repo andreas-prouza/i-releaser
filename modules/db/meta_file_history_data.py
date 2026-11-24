@@ -2,7 +2,8 @@ from io import StringIO
 import os
 import logging
 from modules.db import app_sqlite
-from modules.db.meta_file_data import get_meta_dir
+# The module, not the name: it may not be loaded completely yet (circular import)
+from modules.db import meta_file_data
 from modules import meta_file_history as mfh
 from modules import files
 
@@ -10,7 +11,7 @@ from modules import files
 
 
 
-def create_new_meta_file_history(log: StringIO|str|None=None, create_time=None, meta_file_id: int=None, dict: dict={}) -> mfh.Meta_File_History:
+def create_new_meta_file_history(log: StringIO|str|None=None, create_time=None, meta_file_id: int=None, dict: dict|None=None) -> mfh.Meta_File_History:
     """Creates a new Meta_File_History instance and saves it to the database.
     Its log is stored in a file, the history log contains the file path (file://...)."""
     
@@ -18,7 +19,7 @@ def create_new_meta_file_history(log: StringIO|str|None=None, create_time=None, 
         log=log,
         create_time=create_time,
         meta_file_id=meta_file_id,
-        dict=dict
+        dict=dict if dict is not None else {}
     )
 
     add_meta_file_history(mfh_obj)
@@ -70,7 +71,7 @@ def add_meta_file_history(meta_file_history: mfh.Meta_File_History):
         if isinstance(log, StringIO):
             log = log.getvalue()
 
-        meta_dir:str|None = get_meta_dir(cursor=c, meta_file_id=meta_file_history.meta_file_id)
+        meta_dir:str|None = meta_file_data.get_meta_dir(cursor=c, meta_file_id=meta_file_history.meta_file_id)
         if meta_dir is None:
             raise Exception(f"Meta directory not found for meta file ID {meta_file_history.meta_file_id}. Cannot save run history logs.")
         

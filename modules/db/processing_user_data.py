@@ -75,3 +75,17 @@ def add_processing_user(processing_user_obj: processing_user.Processing_User):
 
         conn.commit()
     logging.info(f"Processing user for meta file ID {processing_user_obj.meta_file_id} saved to database.")
+
+
+
+def get_newest(limit: int=1000) -> list[dict]:
+    """The newest entries of the histories of all deployments, with their project and version (audit page)"""
+
+    with app_sqlite.get_db_connection() as conn:
+        rows = conn.execute("""
+            SELECT pu.*, dv.project, dv.version FROM processing_users pu
+              LEFT JOIN meta_files mf ON mf.id = pu.meta_file_id
+              LEFT JOIN deploy_versions dv ON dv.id = mf.deploy_version_id
+             ORDER BY pu.id DESC LIMIT ?""", (limit,)).fetchall()
+
+    return [dict(row) for row in rows]

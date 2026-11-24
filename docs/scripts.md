@@ -38,8 +38,9 @@ Map it to a processing step (`etc/default_step_action.json` or `step_action` of 
 
 * The step fails if the function raises an exception.
 * Its output (`print`, `logging`) and errors are stored with the step. `logging` entries below the log level of `etc/logger_config.py` and `webapp/etc/logger_config.py` are not stored.
-* All files in `scripts/` are loaded once: by the web app when it runs its first stage, by the processing service when it starts.
-  **Restart them after a change.** A file which can't be loaded stops all stages from running.
+* A file of `scripts/` is loaded when a step or hook uses it the first time (the processing service loads all at its start).
+  **Restart the web app and the processing service after a change.** A file which can't be loaded only fails the steps and hooks which use it (the error is in the step and in the log).
+* Only functions of files in `scripts/` can be called: `filename.function_name`, no other modules, no names starting with `_`.
 * `scripts/` is not tracked by git: your scripts stay when you update i-Releaser.
 
 Useful attributes:
@@ -179,7 +180,7 @@ See [workflow configuration](workflow.md#hooks).
 
 | Extension | How |
 |---|---|
-| Own routes (pages or API endpoints) | Python files in `webapp/custom/routes/`. They are loaded when the web app starts. Example: `webapp/custom/routes/test.py` adds `/custom_test/{test}`. |
+| Own routes (pages or API endpoints) | Python files in `webapp/custom/routes/`. They are loaded when the web app starts, after the routes of the web app: a path of the web app can't be used (the start stops with a message). A file with an error is left out and shown on the settings page. Example: [`docs/examples/custom-routes/test.py`](examples/custom-routes/test.py) adds `/custom_test/{test}` when it is copied to `webapp/custom/routes/`. |
 | Own HTML on the deployment page | `webapp/templates/custom_templates/deployment_status.html` is included in the deployment page, if it exists. E.g. a button which starts a rollback workflow for this deployment, see [below](#scripts-of-custom-templates). |
 | Own scripts and files for the pages | `webapp/static/custom/`, served as `/static/custom/...` |
 

@@ -1,6 +1,14 @@
 -r requirements.txt
 
-pytest
-pip-audit
+pytest==9.2.0
+pip-audit==2.10.1
+# Lint (pyproject.toml), a time limit per test, coverage (docs/features/code-quality-tooling.md)
+ruff==0.17.6
+pytest-timeout==2.4.0
+# Runs the tests in parallel (pytest.ini), with its dependency execnet
+pytest-xdist==3.8.0
+coverage==7.17.5
 # Browser tests (tests/test_web_browser.py), also: python -m playwright install chromium
 playwright==1.65.2
+# Checks the JSON schemas of docs/schema/ (tests/test_workflow_schema.py), not needed at runtime
+jsonschema==4.17.3

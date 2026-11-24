@@ -21,9 +21,15 @@ def server():
 
 
 
+def let_the_watchdog_check(seconds: float=3) -> None:
+    """A time has to pass: several checks of the watchdog (every second, FAST_WATCHDOG)"""
+    time.sleep(seconds)
+
+
+
 def assert_not_started(server: Web_Server, seconds: float=3) -> None:
     """Several checks of the watchdog"""
-    time.sleep(seconds)
+    let_the_watchdog_check(seconds)
     assert not server.is_service_running()
     assert 'auto start' not in server.read_logs()
 
@@ -59,6 +65,7 @@ def test_service_is_started_with_the_web_app(server):
     # It keeps running when the web app ends
     pid = server.get_service_pid()
     server.stop()
+    # A time has to pass: the service keeps running after the web app has ended
     time.sleep(0.5)
     assert is_running(pid)
 
@@ -94,7 +101,7 @@ def test_running_service_is_not_started_again(server):
     assert server.read_app_settings() == AUTO_START
     assert 'Auto start of the processing service turned on by BOSS' in server.read_logs()
 
-    time.sleep(3)
+    let_the_watchdog_check()
     assert server.get_service_pid() == pid and is_running(pid)
     assert 'auto start' not in server.read_logs().replace('Auto start of the processing service turned on', '')
     assert count_service_starts(server) == 1
@@ -124,7 +131,7 @@ def test_stop_in_the_web_app_pauses_the_auto_start(server):
     assert (status, data['service_running']) == (200, False), data
     assert os.path.exists(server.path('var', 'processing-service.stopped'))
 
-    time.sleep(3)
+    let_the_watchdog_check()
     assert not server.is_service_running()
 
     _, _, text = boss.get('/settings/processing', headers={'Accept': 'text/html'})
@@ -151,7 +158,7 @@ def test_stop_on_the_command_line_pauses_the_auto_start(server):
     assert 'Auto start of the web app is paused' in output
     assert not is_running(pid)
 
-    time.sleep(3)
+    let_the_watchdog_check()
     assert not server.is_service_running()
 
     output = server.run_service_script('start')
@@ -184,7 +191,7 @@ def test_only_one_service_with_several_workers():
 
         server.wait_for_service()
         # Several checks of all workers
-        time.sleep(4)
+        let_the_watchdog_check(4)
 
         assert count_service_starts(server) == 1
     finally:
@@ -202,6 +209,7 @@ def test_only_one_of_several_services_started_at_the_same_time(server):
                  for _ in range(4)]
 
     try:
+        # A time has to pass: the services which can't get the lock end
         time.sleep(4)
         running = [p for p in processes if p.poll() is None]
         assert len(running) == 1
@@ -273,5 +281,5 @@ def test_turn_off_the_auto_start(server):
     assert server.read_app_settings() == {**AUTO_START, 'C_SERVICE_AUTO_START': False}
 
     os.kill(pid, signal.SIGKILL)
-    time.sleep(3)
+    let_the_watchdog_check()
     assert not server.is_service_running()

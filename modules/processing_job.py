@@ -1,3 +1,4 @@
+import contextvars
 import datetime
 
 from modules import errors
@@ -144,7 +145,7 @@ def parse_run_at(value) -> datetime.datetime:
   try:
     run_at = datetime.datetime.fromisoformat(text)
   except ValueError:
-    raise errors.Invalid_Input_Error(f"'run_at' is not a valid date and time: '{value}'. Example: '2026-11-24T22:00:00+01:00'")
+    raise errors.Invalid_Input_Error(f"'run_at' is not a valid date and time: '{value}'. Example: '2026-11-24T22:00:00+01:00'") from None
 
   if run_at.tzinfo is None or run_at.utcoffset() is None:
     raise errors.Invalid_Input_Error(f"'run_at' needs a time zone offset, e.g. '2026-11-24T22:00:00+01:00' instead of '{value}'")
@@ -155,3 +156,31 @@ def parse_run_at(value) -> datetime.datetime:
     raise errors.Invalid_Input_Error(f"'run_at' is in the past: {format_utc_text(run_at)}")
 
   return run_at
+
+
+
+# The job of the processing service which runs in this process (None: the run isn't a job)
+current_job_id: contextvars.ContextVar[int|None] = contextvars.ContextVar('current_job_id', default=None)
+
+
+
+def check_job_running() -> None:
+  """
+  Raises:
+      Job_Ended_Exception: The job of this run isn't running anymore (e.g. it has been set to failed by the service)
+  """
+
+  job_id = current_job_id.get()
+  if job_id is None:
+    return
+
+  from modules.db import processing_job_data
+  job = processing_job_data.get_job(job_id)
+
+  if job is None or job.status not in [Job_Status.QUEUED, Job_Status.RUNNING]:
+    raise Job_Ended_Exception(f"The run has been ended: job {job_id} is '{job.status.value if job else 'removed'}'")
+
+
+
+class Job_Ended_Exception(Exception):
+  pass

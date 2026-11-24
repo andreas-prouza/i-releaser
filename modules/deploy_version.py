@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import datetime
 import json
@@ -8,10 +10,8 @@ import logging
 from modules import errors, meta_file
 from modules.db import app_sqlite, meta_file_data
 from modules.meta_file_status import Meta_file_status
-import logging
 
 # from operator import itemgetter
-# from modules.permission_config import check_user_permission
 
 class DeploymentExistException(errors.Conflict_Error):
     pass
@@ -68,14 +68,17 @@ class Deploy_Version:
     def get_deployments(project: str) -> dict:
         """
         Retrieves all deployments for a given project from the SQLite database.
+        Without the custom data: it's compressed and not needed for lists (docs/features/core-redesign.md, step 2).
         """
         logging.debug(f"Getting deployments for project: {project}")
         
         with app_sqlite.get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                           SELECT 
-                                dv.version as version, mf.*, mf.id as meta_file_id,
+                           SELECT
+                                dv.version as version, mf.id as meta_file_id, mf.id, mf.project, mf.deploy_version_id, mf.commit_hash,
+                                mf.release_branch, mf.create_time, mf.update_time, mf.meta_dir, mf.status, mf.object_list,
+                                mf.main_lib, mf.remote_lib, mf.backup_lib, mf.parallel_deployment_execution_allowed,
                                 MAX(dv.version) OVER (partition by dv.project) as last_deploy_version,
                                 wd.name as workflow_name, wd.default_project
                            FROM deploy_versions dv

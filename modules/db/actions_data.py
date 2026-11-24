@@ -230,3 +230,59 @@ def get_actions(stage_id: int|None=None, deploy_object_id: int|None=None, action
             actions.append(action_obj)
 
     return actions
+
+
+# All steps of a deployment: of its stages and deploy objects, and their sub-steps (any depth)
+_STEPS_OF_DEPLOYMENT = """
+    WITH RECURSIVE tree(id) AS (
+        SELECT id FROM actions WHERE stage_id IN (SELECT id FROM stages WHERE meta_file_id = ?)
+                                  OR deploy_object_id IN (SELECT id FROM deploy_objects WHERE meta_file_id = ?)
+        UNION ALL
+        SELECT a.id FROM actions a INNER JOIN tree t ON a.action_id = t.id)
+"""
+
+
+
+class Deployment_Steps:
+    """The steps of a deployment, loaded with two queries (docs/features/core-redesign.md, step 2), by stage and by deploy object"""
+
+    def __init__(self, cursor: sqlite3.Cursor, meta_file_id: int):
+
+        params = (meta_file_id, meta_file_id)
+        rows = cursor.execute(f"{_STEPS_OF_DEPLOYMENT} SELECT * FROM actions WHERE id IN (SELECT id FROM tree) ORDER BY id", params).fetchall()
+        history_rows = cursor.execute(f"{_STEPS_OF_DEPLOYMENT} SELECT * FROM action_run_history WHERE action_id IN (SELECT id FROM tree) ORDER BY id", params).fetchall()
+
+        histories: dict[int, list[dict]] = {}
+        for history in history_rows:
+            histories.setdefault(history['action_id'], []).append(dict(history))
+
+        actions: dict[int, da.Deploy_Action] = {}
+        for row in rows:
+            action_dict = dict(row)
+            action_dict['status'] = da.Cmd_Status(action_dict['status'])
+            action_dict['environment'] = da.Command_Type(action_dict['environment'])
+            action_dict['run_history'] = histories.get(row['id'], [])
+            action = da.Deploy_Action(dict_data=action_dict)
+            action.sub_actions = da.Deploy_Action_List_list()
+            action.saved_values = _get_values(action)
+            for history in action.run_history:
+                history.saved_values = _get_history_values(action, history)
+            actions[row['id']] = action
+
+        self.by_stage: dict[int, da.Deploy_Action_List_list] = {}
+        self.by_deploy_object: dict[int, da.Deploy_Action_List_list] = {}
+
+        for row in rows:
+            action = actions[row['id']]
+            if row['action_id'] is not None and row['action_id'] in actions:
+                actions[row['action_id']].sub_actions.append(action)
+            elif row['stage_id'] is not None:
+                self.by_stage.setdefault(row['stage_id'], da.Deploy_Action_List_list()).append(action)
+            elif row['deploy_object_id'] is not None:
+                self.by_deploy_object.setdefault(row['deploy_object_id'], da.Deploy_Action_List_list()).append(action)
+
+    def of_stage(self, stage_id: int) -> da.Deploy_Action_List_list:
+        return self.by_stage.get(stage_id, da.Deploy_Action_List_list())
+
+    def of_deploy_object(self, deploy_object_id: int) -> da.Deploy_Action_List_list:
+        return self.by_deploy_object.get(deploy_object_id, da.Deploy_Action_List_list())

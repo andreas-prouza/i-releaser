@@ -1,13 +1,12 @@
-import unittest, sys, os, logging, sqlite3, tempfile, shutil, threading
+import unittest, sys, os, logging, sqlite3, threading
 from types import SimpleNamespace
 from unittest.mock import patch
 
 # The repository root, so `etc` and `modules` are found
 sys.path.insert(0, os.path.realpath(f"{os.path.dirname(__file__)}/.."))
 
-from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
 from modules import meta_file, workflow, ibm_i_commands, files
 from modules import deploy_action as da
 from modules.db import app_sqlite, meta_file_data, meta_file_history_data
@@ -55,19 +54,12 @@ class TestStepOverhead(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
-
-        # All modules use the default parameter of get_db_connection
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
+        db_tools.use_temp_db(self)
 
         self.patches = [
-            patch.object(constants, 'C_META_DIR', os.path.join(self.tmp_dir, 'meta', '{project}', '{create_date}', '{deploy_version}')),
             patch.object(workflow.Workflow, 'get_workflow_by_name', return_value=workflow.Workflow(dict=WORKFLOW)),
             patch.object(workflow.Workflow, 'get_default_step_mapping', return_value=[]),
-            patch.dict(ibm_i_commands.__dict__, {'overhead_script': SimpleNamespace(run_sub_actions=run_sub_actions)}),
+            patch.dict(sys.modules, {'scripts.overhead_script': SimpleNamespace(run_sub_actions=run_sub_actions)}),
         ]
         for p in self.patches:
             p.start()
@@ -88,8 +80,6 @@ class TestStepOverhead(unittest.TestCase):
         for p in reversed(self.patches):
             p.stop()
 
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
 
     def create_meta_file(self) -> meta_file.Meta_File:
@@ -155,8 +145,8 @@ class TestStepOverhead(unittest.TestCase):
 
         # Only needed for the placeholder
         self.assertEqual(get_all_data.call_count, 1)
-        # Known from the meta file
-        get_meta_dir.assert_not_called()
+        # Known from the meta file: not looked up for a step, only once for the new history log of the run
+        self.assertEqual([c.kwargs.keys() - {'cursor'} for c in get_meta_dir.call_args_list], [{'meta_file_id'}])
 
         stage = meta_file_data.get_meta_file_by_id(mf.id).get_stages_by_name('START')[0]
         actions = {a.processing_step: a for a in stage.actions}
@@ -183,7 +173,7 @@ class TestStepOverhead(unittest.TestCase):
         mf = self.create_meta_file()
 
         with patch.object(meta_file.Meta_File, '_run_current_stage', side_effect=Exception('failed')):
-            self.assertRaises(Exception, self.run_start_stage, mf)
+            self.assertRaisesRegex(Exception, '^failed$', self.run_start_stage, mf)
 
         self.assertEqual(len(self.root_logger.handlers), self.handler_count)
         self.assertIsNone(mf._history_handler)

@@ -1,12 +1,12 @@
 """Version numbers, database updates, backups and connections"""
-import json, os, shutil, sqlite3, stat, subprocess, sys, tempfile, threading, unittest
+import json, os, shutil, sqlite3, stat, tempfile, threading, unittest
 from unittest.mock import patch
 
 from etc import constants
+import db_tools
 # Before meta_file (circular import)
-from modules import deploy_version
 from modules import errors, files, version
-from modules.db import app_info_data, app_sqlite, compression
+from modules.db import app_sqlite, compression
 from modules.db.updates import v_2_0_1, v_2_0_2, v_3_1_0
 from modules.deploy_version import Deploy_Version
 from modules.meta_file_status import Meta_file_status
@@ -17,17 +17,10 @@ class Database_Test(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_dir = tempfile.mkdtemp()
-        self.db_file = os.path.join(self.tmp_dir, 'app.sqlite')
-        self.db_defaults = app_sqlite.get_db_connection.__defaults__
-        app_sqlite.get_db_connection.__defaults__ = (self.db_file,)
-        app_sqlite.create_tables(self.db_file)
-
+        db_tools.use_temp_db(self)
 
     def tearDown(self):
-        app_sqlite.get_db_connection.__defaults__ = self.db_defaults
         os.chmod(self.tmp_dir, stat.S_IRWXU)
-        shutil.rmtree(self.tmp_dir)
 
 
     def get_user_version(self) -> int:
@@ -219,7 +212,8 @@ class TestUpdates(Database_Test):
 
         try:
             with patch.object(app_sqlite, 'get_updates', return_value=self.fake_updates()):
-                with self.assertRaises(Exception):
+                # The backup can't be written
+                with self.assertRaises(sqlite3.OperationalError):
                     app_sqlite.check_updates()
 
             self.assertEqual(self.calls, [])

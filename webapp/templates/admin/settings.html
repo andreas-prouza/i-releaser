@@ -15,6 +15,12 @@
 {{ settings_tabs('general') }}
 
 <div class="ir-settings">
+    {%- if general.custom_route_errors %}
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-octagon" aria-hidden="true"></i> Custom routes which couldn't be loaded (<code>webapp/custom/routes/</code>):
+        <ul class="mb-0">{% for name, error in general.custom_route_errors %}<li><code>{{ name }}.py</code>: {{ error }}</li>{% endfor %}</ul>
+    </div>
+    {%- endif %}
     <section class="ir-card ir-section" aria-labelledby="installation-title">
         <div class="ir-section-head"><h2 id="installation-title">Installation</h2></div>
         {{ kv_list(general.details, mono=['Installation', 'Workflows', 'Permissions', 'Deployments']) }}
@@ -25,10 +31,11 @@
         {%- if general.tokens %}
         <div class="table-responsive">
             <table class="table table-sm">
-                <thead><tr><th>User</th><th>Created</th><th>Last used</th><th>Token</th></tr></thead>
+                <thead><tr><th>User</th><th>Name</th><th>Scope</th><th>Created</th><th>Last used</th><th>Expires</th><th>Token</th><th><span class="visually-hidden">Action</span></th></tr></thead>
                 <tbody>
                 {%- for token in general.tokens %}
-                    <tr><td>{{ token.user }}</td><td class="text-nowrap">{{ token.created }}</td><td class="text-nowrap">{{ token.last_used }}</td><td class="ir-mono">{{ token.token }}</td></tr>
+                    <tr><td>{{ token.user }}</td><td>{{ token.name }}</td><td>{{ token.scope }}</td><td class="text-nowrap">{{ token.created }}</td><td class="text-nowrap">{{ token.last_used }}</td><td class="text-nowrap">{{ token.expires }}</td><td class="ir-mono">{{ token.masked }}</td>
+                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-action="revoke-token" data-token-id="{{ token.id }}" data-user="{{ token.user }}" data-name="{{ token.name }}"><i class="bi bi-x-circle" aria-hidden="true"></i> Revoke</button></td></tr>
                 {%- endfor %}
                 </tbody>
             </table>
@@ -36,8 +43,109 @@
         {%- else %}
         {{ empty_state('No user has an API token', icon='key') }}
         {%- endif %}
-        <p class="ir-reason mb-0">Each user creates and deletes their own token on their page (<a href="/user">your account</a>).</p>
+        <p class="ir-reason mb-0">Each user creates and deletes their own tokens on their page (<a href="/user">your account</a>). Tokens expire after <code>C_TOKEN_MAX_DAYS</code> days. Revoke the token of a user who shouldn't use it anymore.</p>
+    </section>
+
+    <section class="ir-card ir-section" aria-labelledby="retention-title">
+        <div class="ir-section-head">
+            <h2 id="retention-title">Data retention</h2>
+            {%- if general.retention.active %}
+            <div class="ir-section-actions">
+                <button type="button" class="btn btn-sm btn-outline-danger" data-action="run-retention"><i class="bi bi-trash" aria-hidden="true"></i> Remove now</button>
+            </div>
+            {%- endif %}
+        </div>
+        {{ kv_list(general.retention.details) }}
+        <p class="ir-reason mb-0">Old deployments are removed once a day with their directory in <code>meta/</code> (<code>C_RETENTION_DAYS</code>, <code>C_RETENTION_ARCHIVE</code> in <code>etc/settings.py</code>). The newest finished deployment of a project stays.</p>
+    </section>
+
+    <section class="ir-card ir-section" aria-labelledby="notifications-title">
+        <div class="ir-section-head"><h2 id="notifications-title">Notifications</h2></div>
+        {%- if notifications.error %}
+        <div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i> Notifications are off: <code>{{ notifications.file }}</code> is invalid: {{ notifications.error }}</div>
+        {%- endif %}
+        {%- if notifications.readable_by_others %}
+        <div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <code>{{ notifications.file }}</code> can be read by other users of the system, but it has passwords or webhook URLs: <code>chmod 600</code> it.</div>
+        {%- endif %}
+        {%- if notifications.channels %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Channel</th><th>Type</th><th>Sends to</th><th>Rules</th><th><span class="visually-hidden">Action</span></th></tr></thead>
+                <tbody>
+                {%- for channel in notifications.channels %}
+                    <tr>
+                        <td>{{ channel.name }}</td><td>{{ channel.type }}</td><td>{{ channel.destination }}</td><td>{{ channel.rules }}</td>
+                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="test-notification" data-channel="{{ channel.name }}" data-type="{{ channel.type }}" data-mail="{{ notifications.own_mail }}"><i class="bi bi-send" aria-hidden="true"></i> Send test</button></td>
+                    </tr>
+                {%- endfor %}
+                </tbody>
+            </table>
+        </div>
+        {%- elif not notifications.exists %}
+        {{ empty_state('No notifications: there is no ' ~ notifications.file, icon='bell-slash') }}
+        {%- endif %}
+        {{ kv_list(notifications.details) }}
+        {%- if notifications.outbox and notifications.outbox.last_failed %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Failed</th><th>Event</th><th>Channel</th><th>Attempts</th><th>Error</th></tr></thead>
+                <tbody>
+                {%- for failed in notifications.outbox.last_failed %}
+                    <tr><td class="text-nowrap">{{ failed.created_at | utc }}</td><td>{{ failed.event }}</td><td>{{ failed.channel }}</td><td>{{ failed.attempts }}</td><td>{{ failed.last_error }}</td></tr>
+                {%- endfor %}
+                </tbody>
+            </table>
+        </div>
+        {%- endif %}
+        <p class="ir-reason mb-0">Channels and rules are in <code>etc/notifications.json</code> (template in <code>etc/examples/</code>). E-mail addresses of users are their <em>Mail</em> on the permissions page.</p>
+    </section>
+
+    <section class="ir-card ir-section" aria-labelledby="two-factor-title">
+        <div class="ir-section-head"><h2 id="two-factor-title">Two-factor authentication</h2></div>
+        {{ kv_list([('Policy', general.two_factor_policy)]) }}
+        {%- if general.two_factor_users %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Users with two-factor authentication</th><th><span class="visually-hidden">Action</span></th></tr></thead>
+                <tbody>
+                {%- for user in general.two_factor_users %}
+                    <tr>
+                        <td>{{ user }}</td>
+                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="reset-mfa" data-user="{{ user }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reset</button></td>
+                    </tr>
+                {%- endfor %}
+                </tbody>
+            </table>
+        </div>
+        {%- endif %}
+        <p class="ir-reason mb-0">Change the policy with <code>C_2FA_POLICY</code> in <code>etc/settings.py</code>. Reset the two-factor authentication of a user who has lost the phone and the recovery codes: the user sets it up again.</p>
+    </section>
+
+    <section class="ir-card ir-section" aria-labelledby="blocked-title">
+        <div class="ir-section-head"><h2 id="blocked-title">Blocked logins</h2></div>
+        {%- if general.blocked_logins %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>User</th><th>Failed sign-ons in a row</th><th>Last failure</th><th><span class="visually-hidden">Action</span></th></tr></thead>
+                <tbody>
+                {%- for blocked in general.blocked_logins %}
+                    <tr>
+                        <td>{{ blocked.user }}</td><td>{{ blocked.failures }}</td><td class="text-nowrap">{{ blocked.last_failure }}</td>
+                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="unblock-login" data-user="{{ blocked.user }}"><i class="bi bi-unlock" aria-hidden="true"></i> Unblock</button></td>
+                    </tr>
+                {%- endfor %}
+                </tbody>
+            </table>
+        </div>
+        {%- else %}
+        {{ empty_state('No login is blocked', icon='unlock') }}
+        {%- endif %}
+        <p class="ir-reason mb-0">A user is blocked after {{ general.max_login_failures }} wrong passwords in a row (<code>C_LOGIN_MAX_FAILURES</code>), before the IBM i disables the profile (<code>QMAXSIGN</code>). Unblock only after you know who has tried.</p>
     </section>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='assets/js/pages/settings.js') }}"></script>
 {% endblock %}

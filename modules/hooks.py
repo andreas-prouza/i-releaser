@@ -16,7 +16,6 @@ Errors of a hook are logged only. They never affect the deployment.
 """
 from __future__ import annotations
 
-import importlib
 import logging
 from enum import Enum
 from typing import Callable, TYPE_CHECKING
@@ -42,6 +41,8 @@ class Event(str, Enum):
   # A scheduled run of a stage didn't start (missed time or the stage couldn't be run): the stage hasn't run
   SCHEDULED_RUN_FAILED = 'scheduled_run_failed'
   CUSTOM_DATA_CHANGED = 'custom_data_changed'
+  # A stage with the four-eyes check is ready without a valid approval, or its approval became invalid by a change
+  APPROVAL_REQUESTED = 'approval_requested'
 
 
 
@@ -71,16 +72,20 @@ def validate(hooks: dict) -> None:
 
 
 def resolve(execute: str) -> Callable:
-  """Returns the function of 'filename.function_name' from the scripts/ folder"""
+  """Returns the function of 'filename.function_name' from the scripts/ folder (the same as SCRIPT steps)"""
 
-  module_name, function_name = execute.split('.')
-  module = importlib.import_module(f"scripts.{module_name}")
-  return getattr(module, function_name)
-
+  from modules import scripts_loader
+  return scripts_loader.resolve(execute)
 
 
-def emit(event: Event, meta_file: Meta_File, stage: Stage|None=None) -> None:
-  """Calls all hooks of the deployment's workflow for this event"""
+
+def emit(event: Event, meta_file: Meta_File, stage: Stage|None=None, details: str|None=None) -> None:
+  """
+  Calls all hooks of the deployment's workflow for this event, then writes the notifications of the event.
+
+  Args:
+      details (str, optional): Why it happened (e.g. the error of a scheduled run), for the notifications only
+  """
 
   workflow = getattr(meta_file, 'workflow', None)
   hooks = getattr(workflow, 'hooks', None) or {}
@@ -93,3 +98,7 @@ def emit(event: Event, meta_file: Meta_File, stage: Stage|None=None) -> None:
     except Exception as e:
       logging.error(f"Hook {execute} for event '{event.value}' failed: {e}")
       logging.exception(e, stack_info=True)
+
+  # Only written to the outbox here, sent by a thread (docs/features/notifications.md). It never raises.
+  from modules import notifications
+  notifications.notify(event, meta_file, stage, details)
