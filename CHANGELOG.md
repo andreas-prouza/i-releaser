@@ -1,3 +1,40 @@
+# 4.1.0
+
+* [Scheduled runs](docs/processing-service.md#scheduled-runs): `Run at…` runs a stage at a later date and time (also `run_at` of the Web API), only in mode `service`. A run which would start more than `C_SCHEDULE_MAX_DELAY_MINUTES` late isn't run
+* [Two-factor authentication](docs/permissions.md#two-factor-authentication) with an authenticator app (`C_2FA_POLICY`); actions like creating a token or changing permissions ask for a code
+* [Four-eyes check](docs/permissions.md#four-eyes-check): stages with `four_eyes_check` run only after a second person has approved them; the permission `deploy` is gone
+* [Web API v2](docs/webapi.md): resources under `/api/v2/` (e.g. `POST /api/v2/deployments/{id}/stages/{stage_id}/runs`), pages of deployments, the same error format everywhere, OpenAPI at `/docs`. v1 works as before, with the header `Deprecation: true`; it's removed in the next major version
+* API tokens: several per user, each with a name, a scope (`read` or `write`) and an expiry (`C_TOKEN_MAX_DAYS`); admins can revoke them, removing a user deletes them; tokens of the format before 2026-10 show a warning. The tokens of `webapp/etc/keys.json` are taken over into the database at the start
+* [Notifications](docs/features/notifications.md) by e-mail, Teams and Slack for the events of the deployments (`etc/notifications.json`, template in `etc/examples/`), with a test button on the settings page. New hook event `approval_requested`
+* [Audit log](docs/permissions.md#audit-log) of security events with its page `Settings` → `Audit`
+* [Data retention](docs/features/data-retention.md): old deployments are removed (`C_RETENTION_DAYS`, off by default), log files are rotated at the start
+* [Health check](docs/features/health-check.md) `GET /healthz` for monitoring
+* [JSON schemas](docs/workflow.md#check-the-files-in-the-editor) of the configuration files for the editor
+* Fixes of the [review of 2026-11-23](docs/bugfixes/README.md#review-of-2026-11-23):
+  * Login: a user is blocked after 2 wrong passwords in a row (`C_LOGIN_MAX_FAILURES`) until an admin unblocks it, so the IBM i doesn't disable the profile. Client addresses: `C_LOGIN_CLIENT_MAX_FAILURES`
+  * Login doesn't block other requests; timeout `C_LOGIN_TIMEOUT_SECONDS`
+  * Login only on the login page (`POST /login`); a login form of another site is refused
+  * Logout only with the button (POST); a logout can't be undone by a running request; the session cookie ends with the browser
+  * A queued or scheduled run checks the permission of its user when it starts
+  * A finished deployment can't be canceled
+  * A parallel sub-step of a script could stay `in process` although it had finished ([details](docs/bugfixes/sub-step-status-lost.md))
+* Core: a status only changes by an allowed transition, a deployment is loaded with a few queries, stages with `run_immediate` run after the run, `SCRIPT` steps only call functions of `scripts/` (loaded when used), invalid settings stop the start (see [core redesign](docs/features/core-redesign.md#progress))
+* Removed: `itsdangerous`, `jsonschema` (not used), the example route `/custom_test` (now [docs/examples](docs/examples/custom-routes/test.py))
+* [Glossary](docs/glossar.md) of the abbreviations and technical terms
+* Development: the tests run in parallel (about 2 minutes), lint with `ruff` in CI, indentation 4 spaces (see [tests](docs/technik.md#tests))
+
+## Before you update to 4.1.0
+
+* `pip install -r requirements.txt`: new package `qrcode` (two-factor authentication), the versions are pinned now (except `pyodbc` of the IBM i packages)
+* Login: a user is now blocked after 2 wrong passwords in a row (before: blocked for 15 minutes after 5) until an admin unblocks it (`Settings` → `Blocked logins`). If you set `C_LOGIN_MAX_FAILURES`, keep it below `QMAXSIGN` of the IBM i
+* Two-factor authentication is `optional` by default. Recommended: `C_2FA_POLICY = 'admins'` in `etc/settings.py`; each admin then sets it up at the next login (keep the recovery codes)
+* `webapp/etc/global_cfg.py`: `C_COOKIE_SECURE = True`, unless the web app is reached with plain HTTP from another host. Browsers treat `http://localhost` as secure, so the SSH tunnel works with it
+* `etc/logger_config.py` and `webapp/etc/logger_config.py`: copy the block with `log_rotation.rotate_at_start` from the files in `etc/examples/` and `webapp/etc/examples/`. Without it the log files aren't rotated
+* An invalid value in `etc/settings.py` stops the start with a message (an unknown name is a warning in the log)
+* Custom routes: a route with a path of the web app (e.g. `/login`) stops the start. Custom templates: logout only with `POST`, a link to `/logout` shows a page with the button
+* API tokens of `webapp/etc/keys.json` keep working (also the OBI extension) and expire `C_TOKEN_MAX_DAYS` (365) days after their first use with 4.1.0
+* Start the web app first, it updates the database (see [update](docs/installation.md#update))
+
 # 4.0.0
 
 * Store source file name in deploy-objects
@@ -27,27 +64,6 @@
 * Steps: `fail_on_stderr`, `timeout_seconds`, correct exit code of `QSYS` steps, object commands are run (see [step actions](docs/workflow.md#step-actions))
 * [Parallel steps](docs/workflow.md#parallel-steps)
 * Workflows: [`create_fields`](docs/workflow.md#create-fields), one invalid workflow file doesn't stop the others
-* Review 2026-11-23 ([defects](docs/bugfixes/README.md#review-of-2026-11-23)):
-  * Login: a user is blocked after 2 wrong passwords in a row (`C_LOGIN_MAX_FAILURES`) until an admin unblocks it, so the IBM i doesn't disable the profile. Client addresses: `C_LOGIN_CLIENT_MAX_FAILURES`
-  * Login doesn't block other requests; timeout `C_LOGIN_TIMEOUT_SECONDS`
-  * Logout only with the button (POST); a logout can't be undone by a running request; the session cookie ends with the browser
-  * A finished deployment can't be canceled
-  * A parallel sub-step of a script could stay `in process` although it had finished ([details](docs/bugfixes/sub-step-status-lost.md))
-  * [Two-factor authentication](docs/permissions.md#two-factor-authentication) with an authenticator app (`C_2FA_POLICY`); actions like creating a token or changing permissions ask for a code
-  * Login only on the login page (`POST /login`); a login form of another site is refused
-  * API tokens expire (`C_TOKEN_MAX_DAYS`), admins can revoke them, removing a user deletes the token; tokens of the format before 2026-10 show a warning
-  * A queued or scheduled run checks the permission of its user when it starts
-  * New package: `qrcode` (run `pip install -r requirements.txt`)
-  * [Four-eyes check](docs/permissions.md#four-eyes-check): stages with `four_eyes_check` run only after a second person has approved them; the permission `deploy` is gone
-  * [Data retention](docs/features/data-retention.md): old deployments are removed (`C_RETENTION_DAYS`, off by default), log files are rotated at the start
-  * [Audit log](docs/permissions.md#audit-log) of security events with its page `Settings` → `Audit`
-  * [JSON schemas](docs/workflow.md#check-the-files-in-the-editor) of the configuration files for the editor
-  * [Health check](docs/features/health-check.md) `GET /healthz` for monitoring
-  * [Web API v2](docs/webapi.md): resources under `/api/v2/` (e.g. `POST /api/v2/deployments/{id}/stages/{stage_id}/runs`), pages of deployments, the same error format everywhere, OpenAPI at `/docs`. v1 works as before, with the header `Deprecation: true`; it's removed in the next major version
-  * API tokens: several per user, each with a name, a scope (`read` or `write`) and an expiry. The tokens of `webapp/etc/keys.json` are taken over into the database at the start
-  * [Notifications](docs/features/notifications.md) by e-mail, Teams and Slack for the events of the deployments (`etc/notifications.json`, template in `etc/examples/`), with a test button on the settings page. New hook event `approval_requested`
-  * Core: a status only changes by an allowed transition, a deployment is loaded with a few queries, stages with `run_immediate` run after the run, `SCRIPT` steps only call functions of `scripts/` (loaded when used), invalid settings stop the start (see [core redesign](docs/features/core-redesign.md#progress))
-  * Removed: `itsdangerous`, `jsonschema` (not used), the example route `/custom_test` (now [docs/examples](docs/examples/custom-routes/test.py))
 * [Compile list](docs/webapi.md#create-a-deployment): `compiles` of the OBI build list is stored beside the custom data, so large builds aren't rejected by its 64 KB limit. Scripts read it with [`meta_file.get_compile_list()`](docs/scripts.md#compile-list)
 * [Backup of the database before updates](docs/installation.md#backups-before-updates)
 * Web API: [consistent status codes and errors](docs/webapi.md#responses-and-errors)

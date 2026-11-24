@@ -4,7 +4,8 @@ One file per defect, with status, requirements, acceptance criteria and open que
 Found in the review of 2026-10-23. "Reproduced" means it was shown on a copy of the web app; "code review" means it was found in the code only.
 
 > **Confidential:** files of type *security* describe how to exploit the defect.
-> Don't push them to the public repository before the fix is released.
+> They are pushed together with their fix: all installations are maintained by the maintainer of i-Releaser and updated right after the push.
+> If an installation is maintained by someone else, don't push them before the fix is released and that installation is updated.
 
 Priorities: **P0** fix first (exploitable or data loss) · **P1** high · **P2** medium · **P3** low
 
