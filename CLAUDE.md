@@ -32,6 +32,6 @@ Use `mermaid` to show processes.
 - All configuration belongs in `etc/` (templates in `etc/examples/`, only these are checked in)
 - Tests: `.venv/bin/pytest` (run `.venv/bin/pip install -r requirements-dev.txt` and `.venv/bin/python -m playwright install chromium` once before; without Chromium the browser tests are skipped). They run in parallel (about 2 minutes); `-n 0` runs them in one process, e.g. to debug a test
 - Security check of the dependencies: `.venv/bin/pip-audit -r requirements.txt`
-- Lint: `.venv/bin/ruff check .` (rules in `pyproject.toml`, also run by CI)
+- Lint: `.venv/bin/ruff check .` (rules in `pyproject.toml`, also run by CI). Indentation: 4 spaces. `git blame` without the formatting commits: `git config blame.ignoreRevsFile .git-blame-ignore-revs` (once)
 - New packages only according to the criteria in [docs/architektur.md](docs/architektur.md). Add the result to [docs/technik.md](docs/technik.md#package-prüfung)
 - Database changes with Alembic migrations? Currently this is solved differently (see [docs/technik.md](docs/technik.md#entwicklung))

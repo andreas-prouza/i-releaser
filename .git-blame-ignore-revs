@@ -1,0 +1,5 @@
+# Commits which only change the format, skipped by `git blame` (GitHub reads this file by itself).
+# Locally once: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Unify the indentation to 4 spaces (whitespace only), 2026-11-24
+e4be53be836a8d045637f218b72bfe7e36fa3662
