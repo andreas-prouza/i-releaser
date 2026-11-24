@@ -143,8 +143,9 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
 
 ## Production checklist
 
-* **HTTPS only.** The session cookie and the API tokens are sent with every request. Keep `C_COOKIE_SECURE = True` in `webapp/etc/global_cfg.py` (the default; installations of older versions may have `False` there), and set `Strict-Transport-Security` in the [reverse proxy](#reverse-proxy).
-* **Two-factor authentication.** Set `C_2FA_POLICY` in `etc/settings.py` to `admins` or `required`, see [permissions](permissions.md#two-factor-authentication).
+* **HTTPS only.** The session cookie and the API tokens are sent with every request. Keep `C_COOKIE_SECURE = True` in `webapp/etc/global_cfg.py` (the default since 4.1.0; installations of older versions may have `False` there), and set `Strict-Transport-Security` in the [reverse proxy](#reverse-proxy).
+  With `True`, browsers keep the session cookie only over HTTPS and for `http://localhost` (SSH tunnel). If the web app is reached with plain HTTP from another host, the login page says that the login can't work; set `False` there (not recommended: passwords and the session cross the network unencrypted).
+* **Two-factor authentication.** Set `C_2FA_POLICY` in `etc/settings.py` to `admins` or `required`, see [permissions](permissions.md#two-factor-authentication). The default is `optional`, also with the template `etc/examples/settings.py`.
 * **External address.** If the reverse proxy doesn't keep the `Host` header, set `C_EXTERNAL_URL` (e.g. `https://ireleaser.example.com`) in `etc/settings.py`: requests of the web app are only accepted from this origin.
 * **`C_CSP_REPORT_ONLY` only for a short time.** It turns the Content-Security-Policy into a report (the web app logs a warning at its start). Move your custom templates to script files and remove it.
 * **Keep `bind = "127.0.0.1:..."`** in `webapp/etc/gunicorn.conf.py`, so the web app is only reachable through the proxy.
@@ -159,7 +160,8 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
     The block stays until an admin unblocks it (`Administration` → `Security` → `Blocked logins`). Unblock only when you know who has tried. Keep the limit below `QMAXSIGN`; the web app logs a warning at its start if it's 3 or more.
   * After `C_LOGIN_CLIENT_MAX_FAILURES` failed logins from a client address (default 10), its logins are blocked for `C_LOGIN_BLOCK_MINUTES` (default 15).
   * The sign-on on the IBM i ends after `C_LOGIN_TIMEOUT_SECONDS` (default 15). A sign-on without answer doesn't count for the user. At most `C_LOGIN_MAX_PARALLEL` logins per process wait for the IBM i at the same time (default 4).
-  * If all admins are blocked: `sqlite3 var/app.sqlite "DELETE FROM login_failures WHERE key = 'user:<name>'"`.
+  * If all admins are blocked, on the command line in the directory of i-Releaser (recorded in the audit log):
+    `.venv/bin/python -m modules.db.login_failure_data` lists the blocked users, `.venv/bin/python -m modules.db.login_failure_data unblock <user>` unblocks one.
 * **Protect files with secrets** (`chmod 600`, owned by the user which runs i-Releaser):
   `etc/jira.json`, `etc/db_deployment.json`, `etc/notifications.json` (the settings page warns if it can be read by others: it has the URLs of the webhooks).
   Prefer environment variables for passwords and tokens (`password_env` of the DB deployment and of a mail channel, `I_RELEASER_JIRA_TOKEN`, `I_RELEASER_JIRA_CLIENT_SECRET`).
@@ -225,6 +227,8 @@ git pull
 | A changed script is not used | Restart the web app (and the processing service). |
 | A workflow is missing | Invalid workflow files are left out. Users with `admin` see them with their error on the page `Workflows`. |
 | `An unexpected error occurred. Error id: ...` | Search the id in the log of the web app. |
-| `Login failed` with the right password | The login of the user or the client address is blocked after failed logins (the message doesn't say so, see [production checklist](#production-checklist)): an admin unblocks the user under `Administration` → `Security` → `Blocked logins`; a client address is unblocked after `C_LOGIN_BLOCK_MINUTES`. |
+| `Login failed` with the right password | The login of the user or the client address is blocked after failed logins (the message doesn't say so, see [production checklist](#production-checklist)): an admin unblocks the user under `Administration` → `Security` → `Blocked logins` (or on the command line, if no admin can log in); a client address is unblocked after `C_LOGIN_BLOCK_MINUTES`. |
+| Login page: `The login can't work with this address: it uses plain HTTP` | The browser doesn't keep the session cookie with `C_COOKIE_SECURE = True` (the default since 4.1.0). Use HTTPS or the SSH tunnel to `localhost`, or set `C_COOKIE_SECURE = False` in `webapp/etc/global_cfg.py` and restart the web app. |
+| After the login, only the page `My account` with "Two-factor authentication is required for you" | `C_2FA_POLICY` is `admins` or `required` (`Administration` → `Security` shows it). Set it up, or change the policy in `etc/settings.py` and restart the web app. |
 | All requests with a session get status 403 behind a proxy | Set `ProxyPreserveHost On`: the web app compares the origin of the browser with the host. |
 | `Database has version ...` when the processing service starts | Start the web app first. |

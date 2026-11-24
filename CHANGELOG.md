@@ -1,3 +1,14 @@
+# 4.1.1
+
+* Login over plain HTTP to another host with `C_COOKIE_SECURE = True`: the login page says why the login can't work, instead of showing the login page again without a message ([details](docs/bugfixes/secure-cookie-over-http-without-message.md))
+* A session which had to set up the two-factor authentication stays on the setup page only as long as the policy requires it: a loosened `C_2FA_POLICY` counts after the restart, without a new login ([details](docs/bugfixes/2fa-setup-flag-outlives-policy.md))
+* The template `etc/examples/settings.py` no longer turns on `C_2FA_POLICY = 'admins'`: `setup3.13.sh` copied it during the update to 4.1.0 into installations without `etc/settings.py` ([details](docs/bugfixes/2fa-policy-set-by-update.md))
+* Unblock a login on the command line, if no admin can log in: `.venv/bin/python -m modules.db.login_failure_data unblock <user>` ([details](docs/bugfixes/blocked-admin-locked-out.md))
+
+## Before you update to 4.1.1
+
+* If you updated to 4.1.0 and the login asks for two-factor authentication: `etc/settings.py` may have been created from the template with `C_2FA_POLICY = 'admins'`. Keep it (recommended) or change it
+
 # 4.1.0
 
 * [Scheduled runs](docs/processing-service.md#scheduled-runs): `Run at…` runs a stage at a later date and time (also `run_at` of the Web API), only in mode `service`. A run which would start more than `C_SCHEDULE_MAX_DELAY_MINUTES` late isn't run
@@ -32,7 +43,7 @@
 * `pip install -r requirements.txt`: new package `qrcode` (two-factor authentication), the versions are pinned now (except `pyodbc` of the IBM i packages)
 * Login: a user is now blocked after 2 wrong passwords in a row (before: blocked for 15 minutes after 5) until an admin unblocks it (`Administration` → `Security` → `Blocked logins`). If you set `C_LOGIN_MAX_FAILURES`, keep it below `QMAXSIGN` of the IBM i
 * Two-factor authentication is `optional` by default. Recommended: `C_2FA_POLICY = 'admins'` in `etc/settings.py`; each admin then sets it up at the next login (keep the recovery codes)
-* `webapp/etc/global_cfg.py`: `C_COOKIE_SECURE = True`, unless the web app is reached with plain HTTP from another host. Browsers treat `http://localhost` as secure, so the SSH tunnel works with it
+* **Plain HTTP: you can't log in without a change.** The default of `C_COOKIE_SECURE` (`webapp/etc/global_cfg.py`) is now `True`: the browser keeps the session cookie only over HTTPS and for `http://localhost` (SSH tunnel). If the web app is reached with plain HTTP from another host and `global_cfg.py` doesn't set it, set `C_COOKIE_SECURE = False` (better: use HTTPS). Since 4.1.1 the login page says so; with 4.1.0 it only shows the login page again
 * `etc/logger_config.py` and `webapp/etc/logger_config.py`: copy the block with `log_rotation.rotate_at_start` from the files in `etc/examples/` and `webapp/etc/examples/`. Without it the log files aren't rotated
 * An invalid value in `etc/settings.py` stops the start with a message (an unknown name is a warning in the log)
 * Custom routes: a route with a path of the web app (e.g. `/login`) stops the start. Custom templates: logout only with `POST`, a link to `/logout` shows a page with the button

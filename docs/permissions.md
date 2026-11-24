@@ -13,7 +13,7 @@ Users log in with their IBM i user profile and password. The web app checks them
 
 In addition, the user has to be listed in `etc/user_permissions.json`. Users which are not listed can't log in, and i-Releaser doesn't even try: a failed connection counts for the IBM i profile.
 
-After too many failed logins further logins are blocked: those of a user until an admin unblocks them (`Administration` → `Security` → `Blocked logins`), those of a client address for some time (see [installation](installation.md#production-checklist)).
+After too many failed logins further logins are blocked: those of a user until an admin unblocks them (`Administration` → `Security` → `Blocked logins`, or on the command line if no admin can log in), those of a client address for some time (see [installation](installation.md#production-checklist)).
 
 A session ends one hour after the last request, and after 12 hours in any case. Log out with the button in the navigation.
 
@@ -24,7 +24,7 @@ The login can also need a code of an authenticator app (Microsoft Authenticator,
 
 * **Set up:** `My account` → `Two-factor authentication` → `Set up`: scan the QR code with the app, enter the code it shows. You get 10 recovery codes: each logs in once without the app (e.g. a lost phone). Keep them in a safe place.
 * **Log in:** user, password and the current code of the app (or a recovery code) in the field `Code`. The code is checked before the password goes to the IBM i: a wrong code doesn't count for `QMAXSIGN`.
-* **Policy** `C_2FA_POLICY` in `etc/settings.py`: `off`, `optional` (each user decides, the default of existing installations), `admins` (required for users with `admin`, the default of new installations), `required` (all users). A user who needs it and hasn't set it up can only set it up after the login.
+* **Policy** `C_2FA_POLICY` in `etc/settings.py`: `off`, `optional` (each user decides, the default), `admins` (required for users with `admin`, recommended), `required` (all users). A user who needs it and hasn't set it up can only set it up after the login. If the policy is loosened (restart of the web app) or the user loses `admin`, this ends with the next request, without a new login.
 * **Confirm with a code:** creating an API token, changing permissions or settings, unblocking a login and resetting the two-factor authentication of a user need a code entered in the last `C_2FA_STEP_UP_MINUTES` (10). The page asks for it.
 * **Lost phone and recovery codes:** an admin resets the two-factor authentication of the user (`Administration` → `Security` → `Two-factor authentication` → `Reset`). The user can log in with the password and sets it up again.
 * After `C_2FA_MAX_FAILURES` (5) wrong codes within `C_LOGIN_BLOCK_MINUTES` no code of the user is accepted for this time.

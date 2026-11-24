@@ -73,6 +73,16 @@ Found in the code review of 2026-11-23 (see [redesign of the core](../features/c
 | P2 | [A finished parallel sub-step can stay `in process`](sub-step-status-lost.md) | bug | flaky test, reproduced | finished |
 | P3 | [A refresh of the steps panel undoes what the user did meanwhile](steps-panel-refresh-race.md) | bug | flaky test, reproduced | finished |
 
+
+Found on 2026-11-24, after the update of an installation to 4.1.0:
+
+| Priority | Defect | Type | Found by | Status |
+|---|---|---|---|---|
+| P1 | [Login over plain HTTP fails without a message](secure-cookie-over-http-without-message.md) | bug (regression) | installation | finished |
+| P2 | [The update to 4.1.0 can turn on two-factor authentication](2fa-policy-set-by-update.md) | bug | installation | finished |
+| P3 | [A loosened 2FA policy doesn't count for sessions which have to set it up](2fa-setup-flag-outlives-policy.md) | bug | code review | finished |
+| P3 | [Nobody can unblock a login if all admins are blocked](blocked-admin-locked-out.md) | bug (operation) | code review | finished |
+
 Improvements of this review (`docs/features/`):
 
 | Priority | Improvement | Status |

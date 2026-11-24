@@ -171,6 +171,24 @@ def after_login(session, user: str, match: tuple|None) -> None:
 
 
 
+def check_setup_required(session, user: str|None) -> bool:
+    """
+    The session has to set up the two-factor authentication first. The flag of the login is checked again: since the login,
+    the policy may have been loosened (restart), the user may have lost the permission `admin`, or set it up in another session.
+    Then the flag is removed (docs/bugfixes/2fa-setup-flag-outlives-policy.md).
+    """
+
+    if not session.get(SESSION_SETUP_REQUIRED):
+        return False
+
+    if user is not None and is_required(user) and get_user_state(user) is None:
+        return True
+
+    session.pop(SESSION_SETUP_REQUIRED, None)
+    return False
+
+
+
 def require_session(request: Request) -> None:
     """Actions of the account: only in the web app, not with an API token"""
 

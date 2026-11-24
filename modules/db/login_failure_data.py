@@ -140,3 +140,48 @@ def get_blocked_users() -> list[dict]:
                             (f"{USER_KEY}%", constants.C_LOGIN_MAX_FAILURES)).fetchall()
 
     return [{'user': row['key'][len(USER_KEY):], 'failures': row['failures'], 'last_failure': row['last_failure']} for row in rows]
+
+
+
+def main(args: list[str]) -> int:
+    """
+    Command line, for when no admin can log in to unblock (docs/bugfixes/blocked-admin-locked-out.md). In the directory of i-Releaser:
+
+        .venv/bin/python -m modules.db.login_failure_data             # lists the blocked users
+        .venv/bin/python -m modules.db.login_failure_data unblock USER
+
+    Unblocks the user and the codes of the two-factor authentication. Recorded in the audit log.
+    """
+
+    import getpass
+    from modules.db import audit_data
+
+    if not args:
+        users = get_blocked_users()
+        for entry in users:
+            print(f"{entry['user']}: {entry['failures']} failed logins, the last at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(entry['last_failure']))}")
+        if not users:
+            print("No user is blocked")
+        return 0
+
+    if len(args) != 2 or args[0] != 'unblock':
+        print("Usage: python -m modules.db.login_failure_data [unblock USER]")
+        return 2
+
+    user = args[1].lower()
+    blocked = unblock_user(user)
+    clear_code_failures(user)
+
+    if not blocked:
+        print(f"User {user} had no failed logins")
+        return 0
+
+    audit_data.add('login_unblocked', object=user, details={'source': 'command line', 'os_user': getpass.getuser()})
+    print(f"User {user} is unblocked. Use the right password: after {constants.C_LOGIN_MAX_FAILURES} wrong ones it's blocked again.")
+    return 0
+
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main(sys.argv[1:]))
