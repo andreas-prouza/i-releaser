@@ -20,6 +20,7 @@
   * A queued or scheduled run checks the permission of its user when it starts
   * A finished deployment can't be canceled
   * A parallel sub-step of a script could stay `in process` although it had finished ([details](docs/bugfixes/sub-step-status-lost.md))
+  * Deployment page: a step opened (or a stage selected) while the live updates refreshed the steps could be closed (or replaced) by the refresh ([details](docs/bugfixes/steps-panel-refresh-race.md))
 * Core: a status only changes by an allowed transition, a deployment is loaded with a few queries, stages with `run_immediate` run after the run, `SCRIPT` steps only call functions of `scripts/` (loaded when used), invalid settings stop the start (see [core redesign](docs/features/core-redesign.md#progress))
 * Removed: `itsdangerous`, `jsonschema` (not used), the example route `/custom_test` (now [docs/examples](docs/examples/custom-routes/test.py))
 * [Glossary](docs/glossar.md) of the abbreviations and technical terms

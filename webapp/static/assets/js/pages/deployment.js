@@ -165,12 +165,31 @@ function restore_state(steps, state) {
 }
 
 
+// Loads of the panel: their number, the newest one shown, the stage selected last.
+// Answers can arrive in another order than their requests.
+let steps_load = 0;
+let steps_shown = 0;
+let selected_stage = null;
+
+
 /** Loads the steps of a stage into the panel. keep: the state of the panel (a refresh of the same stage). */
 async function load_steps(stage_id, {open = true, keep = false} = {}) {
 
-    const state = keep ? panel_state() : null;
+    const number = ++steps_load;
+    if (!keep) {
+        selected_stage = String(stage_id);
+    }
     // keep: a refresh of the live updates
     const html = await get_html(`/show_details/${meta_file_id}/stage/${encodeURIComponent(stage_id)}`, {background: keep});
+
+    // A newer answer is shown already, or the refresh is of a stage which isn't selected any more
+    if (number < steps_shown || (selected_stage !== null && selected_stage !== String(stage_id))) {
+        return;
+    }
+    steps_shown = number;
+
+    // The state when the answer arrives: a step opened while it was loaded stays open
+    const state = keep ? panel_state() : null;
 
     // A rendered part of the server (docs/features/web-ui-scripts.md#rules, rule 4)
     const container = document.getElementById('stage-steps-container');

@@ -71,6 +71,7 @@ Found in the code review of 2026-11-23 (see [redesign of the core](../features/c
 | P2 | [Minor defects of the web app and the Web API (review 2026-11)](minor-web-defects-2026-11.md) | security / bug | code review | finished |
 | P3 | [Minor code defects (review 2026-11)](minor-code-defects-2026-11.md) | bug | code review, partly reproduced | ready (mostly implemented, see the doc) |
 | P2 | [A finished parallel sub-step can stay `in process`](sub-step-status-lost.md) | bug | flaky test, reproduced | finished |
+| P3 | [A refresh of the steps panel undoes what the user did meanwhile](steps-panel-refresh-race.md) | bug | flaky test, reproduced | finished |
 
 Improvements of this review (`docs/features/`):
 
