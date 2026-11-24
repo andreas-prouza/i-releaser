@@ -7,7 +7,7 @@ import sqlite3
 def add_parallel_deployment_execution_allowed():
 
     logging.info("Adding parallel_deployment_execution_allowed column if not exists...")
-        
+
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
 
@@ -29,7 +29,7 @@ def add_parallel_deployment_execution_allowed():
 def add_immediate_execution():
 
     logging.info("Adding run_immediate column if not exists...")
-    
+
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
 
@@ -41,5 +41,5 @@ def add_immediate_execution():
             if "duplicate column name" in str(e).lower():
                 logging.warning(f"Could not add run_immediate column: {e}")
                 return
-            
+
             raise e

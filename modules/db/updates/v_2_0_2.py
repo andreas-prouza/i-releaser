@@ -8,7 +8,7 @@ from modules import files
 def extract_logs_2_meta_dir():
     logging.info("Moving logs to meta directory...")
 
-    
+
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
 

@@ -54,7 +54,7 @@ def _add_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, stage_id: int|
         action.parallel_group, action.parallel
     ))
     action_db_id = cursor.lastrowid
-    
+
     if action_db_id is None:
         raise Exception(f"Failed to insert action '{action.cmd}' for stage_id {stage_id}.")
     action.id = action_db_id
@@ -148,7 +148,7 @@ def _get_history_values(action: da.Deploy_Action, history) -> dict:
 def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, meta_dir: str|None=None):
 
     action.saved_values = app_sqlite.update_changes(cursor, 'actions', action.id, _get_values(action), action.saved_values)
-    
+
     logging.debug(f"Saved action with ID {action.id} and command '{len(action.sub_actions)}' subactions to the database.")
 
     if action.sub_actions is not None and len(action.sub_actions) > 0:
@@ -176,13 +176,13 @@ def _save_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, meta_dir: str
             os.makedirs(os.path.dirname(stderr_file_path), exist_ok=True)
             files.writeText(history.stderr, stderr_file_path)
             history.stderr = f"file://{stderr_file_path}"
-            
+
         history.saved_values = app_sqlite.update_changes(cursor, 'action_run_history', history.id, _get_history_values(action, history), history.saved_values)
 
 
 
 def get_actions(stage_id: int|None=None, deploy_object_id: int|None=None, action_id: int|None=None) -> da.Deploy_Action_List_list:
-    
+
     sql_dict: dict[str, str] = { 
         "stage_id": "SELECT * FROM actions WHERE stage_id = ?",
         "deploy_object_id": "SELECT * FROM actions WHERE deploy_object_id = ?",
@@ -215,11 +215,11 @@ def get_actions(stage_id: int|None=None, deploy_object_id: int|None=None, action
             action_dict = dict(row)
             action_dict['status'] = da.Cmd_Status(action_dict['status'])
             action_dict['environment'] = da.Command_Type(action_dict['environment'])
-            
+
             c.execute("SELECT * FROM action_run_history WHERE action_id = ?", (row['id'],))
             history_rows = c.fetchall()
             action_dict['run_history'] = [dict(hr) for hr in history_rows]
-            
+
             action_obj = da.Deploy_Action(dict_data=action_dict)
             action_obj.sub_actions = get_actions(action_id=row['id'])
             action_obj.saved_values = _get_values(action_obj)

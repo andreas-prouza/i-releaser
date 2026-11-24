@@ -10,175 +10,175 @@ from modules.cmd_status import Status as Cmd_Status
 
 class Command_Type(Enum):
 
-  PASE = 'PASE'
-  QSYS = 'QSYS'
-  SCRIPT = 'SCRIPT'
-  
+    PASE = 'PASE'
+    QSYS = 'QSYS'
+    SCRIPT = 'SCRIPT'
+
 
 
 
 
 class Deploy_Action:
-  """        self.assertEquals(obj, obj2)
-  Parameters
-  ----------
-  cmd : str
-    Command as text
-  sequence : int
-    Will be generated if not given
-  status : str
-    * ``new``: Command hast not yet been run
-    * ``failed``: Command has failed
-    * ``finished``: Command has finished successfully
-  processing_step : str
-    * ``pre``: will be run before deployment
-    * ``post``: will be run after deployment
-  check_error : bool
-    When run the command, it must be checked for errors
-  execute_remote : bool | None
-    * ``None``: Default from stage will be taken
-    * ``True``: Execution will be done on remote system (via SSH)
-    * ``False``: Execution will be done on local system
-  fail_on_stderr : bool | None
-    * ``None``, ``True``: Output on stderr fails the command
-    * ``False``: Only the exit code decides
-  timeout_seconds : int | None
-    The command is ended after this time. ``None``: Default from C_COMMAND_TIMEOUT_SECONDS
-  parallel_group : str | None
-    Name of the group, in which the step runs at the same time as the other steps with `parallel`
-  parallel : bool
-    * ``True``: The step runs in the background, together with the steps before it with the same `parallel_group`
-    * ``False``: The step waits until all running steps have ended
-  """
+    """        self.assertEquals(obj, obj2)
+    Parameters
+    ----------
+    cmd : str
+      Command as text
+    sequence : int
+      Will be generated if not given
+    status : str
+      * ``new``: Command hast not yet been run
+      * ``failed``: Command has failed
+      * ``finished``: Command has finished successfully
+    processing_step : str
+      * ``pre``: will be run before deployment
+      * ``post``: will be run after deployment
+    check_error : bool
+      When run the command, it must be checked for errors
+    execute_remote : bool | None
+      * ``None``: Default from stage will be taken
+      * ``True``: Execution will be done on remote system (via SSH)
+      * ``False``: Execution will be done on local system
+    fail_on_stderr : bool | None
+      * ``None``, ``True``: Output on stderr fails the command
+      * ``False``: Only the exit code decides
+    timeout_seconds : int | None
+      The command is ended after this time. ``None``: Default from C_COMMAND_TIMEOUT_SECONDS
+    parallel_group : str | None
+      Name of the group, in which the step runs at the same time as the other steps with `parallel`
+    parallel : bool
+      * ``True``: The step runs in the background, together with the steps before it with the same `parallel_group`
+      * ``False``: The step waits until all running steps have ended
+    """
 
 
-  def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=None,
-    environment: Command_Type=None, stage: str=None, processing_step: str=None,
-    check_error: bool=True, dict_data: dict=None, id: int|None=None, run_in_new_job: bool=False, execute_remote: bool=None, cwd: str=None,
-    fail_on_stderr: bool|None=None, timeout_seconds: int|None=None, parallel_group: str|None=None, parallel: bool=False):
+    def __init__(self, cmd: str=None, sequence: int=None, status: Cmd_Status=None,
+      environment: Command_Type=None, stage: str=None, processing_step: str=None,
+      check_error: bool=True, dict_data: dict=None, id: int|None=None, run_in_new_job: bool=False, execute_remote: bool=None, cwd: str=None,
+      fail_on_stderr: bool|None=None, timeout_seconds: int|None=None, parallel_group: str|None=None, parallel: bool=False):
 
-    self.id :int|None = id
-    self.stage_id :int|None = None
-    self.action_id :int|None = None
-    self.deploy_object_id :int|None = None
-    self.sequence :int = sequence
-    self.environment :Command_Type = environment or Command_Type.QSYS
-    self.cmd :str = cmd
-    self.stage = stage
-    self.status = status or Cmd_Status.NEW
-    self.run_in_new_job = run_in_new_job
-    self.execute_remote = execute_remote
-    self.run_history = rh.Run_History_List_list()
-    self.check_error = check_error
-    self.sub_actions = Deploy_Action_List_list()
-    self.cwd = cwd
-    self.fail_on_stderr = fail_on_stderr
-    self.timeout_seconds = timeout_seconds
-    self.parallel_group = parallel_group
-    self.parallel = parallel
-    # Values in the database, see app_sqlite.update_changes
-    self.saved_values: dict|None = None
-
-    self.processing_step = processing_step
-
-    if dict_data is not None:
-
-      for key in dict_data:
-        if key == 'stage_name':
-          self.stage = dict_data[key]
-        elif hasattr(self, key):
-          setattr(self, key, dict_data[key])
-      
-      if 'run_history' in dict_data:
+        self.id :int|None = id
+        self.stage_id :int|None = None
+        self.action_id :int|None = None
+        self.deploy_object_id :int|None = None
+        self.sequence :int = sequence
+        self.environment :Command_Type = environment or Command_Type.QSYS
+        self.cmd :str = cmd
+        self.stage = stage
+        self.status = status or Cmd_Status.NEW
+        self.run_in_new_job = run_in_new_job
+        self.execute_remote = execute_remote
         self.run_history = rh.Run_History_List_list()
-        for rh_item in dict_data['run_history']:
-          self.run_history.append(rh.Run_History(dict=rh_item))
+        self.check_error = check_error
+        self.sub_actions = Deploy_Action_List_list()
+        self.cwd = cwd
+        self.fail_on_stderr = fail_on_stderr
+        self.timeout_seconds = timeout_seconds
+        self.parallel_group = parallel_group
+        self.parallel = parallel
+        # Values in the database, see app_sqlite.update_changes
+        self.saved_values: dict|None = None
 
-      self.validate()
+        self.processing_step = processing_step
 
-    if self.environment is not None and type(self.environment) != Command_Type:
-      raise Exception(f"Environment has type {type(self.environment)} instead of Command_Type")
+        if dict_data is not None:
 
-    if stage is not None and type(stage) != str:
-      raise Exception("Stage is not a string!")
-    
-    if self.status is not None and type(self.status) != Cmd_Status:
-      self.status = Cmd_Status(self.status)
+            for key in dict_data:
+                if key == 'stage_name':
+                    self.stage = dict_data[key]
+                elif hasattr(self, key):
+                    setattr(self, key, dict_data[key])
 
-    if self.environment is not None and type(self.environment) != Command_Type:
-      self.environment = Command_Type(self.environment)
-      
+            if 'run_history' in dict_data:
+                self.run_history = rh.Run_History_List_list()
+                for rh_item in dict_data['run_history']:
+                    self.run_history.append(rh.Run_History(dict=rh_item))
 
+            self.validate()
 
+        if self.environment is not None and type(self.environment) != Command_Type:
+            raise Exception(f"Environment has type {type(self.environment)} instead of Command_Type")
 
-  def validate(self):
+        if stage is not None and type(stage) != str:
+            raise Exception("Stage is not a string!")
 
-    if self.processing_step is None:
-      raise Exception('No processing step defined')
-    
-    self.environment = Command_Type(self.environment)
-    self.status = Cmd_Status(self.status)
+        if self.status is not None and type(self.status) != Cmd_Status:
+            self.status = Cmd_Status(self.status)
 
-    if self.cmd is None:
-      raise Exception('Command is not allowed to be None')
-
-    if type(self.run_history) != rh.Run_History_List_list:
-      run_history_list = self.run_history
-      self.run_history = rh.Run_History_List_list()
-      self.run_history.add_historys_from_list(run_history_list)
-
-    if self.sub_actions is None:
-      self.sub_actions = Deploy_Action_List_list()
-      
-    if type(self.sub_actions) != Deploy_Action_List_list:
-      sub_actions_list = self.sub_actions
-      self.sub_actions = Deploy_Action_List_list()
-      for sa in sub_actions_list:
-        self.sub_actions.add_actions_from_dict(sa)
+        if self.environment is not None and type(self.environment) != Command_Type:
+            self.environment = Command_Type(self.environment)
 
 
 
 
+    def validate(self):
+
+        if self.processing_step is None:
+            raise Exception('No processing step defined')
+
+        self.environment = Command_Type(self.environment)
+        self.status = Cmd_Status(self.status)
+
+        if self.cmd is None:
+            raise Exception('Command is not allowed to be None')
+
+        if type(self.run_history) != rh.Run_History_List_list:
+            run_history_list = self.run_history
+            self.run_history = rh.Run_History_List_list()
+            self.run_history.add_historys_from_list(run_history_list)
+
+        if self.sub_actions is None:
+            self.sub_actions = Deploy_Action_List_list()
+
+        if type(self.sub_actions) != Deploy_Action_List_list:
+            sub_actions_list = self.sub_actions
+            self.sub_actions = Deploy_Action_List_list()
+            for sa in sub_actions_list:
+                self.sub_actions.add_actions_from_dict(sa)
 
 
 
 
-  def get_dict(self) -> dict:
-    return {
-      'id': self.id,
-      'stage_id': self.stage_id,
-      'action_id': self.action_id,
-      'deploy_object_id': self.deploy_object_id,
-      'sequence': self.sequence, 
-      'cmd': self.cmd,
-      'status': self.status.value,
-     # 'stage': self.stage.name,
-      'stage': self.stage,
-      'processing_step': self.processing_step,
-      'environment': self.environment.value,
-      'run_in_new_job': self.run_in_new_job,
-      'execute_remote': self.execute_remote,
-      'run_history': self.run_history.get_list(),
-      'sub_actions': self.sub_actions.get_list(),
-      'check_error': self.check_error,
-      'cwd': self.cwd,
-      'fail_on_stderr': self.fail_on_stderr,
-      'timeout_seconds': self.timeout_seconds,
-      'parallel_group': self.parallel_group,
-      'parallel': self.parallel
-      }
 
 
 
-  def __eq__(self, o):
-    if (self.id, self.sequence, self.environment, self.cmd, self.stage, self.status, self.run_history, self.check_error, self.processing_step, self.run_in_new_job, self.execute_remote) == \
-       (o.id, o.sequence, o.environment, o.cmd, o.stage, o.status, o.run_history, o.check_error, o.processing_step, o.run_in_new_job, o.execute_remote):
-      return True
 
-    logging.warning(f"{self.id=} - {self.sequence=} - {self.environment=} - {self.cmd=} - {self.stage=} - {self.status=} - {self.run_history=} - {self.check_error=} - {self.processing_step=} - {self.run_in_new_job=} - {self.execute_remote=}")
-    logging.warning(f"{o.id=} - {o.sequence=} - {o.environment=} - {o.cmd=} - {o.stage=} - {o.status=} - {o.run_history=} - {o.check_error=} - {o.processing_step=} {o.run_in_new_job=} - {o.execute_remote=}")
-    return False
-  
+    def get_dict(self) -> dict:
+        return {
+          'id': self.id,
+          'stage_id': self.stage_id,
+          'action_id': self.action_id,
+          'deploy_object_id': self.deploy_object_id,
+          'sequence': self.sequence, 
+          'cmd': self.cmd,
+          'status': self.status.value,
+         # 'stage': self.stage.name,
+          'stage': self.stage,
+          'processing_step': self.processing_step,
+          'environment': self.environment.value,
+          'run_in_new_job': self.run_in_new_job,
+          'execute_remote': self.execute_remote,
+          'run_history': self.run_history.get_list(),
+          'sub_actions': self.sub_actions.get_list(),
+          'check_error': self.check_error,
+          'cwd': self.cwd,
+          'fail_on_stderr': self.fail_on_stderr,
+          'timeout_seconds': self.timeout_seconds,
+          'parallel_group': self.parallel_group,
+          'parallel': self.parallel
+          }
+
+
+
+    def __eq__(self, o):
+        if (self.id, self.sequence, self.environment, self.cmd, self.stage, self.status, self.run_history, self.check_error, self.processing_step, self.run_in_new_job, self.execute_remote) == \
+           (o.id, o.sequence, o.environment, o.cmd, o.stage, o.status, o.run_history, o.check_error, o.processing_step, o.run_in_new_job, o.execute_remote):
+            return True
+
+        logging.warning(f"{self.id=} - {self.sequence=} - {self.environment=} - {self.cmd=} - {self.stage=} - {self.status=} - {self.run_history=} - {self.check_error=} - {self.processing_step=} - {self.run_in_new_job=} - {self.execute_remote=}")
+        logging.warning(f"{o.id=} - {o.sequence=} - {o.environment=} - {o.cmd=} - {o.stage=} - {o.status=} - {o.run_history=} - {o.check_error=} - {o.processing_step=} {o.run_in_new_job=} - {o.execute_remote=}")
+        return False
+
 
 
 
@@ -189,180 +189,180 @@ class Deploy_Action:
 class Deploy_Action_List_list(list):
 
 
-  def __init__(self, iterable=None):
+    def __init__(self, iterable=None):
 
-    iterable2 = []
+        iterable2 = []
 
-    if iterable is not None:
-      for i, a in enumerate(iterable):
-        iterable2.append(a)
-        if type(a) == dict:
-          iterable2[i] = Deploy_Action.get_action_from_dict(a)
+        if iterable is not None:
+            for i, a in enumerate(iterable):
+                iterable2.append(a)
+                if type(a) == dict:
+                    iterable2[i] = Deploy_Action.get_action_from_dict(a)
 
-    if len(iterable2) > 0:
-      super().__init__(iterable2)
-      return
-    super().__init__()
-
-
-
-
-  def __setitem__(self, index, item):
-      super().__setitem__(index, self._validate_number(item))
-
-  def insert(self, index, item):
-      super().insert(index, self._validate_number(item))
-
-  def append(self, item):
-      super().append(self._validate_number(item))
-
-  def extend(self, other):
-      if isinstance(other, type(Deploy_Action)):
-          super().extend(other)
-      else:
-          super().extend(self._validate_number(item) for item in other)
-
-  def _validate_number(self, value):
-      if type(value) == Deploy_Action:
-          return value
-      raise TypeError(
-          f"Deploy_Action value expected, got {type(value).__name__}"
-      )
-
-
-
-  def get_list(self) -> list[dict]:
-
-    list = []
-
-    for a in self:
-      list.append(a.get_dict())
-
-    return list
+        if len(iterable2) > 0:
+            super().__init__(iterable2)
+            return
+        super().__init__()
 
 
 
 
-  def add_action(self, action: Deploy_Action, add_after: Deploy_Action=None) -> Deploy_Action:
+    def __setitem__(self, index, item):
+        super().__setitem__(index, self._validate_number(item))
 
-    #logging.error(traceback.format_stack())
+    def insert(self, index, item):
+        super().insert(index, self._validate_number(item))
 
-    if type(action) != Deploy_Action:
-      raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
+    def append(self, item):
+        super().append(self._validate_number(item))
 
-    action.sequence = self.get_next_sequence()
-    
-    if add_after is not None:
-      action.sequence = add_after.sequence + 1
-      for a in self:
-        if a.sequence >= action.sequence:
-          a.sequence += 1
+    def extend(self, other):
+        if isinstance(other, type(Deploy_Action)):
+            super().extend(other)
+        else:
+            super().extend(self._validate_number(item) for item in other)
 
-    #logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
-
-    self.append(action)
-
-    #logging.debug(f"Number of actions: {len(self)}")
-
-    return action
-
-
-
-  def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True, add_after: Deploy_Action=None, run_in_new_job: bool=False, execute_remote: bool=None, fail_on_stderr: bool|None=None, timeout_seconds: int|None=None, parallel_group: str|None=None, parallel: bool=False) -> Deploy_Action:
-    #logging.debug(f'Add action for cmd: {cmd=}, {environment=}, {processing_step=}')
-
-    return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step,
-    stage=stage, check_error=check_error, run_in_new_job=run_in_new_job, execute_remote=execute_remote, fail_on_stderr=fail_on_stderr, timeout_seconds=timeout_seconds, parallel_group=parallel_group, parallel=parallel), add_after=add_after)
+    def _validate_number(self, value):
+        if type(value) == Deploy_Action:
+            return value
+        raise TypeError(
+            f"Deploy_Action value expected, got {type(value).__name__}"
+        )
 
 
 
-  def add_actions_from_dict(self, dict_input: dict, add_after: Deploy_Action=None) -> None:
+    def get_list(self) -> list[dict]:
 
-    #logging.debug(f'Add actions from {type(dict_input)}')
-    action = Deploy_Action(dict_data=dict_input)
-    self.add_action(action, add_after=add_after)
+        list = []
 
+        for a in self:
+            list.append(a.get_dict())
 
-
-  def get_action_by_id(self, id: int) -> Deploy_Action:
-    for a in self:
-      if a.id == id:
-        return a
-
-    raise errors.Not_Found_Error(f"Action id {id} not found")
+        return list
 
 
 
 
+    def add_action(self, action: Deploy_Action, add_after: Deploy_Action=None) -> Deploy_Action:
+
+        #logging.error(traceback.format_stack())
+
+        if type(action) != Deploy_Action:
+            raise Exception(f"Parameter type {type(action)} does not match Deploy_Action")
+
+        action.sequence = self.get_next_sequence()
+
+        if add_after is not None:
+            action.sequence = add_after.sequence + 1
+            for a in self:
+                if a.sequence >= action.sequence:
+                    a.sequence += 1
+
+        #logging.info(f"Add action: {action.stage=}, {action.processing_step=}, {action.cmd=}, {action.sequence=}, {action.status=}")
+
+        self.append(action)
+
+        #logging.debug(f"Number of actions: {len(self)}")
+
+        return action
 
 
-  def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> list['Deploy_Action']:
 
-    list_actions=[]
+    def add_action_cmd(self, cmd: str, environment: Command_Type, processing_step: str, stage: str=None, check_error: bool=True, add_after: Deploy_Action=None, run_in_new_job: bool=False, execute_remote: bool=None, fail_on_stderr: bool|None=None, timeout_seconds: int|None=None, parallel_group: str|None=None, parallel: bool=False) -> Deploy_Action:
+        #logging.debug(f'Add action for cmd: {cmd=}, {environment=}, {processing_step=}')
 
-    for a in self:
-      
-      # Consider processing_step if given
-      if processing_step is not None and a.processing_step != processing_step:
-        continue
-      
-      # Consider stage if given
-      if stage is not None and a.stage is not None and stage != a.stage:
-        continue
+        return self.add_action(Deploy_Action(cmd, self.get_next_sequence(), environment=environment, processing_step=processing_step,
+        stage=stage, check_error=check_error, run_in_new_job=run_in_new_job, execute_remote=execute_remote, fail_on_stderr=fail_on_stderr, timeout_seconds=timeout_seconds, parallel_group=parallel_group, parallel=parallel), add_after=add_after)
 
-      if include_subactions is not None and include_subactions:
-        for asa in a.sub_actions:
-          if action_id is not None and asa.id == action_id:
-            list_actions.append(asa)
-            return list_actions
-      
-      if action_id is not None and a.id == action_id:
-        list_actions.append(a)
+
+
+    def add_actions_from_dict(self, dict_input: dict, add_after: Deploy_Action=None) -> None:
+
+        #logging.debug(f'Add actions from {type(dict_input)}')
+        action = Deploy_Action(dict_data=dict_input)
+        self.add_action(action, add_after=add_after)
+
+
+
+    def get_action_by_id(self, id: int) -> Deploy_Action:
+        for a in self:
+            if a.id == id:
+                return a
+
+        raise errors.Not_Found_Error(f"Action id {id} not found")
+
+
+
+
+
+
+    def get_actions(self, processing_step: str=None, stage: str=None, action_id: int=None, include_subactions: bool=False) -> list['Deploy_Action']:
+
+        list_actions=[]
+
+        for a in self:
+
+            # Consider processing_step if given
+            if processing_step is not None and a.processing_step != processing_step:
+                continue
+
+            # Consider stage if given
+            if stage is not None and a.stage is not None and stage != a.stage:
+                continue
+
+            if include_subactions is not None and include_subactions:
+                for asa in a.sub_actions:
+                    if action_id is not None and asa.id == action_id:
+                        list_actions.append(asa)
+                        return list_actions
+
+            if action_id is not None and a.id == action_id:
+                list_actions.append(a)
+                return list_actions
+
+            if action_id is not None:
+                continue
+
+            list_actions.append(a)
+
+        list_actions.sort(key=lambda x: x.sequence)
+
         return list_actions
 
-      if action_id is not None:
-        continue
-
-      list_actions.append(a)
-
-    list_actions.sort(key=lambda x: x.sequence)
-
-    return list_actions
 
 
+    def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]:
 
-  def get_actions_as_dict(self, processing_step: str=None, stage: str=None) -> list[dict]:
+        actions_dict=[]
 
-    actions_dict=[]
+        for a in self.get_actions(processing_step, stage):
+            actions_dict.append(a.get_dict())
 
-    for a in self.get_actions(processing_step, stage):
-      actions_dict.append(a.get_dict())
-
-    return actions_dict
+        return actions_dict
 
 
 
-  def set_action_check(self, action_id: int, check: bool) -> None:
+    def set_action_check(self, action_id: int, check: bool) -> None:
 
-    action = self.get_action_by_id(action_id)
+        action = self.get_action_by_id(action_id)
 
-    if action.status == Cmd_Status.FINISHED:
-      raise errors.Conflict_Error('Not possible to change a finished step')
+        if action.status == Cmd_Status.FINISHED:
+            raise errors.Conflict_Error('Not possible to change a finished step')
 
-    action.check_error = check
+        action.check_error = check
 
 
 
-  def get_next_sequence(self) -> int:
+    def get_next_sequence(self) -> int:
 
-    if len(self) == 0:
-      return 0
+        if len(self) == 0:
+            return 0
 
-    seq = 0
-    for a in self:
-      if a.sequence > seq:
-        seq = a.sequence
-    
-    return seq + 1
+        seq = 0
+        for a in self:
+            if a.sequence > seq:
+                seq = a.sequence
+
+        return seq + 1
 
 

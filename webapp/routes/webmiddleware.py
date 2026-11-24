@@ -87,9 +87,9 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         if response.headers.get('content-type', '').startswith('text/html'):
             response.headers[get_csp_header_name()] = CONTENT_SECURITY_POLICY
         return response
-   
 
-   
+
+
 class WebMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
@@ -98,14 +98,14 @@ class WebMiddleware(BaseHTTPMiddleware):
         response = None
 
         current_user.set_user(None)
-        
+
         try:
 
             # We can now safely access request.session
             if response is None:
                 response = await self.check_session(request)
                 logging.debug(f"Session check result: {response}")
-            
+
             if response is None:
                 response = await call_next(request)
 
@@ -118,7 +118,7 @@ class WebMiddleware(BaseHTTPMiddleware):
             request.state.session.set_cookie(response)
 
         logging.debug(f"Response send code: {response.status_code}")
-        
+
         return response
 
 
@@ -254,7 +254,7 @@ class WebMiddleware(BaseHTTPMiddleware):
         if path.startswith('/static/') or path == '/favicon.ico':
             logging.debug("No need to check session. Only media!")
             return
-        
+
         request.state.session = server_sessions.SessionManager(request)
         await request.state.session.load()
 
@@ -319,7 +319,7 @@ class WebMiddleware(BaseHTTPMiddleware):
 
         if self.wants_html(request):
             return await routes.login(request)
-        
+
         return http_functions.get_json_response_error('You are not logged in', status=401)
 
 

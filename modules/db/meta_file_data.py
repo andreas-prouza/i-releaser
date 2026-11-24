@@ -78,7 +78,7 @@ def create_new_meta_file(workflow_name: str, object_list: str|None=None, custom_
     hooks.emit(hooks.Event.DEPLOYMENT_CREATED, meta_file)
 
     return meta_file
-    
+
 
 
 
@@ -129,7 +129,7 @@ def _load_run_history(c: sqlite3.Cursor, meta_file_id: int) -> mfh.Meta_File_His
     run_history = mfh.Meta_File_History_List_list()
 
     for row in run_history_rows:
-        
+
         if row['log'] is None or len(row['log']) == 0:
             c.execute("DELETE FROM run_history WHERE id = ?", (row['id'],))
             c.connection.commit()
@@ -175,7 +175,7 @@ def get_meta_file(project: str, version: int) -> mf.Meta_File | None:
             return None
 
         return _convert_meta_file_row_to_object(c, meta_file_row)
-    
+
 
 
 def _convert_meta_file_row_to_object(c: sqlite3.Cursor, meta_file_row: sqlite3.Row) -> mf.Meta_File:
@@ -425,7 +425,7 @@ def _save_workflow_definition(c: sqlite3.Cursor, meta_file_id: int, workflow: wf
 
 
 def _save_run_history(c: sqlite3.Cursor, run_history: mfh.Meta_File_History_List_list, meta_dir: str):
-    
+
     for history in run_history:
         log = history.log
         if type(log) == StringIO:

@@ -229,7 +229,7 @@ def activate_stage(stage_id: int, wait_for: list[str]|None=None) -> bool:
 
 
 def save_stages(stages: s.Stage_List_list, cursor: sqlite3.Cursor=None, meta_dir: str|None=None):
-    
+
     for stage in stages:
         save_stage(stage, cursor, meta_dir)
 
@@ -243,7 +243,7 @@ def save_stage(stage: s.Stage, cursor: sqlite3.Cursor=None, meta_dir: str|None=N
     with app_sqlite.get_db_connection() as conn:
         c = conn.cursor()
         _save_stage(stage, c, meta_dir)
-        
+
         conn.commit()
 
 

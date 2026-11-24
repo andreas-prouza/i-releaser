@@ -14,134 +14,134 @@ file_cache = {}
 
 
 class DataclassJSONEncoder(json.JSONEncoder):
-  def default(self, o):
-    if is_dataclass(o):
-      return asdict(o)
-    if isinstance(o, Enum):
-      return o.value
-    return super().default(o)
+    def default(self, o):
+        if is_dataclass(o):
+            return asdict(o)
+        if isinstance(o, Enum):
+            return o.value
+        return super().default(o)
 
 
 
 
 def get_file_hash(filename):
-    
-  if os.path.getsize(filename) == 0:
-    return ''
 
-  h  = hashlib.md5()
-  with open(filename, "rb") as f:
-    with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-      h.update(mm)
-  return h.hexdigest()
+    if os.path.getsize(filename) == 0:
+        return ''
+
+    h  = hashlib.md5()
+    with open(filename, "rb") as f:
+        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+            h.update(mm)
+    return h.hexdigest()
 
 
 
 
 def readFile(file, use_cache=False):
-  if use_cache and file in file_cache:
-    return get_cached_file(file)
+    if use_cache and file in file_cache:
+        return get_cached_file(file)
 
-  with open(file, 'r', encoding='utf-8') as text_file:
-    content = text_file.read()
-    if use_cache:
-      add_file_to_cache(file, content)
-    return content
+    with open(file, 'r', encoding='utf-8') as text_file:
+        content = text_file.read()
+        if use_cache:
+            add_file_to_cache(file, content)
+        return content
 
 
 
 def writeText(content, file, write_empty_file=False, encoding='utf-8', mode='w'):
-  
-  
-  if file is None or len(content) == 0 and not write_empty_file:
-    return
 
-  logging.debug(f"Write Textfile: {os.path.abspath(file)=}; {len(content)} Bytes")
 
-  # Create dir if not exist
-  pathlib.Path(os.path.dirname(file)).mkdir(parents=True, exist_ok=True)
+    if file is None or len(content) == 0 and not write_empty_file:
+        return
 
-  with open(file, mode, encoding=encoding) as text_file:
-    text_file.write(content)
+    logging.debug(f"Write Textfile: {os.path.abspath(file)=}; {len(content)} Bytes")
+
+    # Create dir if not exist
+    pathlib.Path(os.path.dirname(file)).mkdir(parents=True, exist_ok=True)
+
+    with open(file, mode, encoding=encoding) as text_file:
+        text_file.write(content)
 
 
 
 def get_cached_file(file):
 
-  return file_cache[file]['data']
+    return file_cache[file]['data']
 
 
 def add_file_to_cache(file, data):
-  file_cache[file] = {
-    'data': data,
-    'timestamp': datetime.datetime.now(),
-    'hash': get_file_hash(file)
-  }
+    file_cache[file] = {
+      'data': data,
+      'timestamp': datetime.datetime.now(),
+      'hash': get_file_hash(file)
+    }
 
 
 
 def getJson(file, retry=False, use_cache=False):
 
-  if use_cache and file in file_cache:
-    return get_cached_file(file)
+    if use_cache and file in file_cache:
+        return get_cached_file(file)
 
-  attempts = 5 if retry else 1
+    attempts = 5 if retry else 1
 
-  for attempt in range(1, attempts + 1):
-    try:
-      with open(file, 'r') as f:
-        text = f.read()
-        d = json.loads(text)
-        if use_cache:
-          add_file_to_cache(file, d)
-        return d
-    except Exception as e:
-      # The file may be written at this moment (e.g. by another process): try again. After the last attempt the error is raised.
-      if attempt == attempts:
-        logging.error(f"Failed to read JSON file {file} after {attempt} attempts: {e}")
-        raise
-      time.sleep(0.1)
+    for attempt in range(1, attempts + 1):
+        try:
+            with open(file, 'r') as f:
+                text = f.read()
+                d = json.loads(text)
+                if use_cache:
+                    add_file_to_cache(file, d)
+                return d
+        except Exception as e:
+            # The file may be written at this moment (e.g. by another process): try again. After the last attempt the error is raised.
+            if attempt == attempts:
+                logging.error(f"Failed to read JSON file {file} after {attempt} attempts: {e}")
+                raise
+            time.sleep(0.1)
 
 
 
 def writeJson(content, file):
 
-  if file is None:
-    return
+    if file is None:
+        return
 
-  #logging.debug(content)
-  # Create dir if not exist
-  pathlib.Path(os.path.dirname(file) or '.').mkdir(parents=True, exist_ok=True)
+    #logging.debug(content)
+    # Create dir if not exist
+    pathlib.Path(os.path.dirname(file) or '.').mkdir(parents=True, exist_ok=True)
 
-  # A crash while writing must not leave an invalid file
-  fd, tmp_file = tempfile.mkstemp(dir=os.path.dirname(file) or '.', prefix=f"{os.path.basename(file)}.")
+    # A crash while writing must not leave an invalid file
+    fd, tmp_file = tempfile.mkstemp(dir=os.path.dirname(file) or '.', prefix=f"{os.path.basename(file)}.")
 
-  try:
-    with os.fdopen(fd, 'w') as json_file:
-      json.dump(content, json_file, indent=2, ensure_ascii=False, cls=DataclassJSONEncoder)
+    try:
+        with os.fdopen(fd, 'w') as json_file:
+            json.dump(content, json_file, indent=2, ensure_ascii=False, cls=DataclassJSONEncoder)
 
-    if os.path.exists(file):
-      shutil.copymode(file, tmp_file)
+        if os.path.exists(file):
+            shutil.copymode(file, tmp_file)
 
-    os.replace(tmp_file, file)
+        os.replace(tmp_file, file)
 
-  except BaseException:
-    if os.path.exists(tmp_file):
-      os.remove(tmp_file)
-    raise
+    except BaseException:
+        if os.path.exists(tmp_file):
+            os.remove(tmp_file)
+        raise
 
 
 
 @contextlib.contextmanager
 def lock(lock_file: str):
-  """Exclusive lock over multiple processes, e.g. to change a file: read, change and write it"""
+    """Exclusive lock over multiple processes, e.g. to change a file: read, change and write it"""
 
-  pathlib.Path(os.path.dirname(lock_file) or '.').mkdir(parents=True, exist_ok=True)
+    pathlib.Path(os.path.dirname(lock_file) or '.').mkdir(parents=True, exist_ok=True)
 
-  with open(lock_file, 'w') as f:
-    fcntl.flock(f, fcntl.LOCK_EX)
-    try:
-      yield
-    finally:
-      fcntl.flock(f, fcntl.LOCK_UN)
+    with open(lock_file, 'w') as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
 

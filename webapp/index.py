@@ -225,7 +225,7 @@ app.add_api_route('/api/reset_deployment_status/{meta_file_id}', routes.reset_de
 app.add_api_route('/api/create_deployment/{wf_name}/{commit}/{obj_list}', routes.create_deployment, methods=['GET', 'POST'])
 app.add_api_route('/api/create_deployment/{wf_name}/{commit}', routes.create_deployment, methods=['GET', 'POST'])
 app.add_api_route('/api/create_deployment/{wf_name}', routes.create_deployment, methods=['GET', 'POST'])
- 
+
 
 
 app.add_api_route('/api/set_check_error/{meta_file_id}/{stage_id}/{action_id}/{checked}', routes.set_check_error, methods=['GET', 'POST'])

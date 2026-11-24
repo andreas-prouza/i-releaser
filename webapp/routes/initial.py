@@ -70,7 +70,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
 
 
 def setup_fastapi(lifespan=None) -> FastAPI:
-    
+
     # The default pages of FastAPI load Swagger UI and ReDoc from other servers
     app: FastAPI = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, title='i-Releaser Web API v2', version=version.APP_VERSION,
                            description="Resources under `/api/v2/` (docs/webapi.md). Log in with an API token in the header `Authorization`, as `Bearer` and the token.")

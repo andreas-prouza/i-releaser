@@ -8,7 +8,7 @@ def create_deploy_object(meta_file_id: int, level: int|None=None, lib: str|None=
 
     deploy_object: do.Deploy_Object = object or do.Deploy_Object(level=level, lib=lib, prod_lib=prod_lib, name=name, type=type, attribute=attribute, source=source, source_only=source_only)
     deploy_object.meta_file_id = meta_file_id
-    
+
     _add_deploy_object(meta_file_id=meta_file_id, deploy_object=deploy_object)
 
     return deploy_object
@@ -108,13 +108,13 @@ def get_deploy_object(deploy_object_id: int) -> do.Deploy_Object | None:
     logging.debug(f"Fetching deploy object for deploy_object_id: {deploy_object_id}")
 
     object_obj: do.Deploy_Object|None = None
-    
+
     with app_sqlite.get_db_connection() as conn:
 
         c = conn.cursor()
         c.execute("SELECT * FROM deploy_objects WHERE id = ?", (deploy_object_id,))
         object_rows = c.fetchall()
-        
+
         row = object_rows[0] if object_rows else None
         if row is None:
             return None
@@ -148,7 +148,7 @@ def get_deploy_object_lifecycle(project: str, prod_lib: str, name: str, type: st
     if workflows is not None:
         where = f" AND do.meta_file_id IN (SELECT meta_file_id FROM workflow_definitions WHERE name IN ({', '.join('?' * len(workflows))}))"
         params += workflows
-    
+
     with app_sqlite.get_db_connection() as conn:
 
         c = conn.cursor()

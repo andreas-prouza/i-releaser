@@ -13,9 +13,9 @@ _current_user: ContextVar[str|None] = ContextVar('current_user', default=None)
 
 
 def get_user() -> str|None:
-  return _current_user.get()
+    return _current_user.get()
 
 
 
 def set_user(user: str|None) -> None:
-  _current_user.set(user.upper() if user else None)
+    _current_user.set(user.upper() if user else None)

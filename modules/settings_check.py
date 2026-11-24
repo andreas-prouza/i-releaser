@@ -15,53 +15,53 @@ from etc import constants
 
 
 class Invalid_Setting_Error(Exception):
-  pass
+    pass
 
 
 
 def _int(minimum: int) -> Callable:
-  def check(value) -> str|None:
-    if not isinstance(value, int) or isinstance(value, bool):
-      return "has to be a whole number"
-    if value < minimum:
-      return f"has to be at least {minimum}"
-    return None
-  return check
+    def check(value) -> str|None:
+        if not isinstance(value, int) or isinstance(value, bool):
+            return "has to be a whole number"
+        if value < minimum:
+            return f"has to be at least {minimum}"
+        return None
+    return check
 
 
 
 def _number(minimum: float, above: bool=False) -> Callable:
-  def check(value) -> str|None:
-    if not isinstance(value, (int, float)) or isinstance(value, bool):
-      return "has to be a number"
-    if value < minimum or (above and value == minimum):
-      return f"has to be {'more than' if above else 'at least'} {minimum}"
-    return None
-  return check
+    def check(value) -> str|None:
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return "has to be a number"
+        if value < minimum or (above and value == minimum):
+            return f"has to be {'more than' if above else 'at least'} {minimum}"
+        return None
+    return check
 
 
 
 def _one_of(*values) -> Callable:
-  def check(value) -> str|None:
-    return None if value in values else f"has to be one of {', '.join(repr(v) for v in values)}"
-  return check
+    def check(value) -> str|None:
+        return None if value in values else f"has to be one of {', '.join(repr(v) for v in values)}"
+    return check
 
 
 
 def _bool(value) -> str|None:
-  return None if isinstance(value, bool) else "has to be True or False"
+    return None if isinstance(value, bool) else "has to be True or False"
 
 
 
 def _url(value) -> str|None:
-  if value == '':
-    return None
-  return None if isinstance(value, str) and re.fullmatch(r'https?://[^/\s]+', value) else "has to be '' or scheme and host, e.g. 'https://ireleaser.example.com' (without path)"
+    if value == '':
+        return None
+    return None if isinstance(value, str) and re.fullmatch(r'https?://[^/\s]+', value) else "has to be '' or scheme and host, e.g. 'https://ireleaser.example.com' (without path)"
 
 
 
 def _text(value) -> str|None:
-  return None if isinstance(value, str) and value != '' else "has to be a text"
+    return None if isinstance(value, str) and value != '' else "has to be a text"
 
 
 
@@ -104,66 +104,66 @@ CHECKS: dict[str, Callable] = {
 
 
 def get_known_names() -> set[str]:
-  """The settings of i-Releaser: the names which etc/constants.py defines"""
+    """The settings of i-Releaser: the names which etc/constants.py defines"""
 
-  with open(os.path.join(os.path.dirname(os.path.abspath(constants.__file__)), 'constants.py'), encoding='utf-8') as f:
-    tree = ast.parse(f.read())
+    with open(os.path.join(os.path.dirname(os.path.abspath(constants.__file__)), 'constants.py'), encoding='utf-8') as f:
+        tree = ast.parse(f.read())
 
-  return {target.id for node in tree.body if isinstance(node, ast.Assign) for target in node.targets
-          if isinstance(target, ast.Name) and target.id.startswith('C_')}
+    return {target.id for node in tree.body if isinstance(node, ast.Assign) for target in node.targets
+            if isinstance(target, ast.Name) and target.id.startswith('C_')}
 
 
 
 def get_set_names() -> set[str]:
-  """The names of etc/settings.py, empty without the file"""
+    """The names of etc/settings.py, empty without the file"""
 
-  try:
-    from etc import settings
-  except ImportError:
-    # No etc/settings.py (`etc` is a namespace package: ImportError, not ModuleNotFoundError)
-    return set()
+    try:
+        from etc import settings
+    except ImportError:
+        # No etc/settings.py (`etc` is a namespace package: ImportError, not ModuleNotFoundError)
+        return set()
 
-  return {name for name in vars(settings) if name.startswith('C_')}
+    return {name for name in vars(settings) if name.startswith('C_')}
 
 
 
 def check(values: dict|None=None, set_names: set[str]|None=None) -> list[str]:
-  """
-  Args:
-      values: The settings (default: etc/constants.py with etc/settings.py)
-      set_names: The names of etc/settings.py (default: read from it)
+    """
+    Args:
+        values: The settings (default: etc/constants.py with etc/settings.py)
+        set_names: The names of etc/settings.py (default: read from it)
 
-  Returns:
-      list: Warnings (unknown names)
+    Returns:
+        list: Warnings (unknown names)
 
-  Raises:
-      Invalid_Setting_Error: With all invalid values
-  """
+    Raises:
+        Invalid_Setting_Error: With all invalid values
+    """
 
-  values = values if values is not None else {name: getattr(constants, name) for name in dir(constants) if name.startswith('C_')}
-  set_names = set_names if set_names is not None else get_set_names()
+    values = values if values is not None else {name: getattr(constants, name) for name in dir(constants) if name.startswith('C_')}
+    set_names = set_names if set_names is not None else get_set_names()
 
-  errors = []
-  for name, check_value in CHECKS.items():
-    if name in values:
-      problem = check_value(values[name])
-      if problem:
-        errors.append(f"{name} = {values[name]!r} {problem}")
+    errors = []
+    for name, check_value in CHECKS.items():
+        if name in values:
+            problem = check_value(values[name])
+            if problem:
+                errors.append(f"{name} = {values[name]!r} {problem}")
 
-  interval, timeout = values.get('C_SERVICE_HEARTBEAT_INTERVAL'), values.get('C_SERVICE_HEARTBEAT_TIMEOUT')
-  if isinstance(interval, (int, float)) and isinstance(timeout, (int, float)) and timeout <= interval:
-    errors.append(f"C_SERVICE_HEARTBEAT_TIMEOUT ({timeout}) has to be more than C_SERVICE_HEARTBEAT_INTERVAL ({interval}), otherwise every job is aborted")
+    interval, timeout = values.get('C_SERVICE_HEARTBEAT_INTERVAL'), values.get('C_SERVICE_HEARTBEAT_TIMEOUT')
+    if isinstance(interval, (int, float)) and isinstance(timeout, (int, float)) and timeout <= interval:
+        errors.append(f"C_SERVICE_HEARTBEAT_TIMEOUT ({timeout}) has to be more than C_SERVICE_HEARTBEAT_INTERVAL ({interval}), otherwise every job is aborted")
 
-  if errors:
-    raise Invalid_Setting_Error("Invalid settings in etc/settings.py: " + '; '.join(errors))
+    if errors:
+        raise Invalid_Setting_Error("Invalid settings in etc/settings.py: " + '; '.join(errors))
 
-  known = get_known_names()
-  return [f"Setting {name} in etc/settings.py is not a setting of i-Releaser (a typo?). It's ignored." for name in sorted(set_names - known)]
+    known = get_known_names()
+    return [f"Setting {name} in etc/settings.py is not a setting of i-Releaser (a typo?). It's ignored." for name in sorted(set_names - known)]
 
 
 
 def check_at_start() -> None:
-  """Logs the warnings; an invalid value raises (the start stops)"""
+    """Logs the warnings; an invalid value raises (the start stops)"""
 
-  for warning in check():
-    logging.warning(warning)
+    for warning in check():
+        logging.warning(warning)

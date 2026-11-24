@@ -156,7 +156,7 @@ C_CSP_REPORT_ONLY = False
 # Local settings
 #---------------------------------------------------------
 try:
-  from etc.settings import *
+    from etc.settings import *
 except ModuleNotFoundError as e:
-  if e.name != 'etc.settings':
-    raise
+    if e.name != 'etc.settings':
+        raise

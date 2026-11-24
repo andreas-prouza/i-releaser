@@ -21,84 +21,84 @@ from enum import Enum
 from typing import Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
-  from modules.meta_file import Meta_File
-  from modules.stages import Stage
+    from modules.meta_file import Meta_File
+    from modules.stages import Stage
 
 
 
 class InvalidHookException(Exception):
-  pass
+    pass
 
 
 
 class Event(str, Enum):
-  DEPLOYMENT_CREATED = 'deployment_created'
-  DEPLOYMENT_FINISHED = 'deployment_finished'
-  DEPLOYMENT_CANCELED = 'deployment_canceled'
-  STAGE_STARTED = 'stage_started'
-  STAGE_FINISHED = 'stage_finished'
-  STAGE_FAILED = 'stage_failed'
-  # A scheduled run of a stage didn't start (missed time or the stage couldn't be run): the stage hasn't run
-  SCHEDULED_RUN_FAILED = 'scheduled_run_failed'
-  CUSTOM_DATA_CHANGED = 'custom_data_changed'
-  # A stage with the four-eyes check is ready without a valid approval, or its approval became invalid by a change
-  APPROVAL_REQUESTED = 'approval_requested'
+    DEPLOYMENT_CREATED = 'deployment_created'
+    DEPLOYMENT_FINISHED = 'deployment_finished'
+    DEPLOYMENT_CANCELED = 'deployment_canceled'
+    STAGE_STARTED = 'stage_started'
+    STAGE_FINISHED = 'stage_finished'
+    STAGE_FAILED = 'stage_failed'
+    # A scheduled run of a stage didn't start (missed time or the stage couldn't be run): the stage hasn't run
+    SCHEDULED_RUN_FAILED = 'scheduled_run_failed'
+    CUSTOM_DATA_CHANGED = 'custom_data_changed'
+    # A stage with the four-eyes check is ready without a valid approval, or its approval became invalid by a change
+    APPROVAL_REQUESTED = 'approval_requested'
 
 
 
 def validate(hooks: dict) -> None:
-  """
-  Raises:
-      InvalidHookException: If hooks is not a dict of {event: ['filename.function_name', ...]}
-  """
+    """
+    Raises:
+        InvalidHookException: If hooks is not a dict of {event: ['filename.function_name', ...]}
+    """
 
-  if not isinstance(hooks, dict):
-    raise InvalidHookException("'hooks' needs to be a dict of {event: ['filename.function_name', ...]}")
+    if not isinstance(hooks, dict):
+        raise InvalidHookException("'hooks' needs to be a dict of {event: ['filename.function_name', ...]}")
 
-  valid_events = [e.value for e in Event]
+    valid_events = [e.value for e in Event]
 
-  for event, handlers in hooks.items():
+    for event, handlers in hooks.items():
 
-    if event not in valid_events:
-      raise InvalidHookException(f"Hook event '{event}' is invalid. Valid events are: {valid_events}")
+        if event not in valid_events:
+            raise InvalidHookException(f"Hook event '{event}' is invalid. Valid events are: {valid_events}")
 
-    if not isinstance(handlers, list):
-      raise InvalidHookException(f"Hooks of event '{event}' need to be a list")
+        if not isinstance(handlers, list):
+            raise InvalidHookException(f"Hooks of event '{event}' need to be a list")
 
-    for handler in handlers:
-      if not isinstance(handler, str) or len(handler.split('.')) != 2 or '' in handler.split('.'):
-        raise InvalidHookException(f"Hook '{handler}' of event '{event}' has not the correct format: 'filename.function_name' (without '.py' in filename)")
+        for handler in handlers:
+            if not isinstance(handler, str) or len(handler.split('.')) != 2 or '' in handler.split('.'):
+                raise InvalidHookException(f"Hook '{handler}' of event '{event}' has not the correct format: 'filename.function_name' (without '.py' in filename)")
 
 
 
 def resolve(execute: str) -> Callable:
-  """Returns the function of 'filename.function_name' from the scripts/ folder (the same as SCRIPT steps)"""
+    """Returns the function of 'filename.function_name' from the scripts/ folder (the same as SCRIPT steps)"""
 
-  from modules import scripts_loader
-  return scripts_loader.resolve(execute)
+    from modules import scripts_loader
+    return scripts_loader.resolve(execute)
 
 
 
 def emit(event: Event, meta_file: Meta_File, stage: Stage|None=None, details: str|None=None) -> None:
-  """
-  Calls all hooks of the deployment's workflow for this event, then writes the notifications of the event.
+    """
+    Calls all hooks of the deployment's workflow for this event, then writes the notifications of the event.
 
-  Args:
-      details (str, optional): Why it happened (e.g. the error of a scheduled run), for the notifications only
-  """
+    Args:
+        details (str, optional): Why it happened (e.g. the error of a scheduled run), for the notifications only
+    """
 
-  workflow = getattr(meta_file, 'workflow', None)
-  hooks = getattr(workflow, 'hooks', None) or {}
+    workflow = getattr(meta_file, 'workflow', None)
+    hooks = getattr(workflow, 'hooks', None) or {}
 
-  for execute in hooks.get(event.value, []):
-    try:
-      logging.info(f"Run hook {execute} for event '{event.value}'")
-      resolve(execute)(event.value, meta_file, stage)
+    for execute in hooks.get(event.value, []):
+        try:
+            logging.info(f"Run hook {execute} for event '{event.value}'")
+            resolve(execute)(event.value, meta_file, stage)
 
-    except Exception as e:
-      logging.error(f"Hook {execute} for event '{event.value}' failed: {e}")
-      logging.exception(e, stack_info=True)
+        except Exception as e:
+            logging.error(f"Hook {execute} for event '{event.value}' failed: {e}")
+            logging.exception(e, stack_info=True)
 
-  # Only written to the outbox here, sent by a thread (docs/features/notifications.md). It never raises.
-  from modules import notifications
-  notifications.notify(event, meta_file, stage, details)
+    # Only written to the outbox here, sent by a thread (docs/features/notifications.md). It never raises.
+    from modules import notifications
+    notifications.notify(event, meta_file, stage, details)

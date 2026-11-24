@@ -10,12 +10,12 @@ from modules import files
 
 def create_new_run_history(action_id: int) -> run_history.Run_History:
     """Creates a new Run_History instance and saves it to the database."""
-    
+
     rh_obj = run_history.Run_History(action_id=action_id)
     add_run_history(rh_obj)
 
     return rh_obj
-    
+
 
 
 
@@ -26,14 +26,14 @@ def get_run_history_by_id(id: int) -> run_history.Run_History|None:
     run_history_obj: run_history.Run_History|None = None
 
     with app_sqlite.get_db_connection() as conn:
-        
+
         c = conn.cursor()
         c.execute("SELECT * FROM action_run_history WHERE id = ?", (id,))
         run_history_rows = c.fetchall()
-        
+
         if len(run_history_rows) == 0:
             return None
-        
+
         run_history_obj = run_history.Run_History(
                                 id=run_history_rows[0]['id'], 
                                 action_id=run_history_rows[0]['action_id'], 

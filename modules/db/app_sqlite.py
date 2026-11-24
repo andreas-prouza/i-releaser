@@ -248,7 +248,7 @@ def create_tables(db_path=DB_FILE):
                 FOREIGN KEY (meta_file_id) REFERENCES meta_files (id)
             )
         ''')
-        
+
         # Deploy objects table
         c.execute('''
             CREATE TABLE IF NOT EXISTS deploy_objects (
