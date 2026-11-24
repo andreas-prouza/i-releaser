@@ -10,8 +10,9 @@
 * [Data retention](docs/features/data-retention.md): old deployments are removed (`C_RETENTION_DAYS`, off by default), log files are rotated at the start
 * [Health check](docs/features/health-check.md) `GET /healthz` for monitoring
 * [Start times](docs/features/start-times.md) of the web app and the processing service in the administration
+* [Settings in the web app](docs/features/settings-in-web-app.md): `Administration` → `Settings` changes data retention, timeouts, parallel steps and jobs and the git branch names without restart (stored in `etc/app.json`, with a code of the two-factor authentication and in the audit log); the other settings are shown, those of the security on `Security`
 * [JSON schemas](docs/workflow.md#check-the-files-in-the-editor) of the configuration files for the editor
-* `Settings` is now `Administration` with the tabs `System` (was `General`), `Processing`, `Permissions`, `Security` (new: API tokens, two-factor authentication, blocked logins) and `Audit`. `Permissions` is no longer an entry of the navigation (see [admin pages](docs/features/web-ui-admin-pages.md#decisions-2026-11-24)). The addresses stay `/settings/...`
+* `Settings` is now `Administration` with the tabs `System` (was `General`), `Settings` (new, see above), `Processing`, `Permissions`, `Security` (new: API tokens, two-factor authentication, blocked logins) and `Audit`. `Permissions` is no longer an entry of the navigation (see [admin pages](docs/features/web-ui-admin-pages.md#decisions-2026-11-24)). The addresses stay `/settings/...`
 * Fixes of the [review of 2026-11-23](docs/bugfixes/README.md#review-of-2026-11-23):
   * Login: a user is blocked after 2 wrong passwords in a row (`C_LOGIN_MAX_FAILURES`) until an admin unblocks it, so the IBM i doesn't disable the profile. Client addresses: `C_LOGIN_CLIENT_MAX_FAILURES`
   * Login doesn't block other requests; timeout `C_LOGIN_TIMEOUT_SECONDS`

@@ -54,7 +54,7 @@ def test_pages_load_nothing_from_other_servers(server, boss):
     log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
 
     try:
-        for path in ['/', '/list-objects', '/workflows', '/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
+        for path in ['/', '/list-objects', '/workflows', '/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', '/settings/configuration', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
             status, _, text = boss.get(path, headers={'Accept': 'text/html'})
             assert status in [200, 404], path
             assert '<html' in text.lower(), path
@@ -462,7 +462,7 @@ def test_files_of_the_pages_exist(server, boss):
     checked = set()
 
     try:
-        for path in ['/', '/list-objects', '/workflows', '/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
+        for path in ['/', '/list-objects', '/workflows', '/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', '/settings/configuration', '/user', f"/log/{log}", f"/show_details/{deployment}", '/show_details/999999', '/docs']:
             _, _, text = boss.get(path, headers={'Accept': 'text/html'})
             urls = re.findall(r'<(?:script|img|link)\b[^>]*?\b(?:src|href)\s*=\s*["\']([^"\']+)', text, re.I)
             assert urls, path

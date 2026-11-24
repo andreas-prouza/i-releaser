@@ -3,7 +3,7 @@
 {#- Administration, part Security (docs/features/web-ui-admin-pages.md#settings). Context: security (admin_view.get_security) -#}
 
 {% from 'components/ui.html' import page_header, kv_list, empty_state %}
-{% from 'admin/settings-tabs.html' import settings_tabs, ADMINISTRATION %}
+{% from 'admin/settings-tabs.html' import settings_tabs, settings_table, ADMINISTRATION %}
 
 {% block title %}Security · Administration{% endblock %}
 {% block nav_active %}settings{% endblock %}
@@ -76,6 +76,12 @@
         {{ empty_state('No login is blocked', icon='unlock') }}
         {%- endif %}
         <p class="ir-reason mb-0">A user is blocked after {{ security.max_login_failures }} wrong passwords in a row (<code>C_LOGIN_MAX_FAILURES</code>), before the IBM i disables the profile (<code>QMAXSIGN</code>). Unblock only after you know who has tried.</p>
+    </section>
+
+    <section class="ir-card ir-section" aria-labelledby="security-settings-title">
+        <div class="ir-section-head"><h2 id="security-settings-title">Settings</h2></div>
+        {{ settings_table(security.settings) }}
+        <p class="ir-reason mb-0">Changed in <code>etc/settings.py</code> only, not in the web app: a stolen session of an admin can't turn off the protection. Restart the web app and the processing service afterwards.</p>
     </section>
 </div>
 

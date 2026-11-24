@@ -29,7 +29,7 @@ import time
 
 from etc import constants
 # Before meta_file (circular import)
-from modules import action_type, current_user, errors, files, hooks, notifications, stage_status
+from modules import action_type, current_user, errors, files, hooks, notifications, stage_status, web_settings
 from modules.db import meta_file_data, processing_job_data, processing_user_data
 from modules.job_status import Status as Job_Status
 from modules.meta_file_status import Meta_file_status
@@ -673,6 +673,9 @@ class Service:
 
         if self.stop_requested:
             return
+
+        # A setting changed in the web app (docs/features/settings-in-web-app.md); a job process gets it with the fork
+        web_settings.refresh()
 
         self.reap_children()
         recover_orphans()

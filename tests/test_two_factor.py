@@ -262,6 +262,31 @@ def test_step_up_for_a_new_token(server):
     assert client.post_json('/api/generate_user_key')[0] == 200
 
 
+def test_step_up_for_a_setting_of_the_web_app(server):
+    """docs/features/settings-in-web-app.md: a change and a reset need a recent code"""
+
+    admin = server.client()
+    admin.login('boss', 'right')
+    secret, step, codes = set_up(admin)
+
+    path = session_file(server, admin)
+    with open(path) as f:
+        data = json.load(f)
+    data['session-data']['mfa_at'] = time.time() - 3600
+    with open(path, 'w') as f:
+        json.dump(data, f)
+
+    status, body = admin.post_json('/api/settings/C_RETENTION_DAYS', {'value': 30})
+    assert status == 403 and body['step_up'] is True
+    status, body = admin.request('DELETE', '/api/settings/C_RETENTION_DAYS')[:2]
+    assert status == 403
+
+    assert admin.post_json('/api/mfa/verify', {'code': codes[0]})[0] == 200
+    assert admin.post_json('/api/settings/C_RETENTION_DAYS', {'value': 30})[0] == 200
+    assert admin.request('DELETE', '/api/settings/C_RETENTION_DAYS')[0] == 200
+
+
+
 def test_token_requests_can_not_manage_the_account(server):
 
     client = server.client()

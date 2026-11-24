@@ -106,6 +106,41 @@ def test_admin_revokes_the_token_of_a_user_on_the_security_tab(server, browser_c
 
 
 
+def test_change_and_reset_a_setting_in_the_form(server, browser_context):
+    """docs/features/settings-in-web-app.md: pages/configuration.js sends the value with its type"""
+
+    page, watch = open_page(browser_context, server, '/settings/configuration')
+    row = page.locator('tr[data-setting="C_RETENTION_DAYS"]')
+
+    row.locator('[data-setting-input]').fill('45')
+    with page.expect_navigation():
+        row.locator('[data-action="save-setting"]').click()
+    page.wait_for_selector('.swal2-toast')
+    assert 'C_RETENTION_DAYS saved' in page.locator('.swal2-toast').inner_text()
+    row = page.locator('tr[data-setting="C_RETENTION_DAYS"]')
+    assert row.locator('[data-setting-input]').input_value() == '45'
+    assert 'web app' in row.inner_text()
+
+    # A switch: True or False, not a text
+    archive = page.locator('tr[data-setting="C_RETENTION_ARCHIVE"]')
+    archive.locator('[data-setting-input]').check()
+    with page.expect_navigation():
+        archive.locator('[data-action="save-setting"]').click()
+    page.wait_for_selector('.swal2-toast')
+    assert page.locator('tr[data-setting="C_RETENTION_ARCHIVE"] [data-setting-input]').is_checked()
+
+    for name in ['C_RETENTION_DAYS', 'C_RETENTION_ARCHIVE']:
+        page.locator(f'tr[data-setting="{name}"] [data-action="reset-setting"]').click()
+        with page.expect_navigation():
+            page.locator('.swal2-confirm').click()
+        page.wait_for_selector('.swal2-toast')
+
+    assert page.locator('tr[data-setting="C_RETENTION_DAYS"] [data-setting-input]').input_value() == '0'
+    assert page.locator('[data-action="reset-setting"]').count() == 0
+    watch.assert_clean()
+
+
+
 def test_token_generate_copy_use_and_delete(server, browser):
 
     context = browser.new_context()

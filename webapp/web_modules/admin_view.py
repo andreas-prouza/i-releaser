@@ -5,7 +5,7 @@ The templates decide nothing. Nothing here is HTML.
 import datetime, json, logging, re
 
 from etc import constants
-from modules import permission_config, permissions, processing_job, processing_service, processing_settings, version, workflow
+from modules import permission_config, permissions, processing_job, processing_service, processing_settings, version, web_settings, workflow
 from modules.db import app_info_data, app_sqlite, audit_data, login_failure_data, processing_job_data, processing_user_data, user_mfa_data
 
 from web_modules import stage_flow, two_factor
@@ -75,6 +75,51 @@ def get_security(tokens: list[dict]) -> dict:
         # docs/features/two-factor-authentication.md
         'two_factor_policy': TWO_FACTOR_POLICIES.get(two_factor.get_policy(), two_factor.get_policy()),
         'two_factor_users': user_mfa_data.get_enabled_users(),
+        # Read only: changed in etc/settings.py (docs/features/settings-in-web-app.md)
+        'settings': [get_setting_row(name) for name in web_settings.SECURITY],
+    }
+
+
+
+def show_value(value) -> str:
+    """A value of a setting as text: texts as they are, others as in etc/settings.py"""
+    if isinstance(value, str):
+        return value if value != '' else "'' (empty)"
+    return repr(value)
+
+
+
+def get_setting_row(name: str, web_values: dict|None=None) -> dict:
+
+    value = getattr(constants, name, None)
+    row = {
+        'name': name,
+        'value': show_value(value),
+        'source': web_settings.get_source(name, web_values),
+        'default': show_value(web_settings.get_defaults().get(name, '–')),
+    }
+
+    # Changed on the tab Processing: the mode which counts, as there
+    if name == 'C_PROCESSING_MODE':
+        row.update({'value': processing_settings.get_processing_mode(), 'source': processing_settings.get_processing_mode_source()})
+
+    setting = web_settings.EDITABLE.get(name)
+    if setting is not None:
+        row.update({'kind': setting.kind, 'description': setting.description, 'raw': value})
+    return row
+
+
+
+def get_settings() -> dict:
+    """Administration, part Settings (docs/features/settings-in-web-app.md): the settings of the web app, the others read only"""
+
+    web_values = web_settings.get_web_values()
+    others = [name for name in web_settings.get_names() if name not in web_settings.EDITABLE and name not in web_settings.SECURITY]
+
+    return {
+        'editable': [get_setting_row(name, web_values) for name in web_settings.EDITABLE],
+        'others': [get_setting_row(name, web_values) for name in others],
+        'file': constants.C_APP_SETTINGS_FILE,
     }
 
 

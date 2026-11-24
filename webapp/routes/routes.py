@@ -14,7 +14,7 @@ from modules import current_user, errors, files, permissions, version
 from modules import deploy_version, meta_file
 from modules import workflow, processing_service, processing_settings, json_path
 from modules.db import api_token_data, meta_file_data, meta_file_history_data, run_history_data, deploy_object_data, deployment_list_data, login_failure_data, user_mfa_data
-from modules import notifications, retention, totp
+from modules import notifications, retention, totp, web_settings
 from modules.application import deployments
 
 from web_modules import http_functions, server_sessions
@@ -576,6 +576,45 @@ def show_settings(request: Request):
     return http_functions.get_html_response(request, 'admin/settings.html', sidebar=get_sidebar_data(request),
                                             general=admin_view.get_general(global_cfg.C_DEFAULT_PROJECT),
                                             notifications=admin_view.get_notifications(current_user.get_user()))
+
+
+
+def show_configuration(request: Request):
+    """Administration, part Settings: the settings which are changed in the web app (docs/features/settings-in-web-app.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+
+    return http_functions.get_html_response(request, 'admin/configuration.html', sidebar=get_sidebar_data(request),
+                                            settings=admin_view.get_settings())
+
+
+
+def change_setting(request: Request, name: str, data: dict = Body(...)):
+    """Stores a setting of the web app in etc/app.json (docs/features/settings-in-web-app.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
+
+    if 'value' not in data:
+        raise errors.Invalid_Input_Error("'value' is missing")
+
+    old = web_settings.change(name, data['value'], current_user.get_user())
+    audit.record(request, 'setting_changed', object=name, details={'old': old, 'new': getattr(constants, name)})
+
+    return http_functions.get_json_response({'status': 'success', 'name': name, 'value': getattr(constants, name)})
+
+
+
+def reset_setting(request: Request, name: str):
+    """The value of etc/settings.py or the default counts again (docs/features/settings-in-web-app.md)"""
+
+    permission_config.check_user_permission(permissions.PermissionAction.ADMIN)
+    two_factor.require_recent_code(request)
+
+    old = web_settings.reset(name, current_user.get_user())
+    audit.record(request, 'setting_changed', object=name, details={'old': old, 'new': getattr(constants, name), 'reset': True})
+
+    return http_functions.get_json_response({'status': 'success', 'name': name, 'value': getattr(constants, name)})
 
 
 

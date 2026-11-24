@@ -163,7 +163,11 @@ def check(values: dict|None=None, set_names: set[str]|None=None) -> list[str]:
 
 
 def check_at_start() -> None:
-    """Logs the warnings; an invalid value raises (the start stops)"""
+    """Logs the warnings; an invalid value raises (the start stops). Then the values of the web app (etc/app.json) count."""
 
     for warning in check():
         logging.warning(warning)
+
+    # docs/features/settings-in-web-app.md
+    from modules import web_settings
+    web_settings.load_at_start()

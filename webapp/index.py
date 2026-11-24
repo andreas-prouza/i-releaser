@@ -30,7 +30,7 @@ from routes import api_v2, routes, initial
 from web_modules import admin_view
 from modules import settings_check
 from modules.db import audit_data, notification_data
-from modules import notifications, retention
+from modules import notifications, retention, web_settings
 from etc import constants
 from modules import processing_settings
 from modules.db import app_info_data, app_sqlite
@@ -60,6 +60,8 @@ async def delete_expired_sessions() -> None:
 
     while True:
         try:
+            # C_RETENTION_DAYS may have been changed in another worker (docs/features/settings-in-web-app.md)
+            web_settings.refresh()
             await asyncio.to_thread(server_sessions.delete_expired_sessions)
             # Retention of the audit log (docs/features/audit-log.md) and of old deployments, once a day (docs/features/data-retention.md)
             await asyncio.to_thread(audit_data.remove_older_than, constants.C_AUDIT_RETENTION_DAYS)
@@ -189,6 +191,7 @@ app.add_api_route('/settings', routes.show_settings, methods=['GET', 'POST'])
 app.add_api_route('/settings/permissions', routes.show_permissions, methods=['GET'])
 app.add_api_route('/settings/processing', routes.show_processing, methods=['GET'])
 app.add_api_route('/settings/security', routes.show_security, methods=['GET'])
+app.add_api_route('/settings/configuration', routes.show_configuration, methods=['GET'])
 app.add_api_route('/settings/audit', routes.show_audit, methods=['GET'])
 app.add_api_route('/settings/audit.csv', routes.download_audit, methods=['GET'])
 
@@ -215,6 +218,8 @@ app.add_api_route('/api/cancel_deployment/{meta_file_id}', routes.cancel_deploym
 app.add_api_route('/api/cancel_job/{job_id}', routes.cancel_job, methods=['GET', 'POST'])
 app.add_api_route('/api/set_processing_mode/{mode}', routes.set_processing_mode, methods=['POST'])
 app.add_api_route('/api/processing_service/{action}', routes.control_processing_service, methods=['POST'])
+app.add_api_route('/api/settings/{name}', routes.change_setting, methods=['POST'])
+app.add_api_route('/api/settings/{name}', routes.reset_setting, methods=['DELETE'])
 app.add_api_route('/api/set_service_auto_start/{enabled}', routes.set_service_auto_start, methods=['POST'])
 app.add_api_route('/api/edit_custom_data/{meta_file_id}', routes.edit_custom_data, methods=['POST'])
 

@@ -97,7 +97,7 @@ def test_pages_have_no_errors(server, browser_context, names_deployment, user):
     log = os.listdir(os.path.join(server.web_dir, 'log'))[0]
     paths = ['/', '/project/names', '/list-objects', '/workflows', '/user', f"/show_details/{names_deployment}"]
     if user == 'boss':
-        paths += ['/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', f"/log/{log}", '/docs']
+        paths += ['/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', '/settings/configuration', f"/log/{log}", '/docs']
 
     for path in paths:
         page, watch = open_page(browser_context, server, path, user=user)

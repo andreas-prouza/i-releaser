@@ -103,6 +103,18 @@ def change_app_setting(key: str, value) -> object:
 
 
 
+def remove_app_setting(key: str) -> object:
+    """Removes a setting of the web app under the same lock (docs/features/settings-in-web-app.md). Returns the old value"""
+
+    with files.lock(f"{constants.C_APP_SETTINGS_FILE}.lock"):
+        settings = read_app_settings()
+        old_value = settings.pop(key, None)
+        write_app_settings(settings)
+
+    return old_value
+
+
+
 def get_processing_mode() -> str:
 
     mode = read_app_settings().get('C_PROCESSING_MODE', constants.C_PROCESSING_MODE)

@@ -38,7 +38,7 @@
 
 Called `Administration` since 2026-11-24, its tab `General` is `System`, and the tab `Security` is new (see decisions).
 
-* Tabs with their own URL: `System` (`/settings`), `Processing` (`/settings/processing`), `Permissions` (`/settings/permissions`, see [permissions page](web-ui-permissions-page.md)), `Security` (`/settings/security`), `Audit` (`/settings/audit`, see [audit log](audit-log.md)).
+* Tabs with their own URL: `System` (`/settings`), `Settings` (`/settings/configuration`, see [settings in the web app](settings-in-web-app.md)), `Processing` (`/settings/processing`), `Permissions` (`/settings/permissions`, see [permissions page](web-ui-permissions-page.md)), `Security` (`/settings/security`), `Audit` (`/settings/audit`, see [audit log](audit-log.md)).
 * **General** (now `System`): default project, version of the app and of the database, start of the web app and of the processing service ([start times](start-times.md)), paths of the installation, as key and value list. `Web port` is removed. Data retention and notifications.
 * **Security:** API tokens of the users as a table (user, name, scope, created, last used, expires, masked token, `Revoke`), the two-factor authentication (policy, users with `Reset`), the blocked logins (`Unblock`).
 * **Processing:** the mode with `Change` and where the value comes from; the processing service with its status as pill, `Start`, `Stop`, `Restart` and the switch `Start automatically` with the notes of today; the jobs as a table with sorting, filters and paging: job, deployment (link), stage (name), user, status (pill), queued, started, ended, duration, process, error.

@@ -59,7 +59,7 @@ Your configuration files are not tracked by git, so updates don't touch them.
 | File | Content | Details |
 |---|---|---|
 | `etc/settings.py` | Your values for the settings of `etc/constants.py`: processing mode, processing service, git branch names, timeouts, `C_CSP_REPORT_ONLY`, ... | [processing service](processing-service.md#settings), [security headers](technik.md#content-security-policy) |
-| `etc/app.json` | Settings changed in the web app: processing mode (overrides `etc/settings.py`) and auto start of the processing service. Written by the web app. Replaces `etc/web_settings.json`. | [processing service](processing-service.md#set-up) |
+| `etc/app.json` | Settings changed in the web app (`Administration` → `Settings` and `Processing`), they override `etc/settings.py`: processing mode, auto start of the processing service, data retention, timeouts, parallel steps and jobs, git branch names. Written by the web app. Replaces `etc/web_settings.json`. | [processing service](processing-service.md#set-up) |
 | `etc/workflows/*.json` | One workflow per file | [workflow configuration](workflow.md) |
 | `etc/default_step_action.json` | Commands of the processing steps, for all workflows | [workflow configuration](workflow.md#step-actions) |
 | `etc/object_commands.json` | Additional commands for specific objects | [workflow configuration](workflow.md#object-commands) |
@@ -97,7 +97,7 @@ andreas    63911   63909 31 16:53 pts/0    00:00:00 gunicorn: worker [wsgi:app]
 
 The web app runs with gunicorn (`webapp/etc/gunicorn.conf.py`). By default it listens on `127.0.0.1:8080`, so it's only reachable through a [reverse proxy](#reverse-proxy) or an SSH tunnel.
 
-Restart the web app after you have changed a file in `scripts/` or `etc/settings.py`.
+Restart the web app after you have changed a file in `scripts/` or `etc/settings.py`. The settings of `Administration` → `Settings` count without restart ([settings in the web app](features/settings-in-web-app.md)).
 Workflows and permissions are read again automatically.
 
 ### Processing service (optional)
@@ -151,9 +151,9 @@ Put a web server with HTTPS in front of the web app, e.g. the IBM HTTP Server (A
 * **Log level `INFO`** (the default of the templates). Debug logs contain a lot of internal data.
   Users with the permission `admin` can open the logs in the web app (menu `Logs`).
 * **Never set `I_RELEASER_LOCAL_DEBUGGING`** on a server. It turns off the password check of the login, so the web app refuses to start with gunicorn if it's set.
-* **Data retention.** Set `C_RETENTION_DAYS` (e.g. 730) in `etc/settings.py` to remove finished and canceled deployments with their files in `meta/` after this many days without change, `C_RETENTION_ARCHIVE = True` to keep an archive in `var/archive/`. Log files are rotated at the start above `C_LOG_MAX_MB` (for an existing installation, copy the lines with `log_rotation` from `etc/examples/logger_config.py` and `webapp/etc/examples/logger_config.py`). See [data retention](features/data-retention.md).
+* **Data retention.** Set `C_RETENTION_DAYS` (e.g. 730) in `Administration` → `Settings` or in `etc/settings.py` to remove finished and canceled deployments with their files in `meta/` after this many days without change, `C_RETENTION_ARCHIVE = True` to keep an archive in `var/archive/`. Log files are rotated at the start above `C_LOG_MAX_MB` (for an existing installation, copy the lines with `log_rotation` from `etc/examples/logger_config.py` and `webapp/etc/examples/logger_config.py`). See [data retention](features/data-retention.md).
 * **Monitoring.** `GET /healthz` answers without login: `200 {"status": "ok", ...}` or `503` with the check which failed (database, processing service in mode `service`, free space of `var/` and `meta/` below `C_HEALTH_MIN_FREE_MB`). Use it in the monitoring tool or the health check of the load balancer.
-* **Settings** (`etc/settings.py`) are checked when the web app and the processing service start: an invalid value stops the start with a message in the log, an unknown name (e.g. a typo) is a warning.
+* **Settings** (`etc/settings.py`, and those of the web app in `etc/app.json`) are checked when the web app and the processing service start: an invalid value stops the start with a message in the log, an unknown name (e.g. a typo) is a warning.
 * **Failed logins.** Every wrong password is an invalid sign-on on the IBM i: after `QMAXSIGN` of them in a row (IBM default 3) the IBM i disables the profile (`QMAXSGNACN`).
   * After `C_LOGIN_MAX_FAILURES` wrong passwords of a user in a row (default 2), i-Releaser doesn't send further logins of this user to the IBM i.
     The block stays until an admin unblocks it (`Administration` → `Security` → `Blocked logins`). Unblock only when you know who has tried. Keep the limit below `QMAXSIGN`; the web app logs a warning at its start if it's 3 or more.

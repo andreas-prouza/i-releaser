@@ -34,7 +34,7 @@ It also contains the application version (`C_APP_VERSION`), which is not a setti
 
 ## Non-goals
 
-* Settings in the web app
+* Settings in the web app (since 2026-11-24 some of them: see [settings in the web app](settings-in-web-app.md))
 
 
 ## Decisions

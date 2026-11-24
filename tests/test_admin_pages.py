@@ -47,7 +47,7 @@ def title_and_entry(text: str) -> tuple[str, str]:
 def test_admin_pages_need_admin(server, log):
 
     intern = server.client('intern')
-    for path in ['/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', f"/log/{log}", f"/log/{log}/download"]:
+    for path in ['/settings', '/settings/processing', '/settings/permissions', '/settings/security', '/settings/audit', '/settings/configuration', f"/log/{log}", f"/log/{log}/download"]:
         assert page(intern, path)[0] == 403, path
 
 
@@ -58,6 +58,7 @@ def test_titles_and_active_entries(server, boss, log):
         '/settings': ('System · Administration · i-Releaser', 'settings'),
         '/settings/processing': ('Processing · Administration · i-Releaser', 'settings'),
         '/settings/security': ('Security · Administration · i-Releaser', 'settings'),
+        '/settings/configuration': ('Settings · Administration · i-Releaser', 'settings'),
         '/settings/permissions': ('Permissions · Administration · i-Releaser', 'settings'),
         f"/log/{log}": (f"{log} · Logs · i-Releaser", 'logs'),
         '/workflows': ('Workflows · i-Releaser', 'workflows'),

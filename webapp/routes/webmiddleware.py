@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from web_modules import http_functions
 from etc import constants
-from modules import current_user, errors
+from modules import current_user, errors, web_settings
 from web_modules import app_login
 from web_modules import server_sessions
 from web_modules import two_factor
@@ -98,6 +98,9 @@ class WebMiddleware(BaseHTTPMiddleware):
         response = None
 
         current_user.set_user(None)
+
+        # A setting changed in another worker (docs/features/settings-in-web-app.md): one stat of etc/app.json
+        web_settings.refresh()
 
         try:
 
