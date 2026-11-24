@@ -60,6 +60,18 @@ def test_secret_and_uri():
     assert totp.get_qr_code(totp.get_uri('anna', secret)).startswith('data:image/svg+xml;base64,')
 
 
+def test_template_of_the_settings_sets_no_policy():
+    """docs/bugfixes/2fa-policy-set-by-update.md: setup3.13.sh copies the template into existing installations too"""
+
+    from web_server import ROOT_DIR
+
+    settings = {}
+    with open(os.path.join(ROOT_DIR, 'etc', 'examples', 'settings.py'), encoding='utf-8') as f:
+        exec(f.read(), settings)
+
+    assert 'C_2FA_POLICY' not in settings
+
+
 def test_recovery_codes():
 
     codes = totp.generate_recovery_codes()
@@ -218,6 +230,33 @@ def test_required_policy_allows_only_the_setup(tmp_path):
 
         # Required: can't be turned off
         assert client.post_json('/api/mfa/disable', {'code': '000000'})[0] == 409
+    finally:
+        server.close()
+
+
+@pytest.mark.parametrize('policy', ['off', 'optional'])
+def test_loosened_policy_ends_the_setup_requirement_of_a_session(tmp_path, policy):
+    """docs/bugfixes/2fa-setup-flag-outlives-policy.md: the session of the login doesn't stay on the setup page"""
+
+    server = start_server(tmp_path, settings="C_2FA_POLICY = 'required'\n")
+    try:
+        client = server.client()
+        client.login('runner', 'right')
+        assert client.get('/api/get_workflows')[0] == 403
+
+        server.stop()
+        with open(server.path('etc', 'settings.py'), 'w') as f:
+            f.write(f"C_2FA_POLICY = '{policy}'\n")
+        server.start()
+
+        # The same session, without a new login
+        assert client.get('/api/get_workflows')[0] == 200
+        status, _, page = client.get('/user', headers={'Accept': 'text/html'})
+        assert status == 200 and 'Two-factor authentication is required for you' not in page
+
+        # The flag is gone from the session, not only ignored
+        with open(session_file(server, client)) as f:
+            assert 'mfa_setup_required' not in json.load(f)['session-data']
     finally:
         server.close()
 

@@ -81,6 +81,7 @@ Each implementation adds the abbreviations and terms it introduces.
 | Parallel group | Steps with the same `parallel_group` and `parallel: true` run at the same time, see [workflow](workflow.md#parallel-steps) |
 | Parallel branches | A stage with several `next_stages`: the branches can run in any order, see [concepts](concepts.md#parallel-branches) |
 | Placeholder | `{...}` in a command of a step, replaced by values of the deployment, see [workflow](workflow.md#placeholders) |
+| Policy (2FA) | `C_2FA_POLICY`: for whom the [two-factor authentication](features/two-factor-authentication.md) is required: `off`, `optional`, `admins`, `required` |
 | Processing mode | `thread` (stages run in the web app) or `service` (stages run in the processing service) |
 | Processing service | Own job which runs the stages, independent of the web app, see [processing service](processing-service.md) |
 | Processing step | A named task of a stage, e.g. `save`, see [concepts](concepts.md#terms) |
@@ -90,6 +91,7 @@ Each implementation adds the abbreviations and terms it introduces.
 | Retention | How long data is kept before it's removed (see [data retention](features/data-retention.md)) |
 | Run immediate | `run_immediate`: a stage runs by itself as soon as it becomes ready |
 | Scheduled run | Run of a stage at a date and time (`Run at…`, `run_at`), see [processing service](processing-service.md#scheduled-runs) |
+| Secure cookie | Cookie with the flag `Secure`: the browser stores and sends it only over HTTPS and for `http://localhost`. The session cookie has it with `C_COOKIE_SECURE = True` (see [installation](installation.md#production-checklist)) |
 | Scope | What an [API token](permissions.md#api-tokens) may do: `read` (only reading requests) or `write` |
 | Stage | A part of the workflow, usually an environment or phase (`BUILD`, `TEST`, `PROD`), see [concepts](concepts.md#terms) |
 | State transition | A change of a status which is allowed by the status table of the [core redesign](features/core-redesign.md#target); written as one conditional SQL update |

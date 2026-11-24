@@ -22,6 +22,10 @@ LOGIN_FAILED_TEXT = ("Login failed. Check your user, password and code (if you h
                      "and if you have access to i-Releaser. After several failed logins the login is blocked: ask an administrator to unblock it.")
 LOGIN_BLOCKED_TEXT = LOGIN_FAILED_TEXT
 
+# Plain HTTP to another host than localhost, with C_COOKIE_SECURE = True (docs/bugfixes/secure-cookie-over-http-without-message.md)
+COOKIE_NEEDS_HTTPS_TEXT = ("The login can't work with this address: it uses plain HTTP, and i-Releaser only sends its session cookie over HTTPS. "
+                           "Open i-Releaser with https://, or ask an administrator to set C_COOKIE_SECURE = False in webapp/etc/global_cfg.py.")
+
 _USER_PROFILE = re.compile(r'[A-Za-z$#@][A-Za-z0-9$#@_]{0,9}')
 
 # The last use of a token isn't more exact than this

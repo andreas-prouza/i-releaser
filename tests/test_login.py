@@ -1,5 +1,5 @@
 """The login with the password check: pyodbc is replaced by a stub which records the connection strings"""
-import os, threading, time
+import os, subprocess, sys, threading, time
 
 import pytest
 
@@ -274,3 +274,91 @@ def test_sign_on_without_answer_does_not_block_the_user(strict_server):
     client = strict_server.client()
     client.login('runner', 'right')
     assert client.get('/workflows')[0] == 200
+
+
+
+#---------------------------------------------------------
+# blocked-admin-locked-out: unblock on the command line
+#---------------------------------------------------------
+
+def run_unblock_command(server, *args) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, '-m', 'modules.db.login_failure_data', *args], cwd=server.directory,
+                          capture_output=True, text=True, timeout=60)
+
+
+def test_unblock_on_the_command_line(strict_server):
+
+    for _ in range(2):
+        strict_server.client().login('boss', 'wrong')
+
+    listed = run_unblock_command(strict_server)
+    assert listed.returncode == 0, listed.stderr
+    assert 'boss: 2 failed logins' in listed.stdout
+
+    result = run_unblock_command(strict_server, 'unblock', 'BOSS')
+    assert result.returncode == 0, result.stderr
+    assert 'User boss is unblocked' in result.stdout
+    assert 'No user is blocked' in run_unblock_command(strict_server).stdout
+    assert 'had no failed logins' in run_unblock_command(strict_server, 'unblock', 'boss').stdout
+    assert run_unblock_command(strict_server, 'unblock').returncode == 2
+
+    import sqlite3
+    with sqlite3.connect(os.path.join(strict_server.directory, 'var', 'app.sqlite')) as conn:
+        assert conn.execute("SELECT user, object FROM audit_log WHERE event = 'login_unblocked'").fetchall() == [(None, 'boss')]
+
+    client = strict_server.client()
+    client.login('boss', 'right')
+    assert client.get('/workflows')[0] == 200
+
+
+
+#---------------------------------------------------------
+# secure-cookie-over-http-without-message
+#---------------------------------------------------------
+
+def plain_http_client(server, host: str):
+    """A browser which opens the web app at http://<host>"""
+
+    client = server.client()
+    client.headers = {'Host': host}
+    client.origin = f"http://{host}"
+    return client
+
+
+def test_plain_http_login_with_secure_cookie_shows_why_it_fails(server):
+
+    client = plain_http_client(server, 'ireleaser.example')
+    status, headers, page = client.request('POST', '/login', form={'user': 'boss', 'password': 'right'}, headers={'Accept': 'text/html'})
+
+    assert status == 200
+    assert 'uses plain HTTP' in page and 'C_COOKIE_SECURE = False' in page
+    assert 'set-cookie' not in headers
+    # The IBM i isn't asked: the login couldn't work anyway
+    assert get_connections(server) == []
+    assert 'Login over plain HTTP from http://ireleaser.example' in server.read_logs()
+
+
+@pytest.mark.parametrize('host', ['localhost', '127.0.0.1', 'ireleaser.localhost'])
+def test_plain_http_to_localhost_logs_in(server, host):
+
+    client = plain_http_client(server, f"{host}:{server.port}")
+    client.login('boss', 'right')
+
+    assert client.get('/workflows')[0] == 200
+
+
+def test_plain_http_logs_in_without_secure_cookie(tmp_path):
+
+    (tmp_path / 'pyodbc.py').write_text(STUB)
+    log = tmp_path / 'odbc.log'
+    log.write_text('')
+    s = Web_Server(env={'I_RELEASER_LOCAL_DEBUGGING': 'False', 'PYTHONPATH': str(tmp_path), 'ODBC_LOG': str(log)})
+    with open(s.path('webapp', 'etc', 'global_cfg.py'), 'a') as f:
+        f.write("\nC_COOKIE_SECURE = False\n")
+    s.start()
+    try:
+        client = plain_http_client(s, 'ireleaser.example')
+        client.login('boss', 'right')
+        assert client.get('/workflows')[0] == 200
+    finally:
+        s.close()

@@ -5,6 +5,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 from fastapi import Request
 from starlette.concurrency import run_in_threadpool
@@ -29,6 +30,29 @@ if not os.path.exists(SESSION_DIR):
 def is_valid_session_id(session_id: str|None) -> bool:
     """The session id comes from the cookie and is part of a file name"""
     return session_id is not None and _SESSION_ID.fullmatch(session_id) is not None
+
+
+def is_cookie_secure() -> bool:
+    """The session cookie is only sent over HTTPS (default since 4.1.0)"""
+    return bool(getattr(global_cfg, 'C_COOKIE_SECURE', True))
+
+
+def is_cookie_dropped(source: str|None) -> bool:
+    """
+    The browser won't keep the session cookie for the page `source` (Origin or Referer of the request): a cookie with `Secure`
+    is only stored for HTTPS, and for plain HTTP to localhost (docs/bugfixes/secure-cookie-over-http-without-message.md).
+    """
+
+    if not source or not is_cookie_secure():
+        return False
+
+    parsed = urlparse(source)
+    if parsed.scheme != 'http':
+        return False
+
+    # What browsers treat as secure context: localhost, *.localhost, 127.0.0.0/8, [::1]
+    host = (parsed.hostname or '').lower()
+    return not (host == 'localhost' or host.endswith('.localhost') or host.startswith('127.') or host == '::1')
 
 
 def get_session_filepath(session_id: str) -> str:
@@ -259,5 +283,5 @@ class SessionManager:
                 value=self.session_id,
                 httponly=True,
                 samesite='lax',
-                secure=getattr(global_cfg, 'C_COOKIE_SECURE', True),
+                secure=is_cookie_secure(),
             )

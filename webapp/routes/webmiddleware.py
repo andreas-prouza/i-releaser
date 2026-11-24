@@ -272,8 +272,11 @@ class WebMiddleware(BaseHTTPMiddleware):
             if not is_background_request(request):
                 request.state.session.touch()
 
-            # The policy requires two-factor authentication: until it's set up, the user can only set it up
-            if request.state.session.get(two_factor.SESSION_SETUP_REQUIRED) and path not in two_factor.SETUP_PATHS:
+            # The policy requires two-factor authentication: until it's set up, the user can only set it up.
+            # Checked again on each request: the policy may have been loosened since the login.
+            if request.state.session.get(two_factor.SESSION_SETUP_REQUIRED) \
+                    and await run_in_threadpool(two_factor.check_setup_required, request.state.session, user) \
+                    and path not in two_factor.SETUP_PATHS:
                 if self.wants_html(request):
                     return RedirectResponse('/user#two-factor', status_code=303)
                 return http_functions.get_json_response_error("Set up two-factor authentication first (page 'My account')", status=403)
@@ -305,6 +308,15 @@ class WebMiddleware(BaseHTTPMiddleware):
             source = request.headers.get('origin') or request.headers.get('referer')
             if source and not self.is_same_origin(request):
                 return http_functions.get_json_response_error("Request from another origin is not allowed", status=403)
+
+            # The browser would drop the session cookie and show the login page again without a message
+            # (docs/bugfixes/secure-cookie-over-http-without-message.md). Before the sign-on: it couldn't help.
+            if server_sessions.is_cookie_dropped(source):
+                logging.warning(f"Login over plain HTTP from {source}: the browser doesn't keep the session cookie with C_COOKIE_SECURE = True. "
+                                "Use HTTPS, or set C_COOKIE_SECURE = False in webapp/etc/global_cfg.py (docs/installation.md)")
+                request.state.session.transient = True
+                request.state.login_error = app_login.COOKIE_NEEDS_HTTPS_TEXT
+                return await routes.login(request)
 
             response = self.check_login_form_size(request)
             if response is not None:
