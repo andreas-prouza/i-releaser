@@ -10,7 +10,7 @@ import db_tools
 from modules import current_user, files, meta_file, stage_status, workflow
 from modules import deploy_action as da
 from modules.cmd_status import Status as Cmd_Status
-from modules.db import meta_file_data
+from modules.db import app_sqlite, meta_file_data
 from modules.ibm_i_commands import Command_Exception, IBM_i_commands
 from modules.meta_file_status import Meta_file_status
 
@@ -352,6 +352,42 @@ class TestScripts(Parallel_Test):
         self.assertTrue(os.path.exists(done))
         self.assertEqual([step.status for step in steps], [Cmd_Status.FINISHED, Cmd_Status.NEW])
         self.assertIn('Script failed', read_log(parent.run_history[-1].stderr))
+
+
+    def test_sub_step_which_ends_while_it_is_inserted_is_stored_finished(self):
+        """
+        docs/bugfixes/sub-step-status-lost.md: another parallel sub-step saves the deployment and inserts this new sub-step,
+        and just then this one ends. Its end must be stored, not the status at the INSERT.
+        """
+
+        parent = self.add_step('echo parent')
+        self.mf.save()
+
+        step = sub_step(self.stage, parent, 'echo sub')
+        step.status = Cmd_Status.IN_PROCESS
+
+        connect = app_sqlite.get_db_connection
+
+        def connection(*args, **kwargs):
+            conn = connect(*args, **kwargs)
+
+            def trace(sql: str) -> None:
+                # The thread of the sub-step ends it while the save of the other thread inserts it
+                if 'INSERT INTO actions' in sql:
+                    step.status = Cmd_Status.FINISHED
+
+            conn.set_trace_callback(trace)
+            return conn
+
+        with patch.object(app_sqlite, 'get_db_connection', connection):
+            self.mf.save()
+
+        # The thread of the sub-step: it has an id now, so it saves only its step
+        self.mf.save_step(step)
+
+        stored = self.stored_stage().actions.get_action_by_id(parent.id).sub_actions
+        self.assertEqual([s.status for s in stored], [Cmd_Status.FINISHED])
+
 
 
     @patch.object(constants, 'C_MAX_PARALLEL_STEPS', 8)

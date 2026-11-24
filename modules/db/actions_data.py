@@ -41,18 +41,15 @@ def add_action(action: da.Deploy_Action, stage_id: int|None=None, deploy_object_
 
 def _add_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, stage_id: int|None=None, deploy_object_id: int|None=None, action_id: int|None=None):
 
-    cursor.execute('''
-        INSERT INTO actions (stage_id, deploy_object_id, action_id, sequence, cmd, status, 
-                                processing_step, environment, run_in_new_job, 
-                                execute_remote, check_error, cwd, fail_on_stderr, timeout_seconds,
-                                parallel_group, parallel)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        stage_id, deploy_object_id, action_id, action.sequence, action.cmd, action.status.value,
-        action.processing_step, action.environment.value, action.run_in_new_job,
-        action.execute_remote, action.check_error, action.cwd, action.fail_on_stderr, action.timeout_seconds,
-        action.parallel_group, action.parallel
-    ))
+    # One snapshot: what is inserted is what the step remembers as saved. A parallel sub-step can end in its own thread
+    # while another thread saves the deployment and inserts it: the next save writes that change, as it differs from the
+    # snapshot. With a second read after the INSERT the end was taken as saved and never written (docs/bugfixes/sub-step-status-lost.md).
+    values = _get_values(action)
+
+    cursor.execute(f'''
+        INSERT INTO actions (stage_id, deploy_object_id, action_id, {', '.join(values)})
+        VALUES (?, ?, ?, {', '.join('?' * len(values))})
+    ''', (stage_id, deploy_object_id, action_id, *values.values()))
     action_db_id = cursor.lastrowid
 
     if action_db_id is None:
@@ -61,7 +58,7 @@ def _add_action(action: da.Deploy_Action, cursor: sqlite3.Cursor, stage_id: int|
     action.action_id = action_id
     action.deploy_object_id = deploy_object_id
     action.stage_id = stage_id
-    action.saved_values = _get_values(action)
+    action.saved_values = values
 
 
 

@@ -32,6 +32,7 @@
   * Login doesn't block other requests; timeout `C_LOGIN_TIMEOUT_SECONDS`
   * Logout only with the button (POST); a logout can't be undone by a running request; the session cookie ends with the browser
   * A finished deployment can't be canceled
+  * A parallel sub-step of a script could stay `in process` although it had finished ([details](docs/bugfixes/sub-step-status-lost.md))
   * [Two-factor authentication](docs/permissions.md#two-factor-authentication) with an authenticator app (`C_2FA_POLICY`); actions like creating a token or changing permissions ask for a code
   * Login only on the login page (`POST /login`); a login form of another site is refused
   * API tokens expire (`C_TOKEN_MAX_DAYS`), admins can revoke them, removing a user deletes the token; tokens of the format before 2026-10 show a warning
