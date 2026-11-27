@@ -1,3 +1,7 @@
+# Unreleased
+
+* Deployment page: objects which a deployment gets while its page is open (e.g. by a `SCRIPT` step) are shown with the live updates, not only after loading the page again ([details](docs/bugfixes/objects-added-later-not-shown.md))
+
 # 4.1.1
 
 * Login over plain HTTP to another host with `C_COOKIE_SECURE = True`: the login page says why the login can't work, instead of showing the login page again without a message ([details](docs/bugfixes/secure-cookie-over-http-without-message.md))

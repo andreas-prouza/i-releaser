@@ -120,6 +120,31 @@ def test_table_filter_page_and_open_step_survive_a_change(server, browser_contex
 
 
 
+def test_objects_added_later_are_shown(server, browser_context, boss):
+    """A deployment without objects gets them while the page is open, e.g. by a SCRIPT step (docs/bugfixes/objects-added-later-not-shown.md)"""
+
+    deployment = fresh(boss)
+    try:
+        page, watch = open_page(browser_context, server, f"/show_details/{deployment}")
+        page.evaluate("window.not_loaded_again = 42")
+        assert page.locator('[data-objects-empty]').is_visible()
+        assert not page.locator('[data-objects-table]').is_visible()
+
+        add_objects(server, deployment, 12)
+
+        page.wait_for_selector('[data-objects-table]', state='visible', timeout=LIVE_MS)
+        assert not page.locator('[data-objects-empty]').is_visible()
+        assert page.locator('[data-objects-count]').inner_text() == '12'
+        assert page.locator('#object_list tbody tr').count() == 10
+        assert page.locator('#object_list thead th').first.is_visible()
+        assert page.evaluate("window.not_loaded_again") == 42
+
+        watch.assert_clean()
+    finally:
+        boss.post(f"/api/cancel_deployment/{deployment}")
+
+
+
 def test_log_dialog_stays_open_during_a_change(server, browser_context, boss):
 
     deployment = fresh(boss)

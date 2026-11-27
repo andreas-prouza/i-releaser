@@ -103,7 +103,8 @@
         <div class="ir-section-head">
             <h2 id="objects-title">Objects <span class="ir-count" data-objects-count>{{ objects_table['objects'] | length }}</span></h2>
         </div>
-        {%- if objects_table['objects'] %}
+        {#- The table is always there: objects can be added while the page is open (e.g. by a SCRIPT step), the live updates show it then -#}
+        {%- set has_objects = objects_table['objects'] | length > 0 %}
         {%- if objects_table['can_change'] %}
         <div id="object_toolbar" class="btn-group btn-group-sm" role="group" aria-label="Ready for the objects which match the filters">
             <button type="button" class="btn btn-outline-secondary" data-objects-ready="true" title="Include the objects which match the filters">
@@ -112,12 +113,10 @@
                 <i class="bi bi-x-lg" aria-hidden="true"></i> None ready</button>
         </div>
         {%- endif %}
-        <div class="ir-card ir-table-card">
+        <div class="ir-card ir-table-card" data-objects-table{% if not has_objects %} hidden{% endif %}>
             <table id="object_list" class="table"></table>
         </div>
-        {%- else %}
-        <div class="ir-card">{{ empty_state('This deployment has no objects') }}</div>
-        {%- endif %}
+        <div class="ir-card" data-objects-empty{% if has_objects %} hidden{% endif %}>{{ empty_state('This deployment has no objects') }}</div>
     </section>
 
     {#- Activity -#}
