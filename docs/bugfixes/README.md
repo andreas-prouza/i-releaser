@@ -83,6 +83,12 @@ Found on 2026-11-24, after the update of an installation to 4.1.0:
 | P3 | [A loosened 2FA policy doesn't count for sessions which have to set it up](2fa-setup-flag-outlives-policy.md) | bug | code review | finished |
 | P3 | [Nobody can unblock a login if all admins are blocked](blocked-admin-locked-out.md) | bug (operation) | code review | finished |
 
+Found on 2026-11-27, after the update of an installation to 4.1.1:
+
+| Priority | Defect | Type | Found by | Status |
+|---|---|---|---|---|
+| P2 | [Deployment page: objects added while the page is open are not shown](objects-added-later-not-shown.md) | bug (regression) | installation | ready (implemented, the new tests haven't run on Linux yet) |
+
 Improvements of this review (`docs/features/`):
 
 | Priority | Improvement | Status |

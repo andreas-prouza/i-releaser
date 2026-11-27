@@ -614,7 +614,10 @@ def test_objects_table_without_objects(server, boss):
         _, _, text = boss.get(f"/show_details/{deployment}", headers={'Accept': 'text/html'})
         assert 'This deployment has no objects' in text
         assert get_objects_table(text)['objects'] == []
-        assert 'id="object_list"' not in text
+        # The table is there for objects added later (docs/bugfixes/objects-added-later-not-shown.md), but hidden
+        assert 'id="object_list"' in text
+        assert '<div class="ir-card ir-table-card" data-objects-table hidden>' in text
+        assert '<div class="ir-card" data-objects-empty>' in text
     finally:
         boss.post(f"/api/cancel_deployment/{deployment}")
 

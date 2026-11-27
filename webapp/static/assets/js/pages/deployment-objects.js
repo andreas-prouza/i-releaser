@@ -37,12 +37,27 @@ function source_only_formatter(value) {
 export function init_objects() {
 
     const page = read_json('deployment-objects');
-    if (!page || page.objects.length === 0) {
+    if (!page) {
         return null;
     }
 
     const $table = $('#object_list');
     const toolbar = document.getElementById('object_toolbar');
+    const table_card = document.querySelector('[data-objects-table]');
+    const empty_card = document.querySelector('[data-objects-empty]');
+
+
+    // A deployment can get its objects after the page was loaded (e.g. by a SCRIPT step): the table is set up
+    // without rows and shown with the first object (docs/bugfixes/objects-added-later-not-shown.md)
+    function show_table(count) {
+        const was_hidden = table_card.hidden;
+        table_card.hidden = count === 0;
+        empty_card.hidden = count > 0;
+        if (was_hidden && count > 0) {
+            // Set up while hidden: the header gets its width now
+            $table.bootstrapTable('resetView');
+        }
+    }
 
 
     // The rows of the current page show the values of their data (after a change of several rows)
@@ -166,6 +181,7 @@ export function init_objects() {
             const page_number = $table.bootstrapTable('getOptions').pageNumber;
             $table.bootstrapTable('load', data.objects);
             $table.bootstrapTable('selectPage', Math.min(page_number, $table.bootstrapTable('getOptions').totalPages || 1));
+            show_table(data.objects.length);
             return data.objects.length;
         },
     };
